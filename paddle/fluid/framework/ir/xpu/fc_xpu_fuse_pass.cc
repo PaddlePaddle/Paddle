@@ -159,19 +159,19 @@ Fused subgraph:
            \    |   /        |
             \   |  /         |
              fc_xpu-----------
-                |
-                |
-             act_out
+              |  \
+              |   \
+         act_out  out_max
 */
 class FcXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void ApplyImpl(ir::Graph* graph,
-                 const std::string& mul_type,
-                 bool with_bias,
-                 const std::string& act_type) const;
+  int ApplyImpl(ir::Graph* graph,
+                const std::string& mul_type,
+                bool with_bias,
+                const std::string& act_type) const;
 
   const std::string name_scope_{"fc_xpu_fuse_pass"};
 };
@@ -180,23 +180,27 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
+
+  int found_subgraph_count = 0;
   for (auto mul_type : {"mul", "matmul", "matmul_v2"}) {
     for (auto with_bias : {true, false}) {
       for (auto act_type : {
                "relu",
                "gelu",
+               "tanh",
                "",
            }) {
-        ApplyImpl(graph, mul_type, with_bias, act_type);
+        found_subgraph_count += ApplyImpl(graph, mul_type, with_bias, act_type);
       }
     }
   }
+  AddStatis(found_subgraph_count);
 }
 
-void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
-                              const std::string& mul_type,
-                              bool with_bias,
-                              const std::string& act_type) const {
+int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
+                             const std::string& mul_type,
+                             bool with_bias,
+                             const std::string& act_type) const {
   GraphPatternDetector gpd;
   patterns::FcXPUPattern pattern(
       gpd.mutable_pattern(), name_scope_, mul_type, with_bias, act_type);
@@ -217,41 +221,42 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = mul->Op()->Block();
     auto* scope = param_scope();
 
-    auto mul_w_name = mul_w->Name();
-    auto mul_w_tensor =
-        scope->FindVar(mul_w_name)->GetMutable<phi::DenseTensor>();
-    // 1. Transform weight to int16/int31
-    // 2. Avoid transform repeatly, because weight may be shared with other ops.
-    // TODO(zhupengyang): support int31
-    std::string mul_w_max_name = mul_w_name + "_max";
-    Node* mul_w_max = nullptr;
-    if (mul_w_tensor->dtype() != phi::DataType::INT16) {
-      // Create weight_max node
-      VarDesc mul_w_max_desc(mul_w_max_name);
-      mul_w_max_desc.SetPersistable(true);
-      mul_w_max = graph->CreateVarNode(&mul_w_max_desc);
-      // Create weight_max var/tensor
-      auto mul_w_max_var = block->Var(mul_w_max_name);
-      mul_w_max_var->SetPersistable(true);
-      auto mul_w_max_tensor =
-          scope->Var(mul_w_max_name)->GetMutable<phi::DenseTensor>();
-      bool transpose_w = false;
-      if (mul_type == "matmul") {
-        transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("transpose_Y"));
-      } else if (mul_type == "matmul_v2") {
-        transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
-      }
-      QuantWeight<int16_t>(mul_w_tensor, mul_w_max_tensor, !transpose_w);
+    bool transpose_w = false;
+    if (mul_type == "matmul") {
+      transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("transpose_Y"));
+    } else if (mul_type == "matmul_v2") {
+      transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
     }
+    Node* mul_w_int16 = nullptr;
+    Node* mul_w_max = nullptr;
+    PrepareWeight<int16_t>(
+        graph, scope, block, mul_w, &mul_w_int16, &mul_w_max, !transpose_w);
+
+    Node* bias_fp32 = nullptr;
+    if (bias != nullptr) {
+      PrepareBias(graph, scope, block, bias, &bias_fp32);
+    }
+
+    std::string fc_out_name;
+    if (act_out) {
+      fc_out_name = act_out->Name();
+    } else if (add_out) {
+      fc_out_name = add_out->Name();
+    } else {
+      fc_out_name = mul_out->Name();
+    }
+    std::string fc_out_max_name = fc_out_name + "_max";
+    VarDesc fc_out_max_desc(fc_out_max_name);
+    Node* fc_out_max = graph->CreateVarNode(&fc_out_max_desc);
 
     // Generate fc_xpu op
     framework::OpDesc fc_xpu_op_desc(block);
     fc_xpu_op_desc.SetType("fc_xpu");
     fc_xpu_op_desc.SetInput("x", {mul_x->Name()});
-    fc_xpu_op_desc.SetInput("w", {mul_w->Name()});
-    fc_xpu_op_desc.SetInput("w_max", {mul_w_max_name});
-    if (bias) {
-      fc_xpu_op_desc.SetInput("bias", {bias->Name()});
+    fc_xpu_op_desc.SetInput("w", {mul_w_int16->Name()});
+    fc_xpu_op_desc.SetInput("w_max", {mul_w_max->Name()});
+    if (bias_fp32) {
+      fc_xpu_op_desc.SetInput("bias", {bias_fp32->Name()});
     }
     fc_xpu_op_desc.SetAttr(
         "in_num_col_dims",
@@ -267,8 +272,6 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (mul_type == "matmul") {
       fc_xpu_op_desc.SetAttr(
           "alpha", PADDLE_GET_CONST(float, mul->Op()->GetAttr("alpha")));
-      fc_xpu_op_desc.SetAttr(
-          "beta", PADDLE_GET_CONST(float, mul->Op()->GetAttr("beta")));
     }
     fc_xpu_op_desc.SetAttr("act_type", 0);
     fc_xpu_op_desc.SetAttr("act_alpha", 0.f);
@@ -282,25 +285,21 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
-    if (act_out) {
-      fc_xpu_op_desc.SetOutput("out", {act_out->Name()});
-    } else if (add_out) {
-      fc_xpu_op_desc.SetOutput("out", {add_out->Name()});
-    } else {
-      fc_xpu_op_desc.SetOutput("out", {mul_out->Name()});
-    }
+    fc_xpu_op_desc.SetOutput("out", {fc_out_name});
+    fc_xpu_op_desc.SetOutput("out_max", {fc_out_max_name});
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);
-    SAFE_IR_NODE_LINK_TO(mul_x, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(mul_w, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(mul_w_max, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(bias, fc_xpu);
+    IR_NODE_LINK_TO(mul_x, fc_xpu);
+    IR_NODE_LINK_TO(mul_w_int16, fc_xpu);
+    IR_NODE_LINK_TO(mul_w_max, fc_xpu);
+    SAFE_IR_NODE_LINK_TO(bias_fp32, fc_xpu);
     if (act_out) {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, act_out);
+      IR_NODE_LINK_TO(fc_xpu, act_out);
     } else if (add_out) {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, add_out);
+      IR_NODE_LINK_TO(fc_xpu, add_out);
     } else {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, mul_out);
+      IR_NODE_LINK_TO(fc_xpu, mul_out);
     }
+    IR_NODE_LINK_TO(fc_xpu, fc_out_max);
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
@@ -310,13 +309,15 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       delete_nodes = {mul, mul_out, act};
     } else if (add) {
       delete_nodes = {mul, mul_out, add};
+    } else {
+      delete_nodes = {mul};
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
 
   gpd(graph, handler);
-  AddStatis(found_subgraph_count);
+  return found_subgraph_count;
 }
 
 }  // namespace ir

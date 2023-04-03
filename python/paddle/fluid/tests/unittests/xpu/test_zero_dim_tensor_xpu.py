@@ -161,6 +161,20 @@ class TestReduceAPI(unittest.TestCase):
                 np.testing.assert_allclose(x.grad.numpy(), np.array(1.0))
                 np.testing.assert_allclose(out.grad.numpy(), np.array(1.0))
 
+            out1 = api(x, 0)
+            self.assertEqual(out1.shape, [])
+            self.assertEqual(out1, out)
+            out1.backward()
+
+            out2 = api(x, -1)
+            self.assertEqual(out2.shape, [])
+            self.assertEqual(out2, out)
+            out2.backward()
+
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
+
         paddle.enable_static()
 
 
@@ -330,33 +344,205 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_expand(self):
+        # case1
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(out.shape, [1])
+        np.testing.assert_allclose(out, 1.0)
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, 1.0)
+        self.assertEqual(out.grad.shape, [1])
+        np.testing.assert_allclose(out.grad, 1.0)
+
+        # case2
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.expand(x1, shape=[])
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        np.testing.assert_allclose(out1, 1.0)
+        self.assertEqual(x1.grad.shape, [])
+        np.testing.assert_allclose(x1.grad, 1.0)
+        self.assertEqual(out1.grad.shape, [])
+        np.testing.assert_allclose(out1.grad, 1.0)
+
+        # case3
+        x2 = paddle.full([], 1, 'float32')
+        x2.stop_gradient = False
+        out2 = paddle.expand(x2, shape=[1, 1])
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out2.shape, [1, 1])
+        np.testing.assert_allclose(out2, 1.0)
+        self.assertEqual(x2.grad.shape, [])
+        np.testing.assert_allclose(x2.grad, 1.0)
+        self.assertEqual(out2.grad.shape, [1, 1])
+        np.testing.assert_allclose(out2.grad, 1.0)
+
+        # case4
+        x3 = paddle.full([], 1, 'float32')
+        x3.stop_gradient = False
+        out3 = paddle.expand(x3, shape=[3, 3])
+        out3.retain_grads()
+        out3.backward()
+
+        self.assertEqual(out3.shape, [3, 3])
+        np.testing.assert_allclose(out3, 1.0)
+        self.assertEqual(x3.grad.shape, [])
+        np.testing.assert_allclose(x3.grad, 9.0)
+        self.assertEqual(out3.grad.shape, [3, 3])
+        np.testing.assert_allclose(out3.grad, 1.0)
+
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'float32')
+        y.stop_gradient = False
+        out = paddle.expand_as(x, y)
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.item(), 1.0)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.item(), 1.0)
+        self.assertEqual(out.grad, None)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        y1 = paddle.full([1], 1, 'float32')
+        out1 = paddle.expand_as(x1, y1)
+        out1.backward()
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.item(0), 1.0)
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out1.item(0), 1.0)
+        self.assertEqual(out1.grad, None)
+
+        x2 = paddle.full([], 1, 'float32')
+        x2.stop_gradient = False
+        y2 = paddle.full([3, 3], 1, 'float32')
+        out2 = paddle.expand_as(x2, y2)
+        out2.backward()
+        self.assertEqual(x2.shape, [])
+        self.assertEqual(x2.item(), 1.0)
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x2.grad.item(0), 9.0)
+        self.assertEqual(out2.shape, [3, 3])
+        self.assertEqual(out2.item(0), 1.0)
+        self.assertEqual(out2.grad, None)
+
+    def test_top_k(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out, indices = paddle.topk(x, k=1, axis=0)
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(indices.shape, [])
+        self.assertEqual(indices.item(), 0)
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.item(0), 1.0)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.item(), 1.0)
+        self.assertEqual(out.grad, 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1, indices1 = paddle.topk(x1, k=1, axis=-1)
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(indices1.shape, [])
+        self.assertEqual(indices1.item(), 0)
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.item(0), 1.0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.item(), 1.0)
+        self.assertEqual(out1.grad, 1.0)
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.topk(x1, k=1, axis=2)
+
     def test_argmin(self):
+        # 1) x is 0D
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
         out2 = paddle.argmin(x, -1)
         out3 = paddle.argmin(x, None)
+
         self.assertEqual(out1.shape, [])
-        np.testing.assert_allclose(out1, 0.0)
+        np.testing.assert_allclose(out1, 0)
 
         self.assertEqual(out2.shape, [])
-        np.testing.assert_allclose(out2, 0.0)
+        np.testing.assert_allclose(out2, 0)
 
         self.assertEqual(out3.shape, [])
-        np.testing.assert_allclose(out3, 0.0)
+        np.testing.assert_allclose(out3, 0)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        x.stop_gradient = False
+        out = paddle.argmin(x, 0)
+        out.backward()
+        self.assertEqual(out.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.argmin(x)
+        out.backward()
+        self.assertEqual(out.shape, [])
+
+        # 4) x is ND, keepdim=True
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.argmin(x, keepdim=True)
+        out.backward()
+        self.assertEqual(out.shape, [1, 1])
 
     def test_argmax(self):
+        # 1) x is 0D
         x = paddle.rand([])
         out1 = paddle.argmax(x, 0)
         out2 = paddle.argmax(x, -1)
         out3 = paddle.argmax(x, None)
+
         self.assertEqual(out1.shape, [])
-        np.testing.assert_allclose(out1, 0.0)
+        np.testing.assert_allclose(out1, 0)
 
         self.assertEqual(out2.shape, [])
-        np.testing.assert_allclose(out2, 0.0)
+        np.testing.assert_allclose(out2, 0)
 
         self.assertEqual(out3.shape, [])
-        np.testing.assert_allclose(out3, 0.0)
+        np.testing.assert_allclose(out3, 0)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        out = paddle.argmax(x, 0)
+        self.assertEqual(out.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        out = paddle.argmax(x)
+        self.assertEqual(out.shape, [])
+
+        # 4) x is ND, keepdim=True
+        x = paddle.rand([3, 5])
+        out = paddle.argmax(x, keepdim=True)
+        self.assertEqual(out.shape, [1, 1])
 
     def test_median(self):
         x = paddle.rand([])
@@ -443,14 +629,28 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), np.array(0.5))
 
     def test_numel(self):
+        # 1) x is 0D
         out = paddle.numel(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(1))
 
+        # 2) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.numel(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(15))
+
     def test_rank(self):
+        # 1) x is 0D
         out = paddle.rank(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(0))
+
+        # 1) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.rank(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(2))
 
     def test_shape(self):
         out = paddle.shape(self.x)

@@ -2,7 +2,14 @@ add_subdirectory(dynload)
 add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
-set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
+set(BACKENDS_DEPS
+    enforce
+    place
+    flags
+    eigen3
+    phi_device_context
+    generator
+    phi_os_info)
 if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
 endif()
@@ -33,6 +40,7 @@ endif()
 if(WITH_MKLDNN)
   list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
   list(APPEND BACKENDS_SRCS onednn/axpy_handler.cc)
+  list(APPEND BACKENDS_SRCS onednn/matmul_utils.cc)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
@@ -44,7 +52,8 @@ list(
   stream.cc
   event.cc
   device_base.cc
-  device_manager.cc)
+  device_manager.cc
+  context_pool.cc)
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
@@ -53,7 +62,6 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
-add_dependencies(phi_backends eigen3)
 
 # for inference library
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
@@ -62,23 +70,7 @@ set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 
 if(WITH_CUSTOM_DEVICE)
   cc_test(
-    custom_device_test
-    SRCS custom/custom_device_test.cc
-    DEPS phi_tensor_utils phi_backends phi_device_context gradient_accumulator)
-  cc_test(
     capi_test
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
-
-set(COMM_UTILS_DEPS process_group)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
-endif()
-cc_library(
-  processgroup_comm_utils
-  SRCS processgroup_comm_utils.cc
-  DEPS ${COMM_UTILS_DEPS})

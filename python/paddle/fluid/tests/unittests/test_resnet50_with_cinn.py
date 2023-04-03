@@ -90,9 +90,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         loss = self.build_program(main_program, startup_program)
         exe = paddle.static.Executor(place)
 
-        compiled_prog = paddle.static.CompiledProgram(
-            main_program
-        ).with_data_parallel(loss_name=loss.name)
+        compiled_prog = paddle.static.CompiledProgram(main_program)
         loss_vals = []
         scope = paddle.static.Scope()
 
@@ -135,9 +133,10 @@ class TestResnet50Accuracy(unittest.TestCase):
 
         loop_num = 10
         feed = self.generate_random_data(loop_num)
-        core.set_prim_enabled(True)
+        core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("batch_norm")
         loss_c = self.train(place, loop_num, feed, use_cinn=True)
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
         loss_p = self.train(place, loop_num, feed, use_cinn=True)
         print("Losses of Composite + CINN:")
         print(loss_c)

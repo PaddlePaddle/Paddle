@@ -89,10 +89,10 @@ PD_REGISTER_KERNEL(minimum_grad,
                    int64_t,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(elementwise_heaviside_grad,
+PD_REGISTER_KERNEL(heaviside_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ElementwiseHeavisideGradKernel,
+                   phi::HeavisideGradKernel,
                    float,
                    double,
                    int,
@@ -105,4 +105,5 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}

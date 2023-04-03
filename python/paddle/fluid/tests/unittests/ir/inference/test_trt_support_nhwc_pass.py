@@ -18,16 +18,14 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.inference as inference
-import paddle.nn as nn
-import paddle.static as static
+from paddle import inference, nn, static
 
 paddle.enable_static()
 
 
 class SimpleNet(nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2D(
             in_channels=4,
             out_channels=4,

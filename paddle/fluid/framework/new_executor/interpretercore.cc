@@ -38,6 +38,10 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running kernels.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -84,16 +88,6 @@ inline void SetDeviceId(const platform::Place& place) {
     auto dev_id = place.device;
     platform::SetXPUDeviceId(dev_id);
 #endif
-  } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with NPU support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetNPUDeviceId(dev_id);
-#endif
   } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_THROW(platform::errors::Unavailable(
@@ -116,6 +110,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       execution_config_(execution_config),
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -197,6 +194,8 @@ void InterpreterCore::RunImpl() {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
@@ -209,11 +208,6 @@ void InterpreterCore::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -275,20 +269,21 @@ paddle::framework::FetchList InterpreterCore::Run(
         block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
@@ -531,6 +526,11 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      platform::IsCUDAGraphCapturing(),
+      false,
+      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                         "before prepare."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -662,6 +662,28 @@ void InterpreterCore::Convert(
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+#ifdef PADDLE_WITH_CUDA
+    if (FLAGS_new_executor_use_cuda_graph) {
+      auto& op = op_func_node.operator_base_;
+      auto& op_type = op->Type();
+      if (op_type == interpreter::kMemcpyD2H ||
+          op_type == interpreter::kMemcpyH2D) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
+      }
+      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Device context of op %s must be [%s] while using "
+                            "cuda graph, but got [%s].",
+                            op_type,
+                            typeid(phi::GPUContext).name(),
+                            typeid(*dev_ctx_).name()));
+      // cuda graph needs to record all stream
+      phi::backends::gpu::CUDAGraphContextManager::Instance()
+          .RecordCapturingDeviceContext(dev_ctx_);
+    }
+#endif
   }
 
   BuildOperatorDependences();
@@ -856,18 +878,6 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
-    // variable values, but only through special `float_status` to checks
-    // whether the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-  }
-#endif
-
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     // If it is OperatorBase, InferShape do nothing.
@@ -910,23 +920,28 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
-    if (op_with_kernel == nullptr) {
+    if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      // fit for phi
-      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
-        VLOG(4) << "Run phi kernel: " << op->Type();
-        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
-                << &instr_node.DeviceContext();
-        phi::KernelContext phi_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(
-            *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &phi_kernel_context);
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          VLOG(4) << "Run function kernel: " << op->Type();
+          VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                  << &instr_node.DeviceContext();
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&phi_kernel_context);
-
-      } else {
+          (*kernel)(&phi_kernel_context);
+        } else {
+          VLOG(4) << "Run structure kernel: " << op->Type();
+          (*kernel)(instr_node.InnerExecutionContext().get());
+        }
+      } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
     }
@@ -1014,7 +1029,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
@@ -1270,20 +1284,21 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         block_, execution_config_, &var_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }

@@ -201,7 +201,7 @@ def device_guard(dev_id=0, device="cpu"):
     if device == "cpu":
         paddle.set_device(device)
     elif device in ["gpu", "xpu", "npu"]:
-        paddle.set_device("{}:{}".format(device, dev_id))
+        paddle.set_device(f"{device}:{dev_id}")
     try:
         yield
     finally:
@@ -262,6 +262,7 @@ def GroupShardedScaler(scaler):
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
 
+        self._found_inf = self._temp_found_inf_value_false
         with device_guard(dev_id, device):
             if len(param_grads_bfp16):
                 _legacy_C_ops.check_finite_and_unscale(
@@ -312,7 +313,7 @@ def cvt_to_device(x, dev_id, blocking=True):
     elif paddle.is_compiled_with_xpu():
         place = paddle.XPUPlace(dev_id)
     else:
-        raise EnvironmentError(
+        raise OSError(
             "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
         )
     return x._copy_to(place, blocking)

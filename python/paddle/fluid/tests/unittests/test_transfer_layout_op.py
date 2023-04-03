@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -88,6 +88,43 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
         )
         assert len(ret) == 1
         assert ret[0].shape == (n, h, w, c)
+
+
+class TestTransferLayoutFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'transfer_layout'
+        self.dtype = np.float16
+        x = np.random.random(size=[2, 5, 10, 10])
+        self.inputs = {'X': x.astype(self.dtype)}
+        self.outputs = {'Out': x.transpose([0, 2, 3, 1])}
+        self.attrs = {'src_layout': 0, 'dst_layout': 1}
+        self.python_api = transpose_layout
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestTransferLayoutBP16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'transfer_layout'
+        self.dtype = np.uint16
+        x = np.random.random(size=[2, 5, 10, 10])
+        self.inputs = {'X': convert_float_to_uint16(x.astype('float32'))}
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                x.transpose([0, 2, 3, 1]), data_format="NHWC"
+            )
+        }
+        self.attrs = {'src_layout': 0, 'dst_layout': 1}
+        self.python_api = transpose_layout
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':

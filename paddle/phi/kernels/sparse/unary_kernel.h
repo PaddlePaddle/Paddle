@@ -52,12 +52,26 @@ DECLARE_SPARSE_UNARY_KERNEL(Sinh)
 DECLARE_SPARSE_UNARY_KERNEL(Asinh)
 DECLARE_SPARSE_UNARY_KERNEL(Atanh)
 DECLARE_SPARSE_UNARY_KERNEL(Relu)
+DECLARE_SPARSE_UNARY_KERNEL(Isnan)
 DECLARE_SPARSE_UNARY_KERNEL(Tanh)
 DECLARE_SPARSE_UNARY_KERNEL(Square)
 DECLARE_SPARSE_UNARY_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_KERNEL(Abs)
+DECLARE_SPARSE_UNARY_KERNEL(Expm1)
 DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
+DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void Relu6CooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void Relu6CsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCsrTensor* out);
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,

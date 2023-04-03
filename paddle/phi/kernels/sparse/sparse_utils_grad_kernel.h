@@ -38,7 +38,7 @@ void SparseCooTensorGradKernel(const Context& dev_ctx,
                                const DenseTensor& indices,
                                const SparseCooTensor& out_grad,
                                DenseTensor* values_grad) {
-  SparseMaskHelperKernel<T, Context>(dev_ctx, out_grad, indices, values_grad);
+  MaskHelperCooKernel<T, Context>(dev_ctx, out_grad, indices, values_grad);
 }
 
 }  // namespace sparse

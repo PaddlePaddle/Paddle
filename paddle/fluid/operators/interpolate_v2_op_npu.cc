@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
 namespace paddle {
@@ -167,7 +166,7 @@ struct InterpolateFunction {
 
 template <>
 void InterpolateFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
-  phi::DenseTensor x_fp32(experimental::DataType::FLOAT32);
+  phi::DenseTensor x_fp32(phi::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});

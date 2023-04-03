@@ -18,12 +18,12 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 
 
-class RecurrentTest(fluid.Layer):
+class RecurrentTest(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 
@@ -81,7 +81,9 @@ class TestRecurrentFeed(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             in1 = paddle.static.data(name="inp1", shape=[2, 2])
+            in1.stop_gradient = False
             in2 = paddle.static.data(name="inp2", shape=[2, 2])
+            in2.stop_gradient = False
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
             fluid.backward.append_backward(static_sum_out)

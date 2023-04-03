@@ -16,8 +16,9 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+import paddle
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -285,6 +286,67 @@ def pool2D_forward_naive(
     return out
 
 
+def pool2d_wrapper_not_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    tmp = X._use_gpudnn(False)
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        tmp,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
+def pool2d_wrapper_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool2d(
+        X,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
 class TestPool2D_Op_Mixin:
     def setUp(self):
         self.op_type = "pool2d"
@@ -337,6 +399,11 @@ class TestPool2D_Op_Mixin:
 
         self.outputs = {'Out': output}
 
+        if self.use_cudnn:
+            self.python_api = pool2d_wrapper_use_cudnn
+        else:
+            self.python_api = pool2d_wrapper_not_use_cudnn
+
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
@@ -358,14 +425,14 @@ class TestPool2D_Op_Mixin:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
             )
         elif self.pool_type != "max":
             self.check_grad(
-                set(['X']),
+                {'X'},
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
@@ -479,7 +546,7 @@ def create_test_cudnn_class(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOp")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -524,13 +591,13 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
     globals()[cls_name] = TestCUDNNFp16Case
 
@@ -565,13 +632,13 @@ def create_test_fp16_class(parent, check_grad=True):
             ):
                 self.check_grad_with_place(
                     place,
-                    set(['X']),
+                    {'X'},
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
     globals()[cls_name] = TestFp16Case
 
@@ -604,7 +671,7 @@ def create_test_cudnn_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOpCeilMode")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -618,7 +685,7 @@ def create_test_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
+    cls_name = "{}_{}".format(parent.__name__, "CeilModeCast")
     TestPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool2DUseCeilCase
 
@@ -711,7 +778,7 @@ class TestCase4_AsyPadding(TestCase4):
         self.shape = [2, 3, 7, 7]
 
 
-class TestCase5_AsyPadding((TestCase5)):
+class TestCase5_AsyPadding(TestCase5):
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -864,10 +931,10 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00
             )
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):
@@ -1008,7 +1075,7 @@ def create_test_padding_SAME_class(parent):
             self.paddings = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -1040,7 +1107,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -1066,7 +1133,7 @@ def create_test_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -1098,7 +1165,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.paddings = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 

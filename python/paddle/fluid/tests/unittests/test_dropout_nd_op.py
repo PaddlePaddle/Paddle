@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
+from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -58,7 +57,7 @@ def dropout_nd(
 
     helper = LayerHelper('dropout_nd', **locals())
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+        x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'dropout'
     )
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -115,6 +114,64 @@ class TestDropoutNdOp(OpTest):
     def test_check_grad_normal(self):
         # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Out', check_dygraph=False)
+
+
+class TestDropoutNdFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "dropout_nd"
+        self.dtype = np.float16
+        self.inputs = {'X': np.random.random((2, 16, 8)).astype("float16")}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'axis': [1],
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((1, 16, 1)).astype('uint8'),
+        }
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_dygraph=False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestDropoutNdBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "dropout_nd"
+        self.dtype = np.uint16
+        self.np_dtype = "float32"
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.random.random((2, 16, 8)).astype(self.np_dtype)
+            )
+        }
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'axis': [1],
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((1, 16, 1)).astype('uint8'),
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', check_dygraph=False
+        )
 
 
 class TestDropoutNdAPI(unittest.TestCase):

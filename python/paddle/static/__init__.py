@@ -27,6 +27,13 @@ from .io import serialize_program  # noqa: F401
 from .io import load_from_file  # noqa: F401
 from .io import save_to_file  # noqa: F401
 from .io import normalize_program  # noqa: F401
+from .io import is_persistable  # noqa: F401
+from .io import save_vars  # noqa: F401
+from .io import load_vars  # noqa: F401
+from .io import save  # noqa: F401
+from .io import load  # noqa: F401
+from .io import load_program_state  # noqa: F401
+from .io import set_program_state  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
@@ -53,7 +60,6 @@ from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
-from ..fluid.framework import mlu_places  # noqa: F401
 from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.framework import Operator  # noqa: F401
@@ -61,18 +67,10 @@ from ..fluid.framework import Parameter  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
-from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
-from ..fluid.io import save  # noqa: F401
-from ..fluid.io import load  # noqa: F401
-from ..fluid.io import load_program_state  # noqa: F401
-from ..fluid.io import set_program_state  # noqa: F401
-from ..fluid.io import load_vars  # noqa: F401
-from ..fluid.io import save_vars  # noqa: F401
-from ..fluid.io import batch  # noqa: F401
 
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
@@ -96,7 +94,6 @@ __all__ = [  # noqa
     'py_func',
     'ExecutionStrategy',
     'name_scope',
-    'ParallelExecutor',
     'program_guard',
     'WeightNormParamAttr',
     'ExponentialMovingAverage',
@@ -122,7 +119,6 @@ __all__ = [  # noqa
     'cuda_places',
     'xpu_places',
     'npu_places',
-    'mlu_places',
     'Variable',
     'create_global_var',
     'accuracy',

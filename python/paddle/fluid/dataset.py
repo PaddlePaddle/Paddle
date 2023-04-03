@@ -878,7 +878,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -940,7 +940,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -1004,7 +1004,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -1048,7 +1048,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -1095,7 +1095,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               graph_config = {"walk_len": 24,
                     "walk_degree": 10,
@@ -1262,7 +1262,7 @@ class QueueDataset(DatasetBase):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              from paddle.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
               #dataset.global_shuffle(fleet)
 

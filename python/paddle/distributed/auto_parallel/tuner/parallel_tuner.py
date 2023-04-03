@@ -290,7 +290,7 @@ class ParallelTuner:
             return self._cached_dims_mapping_candidates[key]
         candidates = []
         dims_mapping = [-1 for i in range(dims_mapping_len)]
-        dims_list = [i for i in range(process_mesh_len)]
+        dims_list = list(range(process_mesh_len))
         visited = [False for i in range(process_mesh_len)]
         self._generate_dims_mapping_candidates_helper(
             dims_mapping, dims_list, 0, visited, candidates
@@ -530,7 +530,7 @@ class ParallelTuner:
                 del self._concerned_dist_ops[op_id]
 
         print(
-            "Number of the concered dist ops",
+            "Number of the concerned dist ops",
             len(self._concerned_dist_ops),
             flush=True,
         )
@@ -577,7 +577,7 @@ class ParallelTuner:
         return {"status": TrialStatus.RUNNING, "values": values}
 
     def _create_trial(self):
-        trial_id = "{{:0{}d}}".format(len(str(self._max_trials)))
+        trial_id = f"{{:0{len(str(self._max_trials))}d}}"
         trial_id = trial_id.format(self._num_trials)
 
         if self._max_trials and self._num_trials >= self._max_trials:
@@ -631,7 +631,7 @@ class ParallelTuner:
                 direction = directions[i].random(self._seed)
                 size = sizes[i].random(self._seed)
                 if direction:
-                    # Substract 1 from size to avoid the overlapping of new starts
+                    # Subtract 1 from size to avoid the overlapping of new starts
                     new_start = start - (size - 1)
                 else:
                     new_start = start + size
@@ -788,7 +788,7 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_idx = 0
 
     def _check_fused_softmax_mask_upper_triangle(self, dist_op):
-        """The last_but_one dim shoule be equal to last dim."""
+        """The last_but_one dim should be equal to last dim."""
         input_name = dist_op.serial_op.input_arg_names[0]
         input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
             input_name
@@ -955,7 +955,7 @@ class ParallelTuner:
         max_memory = self._estimator._estimate_max_memory_by_dist_op(
             self._dist_context
         )
-        print("\tmax_memory", "{:,}".format(max_memory), flush=True)
+        print("\tmax_memory", f"{max_memory:,}", flush=True)
         # The max memory must be less than 80% 32GB (hard code)
         if max_memory > 32 * 0.8 * 1024 * 1024 * 1024:
             return math.inf
@@ -996,7 +996,7 @@ class ParallelTuner:
             self._dist_context.serial_main_program
         )
 
-        # Backup the intital parallel strategy
+        # Backup the initial parallel strategy
         self._init_parallel_strategy[0] = copy.deepcopy(
             self._dist_context._dist_tensors_for_program
         )

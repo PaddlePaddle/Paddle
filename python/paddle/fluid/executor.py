@@ -871,8 +871,8 @@ class _ExecutorCache:
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
 
-            if hasattr(inner_program, 'lr_sheduler'):
-                converted_program.lr_sheduler = inner_program.lr_sheduler
+            if hasattr(inner_program, 'lr_scheduler'):
+                converted_program.lr_scheduler = inner_program.lr_scheduler
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
@@ -975,22 +975,8 @@ class Executor:
 
             # Or, compiled the program and run. See `CompiledProgram`
             # for more details.
-            # NOTE: If you use CPU to run the program or Paddle is
-            # CPU version, you need to specify the CPU_NUM, otherwise,
-            # PaddlePaddle will use all the number of the logic core as
-            # the CPU_NUM, in that case, the batch size of the input
-            # should be greater than CPU_NUM, if not, the process will be
-            # failed by an exception.
-
-            # Set place explicitly.
-            # if not use_cuda:
-            #     os.environ['CPU_NUM'] = str(2)
-
-            # If you don't set place and PaddlePaddle is CPU version
-            os.environ['CPU_NUM'] = str(2)
-
             compiled_prog = paddle.static.CompiledProgram(
-                train_program).with_data_parallel(loss_name=loss.name)
+                train_program)
             loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
 
     """
@@ -1026,6 +1012,13 @@ class Executor:
         # TODO(liyurui): This option will be removed and always true when the functionality
         # of fleet executor with standalone executor is ready.
         self._fleet_executor_with_standalone = False
+
+        self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+    def _is_optimizer_op(self, op):
+        return self.op_role_key in op.attr_names and int(
+            op.all_attrs()[self.op_role_key]
+        ) & int(core.op_proto_and_checker_maker.OpRole.Optimize)
 
     def __del__(self):
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
@@ -1302,88 +1295,6 @@ class Executor:
                 del trainer_instance
             self._default_executor.close()
 
-    def _run_parallel(
-        self,
-        program,
-        scope,
-        feed,
-        fetch_list,
-        fetch_var_name,
-        return_numpy,
-        return_merged,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        exe = program._executor
-        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
-        # instead of program. We will add support for checking Vars in Graph
-        need_check_feed = program._program is not None
-        if need_check_feed:
-            global_block = program._program.global_block()
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                var = global_block.var(feed_name) if need_check_feed else None
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    # always set to CPU place, since the tensor need to be split
-                    # it is fast in CPU
-                    feed_tensor = _as_lodtensor(
-                        feed[feed_name],
-                        core.CPUPlace(),
-                        var.dtype if var else None,
-                    )
-                if need_check_feed:
-                    check_feed_shape_type(var, feed_tensor, exe.device_count())
-                feed_tensor_dict[feed_name] = feed_tensor
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
-
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            res = list()
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict"
-                    )
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    var = (
-                        global_block.var(feed_name) if need_check_feed else None
-                    )
-                    if not isinstance(tensor, core.LoDTensor):
-                        tensor = _as_lodtensor(
-                            each[feed_name],
-                            program._places[i],
-                            var.dtype if var else None,
-                        )
-                    if need_check_feed:
-                        check_feed_shape_type(var, tensor)
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-
-            exe.feed_tensors_into_local_scopes(res)
-
-        if hasattr(program._program, 'lr_sheduler'):
-            lr_sheduler = program._program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
-            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            if core.is_cuda_graph_capturing():
-                warnings.warn(
-                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
-                    "take any effect! Please set the learning rate manually before each batch!"
-                )
-            else:
-                exe.feed_and_split_tensor_into_local_scopes(
-                    {lr_sheduler._var_name: lr_tensor}
-                )
-
-        fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
-        return as_numpy(tensors) if return_numpy else tensors
-
     def run(
         self,
         program=None,
@@ -1394,7 +1305,6 @@ class Executor:
         scope=None,
         return_numpy=True,
         use_program_cache=False,
-        return_merged=True,
         use_prune=False,
     ):
         """
@@ -1435,17 +1345,6 @@ class Executor:
                 the input program is :code:`paddle.static.Program`, and the parameters(program, feed Tensor name
                 and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched Tensors (the Tensors
-                specified in the fetch list) should be merged according to the execution device dimension.
-                If :code:`return_merged` is False, the type of the return value is a two-dimensional list
-                of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
-                list of :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
-                the type of the return value is an one-dimensional list of :code:`Tensor` / :code:`LoDTensorArray`
-                ( :code:`return_numpy` is False) or an one-dimensional list of :code:`numpy.ndarray`
-                ( :code:`return_numpy` is True). Please see Examples 2 for more details. If the lengths of fetched
-                results are variant, please set :code:`return_merged` as False, which denotes that the fetched
-                results will not be merged. The default is True, but it is just for the compatibility, and may
-                use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not
@@ -1457,20 +1356,6 @@ class Executor:
         Returns:
 
             List: The fetched result list.
-
-        NOTES:
-            1. If it is multi-card running and the feed parameter is dict type, the input data
-               will be evenly sent to different cards. For example, using two GPUs to run the model,
-               the input sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
-               that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
-               If the number of samples is less than the number of devices, the program will
-               throw an exception, so when running the model, you should make sure that the
-               number of samples of the last batch of the data set should be greater than the
-               number of CPU cores or GPU cards, if it is less than, it is recommended that
-               the batch be discarded.
-            2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same Tensor values
-               (Tensors in fetch_list) on different devices.
 
         Examples:
             .. code-block:: python
@@ -1524,43 +1409,21 @@ class Executor:
                 exe.run(paddle.static.default_startup_program())
                 build_strategy = paddle.static.BuildStrategy()
                 binary = paddle.static.CompiledProgram(
-                    paddle.static.default_main_program()).with_data_parallel(
-                        loss_name=loss.name, build_strategy=build_strategy)
+                    paddle.static.default_main_program(), build_strategy=build_strategy)
                 batch_size = 6
                 x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                # Set return_merged as False to fetch unmerged results:
-                unmerged_prediction, = exe.run(binary,
-                                               feed={'X': x},
-                                               fetch_list=[prediction.name],
-                                               return_merged=False)
-                # If the user uses two GPU cards to run this python code, the printed result will be
-                # (2, 3, class_dim). The first dimension value of the printed result is the number of used
-                # GPU cards, and the second dimension value is the quotient of batch_size and the
-                # number of used GPU cards.
-                print("The unmerged prediction shape: {}".format(
-                    np.array(unmerged_prediction).shape))
-                print(unmerged_prediction)
-
-                # Set return_merged as True to fetch merged results:
-                merged_prediction, = exe.run(binary,
-                                             feed={'X': x},
-                                             fetch_list=[prediction.name],
-                                             return_merged=True)
+                prediction, = exe.run(binary,
+                                      feed={'X': x},
+                                    fetch_list=[prediction.name])
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The merged prediction shape: {}".format(
-                    np.array(merged_prediction).shape))
-                print(merged_prediction)
+                print("The prediction shape: {}".format(
+                    np.array(prediction).shape))
+                print(prediction)
 
                 # Out:
-                # The unmerged prediction shape: (2, 3, 2)
-                # [array([[-0.37620035, -0.19752218],
-                #        [-0.3561043 , -0.18697084],
-                #        [-0.24129935, -0.12669306]], dtype=float32), array([[-0.24489994, -0.12858354],
-                #        [-0.49041364, -0.25748932],
-                #        [-0.44331917, -0.23276259]], dtype=float32)]
-                # The merged prediction shape: (6, 2)
+                # The prediction shape: (6, 2)
                 # [[-0.37789783 -0.19921964]
                 #  [-0.3577645  -0.18863106]
                 #  [-0.24274671 -0.12814042]
@@ -1593,7 +1456,6 @@ class Executor:
             return_numpy=return_numpy,
             use_program_cache=use_program_cache,
             use_prune=use_prune,
-            return_merged=return_merged,
         )
         core.update_autotune_status()
         return res
@@ -1608,7 +1470,6 @@ class Executor:
         scope,
         return_numpy,
         use_program_cache,
-        return_merged,
         use_prune,
     ):
         if self._closed:
@@ -1724,9 +1585,6 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu():
-                return False
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
@@ -1737,37 +1595,7 @@ class Executor:
                     else program._graph
                 )
 
-                # Unsupported case 1: data parallel
-                if (
-                    compiled_program._is_data_parallel
-                    and len(
-                        compiled_program._get_places(
-                            place, compiled_program._places
-                        )
-                    )
-                    != 1
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for data parallel",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 2: parallel graph
-                if core.globals()['FLAGS_enable_parallel_graph'] in [
-                    1,
-                    '1',
-                    True,
-                    'True',
-                    'true',
-                ]:
-                    warnings.warn(
-                        "Standalone executor is not used for parallel graph",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 3: inference
+                # Unsupported case 1: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
@@ -1775,34 +1603,10 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 4: async mode
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.async_mode
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for async mode",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 5: CUDA Graph
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.allow_cuda_graph_capture
-                    and not _is_cuda_graph_enable_standalone_executor()
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
-                        UserWarning,
-                    )
-                    return False
             return True
 
-        if (
-            return_merged
-            and self._enable_interpreter_core
-            and _can_use_interpreter_core(program, self.place)
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+            program, self.place
         ):
 
             if feed is None:
@@ -1828,17 +1632,17 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-            if hasattr(program, 'lr_sheduler'):
+            if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
                 assert isinstance(
-                    program.lr_sheduler, LRScheduler
+                    program.lr_scheduler, LRScheduler
                 ), "must be LRScheduler"
-                lr_sheduler = program.lr_sheduler
-                lr_value = lr_sheduler()
-                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                lr_scheduler = program.lr_scheduler
+                lr_value = lr_scheduler()
+                lr_var = program.global_block().vars[lr_scheduler._var_name]
                 data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
                 # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
                 cpu_tensor = _as_lodtensor(data, core.CPUPlace())
                 if core.is_cuda_graph_capturing():
@@ -1858,7 +1662,7 @@ class Executor:
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        # Check if fluid.data() variable no feed data
+        # Check if paddle.static.data() variable no feed data
         if use_prune:
             if compiled:
                 global_block = program._program.global_block()
@@ -1883,25 +1687,6 @@ class Executor:
 
         # For backward compatibility, run directly.
         if not compiled:
-            # In distributed training, the compiled program is saved in Program._graph
-            has_compiled_graph = isinstance(
-                program._graph, compiler.CompiledProgram
-            )
-
-            if has_compiled_graph:
-                program._graph._compile(scope, self.place)
-                # _graph in program does not support inference since the _graph is optimized
-                # through optimizer.minimize function and should not be used as inference graph
-                # assert not program._graph._is_inference
-                return self._run_parallel(
-                    program._graph,
-                    scope=scope,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    fetch_var_name=fetch_var_name,
-                    return_numpy=return_numpy,
-                    return_merged=return_merged,
-                )
 
             return self._run_program(
                 program,
@@ -1915,18 +1700,10 @@ class Executor:
             )
 
         program._compile(scope, self.place)
-        if program._is_inference:
-            return self._run_inference(program._executor, feed)
-        else:
-            return self._run_parallel(
-                program,
-                scope=scope,
-                feed=feed,
-                fetch_list=fetch_list,
-                fetch_var_name=fetch_var_name,
-                return_numpy=return_numpy,
-                return_merged=return_merged,
-            )
+        assert (
+            program._is_inference
+        ), f"Program must have _is_inference = True, but get {program._is_inference}"
+        return self._run_inference(program._executor, feed)
 
     def _run_program(
         self,
@@ -2008,15 +1785,15 @@ class Executor:
             )
 
         self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_sheduler'):
+        if hasattr(program, 'lr_schedulerr'):
             assert isinstance(
-                program.lr_sheduler, LRScheduler
+                program.lr_scheduler, LRScheduler
             ), "must be LRScheduler"
-            lr_sheduler = program.lr_sheduler
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
             tensor.set(data, self.place)
 
         if not use_program_cache:
@@ -2097,6 +1874,137 @@ class Executor:
         dataset.set_thread(pipeline_opt["concurrency_list"][0] * pipeline_num)
         return pipeline_num
 
+    def split_program_by_device(self, program):
+        ops_list = []
+        type_list = []
+        pre = None
+        type_cpu = "cpu"
+        for op in program.global_block().ops:
+            if self._is_optimizer_op(op):
+                break
+            if op.has_attr("op_device"):
+                cur_attr = (
+                    op.attr("op_device")
+                    if op.attr("op_device") != ""
+                    else type_cpu
+                )
+                if pre is None or pre != cur_attr:
+                    ops_list.append([])
+                    type_list.append(cur_attr)
+                ops_list[-1].append(op)
+                pre = cur_attr
+        l = len(type_list)
+        i = 0
+        type_heter = None
+        while i < l:
+            while i < l and type_list[i] == type_cpu:
+                i += 1
+            if i == l:
+                break
+
+            type_heter = type_list[i]
+            i += 1
+            start = i
+            valid = True
+            while i < l and type_list[i] != type_heter:
+                if type_list[i] != type_cpu:
+                    valid = False
+                    break
+                i += 1
+
+            if i == l:
+                break
+            elif not valid:
+                continue
+
+            for j in range(start, i):
+                for op in ops_list[j]:
+                    op._set_attr("op_device", type_heter)
+                type_list[j] = type_heter
+                j += 1
+
+        pre = None
+        merged_ops_list = []
+        merged_type_list = []
+        for i in range(l):
+            if pre is None or pre != type_list[i]:
+                merged_ops_list.append([])
+                merged_type_list.append(type_list[i])
+            merged_ops_list[-1].extend(ops_list[i])
+            pre = type_list[i]
+
+        data_vars = set()
+        for k in program.global_block().vars:
+            var = program.global_block().var(k)
+            if not var.persistable:
+                data_vars.add(var.name)
+
+        l = len(merged_ops_list)
+        inputs_pre = set()
+        outputs_pre = set()
+        in_from_pre = [[] for i in range(l)]
+        for i in range(l):
+            inputs = set()
+            outputs = set()
+            for op in merged_ops_list[i]:
+                for input in op.input_names:
+                    for tmp in op.input(input):
+                        if tmp not in outputs:
+                            inputs.add(tmp)
+                for output in op.output_names:
+                    for tmp in op.output(output):
+                        outputs.add(tmp)
+            if i == 0:
+                in_from_pre[i] = []
+            elif i == 1:
+                in_from_pre[i] = (outputs_pre | data_vars) & inputs
+            else:
+                in_from_pre[i] = outputs_pre & inputs
+            inputs_pre = copy.deepcopy(inputs)
+            outputs_pre = copy.deepcopy(outputs)
+
+        l = len(in_from_pre)
+        start_list = []
+        end_list = []
+        send_list = [[] for i in range(l)]
+        sum = 0
+        program_list = []
+        for i in range(l):
+            start_list.append(sum)
+            end_list.append(sum + len(merged_ops_list[i]) - 1)
+            sum += len(merged_ops_list[i])
+            if i < l - 1:
+                send_list[i].extend(list(in_from_pre[i + 1]))
+            prog = program.clone()
+            if merged_type_list[i] != type_cpu:
+                prog = prog._prune_with_input(
+                    list(in_from_pre[i]), list(send_list[i])
+                )
+                program_list.append(prog)
+            else:
+                program_list.append(prog)
+        recv_list = [list(i) for i in in_from_pre]
+        found = False
+        heter_index = None
+        for i in range(len(merged_type_list)):
+            t = merged_type_list[i]
+            if t != type_cpu:
+                if found:
+                    print("only one region of program can be heter")
+                found = True
+                heter_index = i
+        if heter_index is None:
+            print("warning: non heter program")
+            return None
+        else:
+            return [
+                start_list[heter_index],
+                end_list[heter_index],
+                send_list[heter_index],
+                recv_list[heter_index],
+                program_list[heter_index],
+            ]
+
     def _prepare_trainer(
         self,
         program=None,
@@ -2126,11 +2034,7 @@ class Executor:
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
-            from paddle.incubate.fleet.parameter_server.pslib import fleet
-            from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-
-            fu = FleetUtil()
-            ret = fu.split_program_by_device(program)
+            ret = self.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -2659,14 +2563,14 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(
-                cached_scope, lr_sheduler._var_name
+                cached_scope, lr_scheduler._var_name
             )
             tensor.set(data, self.place)
 
@@ -2803,13 +2707,13 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
             tensor.set(data, self.place)
 
         self._default_executor.run_from_dataset(trainer_instance)

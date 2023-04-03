@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -135,13 +135,13 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     }
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
-      attr.type = jit::SeqPoolType::kAvg;
+      attr.type = phi::jit::SeqPoolType::kAvg;
     } else if (pooltype == "SQRT") {
-      attr.type = jit::SeqPoolType::kSqrt;
+      attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool =
-        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
+                                         platform::CPUPlace>::Cache()
+                       .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * (use_cvm ? w : w - 2);
     T* tmp_data = new T[w];
@@ -214,7 +214,6 @@ class FusionSeqPoolCVMConcatGradOpMaker : public framework::SingleGradOpMaker<T>
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());
   }
-
 };
 
 

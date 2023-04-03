@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
-import paddle.static.amp.amp_nn as amp_nn
+from paddle.static.amp import amp_nn
 
 
 def check_finite_and_unscale_wrapper(x, scale):
@@ -32,7 +32,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
@@ -44,7 +44,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
@@ -55,7 +55,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
@@ -69,7 +69,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def test_check_output(self):
         # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'])
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
@@ -80,7 +80,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
@@ -94,7 +94,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def test_check_output(self):
         # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'], check_eager=True)
+        self.check_output(no_check_set=['Out'])
 
 
 if __name__ == '__main__':

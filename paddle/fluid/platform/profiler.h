@@ -214,9 +214,6 @@ void DisableHostEventRecorder();
 void EnableMemoryRecorder();
 void DisableMemoryRecorder();
 
-void EnableOpInfoRecorder();
-void DisableOpInfoRecorder();
-
 // Defined for UT
 std::string PrintHostEvents();
 

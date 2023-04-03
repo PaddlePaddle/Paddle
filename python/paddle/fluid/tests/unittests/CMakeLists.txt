@@ -43,7 +43,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
@@ -77,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -208,7 +208,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
-  list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
 # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
@@ -443,7 +442,6 @@ list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS
      test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
@@ -520,7 +518,6 @@ endforeach()
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -593,10 +590,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -604,7 +597,6 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
 
   # TODO(sandyhouse): fix and add the ut back
@@ -617,7 +609,6 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
@@ -830,11 +821,8 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(autograd)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -862,37 +850,14 @@ if(WIN32)
     DEPS python)
 endif()
 
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
-if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
-endif()
-
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
-if(WITH_MLU)
-  add_subdirectory(mlu)
-endif()
-
-add_subdirectory(asp)
-
 add_subdirectory(ir)
 
 add_subdirectory(standalone_executor)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  test_data_norm_op
-  test_dataloader_keep_order
-  test_dataloader_unkeep_order
-  test_parallel_ssa_graph_inference_feed_partial_data
-  test_fetch_unmerged
-  test_buffer_shared_memory_reuse_pass
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
+  test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
   test_inplace_abn_op
@@ -968,7 +933,6 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
-set_tests_properties(test_fetch_unmerged PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
@@ -988,7 +952,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1013,21 +977,19 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
@@ -1130,6 +1092,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1155,7 +1118,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
-    set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   endif()
@@ -1204,6 +1166,44 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 endif()
 
+set(TEST_CINN_OPS
+    test_softmax_op
+    test_expand_v2_op
+    test_reduce_op
+    test_slice_op
+    test_stack_op
+    test_activation_op
+    test_full_like_op
+    test_index_select_op
+    test_fill_any_like_op
+    test_concat_op
+    test_top_k_v2_op
+    test_elementwise_add_op
+    test_elementwise_sub_op
+    test_elementwise_div_op
+    test_elementwise_mul_op
+    test_gather_nd_op
+    test_squeeze2_op
+    test_elementwise_pow_op
+    test_elementwise_max_op
+    test_transpose_op
+    test_reshape_op
+    test_mean_op
+    test_unsqueeze2_op
+    test_meshgrid_op
+    test_scatter_op
+    test_gather_op
+    test_layer_norm_op
+    test_cast_op
+    test_dropout_op
+    test_group_norm_op)
+
+foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
+  if(WITH_CINN)
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+  endif()
+endforeach()
+
 if(WITH_CINN AND WITH_TESTING)
   set_tests_properties(
     test_resnet50_with_cinn
@@ -1222,10 +1222,6 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
-
-# ExecutionStrategy is deprecated in standalone executor
-set_tests_properties(test_parallel_executor_drop_scope
-                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 
 set_tests_properties(
   test_cuda_graph_static_mode

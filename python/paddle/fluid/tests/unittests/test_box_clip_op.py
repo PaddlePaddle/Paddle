@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def box_clip(input_box, im_info, output_box):
@@ -52,7 +52,7 @@ def batch_box_clip(input_boxes, im_info, lod):
 
 class TestBoxClipOp(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "box_clip"
