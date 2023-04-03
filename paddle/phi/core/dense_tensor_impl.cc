@@ -174,9 +174,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                           dims));
   }
   meta_.dims = dims;
-  if (product(meta_.strides) <= 0) {
-    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
-  }
+  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -283,9 +281,7 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
                           dims));
   }
   meta_.dims = dims;
-  if (product(meta_.strides) <= 0) {
-    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
-  }
+  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   return *this;
 }
 

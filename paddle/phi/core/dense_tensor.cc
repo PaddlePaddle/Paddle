@@ -248,9 +248,7 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
                           dims));
   }
   meta_.dims = dims;
-  if (product(meta_.strides) <= 0) {
-    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
-  }
+  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
 
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
