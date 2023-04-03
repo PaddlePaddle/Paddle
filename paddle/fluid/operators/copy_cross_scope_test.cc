@@ -148,16 +148,4 @@ TEST(copy_cross_scope_to_main_scope, CUDA_fp32) {
   ctx.PartialInitWithAllocator();
   Compare2<float>(&scope, ctx, "copy_cross_scope");
 }
-#elif PADDLE_WITH_ASCEND_CL
-TEST(copy_cross_scope, NPU_fp32) {
-  f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare1<float>(&scope, ctx, "copy_cross_scope");
-}
-
-TEST(copy_cross_scope_to_main_scope, NPU_fp32) {
-  f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare2<float>(&scope, ctx, "copy_cross_scope");
-}
 #endif

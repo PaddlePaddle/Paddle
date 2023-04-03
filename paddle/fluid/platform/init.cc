@@ -187,17 +187,6 @@ void InitDevices() {
       LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
     }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-    platform::AclInstance::Instance();  // NOLINT
-    try {
-      // use user specified XPUs in single-node multi-process mode.
-      devices = platform::GetSelectedNPUDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
-                      "in runtime.";
-    }
-#endif
 #ifdef PADDLE_WITH_IPU
     try {
       // use user specified IPUs.
