@@ -201,10 +201,8 @@ KernelSignature ReduceMinGradOpArgumentMapping(
 
 KernelSignature ReduceAMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("amin_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim"},
-                         {"X@GRAD"});
+  return KernelSignature(
+      "amin_grad", {"X", "Out", "Out@GRAD"}, {"dim", "keep_dim"}, {"X@GRAD"});
 }
 
 KernelSignature ReduceProdGradOpArgumentMapping(
