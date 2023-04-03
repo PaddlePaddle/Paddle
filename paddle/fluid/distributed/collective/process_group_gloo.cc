@@ -685,35 +685,35 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   GatherGlooTask(int rank,
                  const std::shared_ptr<gloo::Context>& context,
-                 std::vector<phi::DenseTensor>& inputs,   // NOLINT
-                 std::vector<phi::DenseTensor>& outputs,  // NOLINT
+                 const phi::DenseTensor& input,  // NOLINT
+                 phi::DenseTensor* output,       // NOLINT
                  int src,
                  uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::GATHER),
+      : ProcessGroupGloo::GlooTask(rank, {input}, CommType::GATHER),
         _context(context),
-        _inputs(inputs),
-        _outputs(outputs),
+        _input(input),
+        _output(*output),
         _src(src),
         _tag(tag) {}
 
-  void Run() override { _do_gather(_inputs, _outputs, _src); }
+  void Run() override { _do_gather(_input, _output, _src); }
 
  private:
   std::shared_ptr<gloo::Context> _context;
-  std::vector<phi::DenseTensor> _inputs;
-  std::vector<phi::DenseTensor> _outputs;
+  phi::DenseTensor _input;
+  phi::DenseTensor _output;
   int _src;
   uint32_t _tag;
 
-  void _do_gather(std::vector<phi::DenseTensor>& in,   // NOLINT
-                  std::vector<phi::DenseTensor>& out,  // NOLINT
+  void _do_gather(phi::DenseTensor& in,   // NOLINT
+                  phi::DenseTensor& out,  // NOLINT
                   int src) {
-    const auto& dtype = in[0].dtype();
+    const auto& dtype = in.dtype();
     gloo::GatherOptions opts(_context);
     if (rank_ == src) {
-      GENERATE_FUNC(dtype, set_output, opts, out[0]);
+      GENERATE_FUNC(dtype, set_output, opts, out);
     }
-    GENERATE_FUNC(dtype, set_input, opts, in[0]);
+    GENERATE_FUNC(dtype, set_input, opts, in);
 
     opts.setRoot(src);
     opts.setTag(_tag);
@@ -725,21 +725,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
     const GatherOptions& opts,
-    bool sync_op) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return Gather(in_wrapper, out_wrapper, opts);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const GatherOptions& opts) {
+    bool sync_op,
+    bool use_calc_stream) {
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
   task = std::make_shared<GatherGlooTask>(
-      rank_, context, in_tensors, out_tensors, opts.root_rank, tag);
+      rank_, context, in_tensor, out_tensor, opts.root_rank, tag);
   task->Run();
   return task;
 }

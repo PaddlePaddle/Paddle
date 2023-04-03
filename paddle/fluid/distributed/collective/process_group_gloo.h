@@ -153,7 +153,8 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
   std::shared_ptr<ProcessGroup::Task> Gather(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,
                                              const GatherOptions& opts,
-                                             bool sync_op) override;
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -206,11 +207,6 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
 
-  std::shared_ptr<ProcessGroup::Task> Gather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const GatherOptions&) override;
-
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }
 
@@ -218,6 +214,11 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override {
     return platform::DeviceContextPool::Instance().Get(place);
+  }
+
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override {
+    return GetDeviceContext(place);
   }
 
   // Helper functions for Gloo.
