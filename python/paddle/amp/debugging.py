@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid.framework import dygraph_only
+from paddle.fluid import core
 
 __all__ = [
     "enable_operator_stats_collection",
@@ -95,74 +96,89 @@ class TensorCheckerConfig:
         stack_height_limit=3,
         enable_traceback_filtering=False,
     ):
-        self.seed_ = 123
-        self.debug_mode_ = debug_mode
-        self.dump_dir_ = dump_dir
-        self.checked_op_list_ = checked_op_list
-        self.skipped_op_list_ = skipped_op_list
-        self.debug_step_ = debug_step
-        self.stack_height_limit_ = stack_height_limit
-        self.start_step_ = None
-        self.end_step_ = None
-        self.initial_seed_ = 123
-        self.enable_ = enable
-        self.enable_traceback_filtering_ = enable_traceback_filtering
 
+        self.enable = enable
+        self.debug_mode = debug_mode
+        self.dump_dir = dump_dir
+
+        self.checked_op_list = checked_op_list
+        self.skipped_op_list = skipped_op_list
+
+        self.debug_step = debug_step
+        self.stack_height_limit = stack_height_limit
+
+        self.enable_traceback_filtering = enable_traceback_filtering
+
+        self.start_step = None
+        self.end_step = None
+
+        self.seed = 123
+        self.initial_seed = 123
+
+        if core.is_compiled_with_cuda():
+            for i in range(core.get_cuda_device_count()):
+                self.initial_seed = core.default_cuda_generator(i).initial_seed()
+        elif core.is_compiled_with_xpu():
+            for i in range(core.get_xpu_device_count()):
+                self.initial_seed = core.default_xpu_generator(i).initial_seed()
+    
+        self.initial_seed = core.default_cpu_generator().initial_seed()
+    
         # check debug_mode
-        if self.debug_mode_.name not in DebugMode.__members__:
+        if self.debug_mode.name not in DebugMode.__members__:
             raise ValueError(
                 "debug_mode in DebugMode",
-                self.debug_mode_,
+                self.debug_mode,
                 DebugMode.__members__,
             )
 
         # check checked_op_list
-        if self.checked_op_list_ is not None:
-            if isinstance(self.checked_op_list_, (list, tuple)):
+        if self.checked_op_list is not None:
+            if isinstance(self.checked_op_list, (list, tuple)):
                 check_op_list = ",".join(
-                    value for value in self.checked_op_list_
+                    value for value in self.checked_op_list
                 )
                 os.environ["Paddle_check_nan_inf_op_list"] = str(check_op_list)
             else:
                 raise ValueError("checked_op_list must be list or tuple")
 
         # check skipped_op_list
-        if self.skipped_op_list_ is not None:
-            if isinstance(self.skipped_op_list_, (list, tuple)):
+        if self.skipped_op_list is not None:
+            if isinstance(self.skipped_op_list, (list, tuple)):
                 skipped_op_list = ",".join(
-                    value for value in self.skipped_op_list_
+                    value for value in self.skipped_op_list
                 )
                 os.environ["Paddle_skip_nan_inf_op_list"] = str(skipped_op_list)
             else:
                 raise ValueError("skipped_op_list must be list or tuple")
 
-        # check debug_step_
-        if self.debug_step_ is not None:
-            if isinstance(self.debug_step_, (tuple, list)):
+        # check debug_step
+        if self.debug_step is not None:
+            if isinstance(self.debug_step, (tuple, list)):
                 assert (
-                    len(self.debug_step_) == 2
-                    and self.debug_step_[1] > self.debug_step_[0]
+                    len(self.debug_step) == 2
+                    and self.debug_step[1] > self.debug_step[0]
                 )
-                self.start_step_, self.end_step_ = self.debug_step_
-                self.start_step_ = max(self.start_step_, 0)
+                self.start_step, self.end_step = self.debug_step
+                self.start_step = max(self.start_step, 0)
 
-        if self.enable_:
-            self.__set_seed__(self.enable_)
+        if self.enable:
+            self._set_seed(self.enable)
 
-    def __seed__(self, seed, flag):
+    def keep_random(self, seed, flag):
         # get random seed
-        self.seed_ = seed
-        paddle.seed(self.seed_)
+        self.seed = seed
+        paddle.seed(self.seed)
 
-        np.random.seed(self.seed_)
-        random.seed(self.seed_)
+        np.random.seed(self.seed)
+        random.seed(self.seed)
 
         # set cudnn and cpu
         paddle.set_flags({"FLAGS_cudnn_deterministic": flag})
         paddle.set_flags({"FLAGS_cpu_deterministic": flag})
 
         # info
-        print("AMP Debugging TensorCheckerConfig: seed ", self.seed_)
+        print("AMP Debugging TensorCheckerConfig: seed ", self.seed)
         print(
             "AMP Debugging TensorCheckerConfig: FLAGS_cudnn_deterministic is ",
             flag,
@@ -172,53 +188,49 @@ class TensorCheckerConfig:
             flag,
         )
 
-    def __set_seed__(self, enable):
+    def _set_seed(self, enable):
         if enable:
-            if self.initial_seed_ != 34342423252:
-                self.seed_ = self.initial_seed_
-            self.__seed__(self.seed_, True)
+            if self.initial_seed != 34342423252:
+                self.seed = self.initial_seed
+            self.keep_random(self.seed, True)
         else:
-            self.__seed__(self.initial_seed_, False)
+            self.keep_random(self.initial_seed, False)
 
-    def __env__(self):
-        # set debug level
-        paddle.set_flags({"FLAGS_check_nan_inf_level": self.debug_mode_.value})
-
-        # set output_dir
-        if self.dump_dir_ is not None:
-            paddle.fluid.core.set_nan_inf_debug_path(self.dump_dir_)
-
-        # set stack_height_limit
-        if isinstance(self.stack_height_limit_, (int)):
-            paddle.set_flags(
-                {"FLAGS_call_stack_level": self.stack_height_limit_}
-            )
-        else:
-            raise ValueError("stack_height_limit must be int")
-
-    def __set_env__(self, check_flag):
+    def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
         if check_flag:
-            self.__env__()
+            # set debug level
+            paddle.set_flags({"FLAGS_check_nan_inf_level": self.debug_mode.value})
+
+            # set output_dir
+            if self.dump_dir is not None:
+                paddle.fluid.core.set_nan_inf_debug_path(self.dump_dir)
+
+            # set stack_height_limit
+            if isinstance(self.stack_height_limit, (int)):
+                paddle.set_flags(
+                    {"FLAGS_call_stack_level": self.stack_height_limit}
+                )
+            raise ValueError("stack_height_limit must be int")
 
     def check(self):
         TensorCheckerConfig.Current_step_id += 1
-        if self.enable_:
-            if self.start_step_ is not None and self.end_step_ is not None:
+        if self.enable:
+            if self.start_step is not None and self.end_step is not None:
                 if (
-                    self.start_step_ > TensorCheckerConfig.Current_step_id
-                    or TensorCheckerConfig.Current_step_id >= self.end_step_
+                    self.start_step > TensorCheckerConfig.Current_step_id
+                    or TensorCheckerConfig.Current_step_id >= self.end_step
                 ):
                     return False
             return True
         return False
 
     def run(self):
-        self.__set_env__(self.enable_)
+        if self.enable:
+            self._set_env(self.enable)
 
     def end(self):
-        self.__set_env__(False)
-
+        self._set_env(False)
 
 def _get_operator_stats_flag():
     flags = paddle.get_flags(["FLAGS_low_precision_op_list"])
@@ -386,7 +398,6 @@ def collect_operator_stats():
     disable_operator_stats_collection()
 
 
-@dygraph_only
 def enable_tensor_checker(checker_config):
     """
     enable_tensor_checker(checker_config) is enables model level accuracy checking, which is used together with disables_tensor_checker() to achieve model level precision checking through the combination of these two APIs, checking the output Tensors of all operators within the specified range.
@@ -417,7 +428,6 @@ def enable_tensor_checker(checker_config):
         checker_config.end()
 
 
-@dygraph_only
 def disable_tensor_checker():
     """
     disable_tensor_checker() to disables the accuracy checking, which is used together with enables_tensor_checker(config) to achieve model level precision checking through the combination of these two APIs, checking the output Tensors of all operators within the specified range.
@@ -444,27 +454,3 @@ def disable_tensor_checker():
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})
-
-
-@dygraph_only
-def check_numerics(x, checker_config):
-    """
-    check_numerics is the api to check the tensor whether has nan or inf.
-
-    Args:
-        x (Tensor) - Tensor or LoDTensor of any dimensions.
-        checker_config (TensorCheckerConfig) - Configuration for precision checking.
-
-    Examples:
-       .. code-block:: python
-           import paddle
-
-           checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT)
-           x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-           paddle.amp.debugging.checker_config(x, checker_config)
-    """
-    if checker_config.check():
-        checker_config.run()
-    else:
-        checker_config.end()
-    paddle.fluid.core.check_numerics("check_numerics", x)
