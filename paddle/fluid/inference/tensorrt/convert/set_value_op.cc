@@ -44,7 +44,7 @@ namespace tensorrt {
 //         for h in [0,n)
 //             for w in [0,n)
 //                 output[n,c,indices[n,c,h,w],w] = updates[n,c,h,w]]
-//
+
 class SetValueConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
