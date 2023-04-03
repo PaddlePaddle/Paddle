@@ -1155,7 +1155,7 @@ def exponential_(x, lam=1.0, name=None):
         return _C_ops.exponential_(x, lam)
     else:
         check_variable_and_dtype(
-            x, "x", ["float16", "float32", "float64"], "exponential"
+            x, "x", ["float16", "bfloat16", "float32", "float64"], "exponential"
         )
 
         helper = LayerHelper("exponential", **locals())

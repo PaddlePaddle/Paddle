@@ -357,19 +357,10 @@ class TestExponentialFP16Op(OpTest):
         self.outputs = {'Out': np.ones([1024, 1024]).astype(self.dtype)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
-            user_defined_grad_outputs=[
-                np.random.rand(1024, 1024).astype(self.dtype)
-            ],
-        )
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 @unittest.skipIf(
@@ -394,19 +385,10 @@ class TestExponentialBP16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            user_defined_grads=[np.zeros([1024, 1024], dtype="float32")],
-            user_defined_grad_outputs=[
-                np.random.rand(1024, 1024).astype("float32")
-            ],
-        )
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 if __name__ == "__main__":
