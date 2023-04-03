@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
