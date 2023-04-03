@@ -721,9 +721,6 @@ class ParallelEnv:
             elif core.is_compiled_with_xpu():
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
-            elif core.is_compiled_with_mlu():
-                selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-                self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv(
             "PADDLE_TRAINER_ENDPOINTS", ""
@@ -890,11 +887,7 @@ def _is_cpuonly(backend):
     check_backend(backend)
     if (
         backend in ['auto', 'nccl', 'bkcl', 'heter', 'cncl']
-        and (
-            core.is_compiled_with_cuda()
-            or core.is_compiled_with_xpu()
-            or core.is_compiled_with_mlu()
-        )
+        and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
@@ -994,7 +987,6 @@ def init_parallel_env():
         is_cpu_only
         or core.is_compiled_with_cuda()
         or core.is_compiled_with_xpu()
-        or core.is_compiled_with_mlu()
         or backend == "xccl"
     ):
         raise NotImplementedError(
@@ -1013,9 +1005,6 @@ def init_parallel_env():
         elif not is_cpu_only and core.is_compiled_with_xpu():
             _check_var_exists('FLAGS_selected_xpus')
             backend = "bkcl" if backend == "auto" else backend
-        elif not is_cpu_only and core.is_compiled_with_mlu():
-            _check_var_exists('FLAGS_selected_mlus')
-            backend = "cncl" if backend == "auto" else backend
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
@@ -1038,9 +1027,6 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_mlu():
-        place = core.MLUPlace(parallel_env.device_id)
-
     _set_expected_place(place)
 
     group = None
@@ -1152,10 +1138,6 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place)
-        )
-    elif core.is_compiled_with_mlu():
-        parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place)
         )
 
     if backend != "heter":

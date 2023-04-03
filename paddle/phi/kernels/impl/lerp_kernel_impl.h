@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -43,11 +44,14 @@ static void LerpFunction(const Context& ctx,
   auto eigen_w = phi::EigenTensor<T, D>::From(weight, w_dims);
   auto eigen_out = phi::EigenTensor<T, D>::From(*out);
 
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto& place = *ctx.eigen_device();
   eigen_out.device(place) =
-      eigen_x.broadcast(x_bcast_dims) +
-      eigen_w.broadcast(w_bcast_dims) *
-          (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
+      (eigen_x.broadcast(x_bcast_dims).template cast<MPType>() +
+       eigen_w.broadcast(w_bcast_dims).template cast<MPType>() *
+           (eigen_y.broadcast(y_bcast_dims).template cast<MPType>() -
+            eigen_x.broadcast(x_bcast_dims).template cast<MPType>()))
+          .template cast<T>();
 }
 
 template <typename Context, typename T>
@@ -64,8 +68,13 @@ static void LerpFunctionZero(const Context& ctx,
   auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
   auto eigen_out = phi::EigenTensor<T, 1>::From(*out, dim);
 
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto& place = *ctx.eigen_device();
-  eigen_out.device(place) = eigen_x + eigen_w * (eigen_y - eigen_x);
+  eigen_out.device(place) =
+      (eigen_x.template cast<MPType>() +
+       eigen_w.template cast<MPType>() *
+           (eigen_y.template cast<MPType>() - eigen_x.template cast<MPType>()))
+          .template cast<T>();
 }
 
 template <typename T, typename Context>

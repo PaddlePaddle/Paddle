@@ -339,12 +339,11 @@ def amp_guard(
         )
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (
         tracer._expected_place.is_gpu_place()
         or tracer._expected_place.is_xpu_place()
-        or tracer._expected_place.is_mlu_place()
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
@@ -355,10 +354,6 @@ def amp_guard(
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
-        enable = False
-    # For mlu:
-    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
-        warnings.warn('MLUPlace only support float16 amp.')
         enable = False
     # For custom device:
     if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):

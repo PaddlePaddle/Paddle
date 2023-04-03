@@ -306,7 +306,7 @@ def monkey_patch_varbase():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_mlu():
+            if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 if framework.global_var._in_eager_mode_:

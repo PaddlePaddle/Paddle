@@ -8,7 +8,6 @@ exclude =
     ./python/paddle/fluid/tra**,
     # Exclude third-party libraries
     ./python/paddle/utils/gast/**,
-    ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
     # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
     E203,

@@ -17,11 +17,13 @@ import ast
 import os
 import pickle
 import random
+import socket
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from contextlib import closing
 
 import numpy as np
 
@@ -684,9 +686,6 @@ class TestParallelDyGraphRunnerBase:
         elif fluid.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
-        elif fluid.core.is_compiled_with_mlu():
-            device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
-            place = fluid.MLUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
@@ -888,7 +887,6 @@ def runtime_main(test_class):
     parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
-    parser.add_argument('--use_mlu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -932,10 +930,6 @@ def runtime_main(test_class):
         model.run_trainer(args)
 
 
-import socket
-from contextlib import closing
-
-
 class TestDistBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
@@ -945,21 +939,13 @@ class TestDistBase(unittest.TestCase):
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
-            self._use_mlu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
-            self._use_mlu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
-            self._use_mlu = False
-        elif self._enforce_place == "MLU":
-            self.__use_cuda = False
-            self.__use_xpu = False
-            self._use_dgc = False
-            self._use_mlu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -1438,18 +1424,6 @@ class TestDistBase(unittest.TestCase):
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                     "GLOG_v": "2",
-                }
-            )
-        elif self._use_mlu:
-            tr_cmd += " --use_mlu"
-            env.update(
-                {
-                    "FLAGS_selected_mlus": f"{trainer_id}",
-                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
-                    "PADDLE_TRAINER_ID": f"{trainer_id}",
-                    "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                    "PADDLE_CURRENT_ENDPOINT": ep,
-                    "GLOG_v": "4",
                 }
             )
         else:
