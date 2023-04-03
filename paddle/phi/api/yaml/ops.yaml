@@ -124,6 +124,16 @@
     func : atanh
   backward : atanh_grad
 
+- op : auc
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve = "ROC", int num_thresholds = (2 << 12) - 1, int slide_steps = 1)
+  output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
+  infer_meta :
+    func : AucInferMeta
+  kernel :
+    func : auc
+    data_type : x
+  optional : ins_tag_weight
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
