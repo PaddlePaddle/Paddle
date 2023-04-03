@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {

@@ -156,8 +156,6 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -175,10 +173,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -331,14 +325,6 @@ bool IsCompiledWithMKLDNN() {
 
 bool IsCompiledWithCINN() {
 #ifndef PADDLE_WITH_CINN
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithMLU() {
-#ifndef PADDLE_WITH_MLU
   return false;
 #else
   return true;
@@ -1618,18 +1604,6 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def_static(
           "create",
-          [](paddle::platform::MLUPlace &place)
-              -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_MLU
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use MLUPlace in CPU/GPU version, "
-                "Please recompile or reinstall Paddle with MLU support."));
-#else
-                    return new paddle::platform::MLUDeviceContext(place);
-#endif
-          })
-      .def_static(
-          "create",
           [](paddle::platform::NPUPlace &place)
               -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_ASCEND_CL
@@ -1827,13 +1801,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::MLUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2043,7 +2010,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
-  m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -2407,10 +2373,6 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
-#endif
-
-#ifdef PADDLE_WITH_MLU
-  m.def("get_mlu_device_count", platform::GetMLUDeviceCount);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
