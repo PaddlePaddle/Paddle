@@ -36,7 +36,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCooTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 500
+#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCoo} = dout{Dense} * y'{Dense}
@@ -76,10 +76,11 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
 #elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "backward of 'sparse.matmul' use rocsparse_spmm with transpose, which is "
-      "supported from "
-      "ROCM 5.0.0"));
+  PADDLE_THROW(
+      phi::errors::Unimplemented("backward of 'sparse.matmul' use "
+                                 "rocsparse_sddmm with transpose, which is "
+                                 "supported from "
+                                 "ROCM 4.3.0"));
 #endif
 #endif
 }
@@ -91,7 +92,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 500
+#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
@@ -126,10 +127,11 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
 #elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "backward of 'sparse.matmul' use rocsparse_spmm with transpose, which is "
-      "supported from "
-      "ROCM 5.0.0"));
+  PADDLE_THROW(
+      phi::errors::Unimplemented("backward of 'sparse.matmul' use "
+                                 "rocsparse_sddmm with transpose, which is "
+                                 "supported from "
+                                 "ROCM 4.3.0"));
 #endif
 #endif
 }
