@@ -132,6 +132,12 @@ class FusedPassesConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class SequenceParallelConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.SEQUENCE_PARALLEL
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the parallelization and optimization behaviors.
@@ -206,3 +212,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
         self.fused_passes = FusedPassesConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.SEQUENCE_PARALLEL, None)
+        self.sequence_parallel = SequenceParallelConfig(config_dict)

@@ -384,3 +384,11 @@ class Parallelizer:
                     new_pass_list.append(new_pass(op))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        if self._mode == "train" and self._strategy.sequence_parallel.enable:
+            self._logger.info("Applying sequence parallel pass")
+            config = {"global_rank": rank, "dist_context": self._dist_context}
+            sp_pass = new_pass(
+                "auto_parallel_sequence_parallel_optimization", config
+            )
+            sp_pass.apply([main_program], [startup_program], self._pass_context)

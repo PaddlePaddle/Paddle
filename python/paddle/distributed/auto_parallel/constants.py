@@ -147,3 +147,9 @@ set_field_default_config(DATASET, "num_shards", 1)
 FUSED_PASSES = "fused_passes"
 set_field_default_config(FUSED_PASSES, "enable", False)
 set_field_default_config(FUSED_PASSES, "fused_passes_list", [])
+
+#########################################
+# sequence parallel configuration
+#########################################
+SEQUENCE_PARALLEL = "sequence_parallel"
+set_field_default_config(SEQUENCE_PARALLEL, "enable", False)
