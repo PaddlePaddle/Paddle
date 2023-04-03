@@ -30,10 +30,10 @@
 namespace phi {
 template <typename T, typename AccT, int BlockDim>
 static __global__ void GradComputeDX(const T *dy,
-                                     const BatchNormParamType<AccT> *scale,
-                                     const BatchNormParamType<AccT> *mean,
+                                     const BatchNormParamType<T> *scale,
+                                     const BatchNormParamType<T> *mean,
                                      const T *x,
-                                     const BatchNormParamType<AccT> *variance,
+                                     const BatchNormParamType<T> *variance,
                                      const int C,
                                      const int sample_size,
                                      T *dx) {
@@ -41,23 +41,22 @@ static __global__ void GradComputeDX(const T *dy,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  BatchNormParamType<AccT> mean_val = mean[ncid];
-  BatchNormParamType<AccT> inv_var_val = variance[ncid];
-  typedef cub::BlockReduce<BatchNormParamType<AccT>, BlockDim> BlockReduce;
+  BatchNormParamType<T> mean_val = mean[ncid];
+  BatchNormParamType<T> inv_var_val = variance[ncid];
+  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage dy_storage;
   __shared__ typename BlockReduce::TempStorage dy_x_sub_mean_storage;
-  __shared__ BatchNormParamType<AccT> dy_sum_val;
-  __shared__ BatchNormParamType<AccT> dy_x_sub_mean_sum_val;
-  BatchNormParamType<AccT> dy_sum = static_cast<BatchNormParamType<AccT>>(0);
-  BatchNormParamType<AccT> dy_x_sub_mean_sum =
-      static_cast<BatchNormParamType<AccT>>(0);
+  __shared__ BatchNormParamType<T> dy_sum_val;
+  __shared__ BatchNormParamType<T> dy_x_sub_mean_sum_val;
+  BatchNormParamType<T> dy_sum = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<T> dy_x_sub_mean_sum =
+      static_cast<BatchNormParamType<T>>(0);
 
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
-    BatchNormParamType<AccT> dy_i =
-        static_cast<BatchNormParamType<AccT>>(dy[i]);
+    BatchNormParamType<T> dy_i = static_cast<BatchNormParamType<T>>(dy[i]);
     dy_sum += dy_i;
     dy_x_sub_mean_sum +=
-        dy_i * (static_cast<BatchNormParamType<AccT>>(x[i]) - mean_val);
+        dy_i * (static_cast<BatchNormParamType<T>>(x[i]) - mean_val);
   }
   dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
   dy_x_sub_mean_sum =
@@ -69,11 +68,11 @@ static __global__ void GradComputeDX(const T *dy,
   __syncthreads();
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
     AccT tmp =
-        (static_cast<BatchNormParamType<AccT>>(dy[i]) -
-         dy_sum_val / static_cast<BatchNormParamType<AccT>>(sample_size) -
-         (static_cast<BatchNormParamType<AccT>>(x[i]) - mean_val) *
+        (static_cast<BatchNormParamType<T>>(dy[i]) -
+         dy_sum_val / static_cast<BatchNormParamType<T>>(sample_size) -
+         (static_cast<BatchNormParamType<T>>(x[i]) - mean_val) *
              dy_x_sub_mean_sum_val * inv_var_val * inv_var_val / sample_size) *
-        static_cast<BatchNormParamType<AccT>>(scale[c]) * inv_var_val;
+        static_cast<BatchNormParamType<T>>(scale[c]) * inv_var_val;
     dx[i] = static_cast<T>(dx[i]);
   }
 }
@@ -396,9 +395,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   if ((H * W * D) == 1) {
     phi::Copy(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
-    phi::funcs::SetConstant<GPUContext, BatchNormParamType<AccT>> functor;
-    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<AccT>>(0));
-    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<AccT>>(0));
+    phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
     return;
   }
 
@@ -447,9 +446,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 #endif
   const auto *saved_mean_data =
-      saved_mean.template data<BatchNormParamType<AccT>>();
+      saved_mean.template data<BatchNormParamType<T>>();
   const auto *saved_var_data =
-      saved_variance.template data<BatchNormParamType<AccT>>();
+      saved_variance.template data<BatchNormParamType<T>>();
 
   if (d_scale && d_bias) {
 #ifdef PADDLE_WITH_HIP
@@ -467,9 +466,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         data_desc_,
         d_x->template data<T>(),
         in_param_desc_,
-        scale_tmp.template data<BatchNormParamType<AccT>>(),
-        d_scale_tmp.template data<BatchNormParamType<AccT>>(),
-        d_bias_tmp.template data<BatchNormParamType<AccT>>(),
+        scale_tmp.template data<BatchNormParamType<T>>(),
+        d_scale_tmp.template data<BatchNormParamType<T>>(),
+        d_bias_tmp.template data<BatchNormParamType<T>>(),
         epsilon,
         saved_mean_data,
         saved_var_data));
@@ -488,9 +487,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         data_desc_,
         d_x->template data<T>(),
         in_param_desc_,
-        scale_tmp.template data<BatchNormParamType<AccT>>(),
-        d_scale_tmp.template data<BatchNormParamType<AccT>>(),
-        d_bias_tmp.template data<BatchNormParamType<AccT>>(),
+        scale_tmp.template data<BatchNormParamType<T>>(),
+        d_scale_tmp.template data<BatchNormParamType<T>>(),
+        d_bias_tmp.template data<BatchNormParamType<T>>(),
         epsilon,
         saved_mean_data,
         saved_var_data));
@@ -499,7 +498,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
     if (d_x) {
       GradComputeDX<T, AccT, block><<<NxC, block, 0, dev_ctx.stream()>>>(
           d_y.data<T>(),
-          scale_tmp.data<BatchNormParamType<AccT>>(),
+          scale_tmp.data<BatchNormParamType<T>>(),
           saved_mean_data,
           x.data<T>(),
           saved_var_data,

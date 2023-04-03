@@ -174,13 +174,10 @@ class TestInstanceNormFP32OP(OpTest):
         return x_norm, mean.reshape(N * C), std.reshape(N * C)
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=self.atol)
+        self.check_output(atol=self.atol)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
+        self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
             max_relative_error=self.max_relative_error,
@@ -206,7 +203,7 @@ class TestInstanceNormFP32OP(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
+    "core is not compiled with CUDA or not support the float16",
 )
 class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def init_dtype(self):
@@ -215,6 +212,19 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def set_err_thre(self):
         self.atol = 0.03125
         self.max_relative_error = 8e-3
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=self.atol)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            max_relative_error=self.max_relative_error,
+        )
 
 
 @unittest.skipIf(
@@ -236,8 +246,8 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
         self.max_relative_error = 1e-2
         self.inputs = {
             'X': convert_float_to_uint16(self.value),
-            'Scale': convert_float_to_uint16(self.scale),
-            'Bias': convert_float_to_uint16(self.bias),
+            'Scale': self.scale,
+            'Bias': self.bias,
         }
         self.attrs = {
             'epsilon': self.eps,
@@ -252,6 +262,19 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             'SavedMean': convert_float_to_uint16(mean),
             'SavedVariance': convert_float_to_uint16(1.0 / variance),
         }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=self.atol)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            max_relative_error=self.max_relative_error,
+        )
 
 
 if __name__ == '__main__':
