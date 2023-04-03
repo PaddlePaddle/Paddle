@@ -16,9 +16,8 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import fluid, framework
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
 

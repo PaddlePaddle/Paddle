@@ -35,6 +35,7 @@ typeid_dict = {
     'float32': int(core.VarDesc.VarType.FP32),
     'float16': int(core.VarDesc.VarType.FP16),
     'bool': int(core.VarDesc.VarType.BOOL),
+    'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
     'float64': int(core.VarDesc.VarType.FP64),
 }
@@ -53,6 +54,7 @@ class XPUTestCastOp(XPUOpTestWrapper):
             'float32',
             'int32',
             'int64',
+            'int8',
             'uint8',
             'bool',
             'float64',

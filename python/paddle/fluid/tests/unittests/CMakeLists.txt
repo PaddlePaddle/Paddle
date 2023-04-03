@@ -590,10 +590,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -825,11 +821,8 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(autograd)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -856,20 +849,6 @@ if(WIN32)
     SRCS cc_imp_py_test.cc
     DEPS python)
 endif()
-
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
-if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
-endif()
-
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
-add_subdirectory(asp)
 
 add_subdirectory(ir)
 
@@ -998,7 +977,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
@@ -1010,7 +989,7 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
@@ -1212,7 +1191,12 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
-    test_gather_op)
+    test_scatter_op
+    test_gather_op
+    test_layer_norm_op
+    test_cast_op
+    test_dropout_op
+    test_group_norm_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
