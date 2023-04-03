@@ -21,10 +21,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
@@ -976,10 +972,7 @@ def _run_dygraph(instance, input, program_holder):
             )
         )
 
-    use_interpretorcore = (
-        _is_enable_standalone_executor()
-        and _is_dy2st_enable_standalone_executor()
-    )
+    use_interpretorcore = True
     attrs.extend(('use_interpretorcore', use_interpretorcore))
     if use_interpretorcore:
         attrs.extend(

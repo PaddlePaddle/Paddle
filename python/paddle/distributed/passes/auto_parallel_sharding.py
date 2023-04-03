@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
-from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
@@ -1168,7 +1167,7 @@ class ShardingPass(PassBase):
         P.S. this overlap pass is ONLY adapted for standalone executor (graph based) and stream awared allocator.
         """
 
-        if not _is_enable_standalone_executor() or (not self.enable_overlap):
+        if not self.enable_overlap:
             return
 
         self.grad_comm_group_stream_pairs = []

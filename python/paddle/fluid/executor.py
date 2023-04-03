@@ -493,14 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_enable_standalone_executor():
-    return (
-        framework._enable_standalone_executor_ is None
-        or framework._enable_standalone_executor_
-        in [1, '1', True, 'True', 'true']
-    )
-
-
 def _is_dy2st_enable_standalone_executor():
     return framework._dy2st_enable_standalone_executor_ in [
         1,

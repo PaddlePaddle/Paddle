@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import core
 from paddle.fluid.core import StandaloneExecutor
 from paddle.profiler import profiler
 
@@ -143,16 +143,15 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
 
         scope = paddle.static.Scope()
         with paddle.static.scope_guard(scope):
-            with framework._enable_standalone_executor(enable):
-                exe = paddle.static.Executor(self.place)
-                helper_profiler = profiler.Profiler(
-                    targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2)
-                )
-                helper_profiler.start()
-                for i in range(self.iter_n):
-                    exe.run(main_program, fetch_list=fetch_list)
-                    helper_profiler.step()
-                helper_profiler.stop()
+            exe = paddle.static.Executor(self.place)
+            helper_profiler = profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2)
+            )
+            helper_profiler.start()
+            for i in range(self.iter_n):
+                exe.run(main_program, fetch_list=fetch_list)
+                helper_profiler.step()
+            helper_profiler.stop()
 
         self.assertTrue(os.path.exists(self.perf_path))
         with open(self.perf_path, 'r') as load_f:
@@ -183,15 +182,14 @@ class MultiStreamModelTestCase(unittest.TestCase):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
 
-        with framework._enable_standalone_executor(use_new_executor):
-            scope = core.Scope()
-            exe = paddle.static.Executor(self.place)
-            outs = []
-            for i in range(self.iter_n):
-                outs.append(
-                    exe.run(main_program, scope=scope, fetch_list=fetch_list)
-                )
-            print(outs)
+        scope = core.Scope()
+        exe = paddle.static.Executor(self.place)
+        outs = []
+        for i in range(self.iter_n):
+            outs.append(
+                exe.run(main_program, scope=scope, fetch_list=fetch_list)
+            )
+        print(outs)
         return outs
 
 
@@ -249,30 +247,46 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         return outs
 
-    def run_raw_executor(self, feed, use_compiled=False):
-        with framework._enable_standalone_executor(False):
-            # run construct program 1
-            out1 = self._run(
-                feed, use_str=False, is_double=False, use_compiled=use_compiled
-            )
-            # run construct program 2 with same executor
-            out2 = self._run(
-                feed, use_str=True, is_double=True, use_compiled=use_compiled
-            )
+    def run_dygraph(self, feed):
+        def run_once(is_double):
+            paddle.seed(2020)
+            a = feed['a']
+            a = paddle.to_tensor(a, dtype='float32')
+            b = paddle.ones([2, 2]) * 2
+            t = paddle.nn.Linear(2, 2)(a)
+            c = t + b
+            if is_double:
+                c = c + c
+            return c.numpy()
 
-            return [out1, out2]
+        out1 = []
+        for i in range(self.iter_run):
+            out1.append(run_once(False))
+        out2 = []
+        for i in range(self.iter_run):
+            out2.append(run_once(True))
+        return [out1, out2]
 
     def run_new_executor(self, feed, use_compiled=False):
-        with framework._enable_standalone_executor():
-            out = self.run_raw_executor(feed, use_compiled=use_compiled)
-        return out
+        # run construct program 1
+        out1 = self._run(
+            feed, use_str=False, is_double=False, use_compiled=use_compiled
+        )
+        # run construct program 2 with same executor
+        out2 = self._run(
+            feed, use_str=True, is_double=True, use_compiled=use_compiled
+        )
+
+        return [out1, out2]
 
     def test_with_feed(self):
         data = np.ones([2, 2], dtype="float32")
         feed = {"a": data, 'fake_input': data}
 
-        res = self.run_new_executor(feed)
-        gt = self.run_raw_executor(feed)
+        with paddle.fluid.framework._static_guard():
+            res = self.run_new_executor(feed)
+        with paddle.fluid.dygraph.guard():
+            gt = self.run_dygraph(feed)
         for x, y in zip(gt, res):
             np.testing.assert_array_equal(x, y)
 
@@ -280,8 +294,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
 
         with self.assertRaises(TypeError):
-            with framework._enable_standalone_executor():
-                self._run(feed[0], add_wrong_fetch=True)
+            self._run(feed[0], add_wrong_fetch=True)
 
     def test_empty_program(self):
         program = paddle.static.Program()
@@ -291,8 +304,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         for i in range(10):
             print(i, flush=1)
-            with framework._enable_standalone_executor():
-                out = exe.run(program, feed=None)
+            out = exe.run(program, feed=None)
 
 
 class TestException(unittest.TestCase):
@@ -328,8 +340,7 @@ class TestException(unittest.TestCase):
         return out
 
     def run_new_executor(self, feed):
-        with framework._enable_standalone_executor():
-            out = self._run(feed)
+        out = self._run(feed)
         return out
 
     def test_exception(self):
@@ -399,13 +410,11 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            with framework._enable_standalone_executor():
-
-                for i in range(10):
-                    (a,) = exe.run(
-                        paddle.static.default_main_program(), fetch_list=[x]
-                    )
-                    self.assertEqual(a[0], 1)
+            for i in range(10):
+                (a,) = exe.run(
+                    paddle.static.default_main_program(), fetch_list=[x]
+                )
+                self.assertEqual(a[0], 1)
 
 
 if __name__ == "__main__":

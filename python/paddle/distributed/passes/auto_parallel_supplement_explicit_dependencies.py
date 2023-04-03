@@ -21,7 +21,6 @@ from paddle.distributed.auto_parallel.utils import (
     OpRole,
     insert_dependencies_for_vars,
 )
-from paddle.fluid.executor import _is_enable_standalone_executor
 
 from .auto_parallel_sharding import ShardingPass, _supported_optimizer_type
 from .pass_base import PassBase, register_pass
@@ -70,9 +69,7 @@ class AutoParalSupplementDepPass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
 
         # TODO general this pass for all case.
-        if not _is_enable_standalone_executor or not _sharding_pass_applied(
-            context
-        ):
+        if not _sharding_pass_applied(context):
             return
 
         self._dist_context = self.get_attr("dist_context", None)

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.executor import _is_enable_standalone_executor
 
 from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
 from ..auto_parallel.operators.common import (
@@ -460,10 +459,7 @@ class ClipGradByGloblNormPass(PassBase):
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 
-                    if (
-                        _is_enable_standalone_executor()
-                        and insert_leaf_fill_constant_node
-                    ):
+                    if insert_leaf_fill_constant_node:
 
                         # NOTE add naive deps for global norm sync in graph exe
                         j = idx - 1

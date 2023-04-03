@@ -20,10 +20,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import Variable
 
 
@@ -140,10 +136,7 @@ class TestRunProgram(unittest.TestCase):
             [out.name + '@GRAD'],
         ]
 
-        use_interpretorcore = (
-            _is_enable_standalone_executor()
-            and _is_dy2st_enable_standalone_executor()
-        )
+        use_interpretorcore = True
         attrs.extend(('use_interpretorcore', use_interpretorcore))
         if use_interpretorcore:
             attrs.extend(

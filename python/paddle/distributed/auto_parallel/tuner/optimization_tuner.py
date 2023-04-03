@@ -473,9 +473,7 @@ class OptimizationTuner:
 
         parent_env = copy.copy(os.environ.copy())
         # env flags need for profile
-        new_env = {
-            "FLAGS_USE_STANDALONE_EXECUTOR": "False",
-        }
+        new_env = {}
         new_env.update(parent_env)
 
         # TODO if any rank hang or fail, kill all processes

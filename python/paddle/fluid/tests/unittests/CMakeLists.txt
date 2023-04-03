@@ -1147,25 +1147,6 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
 endif()
 
-if($ENV{USE_STANDALONE_EXECUTOR})
-  # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-  set_tests_properties(test_apply_pass_to_program
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_buffer_shared_memory_reuse_pass
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(
-    test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-    PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_optimizer
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_star_gan_with_gradient_penalty
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_switch_autotune
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_mnist_sorted_gradient
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-endif()
-
 set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
@@ -1222,10 +1203,3 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
-
-set_tests_properties(
-  test_cuda_graph_static_mode
-  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
-set_tests_properties(
-  test_cuda_graph_static_mode_error
-  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
