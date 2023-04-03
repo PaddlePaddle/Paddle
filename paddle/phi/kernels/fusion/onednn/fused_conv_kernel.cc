@@ -146,4 +146,4 @@ PD_REGISTER_KERNEL(fused_conv2d_onednn,
                    int8_t) {}
 
 PD_REGISTER_KERNEL(
-    fused_conv3d, OneDNN, ONEDNN, phi::FusedConv3DKernel, float) {}
+    fused_conv3d, OneDNN, ONEDNN, phi::fusion::FusedConv3DKernel, float) {}
