@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 
 
 class TestCompareAccuracyApi(unittest.TestCase):
@@ -44,8 +45,12 @@ class TestCompareAccuracyApi(unittest.TestCase):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        x = paddle.to_tensor([2, 3, 4, 0], 'float32')
-        y = paddle.to_tensor([1, 5, 2, 0], 'float32')
+        x = paddle.to_tensor(
+            [2, 3, 4, 0], place=core.CUDAPlace(0), dtype='float32'
+        )
+        y = paddle.to_tensor(
+            [1, 5, 2, 0], place=core.CUDAPlace(0), dtype='float32'
+        )
         z = paddle.add(x, y)
 
         path2 = "workerlog_fp16_log_dir"
@@ -54,8 +59,12 @@ class TestCompareAccuracyApi(unittest.TestCase):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        x = paddle.to_tensor([2, 3, 4, 0], 'float16')
-        y = paddle.to_tensor([1, 5, 2, 0], 'float16')
+        x = paddle.to_tensor(
+            [2, 3, 4, 0], place=core.CUDAPlace(0), dtype='float16'
+        )
+        y = paddle.to_tensor(
+            [1, 5, 2, 0], place=core.CUDAPlace(0), dtype='float16'
+        )
         z = paddle.add(x, y)
 
         out_excel = "compary_accuracy_out_excel.csv"

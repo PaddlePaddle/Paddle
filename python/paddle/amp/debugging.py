@@ -833,12 +833,10 @@ def compare_accuracy(
     loss_scale=1,
     dump_all_tensors=False,
 ):
-    print("dump_path:", dump_path)
     excel_writer = ExcelWriter(dump_path, another_dump_path, output_filename)
     grad_scale = loss_scale
     workerlog_filenames = []
     filenames = os.listdir(dump_path)
-    print("filenames:", filenames)
     for name in filenames:
         if "worker_" in name:
             workerlog_filenames.append(name)
@@ -871,12 +869,9 @@ def compare_accuracy(
                 filename
             )
         )
-        print("fp32_tensor_info_list:", fp32_tensor_info_list)
-        print("fp16_tensor_info_list:", fp16_tensor_info_list)
         mp_tensor_info_list = merge_tensor_info_list(
             fp32_tensor_info_list, fp16_tensor_info_list, grad_scale
         )
-        print("mp_tensor_info_list:", mp_tensor_info_list)
 
         print(
             "-- [Step 4/4] Add worksheet for mixed precision tensor info of {}".format(
