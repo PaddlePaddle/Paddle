@@ -324,10 +324,8 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
 
     auto* wq_data = wq_tensor->data<float>();
     auto* wk_data = wk_tensor->data<float>();
-    auto* wv_data = wv_tensor->data<float>();
     auto* bq_data = bq_tensor->data<float>();
     auto* bk_data = bk_tensor->data<float>();
-    auto* bv_data = bv_tensor->data<float>();
 
     // combined_w_dims = [in,2,out]
     auto combined_w_qk_dims =
