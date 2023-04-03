@@ -394,6 +394,44 @@ class StaticFunction:
 
         self._property = kwargs.get("property", False)
 
+    def _check_spec_neg_shape(self):
+        if self._input_spec is not None and prim_or_cinn_is_enabled(
+            self._build_strategy, self._prim_state
+        ):
+            from paddle.static import InputSpec
+
+            for spec in flatten(self._input_spec):
+                if isinstance(spec, InputSpec) and -1 in spec.shape:
+                    warnings.warn(
+                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
+                    )
+                    return True
+        return False
+
+    def enable_prim_fwd(self):
+        self._prim_state.enable_fwd()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
+
+    def enable_prim_bwd(self):
+        self._prim_state.enable_bwd()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
+
+    def enable_prim_all(self):
+        self._prim_state.enable_all()
+        if self._check_spec_neg_shape():
+            self._input_spec = None
+            self._function_spec = FunctionSpec(
+                self._function_spec._dygraph_function, self._input_spec
+            )
+
     @property
     def is_property(self):
         # whether is class proproty to be exported.
