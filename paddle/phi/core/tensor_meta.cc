@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
-  if (product(meta_.dims) <= 0) {
+  if (product(dims) <= 0) {
     return dims;
   }
 
