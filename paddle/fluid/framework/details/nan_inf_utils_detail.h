@@ -106,12 +106,15 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
 #endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
-    printf("[PRECISION] in %s, numel=%lld, max=%e, min=%e, mean=%e\n",
-           debug_info,
-           static_cast<long long>(numel),  // NOLINT
-           static_cast<float>(max_value),
-           static_cast<float>(min_value),
-           static_cast<float>(mean_value));
+    printf(
+        "[PRECISION] in %s, numel=%lld, num_zero=%lld, max=%e, min=%e, "
+        "mean=%e\n",
+        debug_info,
+        static_cast<long long>(numel),     // NOLINT
+        static_cast<long long>(num_zero),  // NOLINT
+        static_cast<float>(max_value),
+        static_cast<float>(min_value),
+        static_cast<float>(mean_value));
   }
 }
 
@@ -152,7 +155,8 @@ void PrintForDifferentLevelFile(const char* debug_info,
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
     outfile << "[PRECISION] in " << debug_info
-            << ", numel=" << static_cast<long long>(numel)  // NOLINT
+            << ", numel=" << static_cast<long long>(numel)        // NOLINT
+            << ", num_zero=" << static_cast<long long>(num_zero)  // NOLINT
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;

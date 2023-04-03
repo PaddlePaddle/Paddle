@@ -285,6 +285,7 @@ class MixedPrecisionTensorInfo:
         self.fp32_max_value = None
         self.fp32_min_value = None
         self.fp32_mean_value = None
+        self.fp32_num_zero = None
         self.scaled_fp32_max_value = None
         self.scaled_fp32_min_value = None
 
@@ -293,6 +294,7 @@ class MixedPrecisionTensorInfo:
         self.fp16_max_value = None
         self.fp16_min_value = None
         self.fp16_mean_value = None
+        self.fp16_num_zero = None
         self.fp16_has_inf = None
         self.fp16_has_nan = None
 
@@ -303,7 +305,7 @@ class MixedPrecisionTensorInfo:
         if fp32_tensor_info is not None:
             self.op_type = fp32_tensor_info.op_type
             self.numel = fp32_tensor_info.numel
-            self.num_zero = fp32_tensor_info.num_zero
+            self.fp32_num_zero = fp32_tensor_info.num_zero
             self.fp32_tensor_name = fp32_tensor_info.tensor_name
             self.fp32_dtype = fp32_tensor_info.dtype
             self.fp32_max_value = fp32_tensor_info.max_value
@@ -320,7 +322,7 @@ class MixedPrecisionTensorInfo:
         if fp16_tensor_info is not None:
             self.op_type = fp16_tensor_info.op_type
             self.numel = fp16_tensor_info.numel
-            self.num_zero = fp16_tensor_info.num_zero
+            self.fp16_num_zero = fp16_tensor_info.num_zero
             self.fp16_tensor_name = fp16_tensor_info.tensor_name
             self.fp16_dtype = fp16_tensor_info.dtype
             self.fp16_max_value = fp16_tensor_info.max_value
@@ -506,6 +508,15 @@ class ExcelWriter:
             else:
                 worksheet.write(row, col, value_str)
 
+    def _write_tensor_num_zero(
+        self, worksheet, value, row, col, check_finite=True
+    ):
+        if value is None:
+            worksheet.write(row, col, "--")
+        else:
+            value_str = "{:>10d}".format(value)
+            worksheet.write(row, col, value_str)
+
     def _write_infinite_status(self, worksheet, value, row, col):
         if value is None:
             worksheet.write(row, col, "--")
@@ -570,6 +581,7 @@ class ExcelWriter:
                     "max_value",
                     "min_value",
                     "mean_value",
+                    "num_zero",
                     "has_inf",
                     "has_nan",
                 ]
@@ -587,10 +599,12 @@ class ExcelWriter:
                     "max_value",
                     "min_value",
                     "mean_value",
+                    "num_zero",
                     "dtype",
                     "max_value",
                     "min_value",
                     "mean_value",
+                    "num_zero",
                     "has_inf",
                     "has_nan",
                     "max_value",
@@ -658,7 +672,10 @@ class ExcelWriter:
                 self._write_maxmin_value(
                     worksheet, tensor_info.fp32_mean_value, row, col + 3
                 )
-                col += 4
+                self._write_tensor_num_zero(
+                    worksheet, tensor_info.fp32_num_zero, row, col + 4
+                )
+                col += 5
 
                 if self.log_fp16_dir is None:
                     self._write_maxmin_value(
@@ -683,7 +700,10 @@ class ExcelWriter:
                 self._write_maxmin_value(
                     worksheet, tensor_info.fp16_mean_value, row, col + 3
                 )
-                col += 4
+                self._write_tensor_num_zero(
+                    worksheet, tensor_info.fp32_num_zero, row, col + 4
+                )
+                col += 5
 
                 self._write_infinite_status(
                     worksheet, tensor_info.fp16_has_inf, row, col
@@ -869,10 +889,26 @@ def compare_accuracy(
                 filename
             )
         )
+        print(
+            "fp32_tensor_info_list[0] num_zero:",
+            fp32_tensor_info_list[0].num_zero,
+        )
+        print(
+            "fp16_tensor_info_list[0] num_zero:",
+            fp16_tensor_info_list[0].num_zero,
+        )
         mp_tensor_info_list = merge_tensor_info_list(
             fp32_tensor_info_list, fp16_tensor_info_list, grad_scale
         )
-
+        print("mp_tensor_info_list:", mp_tensor_info_list)
+        print(
+            "mp_tensor_info_list[0] fp32_num_zero:",
+            mp_tensor_info_list[0].fp32_num_zero,
+        )
+        print(
+            "mp_tensor_info_list[0] fp16_num_zero:",
+            mp_tensor_info_list[0].fp16_num_zero,
+        )
         print(
             "-- [Step 4/4] Add worksheet for mixed precision tensor info of {}".format(
                 filename
