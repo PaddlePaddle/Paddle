@@ -193,6 +193,8 @@ class GradientClipHelper(object):
         for var_name in removed_tmp_var:
             block._remove_var(var_name, sync=False)
 
+        already_inserted = False
+
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
                 continue
@@ -225,7 +227,10 @@ class GradientClipHelper(object):
                                 OP_ROLE_KEY: OpRole.Optimize
                             })
                         fill_constant_op._set_attr('op_namescope', namescope)
-                self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
+                # hack code to skip allreduce
+                if not already_inserted:
+                    self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
+                    already_inserted = True
                 #break
 
     @staticmethod
