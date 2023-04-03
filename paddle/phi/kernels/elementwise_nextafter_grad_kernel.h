@@ -28,17 +28,4 @@ void NextafterGradKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* dx,
                          DenseTensor* dy);
-
-template <typename T, typename Context>
-void NextafterDoubleGradKernel(const Context& dev_ctx,
-                               const DenseTensor& y,
-                               const DenseTensor& out,
-                               const DenseTensor& dx,
-                               const paddle::optional<DenseTensor>& ddx,
-                               const paddle::optional<DenseTensor>& ddy,
-                               int axis,
-                               DenseTensor* dy,
-                               DenseTensor* dout,
-                               DenseTensor* ddout);
-
 }  // namespace phi

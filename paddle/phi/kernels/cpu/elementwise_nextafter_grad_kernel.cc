@@ -40,10 +40,3 @@ void NextafterGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     nextafter_grad, CPU, ALL_LAYOUT, phi::NextafterGradKernel, float, double) {}
-
-PD_REGISTER_KERNEL(nextafter_double_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::NextafterDoubleGradKernel,
-                   float,
-                   double) {}
