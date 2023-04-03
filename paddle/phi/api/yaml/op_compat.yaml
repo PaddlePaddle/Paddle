@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -97,6 +103,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : arange(range)
+  inputs :
+    {start : Start, end : End, step : Step}
+  outputs :
+    out : Out
+
 - op : argsort
   inputs :
     x : X
@@ -161,6 +173,12 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : auc
+  inputs :
+    {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+  outputs :
+    {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
   backward : batch_norm_grad
@@ -637,6 +655,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : eye
+  outputs :
+    out : Out
+  scalar :
+    num_rows :
+      support_tensor : true
+    num_columns :
+      support_tensor : true
+
 - op : fake_channel_wise_quantize_abs_max
   extra :
     attrs : [int round_type = 1]
@@ -1081,6 +1108,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
+
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)
   inputs :
@@ -1241,6 +1274,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : merge_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : meshgrid
   backward : meshgrid_grad
   inputs :
@@ -1302,6 +1341,18 @@
     {x : X, vec : Vec}
   outputs :
     out : Out
+
+- op : nanmedian
+  backward : nanmedian_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, medians : MedianIndex}
+  int_array:
+    axis:
+      data_type : int
+  extra:
+    outputs : [medians]
 
 - op : nce
   backward : nce_grad
@@ -1429,6 +1480,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    { x : X, alpha : Alpha}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1652,7 +1707,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+    sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
 
@@ -1773,6 +1828,13 @@
   outputs :
     out : Out
 
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
+  outputs :
+    out : Out
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -1816,6 +1878,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
   drop_empty_grad : [x_grad]
+
+- op : stanh
+  backward : stanh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
@@ -1993,6 +2062,18 @@
   outputs :
     out : Y
 
+- op : update_loss_scaling_
+  inputs :
+    {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
+  outputs :
+    {out : Out, loss_scaling : LossScaling, out_good_steps : OutGoodSteps, out_bad_steps : OutBadSteps}
+  scalar :
+    stop_update :
+      data_type : bool
+      tensor_name : StopUpdate
+  get_expected_kernel_type :
+    update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
+
 - op : viterbi_decode
   inputs :
     {potentials : Input, transition_params : Transition, lengths : Length}
@@ -2010,3 +2091,10 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: sigmoid_cross_entropy_with_logits
+  backward: sigmoid_cross_entropy_with_logits_grad
+  inputs :
+    {x: X, label: Label}
+  outputs :
+    out : Out
