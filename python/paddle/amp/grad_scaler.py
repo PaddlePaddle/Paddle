@@ -326,74 +326,36 @@ class AmpScaler:
                     if param.dtype == core.VarDesc.VarType.FP32
                 ]
         self._found_inf = self._temp_found_inf_value_false
-        if core.is_compiled_with_custom_device('npu'):
-            float_status = _legacy_C_ops.alloc_float_status()
-            _legacy_C_ops.clear_float_status(float_status, float_status)
-
-            if len(param_grads_fp16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp16,
-                    self._scale,
-                    float_status,
-                    param_grads_fp16,
-                    self._temp_found_inf_fp16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp16
-                )
-            if len(param_grads_bf16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_bf16,
-                    self._scale,
-                    float_status,
-                    param_grads_bf16,
-                    self._temp_found_inf_bf16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_bf16
-                )
-            if len(param_grads_fp32):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp32,
-                    self._scale,
-                    float_status,
-                    param_grads_fp32,
-                    self._temp_found_inf_fp32,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp32
-                )
-        else:
-            if len(param_grads_fp16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp16,
-                    self._scale,
-                    param_grads_fp16,
-                    self._temp_found_inf_fp16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp16
-                )
-            if len(param_grads_bf16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_bf16,
-                    self._scale,
-                    param_grads_bf16,
-                    self._temp_found_inf_bf16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_bf16
-                )
-            if len(param_grads_fp32):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp32,
-                    self._scale,
-                    param_grads_fp32,
-                    self._temp_found_inf_fp32,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp32
-                )
+        if len(param_grads_fp16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_fp16,
+                self._scale,
+                param_grads_fp16,
+                self._temp_found_inf_fp16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_fp16
+            )
+        if len(param_grads_bf16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_bf16,
+                self._scale,
+                param_grads_bf16,
+                self._temp_found_inf_bf16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_bf16
+            )
+        if len(param_grads_fp32):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_fp32,
+                self._scale,
+                param_grads_fp32,
+                self._temp_found_inf_fp32,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_fp32
+            )
 
         optimizer_state["state"] = OptimizerState.UNSCALED
 
