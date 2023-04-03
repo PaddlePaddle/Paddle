@@ -58,6 +58,7 @@ XPUOpMap& get_kl1_ops() {
       {"concat_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"conv2d", XPUKernelSet({phi::DataType::FLOAT32})},
       {"conv2d_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"conv2d_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"deformable_conv", XPUKernelSet({phi::DataType::FLOAT32})},
       {"deformable_conv_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"depthwise_conv2d", XPUKernelSet({phi::DataType::FLOAT32})},
