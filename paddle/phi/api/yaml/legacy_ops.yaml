@@ -245,7 +245,7 @@
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
   output : Tensor
   infer_meta :
-    func : BilinearTensorProductInferMeta
+    func : BilinearInferMeta
   kernel :
     func : bilinear
   optional : bias
