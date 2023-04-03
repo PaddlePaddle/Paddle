@@ -18,8 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 
 
 def test_static_layer(
@@ -294,15 +293,15 @@ class TestBceLossOpFloat16(TestBceLossOp):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
+        if fluid.core.is_compiled_with_cuda():
+            place = fluid.core.CUDAPlace(0)
+            if fluid.core.is_float16_supported(place):
                 self.check_output_with_place(place, ['X'], 'Out')
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
+        if fluid.core.is_compiled_with_cuda():
+            place = fluid.core.CUDAPlace(0)
+            if fluid.core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place,
                     ['X'],
@@ -328,7 +327,7 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
             out = paddle.nn.functional.binary_cross_entropy(
                 x, y, reduction="none"
             )
-            if core.is_compiled_with_cuda():
+            if fluid.core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
