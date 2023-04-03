@@ -151,7 +151,7 @@ class TestInstanceNormFP32OP(OpTest):
             'data_format': self.data_format,
         }
         y, mean, variance = self.compute_output(
-            self.value, self.scale, self.bias, self.eps, self.data_format
+            self.value, self.scale, self.bias, self.eps
         )
         self.python_out_sig = ['Y']
         self.outputs = {
@@ -160,9 +160,7 @@ class TestInstanceNormFP32OP(OpTest):
             'SavedVariance': 1.0 / variance,
         }
 
-    def compute_output(self, x, scale, bias, epsilon, data_format):
-        if data_format == "NHWC":
-            x = np.transpose(x, (0, 3, 1, 2))
+    def compute_output(self, x, scale, bias, epsilon):
         N, C, H, W = x.shape
         mean = np.mean(x, axis=(2, 3), keepdims=True)
         variance = np.var(x, axis=(2, 3), keepdims=True)
@@ -255,12 +253,12 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             'data_format': self.data_format,
         }
         y, mean, variance = self.compute_output(
-            self.value, self.scale, self.bias, self.eps, self.data_format
+            self.value, self.scale, self.bias, self.eps
         )
         self.outputs = {
             'Y': convert_float_to_uint16(y),
-            'SavedMean': convert_float_to_uint16(mean),
-            'SavedVariance': convert_float_to_uint16(1.0 / variance),
+            'SavedMean': mean,
+            'SavedVariance': 1.0 / variance,
         }
 
     def test_check_output(self):
