@@ -39,7 +39,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   char *malloc_memory = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
   char *base_ptr = malloc_memory;
   for (size_t idx = num_results; idx > 0; idx--) {
-    if (idx > 6) {
+    if (idx > max_inline_result_num) {
       new (base_ptr)
           detail::OpOutlineResultImpl(output_types[idx - 1], idx - 1);
       base_ptr += sizeof(detail::OpOutlineResultImpl);
@@ -50,8 +50,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   }
   Operation *op = new (base_ptr) Operation(num_results, num_operands, attibute);
   base_ptr += sizeof(Operation);
-  assert((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) == 0 &&
-         "The address of OpOperandImpl must be divisible by 8.");
+  if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
+    throw("The address of OpOperandImpl must be divisible by 8.");
+  }
   for (size_t idx = 0; idx < num_operands; idx++) {
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
@@ -63,7 +64,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
 }
 
 void Operation::destroy() {
-  this->~Operation();
+  // Get aligned_ptr by result_num.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
@@ -72,27 +73,62 @@ void Operation::destroy() {
                     (num_results_ - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
-  void *aligned_ptr = reinterpret_cast<void *>(reinterpret_cast<char *>(this) -
-                                               result_mem_size);
+  char *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
+  // Deconstruct OpResult.
+  char *base_ptr = aligned_ptr;
+  for (size_t idx = num_results_; idx > 0; idx--) {
+    if (!reinterpret_cast<detail::OpResultImpl *>(base_ptr)->use_empty()) {
+      throw("Cannot destroy a value that still has uses!");
+    }
+    VLOG(4) << "Deconstruct OpResult: " << reinterpret_cast<void *>(base_ptr);
+    if (idx > max_inline_result_num) {
+      reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
+          ->~OpOutlineResultImpl();
+      base_ptr += sizeof(detail::OpOutlineResultImpl);
+    } else {
+      reinterpret_cast<detail::OpInlineResultImpl *>(base_ptr)
+          ->~OpInlineResultImpl();
+      base_ptr += sizeof(detail::OpInlineResultImpl);
+    }
+  }
+  // Deconstruct Operation.
+  if (reinterpret_cast<uintptr_t>(base_ptr) !=
+      reinterpret_cast<uintptr_t>(this)) {
+    throw("Operation address error");
+  }
+  VLOG(4) << "Deconstruct Operation: " << reinterpret_cast<void *>(base_ptr);
+  reinterpret_cast<Operation *>(base_ptr)->~Operation();
+  base_ptr += sizeof(Operation);
+  // Deconstruct OpOpOerand.
+  for (size_t idx = 0; idx < num_operands_; idx++) {
+    VLOG(4) << "Deconstruct OpOperandImpl: "
+            << reinterpret_cast<void *>(base_ptr);
+    reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
+    base_ptr += sizeof(detail::OpOperandImpl);
+  }
+
   VLOG(4) << "Destroy an Operation --------------------->";
-  VLOG(4) << "aligned_ptr = " << aligned_ptr << ", size = " << result_mem_size;
-  aligned_free(aligned_ptr);
+  VLOG(4) << "aligned_ptr = " << reinterpret_cast<void *>(aligned_ptr)
+          << ", size = " << result_mem_size;
+  aligned_free(reinterpret_cast<void *>(aligned_ptr));
   VLOG(4) << "------------------------------------------>";
 }
 
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
                      ir::DictionaryAttribute attibute) {
-  assert(attibute && "unexpected null attribute dictionary");
+  if (!attibute) {
+    throw("unexpected null attribute dictionary");
+  }
   num_results_ = num_results;
   num_operands_ = num_operands;
   attibute_ = attibute;
 }
 
-Operation::~Operation() {}
-
 ir::OpResult Operation::GetResultByIndex(uint32_t index) {
-  assert((index < num_results_) && "index exceeds OP output range.");
+  if (index >= num_results_) {
+    throw("index exceeds OP output range.");
+  }
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
   char *ptr = nullptr;
   if (index > max_inline_idx) {

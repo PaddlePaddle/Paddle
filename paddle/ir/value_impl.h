@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <cassert>
-
 #include "paddle/ir/cast_utils.h"
 #include "paddle/ir/type.h"
 
@@ -49,7 +47,7 @@ class alignas(8) ValueImpl {
   ///
   uint32_t index() const;
 
-  OpOperandImpl *first_user() {
+  OpOperandImpl *first_user() const {
     return reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(offset_first_user_) & (~0x07));
   }
@@ -65,13 +63,18 @@ class alignas(8) ValueImpl {
 
   OpOperandImpl **first_user_addr() { return &offset_first_user_; }
 
+  bool use_empty() const { return first_user() == nullptr; }
+
+  std::string print_ud_chain();
+
  protected:
   ///
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
   ///
   explicit ValueImpl(ir::Type type, uint32_t index) {
-    assert(index <= OUTLINE_OP_RESULT_INDEX &&
-           "The value of index must not exceed 6");
+    if (index > OUTLINE_OP_RESULT_INDEX) {
+      throw("The value of index must not exceed 6");
+    }
     type_ = type;
     offset_first_user_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(nullptr) + index);
@@ -132,7 +135,9 @@ class OpInlineResultImpl : public OpResultImpl {
  public:
   OpInlineResultImpl(ir::Type type, uint32_t result_index)
       : OpResultImpl(type, result_index) {
-    assert(result_index <= GetMaxInlineResultIndex());
+    if (result_index > GetMaxInlineResultIndex()) {
+      throw("Inline result index should not exceed MaxInlineResultIndex(5)");
+    }
   }
 
   static bool classof(const OpResultImpl &value) {
@@ -170,6 +175,21 @@ class OpOperandImpl {
 
   ir::detail::OpOperandImpl *next_user() { return next_user_; }
 
+  /// Remove this operand from the current use list.
+  void remove_from_ud_chain() {
+    if (!back_user_addr_) return;
+    if (back_user_addr_ == source_->first_user_addr()) {
+      source_->SetFirstUser(next_user_);
+    } else {
+      *back_user_addr_ = next_user_;
+    }
+    if (next_user_) {
+      next_user_->back_user_addr_ = back_user_addr_;
+    }
+  }
+
+  ~OpOperandImpl() { remove_from_ud_chain(); }
+
   friend ir::Operation;
 
  private:
@@ -183,11 +203,11 @@ class OpOperandImpl {
     source->SetFirstUser(this);
   }
 
-  ir::detail::ValueImpl *source_ = nullptr;
-
   ir::detail::OpOperandImpl *next_user_ = nullptr;
 
   ir::detail::OpOperandImpl **back_user_addr_ = nullptr;
+
+  ir::detail::ValueImpl *source_ = nullptr;
 
   ir::Operation *owner_ = nullptr;
 };

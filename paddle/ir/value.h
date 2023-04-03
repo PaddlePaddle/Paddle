@@ -59,6 +59,8 @@ class Value {
 
   Operation *GetDefiningOp() const;
 
+  std::string print_ud_chain();
+
   friend struct std::hash<Value>;
 
  protected:

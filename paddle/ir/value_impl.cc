@@ -23,6 +23,22 @@ uint32_t ValueImpl::index() const {
       ->GetResultIndex();
 }
 
+std::string ValueImpl::print_ud_chain() {
+  std::stringstream result;
+  result << "Value[" << this << "] -> ";
+  OpOperandImpl *tmp = first_user();
+  if (tmp) {
+    result << "OpOperand[" << reinterpret_cast<void *>(tmp) << "] -> ";
+    while (tmp->next_user() != nullptr) {
+      result << "OpOperand[" << reinterpret_cast<void *>(tmp->next_user())
+             << "] -> ";
+      tmp = tmp->next_user();
+    }
+  }
+  result << "nullptr";
+  return result.str();
+}
+
 uint32_t OpResultImpl::GetResultIndex() const {
   if (const auto *outline_result = ir::dyn_cast<OpOutlineResultImpl>(this)) {
     return outline_result->GetResultIndex();

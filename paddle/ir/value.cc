@@ -25,4 +25,6 @@ uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
       ir::detail::OpResultImpl::GetMaxInlineResultIndex();
   return index <= max_inline_index ? index : max_inline_index;
 }
+
+std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
 }  // namespace ir

@@ -41,8 +41,6 @@ class alignas(8) Operation final {
             uint32_t num_operands,
             ir::DictionaryAttribute attibute);
 
-  ~Operation();
-
   ir::DictionaryAttribute attibute_;
 
   uint32_t num_results_ = 0;

@@ -42,17 +42,20 @@ TEST(value_test, value_test) {
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op1 = ir::Operation::create(
       op1_inputs, op1_output_types, CreateAttribute("op1_name", "op1_attr"));
+  std::cout << op1->print() << std::endl;
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op2 = ir::Operation::create(
       op2_inputs, op2_output_types, CreateAttribute("op2_name", "op2_attr"));
+  std::cout << op2->print() << std::endl;
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op3 = ir::Operation::create(
       op3_inputs, op3_output_types, CreateAttribute("op3_name", "op3_attr"));
+  std::cout << op3->print() << std::endl;
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
                                           op3->GetResultByIndex(0)};
@@ -62,6 +65,7 @@ TEST(value_test, value_test) {
   }
   ir::Operation *op4 = ir::Operation::create(
       op4_inputs, op4_output_types, CreateAttribute("op4_name", "op4_attr"));
+  std::cout << op4->print() << std::endl;
 
   // Test 1:
   EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);
@@ -83,8 +87,12 @@ TEST(value_test, value_test) {
   EXPECT_EQ(op3_first_input->next_user(), nullptr);
 
   // destroy
-  op1->destroy();
-  op2->destroy();
-  op3->destroy();
+  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op4->destroy();
+  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  op3->destroy();
+  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  op2->destroy();
+  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  op1->destroy();
 }
