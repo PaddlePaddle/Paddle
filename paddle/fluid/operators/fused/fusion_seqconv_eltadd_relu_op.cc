@@ -152,7 +152,6 @@ template <typename T, typename DeviceContext>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("Filter");
     auto* b = ctx.Input<phi::DenseTensor>("Bias");

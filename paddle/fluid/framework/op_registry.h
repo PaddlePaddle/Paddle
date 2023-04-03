@@ -533,5 +533,19 @@ struct StructKernelImpl<
                       PHI_STRUCTURE_VARIADIC_KERNEL,          \
                       __VA_ARGS__)
 
+#define PD_REGISTER_STRUCT_KERNEL(                            \
+    kernel_name, backend, layout, meta_kernel_structure, ...) \
+  _PD_REGISTER_KERNEL(::phi::RegType::INNER,                  \
+                      kernel_name,                            \
+                      backend,                                \
+                      ::phi::backend##Context,                \
+                      layout,                                 \
+                      meta_kernel_structure,                  \
+                      STRUCTURE_KERNEL_INSTANTIATION,         \
+                      STRUCTURE_ARG_PARSE_FUNCTOR,            \
+                      PHI_STRUCTURE_KERNEL,                   \
+                      PHI_STRUCTURE_VARIADIC_KERNEL,          \
+                      __VA_ARGS__)
+
 }  // namespace framework
 }  // namespace paddle

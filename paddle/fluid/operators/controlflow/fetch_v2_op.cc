@@ -244,4 +244,4 @@ PD_REGISTER_STRUCT_KERNEL(fetch_v2,
                           plat::float16,
                           plat::bfloat16,
                           plat::complex<float>,
-                          plat::complex<double>, ) {}
+                          plat::complex<double>) {}

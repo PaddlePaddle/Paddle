@@ -151,7 +151,6 @@ template <typename T, typename DeviceContext>
 class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
     auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto* w = ctx.Input<phi::DenseTensor>("FCWeight");
     auto* b = ctx.Input<phi::DenseTensor>("FCBias");

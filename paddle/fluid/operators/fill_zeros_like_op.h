@@ -33,5 +33,8 @@ class FillZerosLikeKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T, typename DeviceContext>
+class FillZerosLikeKernel2 : public FillZerosLikeKernel<T, DeviceContext> {};
+
 }  // namespace operators
 }  // namespace paddle

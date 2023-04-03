@@ -489,13 +489,13 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation,
                           CPU,
                           ALL_LAYOUT,
-                          ops::FusedElemwiseActivationKernel,
+                          ops::FusedElemwiseAddActivationKernel,
                           float,
                           double) {}
 
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation_grad,
                           CPU,
                           ALL_LAYOUT,
-                          ops::FusedElemwiseActivationGradKernel,
+                          ops::FusedElemwiseAddActivationGradKernel,
                           float,
                           double) {}

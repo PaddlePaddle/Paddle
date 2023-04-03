@@ -303,7 +303,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     const int N = x_lod[0].size() - 1;
@@ -394,7 +393,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     if (x_lod[0].size() == 2) {
       xx->Resize({total_T, D3});

@@ -302,7 +302,6 @@ template <typename T, typename DeviceContext>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                    \
-  using DeviceContext = phi::CPUContext;                     \
   auto* x = ctx.Input<phi::DenseTensor>("X");                \
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
   auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \

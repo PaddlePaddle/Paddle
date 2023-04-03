@@ -224,7 +224,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

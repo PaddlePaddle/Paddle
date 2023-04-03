@@ -765,5 +765,14 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+template <typename T, typename DeviceContext>
+class FusedElemwiseAddActivationKernel
+    : public FusedElemwiseActivationKernel<T, DeviceContext> {};
+
+template <typename T, typename DeviceContext>
+class FusedElemwiseAddActivationGradKernel
+    : public FusedElemwiseActivationGradKernel<T, DeviceContext> {};
+
 }  // namespace operators
 }  // namespace paddle
