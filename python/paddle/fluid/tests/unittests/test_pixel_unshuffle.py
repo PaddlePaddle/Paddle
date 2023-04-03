@@ -251,9 +251,9 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            pixel_unshuffle_str = 'downscale_factor={}'.format(down_factor)
+            pixel_unshuffle_str = f'downscale_factor={down_factor}'
             if data_format != 'NCHW':
-                pixel_unshuffle_str += ', data_format={}'.format(data_format)
+                pixel_unshuffle_str += f', data_format={data_format}'
             self.assertEqual(pixel_unshuffle.extra_repr(), pixel_unshuffle_str)
 
     def test_dygraph1(self):

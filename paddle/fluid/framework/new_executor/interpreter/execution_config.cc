@@ -18,7 +18,6 @@
 #include <thread>
 
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"

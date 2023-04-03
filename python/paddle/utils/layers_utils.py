@@ -290,7 +290,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: %s\n\nSecond structure: %s." % (nest1, nest2)
+            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -313,8 +313,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
                         keys1, keys2
                     )
                 )
-    nest1_as_sequence = [n for n in _yield_value(nest1)]
-    nest2_as_sequence = [n for n in _yield_value(nest2)]
+    nest1_as_sequence = list(_yield_value(nest1))
+    nest2_as_sequence = list(_yield_value(nest2))
     for n1, n2 in zip(nest1_as_sequence, nest2_as_sequence):
         _recursive_assert_same_structure(n1, n2, check_types)
 
@@ -454,12 +454,7 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = list(
-            map(
-                lambda x: x.item(0) if isinstance(x, Variable) else x,
-                shape,
-            )
-        )
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
         shape = shape.astype(int).tolist()
     return shape

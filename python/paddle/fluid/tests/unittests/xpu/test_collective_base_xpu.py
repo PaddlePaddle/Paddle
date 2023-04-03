@@ -170,7 +170,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )

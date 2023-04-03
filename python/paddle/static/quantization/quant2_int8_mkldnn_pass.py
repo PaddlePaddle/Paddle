@@ -510,7 +510,7 @@ class Quant2Int8MkldnnPass:
         if self._debug:
             graph.draw(
                 '.',
-                '{}_{}_{}'.format(self._pass_group, self._pass_idx, pass_name),
+                f'{self._pass_group}_{self._pass_idx}_{pass_name}',
                 graph.all_op_nodes(),
             )
         self._remove_unused_var_nodes(graph)
@@ -532,13 +532,12 @@ class Quant2Int8MkldnnPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)
         return graph
 
