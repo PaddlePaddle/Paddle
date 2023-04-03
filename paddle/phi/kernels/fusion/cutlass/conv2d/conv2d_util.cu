@@ -226,6 +226,9 @@ std::string OpType2String(OpType op_type) {
     case CONV2D_BIAS_SILU:
       return "conv2d_bias_silu";
       break;
+    case CONV2D_BIAS_SIGMOID:
+      return "conv2d_bias_sigmoid";
+      break;
     case CONV2D_BIAS_ADD_RELU:
       return "conv2d_bias_add_relu";
       break;

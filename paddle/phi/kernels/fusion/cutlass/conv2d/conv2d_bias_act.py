@@ -148,12 +148,12 @@ def generate_sm75_1688():
     ]
 
     math_instructions = [
-        (
-            "16,8,8",
-            "cutlass::half_t",
-            "cutlass::half_t",
-            "cutlass::half_t",
-        ),
+        # (
+        #     "16,8,8",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        # ),
         (
             "16,8,8",
             "cutlass::half_t",

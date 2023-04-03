@@ -110,6 +110,7 @@ CamelName = {
     SupportedAct[0]: "Conv2dDepthwiseBias",
     SupportedAct[1]: "Conv2dDepthwiseBiasRelu",
     SupportedAct[2]: "Conv2dDepthwiseBiasSigmoid",
+    SupportedAct[3]: "Conv2dDepthwiseBiasSilu",
 }
 
 
@@ -152,7 +153,10 @@ def generate_conv2d_depthwise():
     all_code = ""
     for epi_func in SupportedAct:
         op_dict = {}
-        op_dict["func_name"] = UnderScoreName[epi_func].lower()
+        # Because conv2d_depthwise is not related to the sm version,
+        # so "func_name" are directly called by phi, we camel its name.
+        op_dict["func_name"] = CamelName[epi_func]
+        # enum_op_name is consistent with OpType in conv2d_util.h
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
         # For a function, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""

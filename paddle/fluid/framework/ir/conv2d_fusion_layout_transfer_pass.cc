@@ -144,7 +144,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
   // will not set or change any attribute in op_desc
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
-    if (op_node->Op()->Type() != target_op_type) return false;
     auto data_format =
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
@@ -153,9 +152,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     // If filter's channel is not multiple of CUDNN_ALIGNMENT, conv2d_fusion not
     // run at nhwc.
     for (const auto &filter_name : filter_names) {
-      if (weights_shape_nhwc.count(filter_name)) {
-        continue;
-      }
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
@@ -179,6 +175,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
+    if (op_node->Op()->Type() != target_op_type) {
+      continue;
+    }
+    auto filter_name = op_node->Op()->Input("Filter").front();
+    if (weights_shape_nhwc.count(filter_name)) {
+      continue;
+    }
     if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();

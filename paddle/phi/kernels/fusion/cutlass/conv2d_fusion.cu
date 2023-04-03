@@ -116,13 +116,13 @@ void Conv2dFusionKernel(const Context& ctx,
       CHECK_EQ(residual->data<T>() == nullptr, true);
     }
     if (activation == "relu") {
-      conv2d_depthwise_bias_relu(params);
+      Conv2dDepthwiseBiasRelu(params);
     } else if (activation == "identity") {
-      conv2d_depthwise_bias(params);
+      Conv2dDepthwiseBias(params);
     } else if (activation == "sigmoid") {
-      conv2d_depthwise_bias_sigmoid(params);
+      Conv2dDepthwiseBiasSigmoid(params);
     } else if (activation == "swish") {
-      conv2d_depthwise_bias_silu(params);
+      Conv2dDepthwiseBiasSilu(params);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass conv2d_depthwise does not support this activation: %s.",

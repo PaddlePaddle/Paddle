@@ -107,7 +107,7 @@ class CutlassTeller {
       if (!(kh == 3 && kw == 3) || (kh == 5 && kw == 5)) {
         return false;
       }
-      // Now we only allow ic % 8 == 0
+      // Now we only allow ic % 8 == 0, because of cutlass.
       if (ic % 8 != 0) {
         return false;
       }

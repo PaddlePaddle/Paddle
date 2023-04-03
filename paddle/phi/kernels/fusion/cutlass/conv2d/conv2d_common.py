@@ -183,7 +183,7 @@ CommonTail = '''
 '''
 
 
-# wrap different sm versions into a function
+# Wrap different sm versions into a function called by phi
 def GenerateFunctionForPhi(
     sm_versions, support_epi_funcs, underscore_names, camel_names
 ):
