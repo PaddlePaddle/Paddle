@@ -78,7 +78,7 @@ function make_ubuntu_trt7_dockerfile(){
 
 function make_centos_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
-  sed "s/<baseimg>/11.7.1-cudnn8-devel-centos7/g" Dockerfile.centos >${dockerfile_name}
+  sed "s/<baseimg>/12.0.1-cudnn8-devel-centos7/g" Dockerfile.centos >${dockerfile_name}
   sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile ninja-build" ${dockerfile_name}
