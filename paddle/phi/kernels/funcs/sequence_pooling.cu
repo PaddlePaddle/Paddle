@@ -22,7 +22,6 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-namespace math {
 
 template <typename T>
 struct MaxPoolFunctor {
@@ -498,6 +497,5 @@ template class SequencePoolFunctor<phi::GPUContext, double>;
 template class SequencePoolGradFunctor<phi::GPUContext, float>;
 template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
-}  // namespace math
 }  // namespace funcs
 }  // namespace phi

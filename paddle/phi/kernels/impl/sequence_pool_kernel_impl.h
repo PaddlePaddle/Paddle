@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/sequence_pool_kernel.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -75,7 +74,7 @@ void SequencePoolKernel(const Context& ctx,
     //    index->mutable_data<int>(ctx.GetPlace());
     ctx.template Alloc<T>(index);
   }
-  phi::funcs::math::SequencePoolFunctor<Context, T> pool;
+  phi::funcs::SequencePoolFunctor<Context, T> pool;
   pool(ctx, pooltype, pad_value_, x, out, is_test, index);
 }
 

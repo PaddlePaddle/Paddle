@@ -15,13 +15,10 @@ limitations under the License. */
 #pragma once
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 namespace funcs {
-namespace math {
 
 template <typename DeviceContext, typename T>
 class SequencePoolFunctor {
@@ -47,6 +44,5 @@ class SequencePoolGradFunctor {
                   const phi::DenseTensor* index = nullptr);
 };
 
-}  // namespace math
 }  // namespace funcs
 }  // namespace phi

@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-namespace math {
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -354,21 +353,21 @@ class SequencePoolFunctor<phi::CPUContext, T> {
                   phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
-        phi::math::MaxSeqPoolFunctor<T, true> max_pool;
+        phi::funcs::MaxSeqPoolFunctor<T, true> max_pool;
         max_pool(context, input, pad_value, output, index);
       } else {
-        phi::math::MaxSeqPoolFunctor<T, false> max_pool;
+        phi::funcs::MaxSeqPoolFunctor<T, false> max_pool;
         max_pool(context, input, pad_value, output, index);
       }
       return;
     }
     if (pooltype == "LAST") {
-      phi::math::LastSeqPoolFunctor<T> last_pool;
+      phi::funcs::LastSeqPoolFunctor<T> last_pool;
       last_pool(context, input, pad_value, output);
       return;
     }
     if (pooltype == "FIRST") {
-      phi::math::FirstSeqPoolFunctor<T> first_pool;
+      phi::funcs::FirstSeqPoolFunctor<T> first_pool;
       first_pool(context, input, pad_value, output);
       return;
     }
@@ -377,7 +376,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     if (pooltype == "SUM") {
       auto place = context.GetPlace();
       PADDLE_ENFORCE_EQ(
-          platform::is_cpu_place(place),
+          place == phi::CPUPlace(),
           true,
           errors::InvalidArgument(
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
@@ -387,7 +386,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
           static_cast<int>(input.numel() / input.dims()[0]),
           phi::jit::SeqPoolType::kSum);
       auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                           platform::CPUPlace>::Cache()
+                                           phi::CPUPlace>::Cache()
                          .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
@@ -443,7 +442,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
                   /* max pool has index */
                   const phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
-      phi::math::MaxSeqPoolGradFunctor<T> max_pool_grad;
+      phi::funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
       max_pool_grad(context, out_grad, *index, in_grad);
       return;
     }
@@ -455,7 +454,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
     }
 
     if (pooltype == "SUM") {
-      phi::math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      phi::funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
       sum_pool_grad(context, out_grad, in_grad);
       return;
     }
@@ -499,6 +498,5 @@ template class SequencePoolFunctor<phi::CPUContext, double>;
 template class SequencePoolGradFunctor<phi::CPUContext, float>;
 template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
-}  // namespace math
 }  // namespace funcs
 }  // namespace phi
