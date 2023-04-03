@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 import google.protobuf
 import google.protobuf.text_format
 
@@ -71,7 +73,7 @@ def assign_configs_value(msg, config):
 def check_configs_key(msg, config, field_name):
     key_list = msg.DESCRIPTOR.fields_by_name.keys()
     for key in config:
-        assert key in key_list, "key:{} not in {}".format(key, field_name)
+        assert key in key_list, f"key:{key} not in {field_name}"
 
 
 class DistributedJobInfo:
@@ -149,13 +151,14 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
-                "%s is not a attribute of %s" % (key, self.__class__.__name__)
+                f"{key} is not a attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
@@ -1691,8 +1694,13 @@ class DistributedStrategy:
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
+        hybrid_config = copy.deepcopy(configs)
+        if "order" in hybrid_config:
+            self.hybrid_parallel_order = hybrid_config["order"]
+            hybrid_config.pop('order')
+
         check_configs_key(
-            self.strategy.hybrid_configs, configs, "hybrid_configs"
+            self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
@@ -2469,7 +2477,7 @@ class DistributedStrategy:
 
         length = max_k + max_v + spacing
 
-        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h1_format = "    " + f"|{{:^{length}s}}|\n"
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
@@ -2497,7 +2505,7 @@ class DistributedStrategy:
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{}=True <-> {}_configs".format(f.name, f.name)
+                                f"{f.name}=True <-> {f.name}_configs"
                             )
                             draws += line + "\n"
                             my_configs = getattr(

@@ -228,7 +228,7 @@ class FP16State:
 
             if op.desc.original_id() in self.grad_op_to_op_map:
                 fwd_op_id = self.grad_op_to_op_map[op.desc.original_id()]
-                assert fwd_op_id in self._op_fp16_dict, "{}".format(str(op))
+                assert fwd_op_id in self._op_fp16_dict, f"{str(op)}"
                 self._op_fp16_dict[op.desc.original_id()] = self._op_fp16_dict[
                     fwd_op_id
                 ]
@@ -516,11 +516,11 @@ class FP16State:
                     continue
                 assert (
                     len(op.output(grad_slot_name)) == 1
-                ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
+                ), f"[{grad_slot_name}], Current Op: {str(op)}"
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
                 grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
-                assert grad_dist_attr is not None, "{}".format(grad_name)
+                assert grad_dist_attr is not None, f"{grad_name}"
                 ref_mesh = grad_dist_attr.process_mesh
                 ref_mapping = grad_dist_attr.dims_mapping
 
@@ -685,7 +685,7 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
         dst_place_type = 0
     else:
         raise NotImplementedError(
-            "direction [{}] is not supported yet.".format(direction)
+            f"direction [{direction}] is not supported yet."
         )
 
     attrs = {'dst_place_type': dst_place_type}

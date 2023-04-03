@@ -92,7 +92,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif initializer == 2:
             init = paddle.nn.initializer.Normal()
         else:
-            raise ValueError("error initializer code: {}".format(initializer))
+            raise ValueError(f"error initializer code: {initializer}")
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]

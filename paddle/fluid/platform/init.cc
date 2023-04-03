@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

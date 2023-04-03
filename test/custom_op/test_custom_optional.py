@@ -25,9 +25,9 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_optional\\custom_optional.pyd'.format(get_build_directory())
+file = f'{get_build_directory()}\\custom_optional\\custom_optional.pyd'
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
@@ -103,6 +103,124 @@ def optional_static_add(phi_func, device, dtype, np_x, np_y):
             )
     paddle.disable_static()
     return x_v, out_v, x_grad_v
+
+
+'''
+if (y) {
+  outX = 2 * x + y;
+  outY = x + y;
+} else {
+  outX = 2 * x;
+  outY = None;
+}
+'''
+
+
+def optional_inplace_dynamic_add(phi_func, device, dtype, np_x, np_y):
+    paddle.set_device(device)
+    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+
+    if np_y is not None:
+        y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=True)
+        if phi_func:
+            outx, outy = custom_optional.custom_optional_inplace_add(x, y)
+        else:
+            # We need to accumulate y's grad here.
+            y.stop_gradient = False
+            outx = 2 * x + y
+            # Inplace leaf Tensor's stop_gradient should be True
+            y.stop_gradient = True
+            outy = y.add_(x)
+    else:
+        y = None
+        if phi_func:
+            outx, outy = custom_optional.custom_optional_inplace_add(x, y)
+        else:
+            outx = 2 * x
+            outy = None
+        assert (
+            outy is None
+        ), "The output `outy` of optional_inplace_dynamic_add should be None"
+
+    out = outx + outy if outy is not None else outx
+    out.backward()
+    return (
+        x.numpy(),
+        outx.numpy(),
+        y.numpy() if y is not None else None,
+        outy.numpy() if outy is not None else None,
+        out.numpy(),
+        x.grad.numpy(),
+        y.grad.numpy() if y is not None and y.grad is not None else None,
+    )
+
+
+def optional_inplace_static_add(phi_func, device, dtype, np_x, np_y):
+    paddle.enable_static()
+    paddle.set_device(device)
+    with static.scope_guard(static.Scope()):
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+            x.stop_gradient = False
+            if np_y is not None:
+                y = static.data(
+                    name="y", shape=[None, np_x.shape[1]], dtype=dtype
+                )
+                y.stop_gradient = False
+                feed_dict = {
+                    "x": np_x.astype(dtype),
+                    "y": np_y.astype(dtype),
+                }
+                if phi_func:
+                    outx, outy = custom_optional.custom_optional_inplace_add(
+                        x, y
+                    )
+                else:
+                    outx = 2 * x + y
+                    outy = x + y
+            else:
+                feed_dict = {
+                    "x": np_x.astype(dtype),
+                }
+                if phi_func:
+                    outx, outy = custom_optional.custom_optional_inplace_add(
+                        x, None
+                    )
+                else:
+                    outx = 2 * x
+                    outy = None
+            out = outx + outy if outy is not None else outx
+            mean_out = paddle.mean(out)
+            static.append_backward(mean_out)
+
+            exe = static.Executor()
+            exe.run(static.default_startup_program())
+
+            if np_y is not None:
+                x_v, out_v, x_grad_v, y_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=[
+                        x.name,
+                        out.name,
+                        x.name + "@GRAD",
+                        y.name + "@GRAD",
+                    ],
+                )
+                paddle.disable_static()
+                return [x_v, out_v, x_grad_v, y_grad_v]
+            else:
+                x_v, out_v, x_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=[
+                        x.name,
+                        out.name,
+                        x.name + "@GRAD",
+                    ],
+                )
+                paddle.disable_static()
+                return [x_v, out_v, x_grad_v]
 
 
 def optional_vector_dynamic_add(phi_func, device, dtype, np_x, np_inputs):
@@ -195,6 +313,10 @@ class TestCustomOptionalJit(unittest.TestCase):
         ]
 
     def check_output(self, out, pd_out, name):
+        if out is None and pd_out is None:
+            return
+        assert out is not None, "out value of " + name + " is None"
+        assert pd_out is not None, "pd_out value of " + name + " is None"
         np.testing.assert_array_equal(
             out,
             pd_out,
@@ -204,6 +326,10 @@ class TestCustomOptionalJit(unittest.TestCase):
         )
 
     def check_output_allclose(self, out, pd_out, name):
+        if out is None and pd_out is None:
+            return
+        assert out is not None, "out value of " + name + " is None"
+        assert pd_out is not None, "pd_out value of " + name + " is None"
         np.testing.assert_allclose(
             out,
             pd_out,
@@ -259,6 +385,77 @@ class TestCustomOptionalJit(unittest.TestCase):
                     self.check_output(phi_x, pd_x, "x")
                     self.check_output(phi_out, pd_out, "out")
                     self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+
+    def test_optional_inplace_static_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    pd_tuple = optional_inplace_static_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    phi_tuple = optional_inplace_static_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+
+                    self.check_output(phi_tuple[0], pd_tuple[0], "x")
+                    self.check_output(phi_tuple[1], pd_tuple[1], "out")
+                    self.check_output(phi_tuple[2], pd_tuple[2], "x_grad")
+                    if len(phi_tuple) > 3:
+                        self.check_output(phi_tuple[3], pd_tuple[3], "y_grad")
+
+    def test_optional_inplace_dynamic_add(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                for np_y in [None, self.np_y]:
+                    (
+                        pd_x,
+                        pd_outx,
+                        pd_y,
+                        pd_outy,
+                        pd_out,
+                        pd_x_grad,
+                        pd_y_grad,
+                    ) = optional_inplace_dynamic_add(
+                        False,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+                    (
+                        phi_x,
+                        phi_outx,
+                        phi_y,
+                        phi_outy,
+                        phi_out,
+                        phi_x_grad,
+                        phi_y_grad,
+                    ) = optional_inplace_dynamic_add(
+                        True,
+                        device,
+                        dtype,
+                        self.np_x,
+                        np_y,
+                    )
+
+                    self.check_output(pd_y, pd_outy, "inplace_pd_y")
+                    self.check_output(phi_y, phi_outy, "inplace_phi_y")
+
+                    self.check_output(phi_x, pd_x, "x")
+                    self.check_output(phi_outx, pd_outx, "outx")
+                    self.check_output(phi_y, pd_y, "y")
+                    self.check_output(phi_outy, pd_outy, "outy")
+                    self.check_output(phi_out, pd_out, "out")
+                    self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                    self.check_output(phi_y_grad, pd_y_grad, "y_grad")
 
     def test_optional_vector_static_add(self):
         for device in self.devices:

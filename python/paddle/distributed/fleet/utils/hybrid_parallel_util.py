@@ -141,6 +141,16 @@ def _broadcast_data_help(data, shape, dtype, hcg):
             )
 
 
+def _broadcast_object_list_help(object_list, hcg):
+    model_parallel_group = hcg.get_model_parallel_group()
+    src_rank = hcg.get_model_parallel_group_src_rank()
+    mp_rank = hcg.get_model_parallel_rank()
+
+    paddle.distributed.broadcast_object_list(
+        object_list, src=src_rank, group=model_parallel_group
+    )
+
+
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     dev = cur_device.split(":")[0]
@@ -164,7 +174,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.warning("it doesn't support data type {}".format(type(v)))
+            _broadcast_object_list_help(v, hcg)
 
     for k, v in kwargs.items():
         if isinstance(v, core.eager.Tensor):
@@ -176,7 +186,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.warning("it doesn't support data type {}".format(type(v)))
+            kwargs[k] = _broadcast_object_list_help(v, hcg)
     return inputs, kwargs
 
 
