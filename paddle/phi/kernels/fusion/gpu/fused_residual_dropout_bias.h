@@ -18,7 +18,7 @@ limitations under the License. */
 #include <cuda.h>
 #endif
 
-#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
 
 namespace phi {
@@ -132,12 +132,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       *var_val += (tmp * tmp);
     }
     if (std::is_same<OutType, int8_t>::value) {
-      dest_vec_out_type[ii] =
-          paddle::operators::quant_helper(dest_vec[ii],
-                                          quant_next_in_scale,
-                                          quant_round_type,
-                                          quant_max_bound,
-                                          quant_min_bound);
+      dest_vec_out_type[ii] = phi::funcs::quant_helper(dest_vec[ii],
+                                                       quant_next_in_scale,
+                                                       quant_round_type,
+                                                       quant_max_bound,
+                                                       quant_min_bound);
     }
   }
 

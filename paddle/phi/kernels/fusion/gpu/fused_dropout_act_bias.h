@@ -183,12 +183,11 @@ __global__ void FusedActBias(Functor act,
         } else {
           tmp = static_cast<T>(act(tmp));
         }
-        out_vec[unroll_idx] =
-            paddle::operators::quant_helper(tmp,
-                                            quant_next_in_scale,
-                                            quant_round_type,
-                                            quant_max_bound,
-                                            quant_min_bound);
+        out_vec[unroll_idx] = phi::funcs::quant_helper(tmp,
+                                                       quant_next_in_scale,
+                                                       quant_round_type,
+                                                       quant_max_bound,
+                                                       quant_min_bound);
       } else {
         if (bias) {
           out_vec[unroll_idx] = static_cast<OutType>(
