@@ -40,6 +40,7 @@ elif [ "$VERSION" == "12.0" ]; then
     rpm -ivh libnccl-static-2.16.5-1+cuda12.0.x86_64.rpm && rm -f
 libnccl-*
     exit 0
+  fi
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else
