@@ -84,10 +84,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
                         head_size_qk,
                         hidden_in_qk);
 
-    nvinfer1::Weights weight_qk{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_qk_data),
-                                static_cast<int32_t>(weight_qk_t->numel())};
-
     /* ------------------    bias_qk  -------------------------*/
     auto bias_qk_name = op_desc.Input("B_qk").front();
     auto* bias_qk_v = scope.FindVar(bias_qk_name);
@@ -95,7 +91,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     float* bias_qk_data = nullptr;
     bias_qk_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(bias_qk_name, *bias_qk_t).get().values));
-    const auto& bias_qk_dims = bias_qk_t->dims();  // 2 hidden_out
 
     // [2, head_number, head_size] -> [head_number, 2, head_size]
     auto transpose_bias_qk = [](const float* src, float* dst, int N, int H) {
@@ -115,10 +110,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
            bias_qk_t->numel() * sizeof(float));
     transpose_bias_qk(
         bias_qk_data_tmp.data(), bias_qk_data, head_number_qk, head_size_qk);
-
-    nvinfer1::Weights bias_qk{nvinfer1::DataType::kFLOAT,
-                              static_cast<void*>(bias_qk_data),
-                              static_cast<int32_t>(bias_qk_t->numel())};
 
     auto weight_qk_shape = nvinfer1::Dims3{1, n_qk, hidden_in_qk};
     auto* weight_qk_tensor =
@@ -178,7 +169,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     float* weight_v_data = nullptr;
     weight_v_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_v_name, *weight_v_t).get().values));
-    const auto& weight_v_dims = weight_v_t->dims();
     int n_v = hidden_out_qk;
 
     // [hidden_in, head_number, head_size]
@@ -209,10 +199,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
                        head_size_qk,
                        hidden_in_qk);
 
-    nvinfer1::Weights weight_v{nvinfer1::DataType::kFLOAT,
-                               static_cast<void*>(weight_v_data),
-                               static_cast<int32_t>(weight_v_t->numel())};
-
     /* ------------------    bias_v  -------------------------*/
     auto bias_v_name = op_desc.Input("B_v").front();
     auto* bias_v_v = scope.FindVar(bias_v_name);
@@ -220,11 +206,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     float* bias_v_data = nullptr;
     bias_v_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(bias_v_name, *bias_v_t).get().values));
-    const auto& bias_v_dims = bias_v_t->dims();
-
-    nvinfer1::Weights bias_v{nvinfer1::DataType::kFLOAT,
-                             static_cast<void*>(bias_v_data),
-                             static_cast<int32_t>(bias_v_t->numel())};
 
     auto weight_v_shape = nvinfer1::Dims3{1, n_v, hidden_in_qk};
     auto* weight_v_tensor =
@@ -297,8 +278,6 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
         GetEleTensorOfShape(input_qk_shape_tensor, 0);
     nvinfer1::ITensor* length_tensor =
         GetEleTensorOfShape(input_qk_shape_tensor, 1);
-    nvinfer1::ITensor* size_tensor =
-        GetEleTensorOfShape(input_qk_shape_tensor, 2);
     auto* reshape_after_mha_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> reshape_tensor;
