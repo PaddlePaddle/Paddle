@@ -33,12 +33,11 @@ void TransposeGradStrideKernel(const Context& dev_ctx,
   }
 
   std::vector<int> reversed_axis(axis);
-  dev_ctx.template Alloc<T>(x_grad);
   for (size_t i = 0; i < axis_size; i++) {
     reversed_axis[formated_axis[i]] = i;
   }
 
-  TransposeGradStrideKernel<Context>(dev_ctx, out_grad, reversed_axis, x_grad);
+  TransposeStrideKernel<Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 
 }  // namespace phi
