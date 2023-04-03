@@ -23,7 +23,6 @@ from paddle.common_ops_import import (
     LayerHelper,
     check_type,
     check_variable_and_dtype,
-    utils,
 )
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
@@ -693,7 +692,10 @@ def group_norm(
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'group_norm'
+        input,
+        'input',
+        ['float16', 'uint16', 'float32', 'float64'],
+        'group_norm',
     )
     # create intput and parameters
     inputs = {'X': input}
@@ -907,8 +909,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -953,19 +955,17 @@ def conv2d(
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    filter_size = paddle.utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = paddle.utils.convert_to_list(stride, 2, 'stride')
+    dilation = paddle.utils.convert_to_list(dilation, 2, 'dilation')
 
     # padding
     def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
 
-        if is_list_or_tuple(padding) and len(padding) == 4:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCHW"):
+        if isinstance(padding, (list, tuple)) and len(padding) == 4:
+            if isinstance(padding[0], (list, tuple)) and (
+                data_format == "NCHW"
+            ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -973,7 +973,9 @@ def conv2d(
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NHWC"):
+            elif isinstance(padding[0], (list, tuple)) and (
+                data_format == "NHWC"
+            ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -981,12 +983,12 @@ def conv2d(
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 4, 'padding')
-            if utils._is_symmetric_padding(padding, 2):
+            padding = paddle.utils.convert_to_list(padding, 4, 'padding')
+            if paddle.utils._is_symmetric_padding(padding, 2):
                 padding = [padding[0], padding[2]]
 
         else:
-            padding = utils.convert_to_list(padding, 2, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 2, 'padding')
 
         return padding
 
@@ -1229,8 +1231,8 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
     if groups is None:
@@ -1250,18 +1252,16 @@ def conv3d(
             )
         num_filter_channels = num_channels // groups
 
-    filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
-    stride = utils.convert_to_list(stride, 3, 'stride')
-    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+    filter_size = paddle.utils.convert_to_list(filter_size, 3, 'filter_size')
+    stride = paddle.utils.convert_to_list(stride, 3, 'stride')
+    dilation = paddle.utils.convert_to_list(dilation, 3, 'dilation')
 
     def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
 
-        if is_list_or_tuple(padding) and len(padding) == 5:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
+        if isinstance(padding, (list, tuple)) and len(padding) == 5:
+            if isinstance(padding[0], (list, tuple)) and (
+                data_format == "NCDHW"
+            ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1269,7 +1269,9 @@ def conv3d(
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
+            elif isinstance(padding[0], (list, tuple)) and (
+                data_format == "NDHWC"
+            ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1277,15 +1279,15 @@ def conv3d(
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 6, 'padding')
-            if utils._is_symmetric_padding(padding, 3):
+            padding = paddle.utils.convert_to_list(padding, 6, 'padding')
+            if paddle.utils._is_symmetric_padding(padding, 3):
                 padding = [padding[0], padding[2], padding[4]]
-        elif is_list_or_tuple(padding) and len(padding) == 6:
-            padding = utils.convert_to_list(padding, 6, 'padding')
-            if utils._is_symmetric_padding(padding, 3):
+        elif isinstance(padding, (list, tuple)) and len(padding) == 6:
+            padding = paddle.utils.convert_to_list(padding, 6, 'padding')
+            if paddle.utils._is_symmetric_padding(padding, 3):
                 padding = [padding[0], padding[2], padding[4]]
         else:
-            padding = utils.convert_to_list(padding, 3, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 3, 'padding')
 
         return padding
 
@@ -1571,20 +1573,18 @@ def conv2d_transpose(
     if not isinstance(input, Variable):
         raise TypeError("Input of conv2d_transpose must be Tensor")
 
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    stride = paddle.utils.convert_to_list(stride, 2, 'stride')
+    dilation = paddle.utils.convert_to_list(dilation, 2, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
 
-        if is_list_or_tuple(padding) and len(padding) == 4:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCHW"):
+        if isinstance(padding, (list, tuple)) and len(padding) == 4:
+            if isinstance(padding[0], (list, tuple)) and (
+                data_format == "NCHW"
+            ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1592,7 +1592,9 @@ def conv2d_transpose(
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NHWC"):
+            elif isinstance(padding[0], (list, tuple)) and (
+                data_format == "NHWC"
+            ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1600,9 +1602,9 @@ def conv2d_transpose(
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 4, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 4, 'padding')
         else:
-            padding = utils.convert_to_list(padding, 2, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 2, 'padding')
             padding = [padding[0], padding[0], padding[1], padding[1]]
         return padding
 
@@ -1626,12 +1628,16 @@ def conv2d_transpose(
     if output_size is None:
         output_size = []
     elif isinstance(output_size, (list, tuple)):
-        if utils._contain_var(output_size):
-            output_size = utils._convert_to_tensor_list(output_size)
+        if paddle.utils._contain_var(output_size):
+            output_size = paddle.utils._convert_to_tensor_list(output_size)
         else:
-            output_size = utils.convert_to_list(output_size, 2, 'output_size')
+            output_size = paddle.utils.convert_to_list(
+                output_size, 2, 'output_size'
+            )
     elif isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+        output_size = paddle.utils.convert_to_list(
+            output_size, 2, 'output_size'
+        )
     elif isinstance(output_size, Variable):
         check_dtype(
             output_size.dtype,
@@ -1655,16 +1661,16 @@ def conv2d_transpose(
         if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
         if not _non_static_mode():
-            if isinstance(output_size, Variable) or utils._contain_var(
+            if isinstance(output_size, Variable) or paddle.utils._contain_var(
                 output_size
             ):
                 raise ValueError(
                     "filter_size should not be None when output_size is Tensor or contain Tensor in static graph mode."
                 )
         else:
-            output_size = utils.convert_shape_to_list(output_size)
+            output_size = paddle.utils.convert_shape_to_list(output_size)
             if len(output_size) == 1:
-                output_size = utils.convert_to_list(
+                output_size = paddle.utils.convert_to_list(
                     output_size[0], 2, 'output_size'
                 )
 
@@ -1687,11 +1693,11 @@ def conv2d_transpose(
         ) // dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
     else:
-        filter_size = utils.convert_to_list(
+        filter_size = paddle.utils.convert_to_list(
             filter_size, 2, 'conv2d_transpose.filter_size'
         )
 
-    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
+    if len(padding) == 4 and paddle.utils._is_symmetric_padding(padding, 2):
         padding = [padding[0], padding[2]]
 
     if groups is None:
@@ -1938,20 +1944,18 @@ def conv3d_transpose(
         input.shape[1] if data_format == 'NCDHW' else input.shape[-1]
     )
 
-    stride = utils.convert_to_list(stride, 3, 'stride')
-    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+    stride = paddle.utils.convert_to_list(stride, 3, 'stride')
+    dilation = paddle.utils.convert_to_list(dilation, 3, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
 
-        if is_list_or_tuple(padding) and len(padding) == 5:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
+        if isinstance(padding, (list, tuple)) and len(padding) == 5:
+            if isinstance(padding[0], (list, tuple)) and (
+                data_format == "NCDHW"
+            ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1959,7 +1963,9 @@ def conv3d_transpose(
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
+            elif isinstance(padding[0], (list, tuple)) and (
+                data_format == "NDHWC"
+            ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
                         "Non-zero padding(%s) in the batch or channel dimensions "
@@ -1967,13 +1973,13 @@ def conv3d_transpose(
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 6, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 6, 'padding')
 
-        elif is_list_or_tuple(padding) and len(padding) == 6:
-            padding = utils.convert_to_list(padding, 6, 'padding')
+        elif isinstance(padding, (list, tuple)) and len(padding) == 6:
+            padding = paddle.utils.convert_to_list(padding, 6, 'padding')
 
         else:
-            padding = utils.convert_to_list(padding, 3, 'padding')
+            padding = paddle.utils.convert_to_list(padding, 3, 'padding')
             padding = [
                 padding[0],
                 padding[0],
@@ -2034,17 +2040,19 @@ def conv3d_transpose(
         ) // dilation[2] + 1
         filter_size = [filter_size_d, filter_size_h, filter_size_w]
     else:
-        filter_size = utils.convert_to_list(
+        filter_size = paddle.utils.convert_to_list(
             filter_size, 3, 'conv3d_transpose.filter_size'
         )
 
-    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
+    if len(padding) == 6 and paddle.utils._is_symmetric_padding(padding, 3):
         padding = [padding[0], padding[2], padding[4]]
 
     if output_size is None:
         output_size = []
     elif isinstance(output_size, (list, tuple, int)):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+        output_size = paddle.utils.convert_to_list(
+            output_size, 3, 'output_size'
+        )
     else:
         raise ValueError("output_size should be int, list[int] or tuple[int]")
 
@@ -2275,10 +2283,10 @@ def deformable_conv(
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels // groups
 
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    filter_size = paddle.utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = paddle.utils.convert_to_list(stride, 2, 'stride')
+    padding = paddle.utils.convert_to_list(padding, 2, 'padding')
+    dilation = paddle.utils.convert_to_list(dilation, 2, 'dilation')
 
     input_shape = input.shape
     filter_shape = [num_filters, int(num_filter_channels)] + filter_size
@@ -3082,7 +3090,7 @@ class PyFuncRegistry:
         if self._named_args is None:
             func_ret = self._func()
         else:
-            kwargs = dict()
+            kwargs = {}
             idx = 0
             for arg in self._named_args:
                 kwargs[arg] = args[idx]
@@ -3368,7 +3376,6 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     return helper.append_activation(out)
 
 
-@templatedoc()
 def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     r"""
     :api_attr: Static Graph
@@ -3409,10 +3416,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
-        weight(Tensor): ${weight_comment}
-        dim(int): ${dim_comment}
-        power_iters(int): ${power_iters_comment}
-        eps(float): ${eps_comment}
+        weight(Tensor): The input weight tensor of spectral_norm operator,
+                        This can be a 2-D, 3-D, 4-D, 5-D tensor which is the
+                        weights of fc, conv1d, conv2d, conv3d layer.
+                        The data type is float32 or float64.
+        dim(int): The index of dimension which should be permuted
+                  to the first before reshaping Input(Weight) to
+                  matrix, it should be set as 0 if Input(Weight) is
+                  the weight of fc layer, and should be set as 1 if
+                  Input(Weight) is the weight of conv layer, default 0.
+        power_iters(int): number of power iterations to calculate spectral norm, default 1.
+        eps(float): epsilon for numerical stability in calculating norms, it will be added to
+                    the denominator to aviod divide zero. Default 1e-12.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.

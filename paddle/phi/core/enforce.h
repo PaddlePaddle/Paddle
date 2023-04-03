@@ -287,6 +287,11 @@ inline bool is_error(bool stat) { return !stat; }
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
+#define __THROW_WARN_INTERNAL__(__MSG__)    \
+  do {                                      \
+    LOG(WARNING) << "WARNING :" << __MSG__; \
+  } while (0)
+
 /** ENFORCE EXCEPTION AND MACROS **/
 
 struct EnforceNotMet : public std::exception {
@@ -421,6 +426,17 @@ struct EnforceNotMet : public std::exception {
     }                                                          \
   } while (0)
 
+#define PADDLE_WARN_NOT_NULL(__VAL, ...)                  \
+  do {                                                    \
+    if (UNLIKELY(nullptr == (__VAL))) {                   \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);  \
+      auto __message__ = ::paddle::string::Sprintf(       \
+          "%s\n  [Hint: " #__VAL " should not be null.]", \
+          __summary__.error_message());                   \
+      __THROW_WARN_INTERNAL__(__message__);               \
+    }                                                     \
+  } while (0)
+
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
   do {                                                                  \
     auto __val1 = (__VAL1);                                             \
@@ -467,6 +483,59 @@ struct EnforceNotMet : public std::exception {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+ */
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = phi::errors::NotFound(                         \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          phi::demangle(                                                \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE,                                                       \
+          __NAME,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __ROLE,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __NAME);                                                      \
+      auto __message__ = ::paddle::string::Sprintf(                     \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
+          __summary__.error_message());                                 \
+      __THROW_ERROR_INTERNAL__(                                         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
+    }                                                                   \
+    return *__ptr;                                                      \
+  })())
 
 /*
  * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get
@@ -830,6 +899,19 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                        \
   } while (0)
 
+#define PADDLE_WARN_GPU_SUCCESS(COND)                        \
+  do {                                                       \
+    auto __cond__ = (COND);                                  \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
+    constexpr auto __success_type__ =                        \
+        ::phi::enforce::details::ExternalApiType<            \
+            __CUDA_STATUS_TYPE__>::kSuccess;                 \
+    if (UNLIKELY(__cond__ != __success_type__)) {            \
+      __THROW_WARN_INTERNAL__(                               \
+          ::phi::enforce::build_nvidia_error_msg(__cond__)); \
+    }                                                        \
+  } while (0)
+
 #define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \
   do {                                                                      \
     auto res = cudaGetLastError();                                          \
@@ -1034,6 +1116,18 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
           ::phi::enforce::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);               \
     }                                                      \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                                          \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
+    constexpr auto __success_type__ =                                          \
+        ::phi::enforce::details::ExternalApiType<                              \
+            __CUDA_STATUS_TYPE__>::kSuccess;                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                              \
+      __THROW_WARN_INTERNAL__(::phi::enforce::build_rocm_error_msg(__cond__)); \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {

@@ -138,7 +138,7 @@ class AutoParalSupplementDepPass(PassBase):
                 prior_varname = op.output("ParamOut")[0]
 
         # insert deps
-        indice = sorted(list(deps_map.keys()), reverse=True)
+        indice = sorted(deps_map.keys(), reverse=True)
         for idx in indice:
             prior_var = main_block.var(deps_map[idx][0])
             post_var = main_block.var(deps_map[idx][1])
@@ -150,9 +150,6 @@ class AutoParalSupplementDepPass(PassBase):
                 post_var,
                 self._dist_context,
                 OpRole.Optimize,
-                process_mesh=[
-                    -1
-                ],  # hack to avoid initialize the dist attr for coalesc var
                 is_recompute=False,
                 sync=False,
                 op_namescope=op_namescope,

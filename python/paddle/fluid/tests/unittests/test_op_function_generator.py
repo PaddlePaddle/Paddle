@@ -17,12 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 
 
-class TestTracedLayer(fluid.dygraph.Layer):
+class TestTracedLayer(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

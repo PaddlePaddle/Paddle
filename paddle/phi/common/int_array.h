@@ -14,10 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+
+namespace phi {
+class DDim;
+}  // namespace phi
 
 namespace paddle {
+class Tensor;
 namespace experimental {
 
 template <typename T>
@@ -46,6 +53,8 @@ class IntArrayBase {
   bool FromTensor() const { return is_from_tensor_; }
 
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
+
+  explicit IntArrayBase(const phi::DDim& dims);
 
   // The Tensor must have one dim
   IntArrayBase(const T& tensor);  // NOLINT
@@ -103,8 +112,7 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

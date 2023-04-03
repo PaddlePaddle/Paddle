@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -57,7 +57,7 @@ class TestTopkOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 if __name__ == "__main__":

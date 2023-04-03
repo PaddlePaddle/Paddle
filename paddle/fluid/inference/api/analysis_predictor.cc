@@ -190,7 +190,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
-        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        t->numel() * phi::SizeOf(t->dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
@@ -240,9 +240,27 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUSTOM_DEVICE, should not reach here."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -358,14 +376,6 @@ void AnalysisPredictor::InitPlace() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
-  } else if (config_.use_npu()) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use NPU forward propagation, but Paddle was not compiled "
-        "with WITH_ASCEND_CL."));
-#endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
       place_ = paddle::platform::CPUPlace();
@@ -523,8 +533,8 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices();
     paddle::framework::InitMemoryMethod();
+    paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
@@ -1183,6 +1193,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
+  argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1190,7 +1201,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetUseXpu(config_.use_xpu_);
     argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     argument_->SetXpuLocked(config_.xpu_locked_);
     argument_->SetXpuAutotune(config_.xpu_autotune_);
@@ -1281,7 +1291,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
-
 #ifdef PADDLE_WITH_XPU
   argument_->SetUseXpu(config_.use_xpu_);
   argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
@@ -1299,21 +1308,26 @@ void AnalysisPredictor::PrepareArgument() {
   // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
-              << ", we will use a new PassStrategy. Note that only the GPU "
+              << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
-      pass_builder->ClearPasses();
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kTrtLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
       } else if (config_.use_gpu()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
+      } else if (config_.use_xpu()) {
+        // All passes support fp16. Not reset pass_builder.
+      } else {
+        pass_builder->ClearPasses();
       }
     }
   }
@@ -1338,6 +1352,15 @@ void AnalysisPredictor::PrepareArgument() {
       LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
     }
   }
+
+  argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
+  if (config_.enable_custom_device_mixed_) {
+    argument_->SetEnableIrOptim(true);
+    pass_builder->ClearPasses();
+    pass_builder->AppendPass("auto_mixed_precision_pass");
+    LOG(INFO) << "This model run in Custom Device mixed precision mode.";
+  }
+
   argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
@@ -1496,32 +1519,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
-        }
-
-        // support set gflags from environment.
-        std::vector<std::string> gflags;
-        const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-        std::ostringstream os;
-        for (auto &pair : env_map) {
-          os << pair.second.name << ",";
-        }
-        std::string tryfromenv_str = os.str();
-        if (!tryfromenv_str.empty()) {
-          tryfromenv_str.pop_back();
-          tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
-          gflags.push_back(tryfromenv_str);
-        }
-        if (framework::InitGflags(gflags)) {
-          VLOG(3)
-              << "The following gpu analysis configurations only take effect "
-                 "for the first predictor: ";
-          for (const auto &gflag : gflags) {
-            VLOG(3) << gflag;
-          }
-        } else {
-          LOG(WARNING) << "The one-time configuration of analysis predictor "
-                          "failed, which may be due to native predictor called "
-                          "first and its configurations taken effect.";
         }
       });
 
@@ -1761,7 +1758,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1817,7 +1815,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2406,6 +2405,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_mod_weight);
 USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
@@ -2415,12 +2415,14 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(elementwise_mod_tensor);
 USE_TRT_CONVERTER(less_than);
 USE_TRT_CONVERTER(greater_than);
 USE_TRT_CONVERTER(logical_or);
 USE_TRT_CONVERTER(logical_xor);
 USE_TRT_CONVERTER(logical_and);
 USE_TRT_CONVERTER(less_equal);
+USE_TRT_CONVERTER(greater_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2438,6 +2440,9 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(pad3d);
+#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -2447,6 +2452,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(where);
+USE_TRT_CONVERTER(bitwise_not);
 USE_TRT_CONVERTER(one_hot);
 USE_TRT_CONVERTER(one_hot_v2);
 USE_TRT_CONVERTER(swish);
@@ -2560,8 +2566,13 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
 #endif
+#if IS_TRT_VERSION_GE(8510)
+USE_TRT_CONVERTER(grid_sampler)
+#endif
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(set_value)
+USE_TRT_CONVERTER(index_select);
+USE_TRT_CONVERTER(temporal_shift)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

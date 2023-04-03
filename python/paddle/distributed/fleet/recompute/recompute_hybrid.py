@@ -85,7 +85,7 @@ class _HPRecomputeFunction(PyLayer):
         offload,
         partition,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         # store for recomputing
@@ -125,9 +125,8 @@ class _HPRecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+        ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -203,16 +202,23 @@ class _HPRecomputeFunction(PyLayer):
             with swith_rng_state_tracker(
                 ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
             ):
-                with paddle.amp.auto_cast(
-                    enable=ctx.is_fw_autocast,
-                    custom_white_list=ctx.amp_white_list,
-                    custom_black_list=ctx.amp_black_list,
-                    level=ctx.amp_level,
-                ):
+                if ctx.is_fw_autocast:
+                    with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ):
+                        detached_inputs = detach_variable(tuple(inputs))
+                        outputs = ctx.run_function(
+                            *detached_inputs, **ctx.kwargs
+                        )
+                else:
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, core.eager.Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -221,7 +227,7 @@ class _HPRecomputeFunction(PyLayer):
 
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], core.eager.Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -237,7 +243,7 @@ class _HPRecomputeFunction(PyLayer):
             grads = tuple(
                 inp._grad_ivar()
                 for inp in detached_inputs
-                if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                if isinstance(inp, core.eager.Tensor)
             )
             return grads
 

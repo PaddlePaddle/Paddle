@@ -20,20 +20,21 @@ from paddle.device import (
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
+from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers.utils import (
+from ...framework import no_grad
+from ...tensor.manipulation import squeeze, unsqueeze
+from ...utils import (
     _contain_var,
     _convert_to_tensor_list,
     _is_symmetric_padding,
     convert_to_list,
 )
-from ...framework import no_grad
-from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -97,7 +98,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError("In valid padding: {}".format(padding))
+            raise ValueError(f"In valid padding: {padding}")
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
@@ -247,12 +248,30 @@ def _conv_nd(
         )
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias], 'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': channel_dim, 'use_mkldnn': use_mkldnn},
-            )
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                )
+            else:
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
+
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                )
         else:
             out = pre_bias
     return out
@@ -1335,7 +1354,30 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
+            out = helper.create_variable_for_type_inference(x.dtype)
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': False},
+                )
+            else:
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': False},
+                )
         else:
             out = pre_bias
 

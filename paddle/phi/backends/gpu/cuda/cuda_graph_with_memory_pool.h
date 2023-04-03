@@ -18,7 +18,7 @@
 #include <utility>
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #endif

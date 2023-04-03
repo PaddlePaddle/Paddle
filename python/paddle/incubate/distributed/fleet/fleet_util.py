@@ -23,7 +23,8 @@ import time
 
 import numpy as np
 
-import paddle.fluid as fluid
+import paddle
+from paddle import fluid
 from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.log_helper import get_logger
 
@@ -54,13 +55,13 @@ class FleetUtil:
     def __init__(self, mode="pslib"):
         global fleet
         if mode == "pslib":
-            from paddle.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.distributed.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 
             fleet = fleet_pslib
         elif mode == "transpiler":
-            from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
+            from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
                 fleet as fleet_transpiler,
             )
 
@@ -421,7 +422,7 @@ class FleetUtil:
         xbox_base_key = int(xbox_base_key)
 
         if pass_id != "-1":
-            suffix_name = "/%s/%s/" % (day, pass_id)
+            suffix_name = f"/{day}/{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
         else:
             suffix_name = "/%s/0/" % day
@@ -460,19 +461,19 @@ class FleetUtil:
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        f"write {day}/{pass_id} {donefile_name} succeed"
                     )
                 else:
                     self.rank0_error(
-                        "not write %s because %s/%s already "
-                        "exists" % (donefile_name, day, pass_id)
+                        "not write {} because {}/{} already "
+                        "exists".format(donefile_name, day, pass_id)
                     )
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
                 client.upload(donefile_name, output_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    f"write {day}/{pass_id} {donefile_name} succeed"
                 )
         fleet._role_maker._barrier_worker()
 
@@ -529,7 +530,7 @@ class FleetUtil:
 
         if pass_id != "-1":
             mode = "patch"
-            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            suffix_name = f"/{day}/delta-{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_patch_done.txt"
@@ -579,19 +580,19 @@ class FleetUtil:
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        f"write {day}/{pass_id} {donefile_name} succeed"
                     )
                 else:
                     self.rank0_error(
-                        "not write %s because %s/%s already "
-                        "exists" % (donefile_name, day, pass_id)
+                        "not write {} because {}/{} already "
+                        "exists".format(donefile_name, day, pass_id)
                     )
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 client.upload(donefile_name, output_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    f"write {day}/{pass_id} {donefile_name} succeed"
                 )
         fleet._role_maker._barrier_worker()
 
@@ -605,7 +606,7 @@ class FleetUtil:
         hadoop_fs_ugi,
         hadoop_home="$HADOOP_HOME",
         donefile_name="sparse_cache.meta",
-        **kwargs
+        **kwargs,
     ):
         """
         write cache donefile
@@ -692,7 +693,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/%s/" % (day, pass_id)
+        suffix_name = f"/{day}/{pass_id}/"
         load_path = output_path + suffix_name
         self.rank0_error("going to load_model %s" % load_path)
         self.load_fleet_model(load_path)
@@ -717,7 +718,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/%s/" % (day, pass_id)
+        suffix_name = f"/{day}/{pass_id}/"
         model_path = output_path + suffix_name
         self.rank0_print("going to save_model %s" % model_path)
         self.save_fleet_model(model_path)
@@ -765,7 +766,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/delta-%s/" % (day, pass_id)
+        suffix_name = f"/{day}/delta-{pass_id}/"
         model_path = output_path + suffix_name
         self.rank0_print("going to save_delta_model %s" % model_path)
         fleet.save_persistables(None, model_path, mode=1)
@@ -821,7 +822,7 @@ class FleetUtil:
         pass_id = str(pass_id)
         mode = int(mode)
         table_id = kwargs.get("table_id", 0)
-        suffix_name = "/%s/delta-%s" % (day, pass_id)
+        suffix_name = f"/{day}/delta-{pass_id}"
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
         key_num = fleet.save_cache_model(
@@ -995,9 +996,9 @@ class FleetUtil:
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
-                dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
+                dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "%s/%s/delta-%s/dnn_plugin/" % (
+                dest = "{}/{}/delta-{}/dnn_plugin/".format(
                     output_path,
                     day,
                     pass_id,
@@ -1087,11 +1088,13 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
+                    paddle.static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
                 else:
-                    fluid.io.save_vars(executor, model_name, program, vars=vars)
+                    paddle.static.io.save_vars(
+                        executor, model_name, program, vars=vars
+                    )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -1100,9 +1103,9 @@ class FleetUtil:
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
-                dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
+                dest = f"{output_path}/{day}/base/dnn_plugin/"
             else:
-                dest = "%s/%s/delta-%s/dnn_plugin/" % (
+                dest = "{}/{}/delta-{}/dnn_plugin/".format(
                     output_path,
                     day,
                     pass_id,
@@ -1292,7 +1295,9 @@ class FleetUtil:
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
-        splits_per_day = 24 * 60 // split_interval
+        splits_per_day = (
+            (int(hours[-1]) - int(hours[0]) + 1) * 60 // split_interval
+        )
         pass_per_day = splits_per_day // split_per_pass
         left_train_hour = int(hours[0])
         right_train_hour = int(hours[-1])
@@ -1957,7 +1962,7 @@ class GPUPSUtil(FleetUtil):
         xbox_base_key = int(xbox_base_key)
 
         if pass_id != "-1":
-            suffix_name = "/%s/%s/" % (day, pass_id)
+            suffix_name = f"/{day}/{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
         else:
             suffix_name = "/%s/0/" % day
@@ -1995,19 +2000,19 @@ class GPUPSUtil(FleetUtil):
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        f"write {day}/{pass_id} {donefile_name} succeed"
                     )
                 else:
                     self.rank0_error(
-                        "not write %s because %s/%s already "
-                        "exists" % (donefile_name, day, pass_id)
+                        "not write {} because {}/{} already "
+                        "exists".format(donefile_name, day, pass_id)
                     )
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    f"write {day}/{pass_id} {donefile_name} succeed"
                 )
 
     def write_xbox_donefile(
@@ -2060,7 +2065,7 @@ class GPUPSUtil(FleetUtil):
         mode = None
         if pass_id != "-1":
             mode = "patch"
-            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            suffix_name = f"/{day}/delta-{pass_id}/"
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_patch_done.txt"
@@ -2112,19 +2117,19 @@ class GPUPSUtil(FleetUtil):
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
                     self.rank0_info(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        f"write {day}/{pass_id} {donefile_name} succeed"
                     )
                 else:
                     self.rank0_info(
-                        "not write %s because %s/%s already "
-                        "exists" % (donefile_name, day, pass_id)
+                        "not write {} because {}/{} already "
+                        "exists".format(donefile_name, day, pass_id)
                     )
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    f"write {day}/{pass_id} {donefile_name} succeed"
                 )
 
     def write_cache_donefile(
@@ -2134,7 +2139,7 @@ class GPUPSUtil(FleetUtil):
         pass_id,
         key_num,
         donefile_name="sparse_cache.meta",
-        **kwargs
+        **kwargs,
     ):
         """
         write cache donefile

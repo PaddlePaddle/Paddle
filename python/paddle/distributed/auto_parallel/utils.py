@@ -22,8 +22,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
@@ -273,7 +273,7 @@ def _get_comm_group(processes, shape, axis, rank):
     Given a rank and the processes mesh the rank belongs to,
     compute the communication peers of the rank based on the give axis in the mesh.
 
-    Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
+    Example: 16 processes managed in a 4-Dimensional mesh with shape of [2, 2, 2, 2].
     the rank communication peers of rank 0 (included) are following:
     in axis 0: [0, 1]
     in axis 1: [0, 2]
@@ -347,7 +347,7 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     # that the processes in mesh are
     #    1. starts from 0
     #    2. continuous
-    # it will be wrong if ths above condition doesnot meet,
+    # it will be wrong if ths above condition does not meet,
     # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
     # if you want a more general mapping, you should use cartesian product
 
@@ -521,9 +521,7 @@ def _check_valid_path(file_path):
                     "but got '{}'.".format(str(type(file)))
                 )
             if not os.path.exists(file):
-                raise ValueError(
-                    "The file path '{}' does not exist.".format(file)
-                )
+                raise ValueError(f"The file path '{file}' does not exist.")
         return file_path
     else:
         raise TypeError(
@@ -594,7 +592,7 @@ def save_distributed_checkpoint(
     dist_context=None,
 ):
     """
-    Save model parameter state, optimzer state, distributed attribute and
+    Save model parameter state, optimizer state, distributed attribute and
     additional information of each rank.
 
     Args:
@@ -742,16 +740,14 @@ def _save_distributed_attribute(program, dist_attr_path, dist_context):
     # TODO: just save a complete distributed attribute file
     rank_id = paddle.distributed.get_rank()
     dist_attr_name = os.path.join(
-        dist_attr_path, "dist_attr_rank{}.pdattr".format(rank_id)
+        dist_attr_path, f"dist_attr_rank{rank_id}.pdattr"
     )
     dist_attr_dict = {
         "model": get_dist_attr(program, dist_context),
         "world_size": paddle.distributed.get_world_size(),
     }
     paddle.save(dist_attr_dict, dist_attr_name)
-    logging.info(
-        "Already saved distributed attribute to '{}'.".format(dist_attr_path)
-    )
+    logging.info(f"Already saved distributed attribute to '{dist_attr_path}'.")
 
 
 def _load_distributed_attribute(dist_attr_path):
@@ -774,7 +770,7 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
     """Save parameters' state_dict"""
     rank = paddle.distributed.get_rank()
     ckpt_file_name = os.path.join(
-        checkpoint_path, "model_state_rank{}.pdmodel".format(rank)
+        checkpoint_path, f"model_state_rank{rank}.pdmodel"
     )
     state_dict = {
         "model": program.state_dict(),
@@ -782,7 +778,7 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
         "addition_info": addition_info,
     }
     paddle.save(state_dict, ckpt_file_name)
-    logging.info("Already saved model to '{}'.".format(checkpoint_path))
+    logging.info(f"Already saved model to '{checkpoint_path}'.")
 
 
 def _load_distributed_state_dict(checkpoint_path):
@@ -1172,7 +1168,7 @@ def _get_split_indices(
             split_indices_list = partition_index
     split_indices_list = list(
         map(
-            lambda x, y: list(set(x) - set([y]) - set([0])),
+            lambda x, y: list(set(x) - {y} - {0}),
             split_indices_list,
             complete_shape,
         )
@@ -1263,6 +1259,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu_grad",
                 "exp_grad",
                 "sigmoid_grad",
+                "unsqueeze2_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1283,6 +1280,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu",
                 "exp",
                 "sigmoid",
+                "unsqueeze2",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1424,9 +1422,6 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
 def naive_set_dist_op_attr_for_program_by_mesh(
     new_op, process_mesh, ctx, is_recompute=False
 ):
-    # hack to skip coalesce var for dist attr
-    if not is_recompute:
-        return
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistAttr()
@@ -1685,7 +1680,7 @@ def get_standalone_cost_data(distributed_programs):
                 shape = info[
                     shape_left_boundary + 1 : shape_right_boundary
                 ].split(",")
-                shape = list(map(lambda x: int(x.strip()), shape))
+                shape = [int(x.strip()) for x in shape]
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
                 if op.type == "c_embedding":
@@ -1791,7 +1786,9 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
         return
     # Third, print error infomation if we cannot find the original id
     else:
-        assert False, "Cannot find the original id in the distributed context"
+        raise AssertionError(
+            "Cannot find the original id in the distributed context"
+        )
 
 
 def to_list(value):
@@ -2312,17 +2309,33 @@ def insert_dependencies_for_vars(
             },
             outputs={"Out": post_vars},
         )
-
-    # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
-    # depend_op.desc.set_input("Dep", [first_var.name])
-    # self.desc.set_output(out_proto.name, out_arg_names)
 
-    naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, process_mesh, dist_context, is_recompute
-    )
+    # TODO: condition can be removed when add correct dist_attr for coalesce vars and ops in sharding_pass
+    if is_recompute or process_mesh != [-1]:
+        depend_op_dist_attr = OperatorDistAttr()
+        depend_op_dist_attr.impl_idx = 0
+        depend_op_dist_attr.impl_type = "default"
+        depend_op_dist_attr.process_mesh = process_mesh
+        depend_op_dist_attr.is_recompute = is_recompute
+        for input_varname in depend_op.desc.input_arg_names():
+            var = block.var(input_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+        for output_varname in depend_op.desc.output_arg_names():
+            var = block.var(output_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+        dist_context.set_op_dist_attr_for_program(
+            depend_op, depend_op_dist_attr
+        )
+
     if op_namescope is not None:
-        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
+        depend_op._set_attr('op_namescope', f"/{op_namescope}")
 
     if sync:
         block._sync_with_cpp()

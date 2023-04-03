@@ -20,7 +20,7 @@ from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
 from .parallel import ParallelEnv  # noqa: F401
-
+from .parallel import DataParallel
 from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
@@ -46,6 +46,7 @@ from .communication import (
     reduce,
     send,
     scatter,
+    gather,
     scatter_object_list,
     isend,
     recv,
@@ -82,6 +83,7 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "gather",
     "scatter_object_list",
     "broadcast",
     "broadcast_object_list",

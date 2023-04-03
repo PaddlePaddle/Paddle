@@ -24,7 +24,7 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 from paddle.fluid import core, debugger
 from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
@@ -382,8 +382,8 @@ class UtilBase:
             if paddle.static.io.is_persistable(v)
         ]
         pruned_vars = OrderedDict(pruned_vars)
-        pruned_vars_name = [name for name in pruned_vars]
-        print("persistable vars in pruned program: {}".format(pruned_vars_name))
+        pruned_vars_name = list(pruned_vars)
+        print(f"persistable vars in pruned program: {pruned_vars_name}")
 
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         feed_fetch_type_list = [
@@ -425,7 +425,7 @@ class UtilBase:
         def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
             def reader(batch_size, fn, dim):
                 data = []
-                if isinstance(dim, list) or isinstance(dim, tuple):
+                if isinstance(dim, (list, tuple)):
                     shape = list(dim)
                     _temp = 1
                     for x in dim:
@@ -688,5 +688,5 @@ class UtilBase:
                 )
             for i, v in enumerate(fetch_list):
                 print("fetch_targets name: %s" % v.name)
-                print("fetch_targets: {}".format(results[i]))
+                print(f"fetch_targets: {results[i]}")
             return results

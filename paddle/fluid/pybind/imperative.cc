@@ -350,7 +350,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<phi::DenseTensor>());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "We should only get paddle::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }
@@ -2613,19 +2613,6 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<imperative::HCCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::HCCLParallelContext>>(
-      m, "HCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::NPUPlace &>())
-      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
 

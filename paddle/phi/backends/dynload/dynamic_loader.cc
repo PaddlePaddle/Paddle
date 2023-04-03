@@ -484,6 +484,20 @@ void* GetWarpRNNTDsoHandle() {
 #endif
 }
 
+void* GetFlashAttnDsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(
@@ -503,24 +517,6 @@ void* GetNCCLDsoHandle() {
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
   return GetDsoHandleFromSearchPath(
       FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
-#else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
-#endif
-}
-void* GetHCCLDsoHandle() {
-  std::string warning_msg(
-      "You may need to install 'hccl2' from Huawei official website: "
-      "before install PaddlePaddle.");
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.dylib", true, {}, warning_msg);
-#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
-  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
-
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_hccl_dir, "libhccl.so", true, {}, warning_msg);
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);

@@ -11,23 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of Role Makers."""
+"""Definition of Role Makers."""
 
 import os
 import time
 from multiprocessing import Manager, Process
 
-import paddle.fluid as fluid
+from paddle import fluid
 
-__all__ = [
-    'Role',
-    'RoleMakerBase',
-    'MPISymetricRoleMaker',
-    'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker',
-    'PaddleCloudRoleMaker',
-    'GeneralRoleMaker',
-]
+__all__ = []
 
 
 class Role:
@@ -949,7 +941,7 @@ class GeneralRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self.generate_role()
-        input_list = [i for i in input]
+        input_list = list(input)
         ans = self._node_type_comm.all_reduce(input_list, mode)
         for i in range(len(ans)):
             output[i] = ans[i]
@@ -1037,7 +1029,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return "lo"
 
     def __start_kv_server(self, http_server_d, size_d):
-        from paddle.distributed.launch.utils.kv_server import KVServer
+        from paddle.distributed.fleet.utils.http_server import KVServer
 
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
