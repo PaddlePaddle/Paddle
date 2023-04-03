@@ -144,35 +144,59 @@ class SkipLayerNormOpConverter : public OpConverter {
       };
 
       if (use_smooth) {
+        VLOG(4) << "using special method, make sure you have correct version "
+                   "of tensorrt";
         type = static_cast<int32_t>(nvinfer1::DataType::kINT8);
         fields.push_back({"smooth_scale",
                           smooth_scale.data(),
                           nvinfer1::PluginFieldType::kFLOAT32,
                           static_cast<int32_t>(smooth_scale.size())});
+        nvinfer1::PluginFieldCollection* pluginPtr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(nvinfer1::PluginFieldCollection) +
+                       fields.size() *
+                           sizeof(nvinfer1::PluginField)));  // remember to free
+        pluginPtr->nbFields = static_cast<int32_t>(fields.size());
+        pluginPtr->fields = fields.data();
+
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+
+        free(pluginPtr);
+
+        auto plugin_layer = engine_->network()->addPluginV2(
+            inputs.data(), inputs.size(), *pluginObj);
+
+        PADDLE_ENFORCE_NE(
+            plugin_layer,
+            nullptr,
+            platform::errors::InvalidArgument(
+                "fail to add CustomSkipLayerNormPluginDynamic layer"));
+        layer = plugin_layer;
+      } else {
+        nvinfer1::PluginFieldCollection* pluginPtr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(nvinfer1::PluginFieldCollection) +
+                       fields.size() *
+                           sizeof(nvinfer1::PluginField)));  // remember to free
+        pluginPtr->nbFields = static_cast<int32_t>(fields.size());
+        pluginPtr->fields = fields.data();
+
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+
+        free(pluginPtr);
+
+        auto plugin_layer = engine_->network()->addPluginV2(
+            inputs.data(), inputs.size(), *pluginObj);
+
+        PADDLE_ENFORCE_NE(
+            plugin_layer,
+            nullptr,
+            platform::errors::InvalidArgument(
+                "fail to add CustomSkipLayerNormPluginDynamic layer"));
+        layer = plugin_layer;
       }
-
-      nvinfer1::PluginFieldCollection* pluginPtr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                     fields.size() *
-                         sizeof(nvinfer1::PluginField)));  // remember to free
-      pluginPtr->nbFields = static_cast<int32_t>(fields.size());
-      pluginPtr->fields = fields.data();
-
-      auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
-
-      free(pluginPtr);
-
-      auto plugin_layer = engine_->network()->addPluginV2(
-          inputs.data(), inputs.size(), *pluginObj);
-
-      PADDLE_ENFORCE_NE(
-          plugin_layer,
-          nullptr,
-          platform::errors::InvalidArgument(
-              "fail to add CustomSkipLayerNormPluginDynamic layer"));
-      layer = plugin_layer;
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
