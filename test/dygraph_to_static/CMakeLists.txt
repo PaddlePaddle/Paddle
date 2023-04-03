@@ -44,6 +44,13 @@ if(WIN32 AND NOT WITH_GPU)
   )# disable on Windows CPU CI for timeout
 endif()
 
+if(NOT WITH_GPU)
+  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
+  # We should remove this after fix the performance issue.
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
+endif()
+
 foreach(TEST_OP ${TEST_OPS})
   list(FIND TEST_EAGER_OPS ${TEST_OP} WAS_FOUND)
   if(NOT WAS_FOUND EQUAL -1)
@@ -80,12 +87,7 @@ if(APPLE)
   set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 300)
 endif()
 
-if(WIN32 AND NOT WITH_GPU)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
-else()
+if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
