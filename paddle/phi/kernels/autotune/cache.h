@@ -47,17 +47,15 @@ enum class AlgorithmType {
   kMatmul = 5,
   kGatherGemmScatterFP16NN = 6,
   kGatherGemmScatterFP32NN = 7,
-  kGatherGemmScatterFP16TN = 8,
-  kGatherGemmScatterFP32TN = 9,
-  kGatherGemmScatterFP16NT = 10,
-  kGatherGemmScatterFP32NT = 11,
+  kGatherGemmScatterFP32TN = 8,
+  kGatherGemmScatterFP32NT = 9,
 #if !defined(PADDLE_WITH_CUDNN_FRONTEND)
-  kAlgorithmCount = 12
+  kAlgorithmCount = 10
 #else
-  kConvForwardV8 = 12,
-  kConvBackwardDataV8 = 13,
-  kConvBackwardFilterV8 = 14,
-  kAlgorithmCount = 15
+  kConvForwardV8 = 10,
+  kConvBackwardDataV8 = 11,
+  kConvBackwardFilterV8 = 12,
+  kAlgorithmCount = 13
 #endif
 };
 
@@ -112,18 +110,10 @@ class AutoTuneCache {
                                  false,
                                  false,
                                  AlgorithmType::kGatherGemmScatterFP32NN);
-  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
-                                 true,
-                                 false,
-                                 AlgorithmType::kGatherGemmScatterFP16TN);
   DEFINE_GET_GATHER_GEMM_SCATTER(float,
                                  true,
                                  false,
                                  AlgorithmType::kGatherGemmScatterFP32TN);
-  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
-                                 false,
-                                 true,
-                                 AlgorithmType::kGatherGemmScatterFP16NT);
   DEFINE_GET_GATHER_GEMM_SCATTER(float,
                                  false,
                                  true,

@@ -137,13 +137,13 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
-  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
-    if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
-  }
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
-    if (std::is_same<T, float>::value) cutlass = false;
-  }
-  if (std::is_same<T, double>::value) cutlass = false;
+
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) cutlass = false;
+
+  if (std::is_same<T, phi::dtype::float16>::value ||
+      std::is_same<T, double>::value)
+    cutlass = false;
+
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
 
   if (!cutlass) {
@@ -237,7 +237,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
           static_cast<const IntT*>(nullptr),
           scatter_x_indices,
           static_cast<const T>(1.0),
-          static_cast<const T>(1.0));
+          static_cast<const T>(1.0),
+          nullptr);
     } else {
 #endif
       // call gemm: d_kernel = transpose(x) * out_grad

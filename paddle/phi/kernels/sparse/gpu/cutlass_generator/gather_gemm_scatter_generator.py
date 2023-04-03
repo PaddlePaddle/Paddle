@@ -104,8 +104,6 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version, debug=False):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
-        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
-        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
