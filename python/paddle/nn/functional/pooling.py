@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import Variable, in_dygraph_mode
 
@@ -706,7 +708,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
         else:
             for i, var in enumerate(output_size):
                 if isinstance(var, Variable):
-                    output_size[i] = var.item()
+                    output_size[i] = np.array(var).item()
 
     if len(output_size) == len(kernel_size) + 2:
         output_size = output_size[2:]
@@ -1609,7 +1611,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     if in_dygraph_mode():
         output_size = [
-            item.item(0) if isinstance(item, Variable) else item
+            np.array(item).item(0) if isinstance(item, Variable) else item
             for item in output_size
         ]
     # output_size support Variable in static graph mode
