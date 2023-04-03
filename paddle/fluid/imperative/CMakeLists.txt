@@ -157,7 +157,7 @@ if(WITH_GLOO)
          (WITH_NCCL
           OR WITH_RCCL
           OR WITH_XPU_BKCL
-          OR WITH_ASCEND_CL)
+         )
         ))
     cc_library(
       reducer
