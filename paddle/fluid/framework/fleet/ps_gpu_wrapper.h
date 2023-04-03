@@ -49,7 +49,8 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
-#include "xpu/table.h"
+#include "xpu/xdnn.h"
+#include "xpu/xctr.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
