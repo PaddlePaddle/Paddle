@@ -827,6 +827,18 @@
   outputs :
     out : Out
 
+- op : gaussian (gaussian_random)
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [bool use_mkldnn = false]
+  manual_signature : [gaussian]
+
 - op : gelu
   backward : gelu_grad
   inputs :
