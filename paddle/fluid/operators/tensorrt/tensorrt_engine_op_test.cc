@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 
-// #include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
