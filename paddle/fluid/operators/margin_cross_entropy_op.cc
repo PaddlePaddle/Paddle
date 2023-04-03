@@ -12,15 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
-
-namespace phi {
-
-KernelSignature EyeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "eye", {}, {"num_rows", "num_columns", "dtype"}, {"Out"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(eye, phi::EyeOpArgumentMapping);
+// This File is used for compile margin_cross_entropy_op.cu.
+// And this file will be deleted after margin_cross_entropy_op is moved to phi
