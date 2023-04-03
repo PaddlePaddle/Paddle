@@ -302,7 +302,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     auto* reshape_after_mha_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> reshape_tensor;
-    reshape_tensor.push_back(batch_tensor);  // 1 300
+    reshape_tensor.push_back(batch_tensor);
     reshape_tensor.push_back(length_tensor);
     reshape_tensor.push_back(Add1DConstantLayer(-1));
     reshape_after_mha_layer->setInput(1, *Concat(reshape_tensor));
