@@ -226,7 +226,6 @@ def logical_xor(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def logical_not(x, out=None, name=None):
     """
 
@@ -248,7 +247,7 @@ def logical_not(x, out=None, name=None):
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: ${out_comment}
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
