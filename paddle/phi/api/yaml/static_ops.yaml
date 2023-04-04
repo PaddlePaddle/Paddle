@@ -236,6 +236,28 @@
   kernel :
     func : share_buffer
 
+- op : tril_indices
+  args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+
+- op : triu_indices
+  args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TriuIndicesInferMeta
+    param : [row, col, offset, dtype]
+  kernel :
+    func : triu_indices
+    param : [row, col, offset, dtype]
+    data_type : dtype
+
 - op : uniform
   args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
   output : Tensor(out)
