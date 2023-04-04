@@ -267,13 +267,13 @@ class AutoAlignTool:
             dist_attr_path = os.path.join(save_dir, "dist_attr.pkl")
         else:
             vars_path = os.path.join(
-                save_dir, "vars_rank{}.pkl".format(dist.get_rank())
+                save_dir, f"vars_rank{dist.get_rank()}.pkl"
             )
             program_path = os.path.join(
-                save_dir, "program_rank{}.pdmodel".format(dist.get_rank())
+                save_dir, f"program_rank{dist.get_rank()}.pdmodel"
             )
             dist_attr_path = os.path.join(
-                save_dir, "dist_attr_rank{}.pkl".format(dist.get_rank())
+                save_dir, f"dist_attr_rank{dist.get_rank()}.pkl"
             )
         if vars is not None:
             vars_dict = {}
@@ -438,7 +438,7 @@ class AutoAlignTool:
                                 print(
                                     "first different op:\n",
                                     op,
-                                    "\ndifferent varname is:{}".format(varname),
+                                    f"\ndifferent varname is:{varname}",
                                 )
                             if op not in diff_ops_varname_dict:
                                 diff_ops_varname_dict[op] = [varname]
@@ -514,7 +514,7 @@ class AutoAlignTool:
                                 print(
                                     "first different op:\n",
                                     op,
-                                    "\ndifferent varname is:{}".format(varname),
+                                    f"\ndifferent varname is:{varname}",
                                 )
                             if op not in diff_ops_varname_dict:
                                 diff_ops_varname_dict[op] = [varname]

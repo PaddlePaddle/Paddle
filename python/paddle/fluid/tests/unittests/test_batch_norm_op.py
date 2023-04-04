@@ -17,12 +17,12 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, _set_use_system_allocator
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import grad_var_name
-from paddle.fluid.op import Operator
 
 _set_use_system_allocator(True)
 
@@ -617,7 +617,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
@@ -641,7 +641,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.no_grad_set = set(['x@GRAD'])
+        self.no_grad_set = {'x@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
 
 
@@ -747,7 +747,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 ):
     def init_test_case(self):
         self.use_global_stats = True
-        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.no_grad_set = {'scale@GRAD', 'bias@GRAD'}
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 

@@ -69,7 +69,4 @@ PD_REGISTER_KERNEL(momentum,
                    ALL_LAYOUT,
                    phi::MomentumDenseKernel,
                    float,
-                   phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
-}
+                   phi::dtype::float16) {}

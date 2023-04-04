@@ -733,6 +733,22 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+
+      if (!(x_dtype == framework::proto::VarType::FP32 ||
+            x_dtype == framework::proto::VarType::FP16)) {
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -1954,6 +1970,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bitwise_not") {
+#if !IS_TRT_VERSION_GE(8400)
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype == framework::proto::VarType::BOOL ||
+          dtype == framework::proto::VarType::INT8 ||
+          dtype == framework::proto::VarType::UINT8) {
+        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
+        return false;
+      }
+#endif
+    }
+
     if (op_type == "one_hot" || op_type == "one_hot_v2") {
 #if IS_TRT_VERSION_LT(8510)
       VLOG(3) << "one_hot/one_hot_v2 is not supported when TensorRT < 8.5.1";
@@ -2468,7 +2499,21 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
+
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto* x_var_desc = block->FindVar(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+
+      if (!(x_dtype == framework::proto::VarType::FP32 ||
+            x_dtype == framework::proto::VarType::FP16)) {
+        return false;
+      }
+
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
@@ -2778,6 +2823,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "bitwise_not",
       "one_hot",
       "one_hot_v2",
       "swish",
@@ -2935,6 +2981,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "bitwise_not",
       "one_hot",
       "one_hot_v2",
       "swish",
