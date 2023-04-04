@@ -164,8 +164,6 @@ def test(unit_test, use_gpu=False, test_error=False):
                     np_result = np_op(meta_data['x_np'], meta_data['y_np'])
                 else:
                     np_result = np_op(meta_data['x_np'])
-                if data_type == np.uint16:
-                    np_result = convert_float_to_uint16(np_result)
                 unit_test.assertTrue((static_result == np_result).all())
                 unit_test.assertTrue(
                     (dygraph_result.numpy() == np_result).all()
