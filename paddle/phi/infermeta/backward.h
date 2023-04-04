@@ -151,6 +151,10 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
                            bool is_test,
                            MetaTensor* x_grad);
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out);
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,
@@ -294,6 +298,26 @@ void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
                            const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
+void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
+                                           const MetaTensor& key,
+                                           const MetaTensor& value,
+                                           const MetaTensor& bias,
+                                           const MetaTensor& cu_seqlens_q,
+                                           const MetaTensor& cu_seqlens_k,
+                                           const MetaTensor& output,
+                                           const MetaTensor& logsumexp,
+                                           const MetaTensor& seed_and_offset,
+                                           const MetaTensor& output_grad,
+                                           const Scalar& max_seqlen_q,
+                                           const Scalar& max_seqlen_k,
+                                           const bool causal,
+                                           const double dropout_p,
+                                           const float scale,
+                                           MetaTensor* query_grad,
+                                           MetaTensor* key_grad,
+                                           MetaTensor* value_grad,
+                                           MetaTensor* bias_grad);
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);
@@ -323,6 +347,11 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
                                  MetaTensor* x_grad);
+
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy);
 
 void OverlapAddGradInferMeta(const MetaTensor& x,
                              const MetaTensor& out_grad,
@@ -417,25 +446,5 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            int axis,
                            MetaTensor* x_grad,
                            MetaTensor* add_tensor_grad);
-
-void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
-                                           const MetaTensor& key,
-                                           const MetaTensor& value,
-                                           const MetaTensor& bias,
-                                           const MetaTensor& cu_seqlens_q,
-                                           const MetaTensor& cu_seqlens_k,
-                                           const MetaTensor& output,
-                                           const MetaTensor& logsumexp,
-                                           const MetaTensor& seed_and_offset,
-                                           const MetaTensor& output_grad,
-                                           const Scalar& max_seqlen_q,
-                                           const Scalar& max_seqlen_k,
-                                           const bool causal,
-                                           const double dropout_p,
-                                           const float scale,
-                                           MetaTensor* query_grad,
-                                           MetaTensor* key_grad,
-                                           MetaTensor* value_grad,
-                                           MetaTensor* bias_grad);
 
 }  // namespace phi

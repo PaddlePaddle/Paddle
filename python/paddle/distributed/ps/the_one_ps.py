@@ -28,7 +28,7 @@ from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.ps.coordinator import Coordinator
 from paddle.distributed.ps.utils.public import *  # noqa: F403
 from paddle.framework import core
-from paddle.static import CompiledProgram, Executor, ParallelExecutor, Program
+from paddle.static import CompiledProgram, Executor, Program
 
 __all__ = [
     'Table',
@@ -430,7 +430,7 @@ class CommonAccessor(Accessor):
                 break
 
         if oop is None:
-            raise ValueError("can not find optimizer for {}".format(grad_name))
+            raise ValueError(f"can not find optimizer for {grad_name}")
 
         params = []
         dims = []
@@ -727,7 +727,7 @@ class SparseTable(Table):
 
         self.common._set(table_proto.common)
 
-        print('new table_name: {}'.format(self.common.table_name))
+        print(f'new table_name: {self.common.table_name}')
         all_table_proto = self.context[
             "user_defined_strategy"
         ].sparse_table_configs
@@ -1096,7 +1096,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.with_coordinator = self.role_maker._with_coordinator
         self.coordinator_hosts = []
         if self.with_coordinator:
-            print("fl-ps > all ps addrs: {}".format(self.string_hosts))
+            print(f"fl-ps > all ps addrs: {self.string_hosts}")
             coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
             for idx, ep in enumerate(coordinator_endpoints):
                 ip, port = ep.split(":")
@@ -1192,12 +1192,12 @@ class TheOnePSRuntime(RuntimeBase):
         trainer_config = self.context['trainer']
 
         if self.debug:
-            print("worker_desc: \n{}".format(worker_desc))
+            print(f"worker_desc: \n{worker_desc}")
             print("communicator send_ctx:")
             for key in send_ctx:
-                print("{}: {}".format(key, send_ctx[key]))
+                print(f"{key}: {send_ctx[key]}")
             for key in dense_map:
-                print("{}: {}".format(key, dense_map[key]))
+                print(f"{key}: {dense_map[key]}")
 
         kwargs = {}
         kwargs['need_global_step'] = "0"
@@ -1215,9 +1215,9 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
         if not self.is_heter_ps_mode:
             self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
-            print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
-        print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
-        print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
+            print(f"fl-ps > trainer_endpoint: {self.trainer_endpoint}")
+        print(f"fl-ps > with_coordinator? {self.with_coordinator}")
+        print(f"fl-ps > coordinator addr: {self.coordinator_hosts}")
         if self.with_coordinator:
             self._worker.init_fl_worker(
                 self.coordinator_hosts, self.role_id, self.trainer_endpoint
@@ -1325,8 +1325,8 @@ class TheOnePSRuntime(RuntimeBase):
         if self._coordinator is None:
             self._coordinator = Coordinator(self.string_hosts)
 
-        print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
-        print(">>> all trainer endpoints: {}".format(self.trainer_endpoints))
+        print(f">>> curr node ip: {self.coordinator_hosts[0]}")
+        print(f">>> all trainer endpoints: {self.trainer_endpoints}")
         self._coordinator.start_coordinator(
             self.coordinator_hosts[0], self.trainer_endpoints
         )
@@ -1344,7 +1344,7 @@ class TheOnePSRuntime(RuntimeBase):
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
         if self.debug:
-            print("server_desc: \n{}".format(server_desc))
+            print(f"server_desc: \n{server_desc}")
 
         self._server = core.DistFleetWrapper()
         self._server.init_server(
@@ -1491,11 +1491,6 @@ class TheOnePSRuntime(RuntimeBase):
         single file, use `filename` to specify the file name.
         """
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save() function, executor must be as Executor type"
@@ -1525,11 +1520,6 @@ class TheOnePSRuntime(RuntimeBase):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(
@@ -1589,7 +1579,7 @@ class TheOnePSRuntime(RuntimeBase):
         generate_vars = self.context[
             "user_defined_strategy"
         ].trainer_desc_configs["stat_var_names"]
-        generate_vars = [var for var in generate_vars]
+        generate_vars = list(generate_vars)
         remaining_vars = list(
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),

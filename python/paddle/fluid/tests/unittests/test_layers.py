@@ -1738,9 +1738,7 @@ class TestBook(LayerTest):
         words = []
         for i in range(window_size):
             words.append(
-                self._get_data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'
-                )
+                self._get_data(name=f'word_{i}', shape=[1], dtype='int64')
             )
 
         dict_size = 10000

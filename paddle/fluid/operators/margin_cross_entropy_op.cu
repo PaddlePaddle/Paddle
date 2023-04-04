@@ -599,4 +599,14 @@ PD_REGISTER_KERNEL(margin_cross_entropy,
                    phi::MarginCrossEntropyKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(margin_cross_entropy_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MarginCrossEntropyGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 //
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #endif
 
 #include "paddle/phi/common/place.h"
