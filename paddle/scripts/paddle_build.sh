@@ -3914,6 +3914,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
+        rm -rf build
         export PY_VERSION=3.8
         export PYTHON_ABI=cp38-cp38
         export PATH=/opt/_internal/cpython-3.8.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin
