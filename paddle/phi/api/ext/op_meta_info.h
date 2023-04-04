@@ -144,13 +144,18 @@ class PADDLE_API CustomOpKernelContext {
   }
 
   // handle inplace map
-  void MapPlainOutputs(
+  void ConstructInplaceIndex(
+      const std::vector<std::string>& inputs,
+      const std::vector<std::string>& outputs,
+      const std::unordered_map<std::string, std::string>& inplace_map);
+  void UpdatePlainOutputs(
       const std::vector<std::string>& inputs,
       const std::vector<std::string>& outputs,
       const std::unordered_map<std::string, std::string>& inplace_map);
   void AssignInplaceOutputs();
   std::vector<Tensor*>* AllMutablePlainOutput();
-  std::unordered_map<size_t, size_t> GetInplaceTensorMap();
+  std::unordered_map<size_t, size_t> GetInplaceIndexMap();
+  std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap();
 
  private:
   // TODO(chenweihang): replaced be SmallVector
@@ -159,7 +164,10 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<paddle::any> attrs_;
   // handle inplace map
   std::vector<Tensor*> plain_outputs_;
-  std::unordered_map<size_t, size_t> inplace_tensor_map_;
+  // {input: output}
+  std::unordered_map<size_t, size_t> inplace_idx_map_;
+  // {output: input}
+  std::unordered_map<size_t, size_t> inplace_reverse_idx_map_;
 
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
