@@ -108,7 +108,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
 
         checker_config = paddle.amp.debugging.TensorCheckerConfig(
             enable=True,
-            debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_ONLY_AND_ABORT,
+            debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_AND_ABORT,
         )
         paddle.amp.debugging.enable_tensor_checker(checker_config)
         x = paddle.to_tensor(
