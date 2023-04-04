@@ -166,11 +166,10 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
-            mask = mask.astype(np.float32)
         else:
             output = output.astype(self.dtype)
-            mask = mask.astype(self.mask_dtype)
 
+        mask = mask.astype(np.float32)
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
@@ -181,14 +180,16 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         if self.is_bfloat16_op():
             self.inputs = {'X': convert_float_to_uint16(input)}
+            self.outputs = {
+                'Out': convert_float_to_uint16(output),
+                "Mask": mask,
+            }
         else:
             self.inputs = {'X': input}
-
-        self.outputs = {'Out': output, "Mask": mask}
+            self.outputs = {'Out': output, "Mask": mask}
 
     def init_dtype(self):
         self.dtype = np.float64
-        self.mask_dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -249,7 +250,6 @@ def create_test_fp16_class(parent):
     class TestMaxPool3dFP16(parent):
         def init_dtype(self):
             self.dtype = np.float16
-            self.mask_dtype = np.float32
 
         def test_check_output(self):
             if core.is_compiled_with_cuda():
@@ -288,7 +288,7 @@ def create_test_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=1e-2)
+                self.check_output_with_place(place)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -308,8 +308,6 @@ create_test_bf16_class(TestCastAdaptive3d)
 
 
 # ----------------max_pool2d_with_index----------------
-
-
 def max_pool2d_with_index_wapper(
     x,
     kernel_size=[],
@@ -399,7 +397,7 @@ create_test_fp16_class(TestCase7)
 create_test_fp16_class(TestCastAdaptive2d)
 
 
-# ----------------max_pool3d_with_index_bf16----------------
+# ----------------max_pool2d_with_index_bf16----------------
 def create_test_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
@@ -413,7 +411,7 @@ def create_test_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=1e-2)
+                self.check_output_with_place(place)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
