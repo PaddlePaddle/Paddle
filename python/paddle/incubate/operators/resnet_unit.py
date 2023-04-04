@@ -15,7 +15,8 @@
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import _legacy_C_ops, fluid
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer
@@ -49,100 +50,135 @@ def resnet_unit(
     is_test,
     act,
 ):
-
-    helper = LayerHelper('resnet_unit', **locals())
-    bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-    bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
-    out = helper.create_variable_for_type_inference(x.dtype)
-    bit_mask = helper.create_variable_for_type_inference(
-        dtype=bit_mask_dtype, stop_gradient=True
-    )
-    # intermediate_out for x
-    conv_x = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True
-    )
-    saved_mean_x = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True
-    )
-    saved_invstd_x = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True
-    )
-    running_mean_x = mean_x
-    running_var_x = var_x
-    # intermediate_out for z
-    conv_z = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True
-    )
-    saved_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True
-    )
-    saved_invstd_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True
-    )
-    running_mean_z = (
-        helper.create_variable_for_type_inference(
+    if in_dygraph_mode():
+        out, _, _, _, _, _, _ = _legacy_C_ops.resnet_unit(
+            x,
+            filter_x,
+            scale_x,
+            bias_x,
+            mean_x,
+            var_x,
+            'stride',
+            stride,
+            'stride_z',
+            stride_z,
+            'padding',
+            padding,
+            'dilation',
+            dilation,
+            'group',
+            groups,
+            'momentum',
+            momentum,
+            'epsilon',
+            eps,
+            'data_format',
+            data_format,
+            'fuse_add',
+            fuse_add,
+            'has_shortcut',
+            has_shortcut,
+            'use_global_stats',
+            use_global_stats,
+            'is_test',
+            is_test,
+            'act_type',
+            act,
+        )
+    else:
+        helper = LayerHelper('resnet_unit', **locals())
+        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
+        out = helper.create_variable_for_type_inference(x.dtype)
+        bit_mask = helper.create_variable_for_type_inference(
+            dtype=bit_mask_dtype, stop_gradient=True
+        )
+        # intermediate_out for x
+        conv_x = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+        saved_mean_x = helper.create_variable_for_type_inference(
             dtype=bn_param_dtype, stop_gradient=True
         )
-        if mean_z is None
-        else mean_z
-    )
-    running_var_z = (
-        helper.create_variable_for_type_inference(
+        saved_invstd_x = helper.create_variable_for_type_inference(
             dtype=bn_param_dtype, stop_gradient=True
         )
-        if var_z is None
-        else var_z
-    )
+        running_mean_x = mean_x
+        running_var_x = var_x
+        # intermediate_out for z
+        conv_z = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+        saved_mean_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True
+        )
+        saved_invstd_z = helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True
+        )
+        running_mean_z = (
+            helper.create_variable_for_type_inference(
+                dtype=bn_param_dtype, stop_gradient=True
+            )
+            if mean_z is None
+            else mean_z
+        )
+        running_var_z = (
+            helper.create_variable_for_type_inference(
+                dtype=bn_param_dtype, stop_gradient=True
+            )
+            if var_z is None
+            else var_z
+        )
 
-    inputs = {
-        'X': x,
-        'FilterX': filter_x,
-        'ScaleX': scale_x,
-        'BiasX': bias_x,
-        'MeanX': mean_x,
-        'VarX': var_x,
-        'Z': z,
-        'FilterZ': filter_z,
-        'ScaleZ': scale_z,
-        'BiasZ': bias_z,
-        'MeanZ': mean_z,
-        'VarZ': var_z,
-    }
+        inputs = {
+            'X': x,
+            'FilterX': filter_x,
+            'ScaleX': scale_x,
+            'BiasX': bias_x,
+            'MeanX': mean_x,
+            'VarX': var_x,
+            'Z': z,
+            'FilterZ': filter_z,
+            'ScaleZ': scale_z,
+            'BiasZ': bias_z,
+            'MeanZ': mean_z,
+            'VarZ': var_z,
+        }
 
-    attrs = {
-        'stride': stride,
-        'stride_z': stride_z,
-        'padding': padding,
-        'dilation': dilation,
-        'group': groups,
-        'momentum': momentum,
-        'epsilon': eps,
-        'data_format': data_format,
-        'fuse_add': fuse_add,
-        'has_shortcut': has_shortcut,
-        'use_global_stats': use_global_stats,
-        'is_test': is_test,
-        'act_type': act,
-    }
+        attrs = {
+            'stride': stride,
+            'stride_z': stride_z,
+            'padding': padding,
+            'dilation': dilation,
+            'group': groups,
+            'momentum': momentum,
+            'epsilon': eps,
+            'data_format': data_format,
+            'fuse_add': fuse_add,
+            'has_shortcut': has_shortcut,
+            'use_global_stats': use_global_stats,
+            'is_test': is_test,
+            'act_type': act,
+        }
 
-    outputs = {
-        'Y': out,
-        'BitMask': bit_mask,
-        'ConvX': conv_x,
-        'SavedMeanX': saved_mean_x,
-        'SavedInvstdX': saved_invstd_x,
-        'RunningMeanX': running_mean_x,
-        'RunningVarX': running_var_x,
-        'ConvZ': conv_z,
-        'SavedMeanZ': saved_mean_z,
-        'SavedInvstdZ': saved_invstd_z,
-        'RunningMeanZ': running_mean_z,
-        'RunningVarZ': running_var_z,
-    }
+        outputs = {
+            'Y': out,
+            'BitMask': bit_mask,
+            'ConvX': conv_x,
+            'SavedMeanX': saved_mean_x,
+            'SavedInvstdX': saved_invstd_x,
+            'RunningMeanX': running_mean_x,
+            'RunningVarX': running_var_x,
+            'ConvZ': conv_z,
+            'SavedMeanZ': saved_mean_z,
+            'SavedInvstdZ': saved_invstd_z,
+            'RunningMeanZ': running_mean_z,
+            'RunningVarZ': running_var_z,
+        }
 
-    helper.append_op(
-        type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs
-    )
+        helper.append_op(
+            type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs
+        )
 
     return out
 
