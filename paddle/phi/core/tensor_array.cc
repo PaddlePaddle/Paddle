@@ -23,8 +23,12 @@ TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
 /// \brief Test whether the tensor's storage in TensorArray is allocated.
 /// return Whether all tensors in TensorArray is allocated.
 bool TensorArray::initialized() const {
+  if (tensors_.empty()) {
+    return false;
+  }
+
   for (auto tensor : tensors_) {
-    if (!tensor.IsInitialized()) {
+    if (!tensor.initialized()) {
       return false;
     }
   }
@@ -42,18 +46,69 @@ const DDim& TensorArray::dims() const {
 }
 
 const Place& TensorArray::place() const {
-  PADDLE_THROW(errors::Unavailable("place() can't be used in TensorArray"));
-  return tensors_[0].place();
+  PADDLE_ENFORCE_NE(
+      tensors_.size(), 0, errors::Unavailable("TensorArray is not assigned."));
+
+  const Place& place = tensors_[0].place();
+  for (size_t i = 1; i < tensors_.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        tensors_[i].place(),
+        place,
+        errors::Unavailable(
+            "The Place of all tensors in TensorArray must be consistent. The "
+            "current place is %s, but the previous place is %s.",
+            tensors_[i].place(),
+            place));
+  }
+  return place;
 }
 
 DataType TensorArray::dtype() const {
-  PADDLE_THROW(errors::Unavailable("dtype() can't be used in TensorArray"));
-  return DataType::UNDEFINED;
+  PADDLE_ENFORCE_NE(
+      tensors_.size(), 0, errors::Unavailable("TensorArray is not assigned."));
+
+  const DataType dtype = tensors_[0].dtype();
+  for (size_t i = 1; i < tensors_.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        tensors_[i].dtype(),
+        dtype,
+        errors::Unavailable(
+            "The DataType of all tensors in TensorArray must be consistent. "
+            "The current dtype is %s, but the previous dtype is %s.",
+            tensors_[i].dtype(),
+            dtype));
+  }
+  return dtype;
+}
+
+void TensorArray::set_type(const DataType dtype) {
+  for (size_t i = 0; i < tensors_.size(); ++i) {
+    tensors_[i].set_type(dtype);
+  }
 }
 
 DataLayout TensorArray::layout() const {
-  PADDLE_THROW(errors::Unavailable("layout() can't be used in TensorArray"));
-  return DataLayout::UNDEFINED;
+  PADDLE_ENFORCE_NE(
+      tensors_.size(), 0, errors::Unavailable("TensorArray is not assigned."));
+
+  const DataLayout layout = tensors_[0].layout();
+  for (size_t i = 1; i < tensors_.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        tensors_[i].layout(),
+        layout,
+        errors::Unavailable(
+            "The DataLayout of all tensors in TensorArray must be consistent. "
+            "The current layout is %s, but the previous layout is %s.",
+            tensors_[i].layout(),
+            layout));
+  }
+  return layout;
+}
+
+void TensorArray::set_layout(DataLayout layout) {
+  for (size_t i = 0; i < tensors_.size(); ++i) {
+    tensors_[i].set_layout(layout);
+  }
 }
 
 bool TensorArray::valid() const {

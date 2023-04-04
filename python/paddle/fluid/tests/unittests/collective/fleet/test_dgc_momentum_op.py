@@ -18,7 +18,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 
 
 class TestDGCMomentumOp1(unittest.TestCase):
