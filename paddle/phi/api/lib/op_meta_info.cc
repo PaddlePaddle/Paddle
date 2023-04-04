@@ -25,6 +25,11 @@ limitations under the License. */
 namespace paddle {
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+  if (!src.initialized() || !dst->defined()) {
+    VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
+               "happens when handling inplace optional inputs & outputs.";
+    return;
+  }
   PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
                     true,
                     phi::errors::Unavailable(
@@ -98,6 +103,25 @@ Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
   return inputs_.at(idx);
 }
 
+paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
+  if (!inputs_.at(idx).is_initialized()) {
+    return paddle::none;
+  }
+  return paddle::make_optional<paddle::Tensor>(inputs_.at(idx));
+}
+
+paddle::optional<std::vector<Tensor>>
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    if (!inputs_.at(i).is_initialized()) {
+      return paddle::none;
+    }
+    rlt.emplace_back(inputs_.at(i));
+  }
+  return paddle::make_optional<std::vector<Tensor>>(rlt);
+}
+
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }
@@ -134,6 +158,7 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
 
 // handle inplace mechanism
 // Find out non-inplace output tensors.
+// TODO(HongyuJia): Add cache for inplace_tensor_map_ to optimize performance
 void CustomOpKernelContext::MapPlainOutputs(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
@@ -186,8 +211,9 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
-    VLOG(4)
-        << "Custom opertor update inplace input-output tensor successfully.";
+    VLOG(4) << "Custom opertor update inplace input-output tensor "
+               "successfully. Update map size = "
+            << inplace_tensor_map_.size();
   }
 }
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
@@ -211,10 +237,13 @@ OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
   attrs_ = std::forward<std::vector<std::string>>(attrs);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::Inplace(
+OpMetaInfo& OpMetaInfo::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   inplace_map_ =
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
+  for (const auto& pair : inplace_map_) {
+    inplace_reverse_map_[pair.second] = pair.first;
+  }
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
@@ -297,9 +326,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::Inplace(
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
-  info_ptr_->Inplace(
+  const std::vector<std::string>& inputs =
+      OpMetaInfoHelper::GetInputs(*info_ptr_);
+  const std::vector<std::string>& outputs =
+      OpMetaInfoHelper::GetOutputs(*info_ptr_);
+  for (const auto& pair : inplace_map) {
+    PADDLE_ENFORCE(
+        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` before "
+            "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
+            name_));
+    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
+                       outputs.cend(),
+                   phi::errors::PreconditionNotMet(
+                       "The register of operator %s's `SetInplaceMap` failed. "
+                       "Please make sure: 1. Call `Inputs` and `Outputs` "
+                       "before `SetInplaceMap`; 2. The values of inplace_map "
+                       "are inside `Outputs`",
+                       name_));
+  }
+  info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));
   return *this;
 }

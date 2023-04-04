@@ -31,6 +31,8 @@ def apply_pass():
 
     amp = dist_strategy.amp
     amp.enable = True
+    amp.dtype = "float16"
+    amp.level = "o2"
     amp.custom_white_list = ["lookup_table", "lookup_table_v2"]
     amp.custom_black_list = [
         "reduce_sum",
@@ -38,8 +40,6 @@ def apply_pass():
         "elementwise_div",
     ]
     amp.init_loss_scaling = 32768
-    amp.use_fp16_guard = False
-    amp.level = "o2"
 
     qat = dist_strategy.qat
     qat.enable = True
@@ -119,9 +119,6 @@ class TestQuantizationPassExport(unittest.TestCase):
 
     def test_qat_pass_2(self):
 
-        batch_size = 1
-        batch_num = 10
-
         strategy = apply_pass()
         model, loss = generate_model("mp")
         engine = auto.Engine(model, loss, strategy=strategy)
@@ -142,7 +139,7 @@ class TestQuantizationPassExport(unittest.TestCase):
 
         path_prefix = os.path.join(
             self.temp_dir.name,
-            'inf_dist{}'.format(paddle.distributed.get_rank()),
+            f'inf_dist{paddle.distributed.get_rank()}',
         )
         [
             inference_program,

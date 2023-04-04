@@ -18,7 +18,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.fluid import core
 
 
@@ -41,7 +41,7 @@ class CostModel:
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        print("main program is: {}".format(main_program))
+        print(f"main program is: {main_program}")
 
         return startup_program, main_program
 

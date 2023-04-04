@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, fluid
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 
@@ -103,10 +102,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -127,7 +126,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPnormOp(OpTest):
@@ -150,10 +149,10 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -311,7 +310,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     max_relative_error=max_relative_error,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPnormFP16Op.__name__ = cls_name
     globals()[cls_name] = TestPnormFP16Op
 
@@ -349,7 +348,7 @@ class TestPnormBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -358,7 +357,6 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
-            check_eager=True,
         )
 
     def init_test_case(self):
@@ -415,7 +413,7 @@ class TestPnormBF16Op(OpTest):
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
     with fluid.program_guard(fluid.Program()):
-        data = fluid.data(name="X", shape=shape_x, dtype=dtype)
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -437,7 +435,7 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
 
 def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
     with fluid.program_guard(fluid.Program()):
-        data = fluid.data(name="X", shape=shape_x, dtype=dtype)
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -640,7 +638,7 @@ class API_NormTest(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[10, 10], dtype="float32")
+            x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
             self.assertEqual(('frobenius_name' in y_1.name), True)
@@ -650,24 +648,28 @@ class API_NormTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):
-                data = fluid.data(shape=shape_x, dtype=xdtype)
+                data = paddle.static.data(shape=shape_x, dtype=xdtype)
                 paddle.norm(data, p=p, out=out)
 
             self.assertRaises(TypeError, err_dtype, "fro", [2, 2], "int64")
             self.assertRaises(ValueError, paddle.norm, "inf", [2], "int64")
-            out = fluid.data(name="out", shape=[1], dtype="int64")
+            out = paddle.static.data(name="out", shape=[1], dtype="int64")
             self.assertRaises(
                 TypeError, err_dtype, "fro", [2, 2], "float64", out
             )
             self.assertRaises(TypeError, err_dtype, 2, [10], "int64")
             self.assertRaises(TypeError, err_dtype, 2, [10], "float64", out)
 
-            data = fluid.data(name="data_2d", shape=[2, 2], dtype="float64")
+            data = paddle.static.data(
+                name="data_2d", shape=[2, 2], dtype="float64"
+            )
             self.assertRaises(ValueError, paddle.norm, data, p="unsupport norm")
             self.assertRaises(ValueError, paddle.norm, data, p=[1])
             self.assertRaises(ValueError, paddle.norm, data, p=[1], axis=-1)
             self.assertRaises(ValueError, paddle.norm, 0, [1, 0], "float64")
-            data = fluid.data(name="data_3d", shape=[2, 2, 2], dtype="float64")
+            data = paddle.static.data(
+                name="data_3d", shape=[2, 2, 2], dtype="float64"
+            )
             self.assertRaises(
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )

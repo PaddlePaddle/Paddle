@@ -18,8 +18,8 @@ import numpy as np
 from dist_pass_test_base import DistPassTestBase
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
+from paddle import nn
+from paddle.distributed import fleet
 from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
@@ -37,7 +37,7 @@ def verify_op_count(op_types, op_name, target_count):
 
 class MultiFCLayer(nn.Layer):
     def __init__(self, hidden, Activation):
-        super(MultiFCLayer, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(hidden, 4 * hidden)
         self.linear2 = paddle.nn.Linear(4 * hidden, hidden)
         self.linear3 = paddle.nn.Linear(hidden, hidden)

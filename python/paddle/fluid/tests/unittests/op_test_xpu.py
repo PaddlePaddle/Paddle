@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 from xpu.get_test_cover_info import (
@@ -23,8 +23,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 
@@ -67,32 +67,32 @@ class XPUOpTest(OpTest):
     def check_output(
         self,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
-        check_eager=False,
     ):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(
             place,
             atol,
+            rtol,
             no_check_set,
             equal_nan,
             check_dygraph,
             inplace_atol,
-            check_eager,
         )
 
     def check_output_with_place(
         self,
         place,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
-        check_eager=False,
     ):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64:
@@ -105,7 +105,13 @@ class XPUOpTest(OpTest):
         if self.dtype == np.float16:
             atol = 0.1
         return super().check_output_with_place(
-            place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol
+            place,
+            atol,
+            rtol,
+            no_check_set,
+            equal_nan,
+            check_dygraph,
+            inplace_atol,
         )
 
     def check_grad(
@@ -118,9 +124,8 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
-        check_eager=False,
     ):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
@@ -135,7 +140,6 @@ class XPUOpTest(OpTest):
             user_defined_grad_outputs,
             check_dygraph,
             numeric_place,
-            check_eager,
         )
 
     def check_grad_with_place(
@@ -149,9 +153,8 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
-        check_eager=False,
     ):
         if hasattr(self, 'op_type_need_check_grad'):
             xpu_version = core.get_xpu_device_version(0)
@@ -237,12 +240,12 @@ class XPUOpTest(OpTest):
         in_place=False,
         max_relative_error=0.005,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
     ):
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if (

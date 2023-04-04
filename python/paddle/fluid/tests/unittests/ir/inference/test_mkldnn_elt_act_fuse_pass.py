@@ -18,8 +18,8 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -31,10 +31,10 @@ class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data_A = fluid.data(
+            data_A = paddle.static.data(
                 name="data_A", shape=[-1, 3, 100, 100], dtype="float32"
             )
-            data_B = fluid.data(
+            data_B = paddle.static.data(
                 name="data_B", shape=[-1, 3, 100, 100], dtype="float32"
             )
             elt_out = self.operand(data_A, data_B)

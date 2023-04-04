@@ -58,10 +58,6 @@ option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
-# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
-# to develop some acl related functionality on x86
-option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
-option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
@@ -111,14 +107,6 @@ endif()
 if(APPLE AND WITH_ARM)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
   set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
-endif()
-
-if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-  if(WITH_ARM_BRPC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-  endif()
 endif()
 
 if(WIN32)
@@ -298,6 +286,7 @@ option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
+option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
 option(WITH_MUSL "Compile with musl libc instead of gblic" OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode" OFF)
 option(WITH_STRIP "Strip so files of Whl packages" OFF)
@@ -524,15 +513,6 @@ if(WITH_DISTRIBUTE)
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
   endif()
-  if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
-    # disable WITH_PSCORE for NPU before include third_party
-    message(
-      WARNING
-        "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
-    set(WITH_PSCORE
-        OFF
-        CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
-  endif()
   if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
     # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
     message(
@@ -565,13 +545,6 @@ if(WITH_RPC)
     set(WITH_RPC
         OFF
         CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
-  endif()
-  if(WITH_ASCEND_CL AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
   endif()
   if(WITH_ROCM AND WITH_RPC)
     message(
@@ -657,6 +630,16 @@ if(WITH_MIPS)
       OFF
       CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
   add_definitions(-DPADDLE_WITH_MIPS)
+endif()
+
+if(WITH_LOONGARCH)
+  set(WITH_XBYAK
+      OFF
+      CACHE STRING "Disable XBYAK when compiling WITH_LOONGARCH=ON" FORCE)
+  set(WITH_MKL
+      OFF
+      CACHE STRING "Disable MKL when compiling WITH_LOONGARCH=ON." FORCE)
+  add_definitions(-DPADDLE_WITH_LOONGARCH)
 endif()
 
 if(WITH_ONEMKL)

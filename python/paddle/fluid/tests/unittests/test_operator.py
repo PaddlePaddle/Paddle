@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+import op
 
-import paddle.fluid.op as op
-import paddle.fluid.proto.framework_pb2 as framework_pb2
+from paddle.fluid.proto import framework_pb2
 
 
 class TestGetAllProtos(unittest.TestCase):

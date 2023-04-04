@@ -16,12 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def fill_wrapper(shape, value=0.0):
@@ -156,7 +155,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -181,7 +180,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -285,10 +284,10 @@ class TestFillConstantAPI(unittest.TestCase):
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
 
-        shape_tensor_int32 = fluid.data(
+        shape_tensor_int32 = paddle.static.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
-        shape_tensor_int64 = fluid.data(
+        shape_tensor_int64 = paddle.static.data(
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 
@@ -454,7 +453,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             # The shape dtype of fill_constant_op must be int32 or int64.
             def test_shape_tensor_dtype():
-                shape = fluid.data(
+                shape = paddle.static.data(
                     name="shape_tensor", shape=[2], dtype="float32"
                 )
                 paddle.tensor.fill_constant(
@@ -464,7 +463,7 @@ class TestFillConstantOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_dtype)
 
             def test_shape_tensor_list_dtype():
-                shape = fluid.data(
+                shape = paddle.static.data(
                     name="shape_tensor_list", shape=[1], dtype="bool"
                 )
                 paddle.tensor.fill_constant(

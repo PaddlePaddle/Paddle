@@ -22,8 +22,10 @@
 
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
+
 namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
@@ -121,6 +123,26 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto grad_x_tmp = grad_out * (1 - out * out);
   set_output<T>(grad_x_tmp, grad_x);
+}
+
+template <typename T>
+void tanh_double_grad(const Tensor& out,
+                      const Tensor& grad_out,
+                      const Tensor& grad_x_grad,
+                      Tensor* out_grad,
+                      Tensor* grad_out_grad) {
+  // tanh grad grad : ddout = (1 - out^2) * ddx, dout = - (dout_old * 2 * out *
+  // ddx)
+  auto out_m_grad_x_grad = out * grad_x_grad;
+  if (out_grad) {
+    auto out_grad_tmp = -2 * grad_out * out_m_grad_x_grad;
+    set_output<T>(out_grad_tmp, out_grad);
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = grad_x_grad - out * out_m_grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
 }
 
 template <typename T>
@@ -897,6 +919,104 @@ void slice_grad(const Tensor& input,
 }
 
 template <typename T>
+void layer_norm_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& scale,
+                     const paddle::optional<Tensor>& bias,
+                     const Tensor& mean,
+                     const Tensor& variance,
+                     const Tensor& out_grad,
+                     float epsilon,
+                     int begin_norm_axis,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  auto x_dims = x.dims();
+  auto shape_1 = 1;  // front part
+  auto shape_2 = 1;  // back part
+  for (int i = 0; i < begin_norm_axis; ++i) {
+    shape_1 *= x_dims[i];
+  }
+  for (int i = begin_norm_axis; i < x.dims().size(); ++i) {
+    shape_2 *= x_dims[i];
+  }
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+
+  auto x_cast = reshape<T>(x, std::vector<int64_t>({shape_1, shape_2}));
+  auto out_grad_cast =
+      reshape<T>(out_grad, std::vector<int64_t>({shape_1, shape_2}));
+  auto mean_ = reshape<T>(mean, std::vector<int64_t>({shape_1, 1}));
+  auto variance_ = reshape<T>(variance, std::vector<int64_t>({shape_1, 1}));
+
+  Tensor scale_cast;
+  if (scale_ptr) {
+    scale_cast = reshape<T>(*scale_ptr, std::vector<int64_t>({1, shape_2}));
+  }
+
+  // cast dtype to float32 if dtype =float16
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+    out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
+    if (scale_ptr) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+  }
+
+  auto x_sub_mean = x_cast - mean_;          // M,N
+  auto tmp = (1.0 / (variance_ + epsilon));  // M,1
+  auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
+  auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
+
+  if (x_grad) {
+    auto out_grad_scale = out_grad_cast;  // M,N
+    if (scale_ptr) {
+      out_grad_scale = out_grad_cast * scale_cast;  // M,N * 1,N = M,N
+    }
+
+    auto dx_end = sqrt_var_1 * out_grad_scale;
+    auto d_mean =
+        dx_end.sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+
+    auto d_std_1 =
+        (tmp * x_sub_mean * out_grad_scale)
+            .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);  // M,1
+    auto d_std = d_std_1 * x_sub_mean_mul_sqrt_var_1;  // M,1 * M,N = M,N
+
+    auto d_mean_d_std = (1.0 / shape_2) * (d_mean + d_std);
+    auto x_grad_tmp = dx_end - d_mean_d_std;
+    x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
+
+    if (x.dtype() == phi::DataType::FLOAT16) {
+      x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+    }
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (scale_grad) {
+    if (scale_ptr) {
+      auto scale_grad_tmp =
+          (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
+              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+      set_output<T>(scale_grad_tmp, scale_grad);
+    } else {
+      scale_grad = nullptr;
+    }
+  }
+
+  if (bias_grad) {
+    if (bias_ptr) {
+      auto bias_grad_tmp =
+          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
+      bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+      set_output<T>(bias_grad_tmp, bias_grad);
+    } else {
+      bias_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
 void cumsum_grad(const Tensor& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
@@ -947,6 +1067,109 @@ void gather_nd_grad(const Tensor& x,
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
   }
+}
+
+template <typename T>
+void prod_grad(const Tensor& x,
+               const Tensor& out,
+               const Tensor& out_grad,
+               const IntArray& axis,
+               bool keep_dim,
+               bool reduce_all,
+               Tensor* x_grad) {
+  if (x_grad) {
+    std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+    int64_t axis_size = axis.size();
+    int64_t x_dim_size = x_dim.size();
+    reduce_all = false;
+    if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+      reduce_all = true;
+    } else {
+      reduce_all = false;
+    }
+    auto x_grad_tmp = Tensor();
+    auto out_tmp = Tensor();
+    if (x_dim_size == 1) {
+      x_grad_tmp = out_grad.expand(IntArray(x_dim));
+      out_tmp = out.expand(IntArray(x_dim));
+    } else {
+      if (!keep_dim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 1; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
+          }
+        }
+        auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+        x_grad_tmp = out_grad_.expand(IntArray(x_dim));
+        auto out_ = unsqueeze<T>(out, axis_);
+        out_tmp = out_.expand(IntArray(x_dim));
+      } else {
+        x_grad_tmp = out_grad.expand(IntArray(x_dim));
+        out_tmp = out.expand(IntArray(x_dim));
+      }
+    }
+    auto x_grad_res = x_grad_tmp * out_tmp * (1 / x);
+    set_output<T>(x_grad_res, x_grad);
+  }
+}
+
+template <typename T>
+void max_grad(const Tensor& x,
+              const Tensor& out,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool reduce_all,
+              Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
+    auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
+    auto out_tmp = out.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 1; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      axis_ = axis.GetData();
+      for (int64_t i = 0; i < axis_size; i++) {
+        if (axis[i] < 0) {
+          axis_[i] = axis[i] + x_dim_size;
+        }
+      }
+    }
+    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+    auto out_ = unsqueeze<T>(out, axis_);
+    auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
+    auto out_tmp = out_.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+  }
+  set_output<T>(x_grad_tmp, x_grad);
 }
 
 template <typename T>
@@ -1030,15 +1253,48 @@ void dropout_grad(const Tensor& mask,
   } else {
     if (mode == "upscale_in_train") {
       if (p.to<float>() == 1.0f) {
-        set_output<T>(out_grad * 0.0, x_grad);
+        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
       } else {
-        set_output<T>(
-            out_grad * cast<T>(mask, out_grad.dtype()) / (1.0 - p.to<float>()),
-            x_grad);
+        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                               1.0 / (1.0 - p.to<float>())),
+                      x_grad);
       }
     } else {
       set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
     }
+  }
+}
+
+template <typename T>
+void sin_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = cos<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
+void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = -sin<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
+void scatter_grad(const Tensor& index,
+                  const Tensor& updates,
+                  const Tensor& out_grad,
+                  bool overwrite,
+                  Tensor* x_grad,
+                  Tensor* updates_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(phi::vectorize(updates.dims()), 0.0, updates.dtype());
+    auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
+    set_output<T>(tmp_grad, x_grad);
+  }
+
+  if (updates_grad) {
+    Scalar tmp_zero = 0;
+    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+    set_output<T>(tmp_updates_grad, updates_grad);
   }
 }
 
@@ -1097,7 +1353,7 @@ void batch_norm_grad(const Tensor& x,
     auto eps =
         full<T>(phi::vectorize(run_var.dims()), epsilon, run_var.dtype());
     mean_data = run_mean;
-    rsqrt_var = 1 / (run_var + eps).pow(0.5);
+    rsqrt_var = (run_var + eps).pow(-0.5);
   } else {
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
@@ -1119,15 +1375,18 @@ void batch_norm_grad(const Tensor& x,
 
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
   auto dtype = x_data.dtype();
 
   switch (data_layout_) {
     case DataLayout::kNCHW: {
       auto nhwc_x = transpose<T>(x_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
+      auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
 
       auto x_sub_mean = nhwc_x - mean_data;
+      auto sum_dout_mul_diff =
+          sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
 
       if (x_grad) {
         if (use_global_stats) {
@@ -1136,11 +1395,8 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;
-          auto mean_temp1 =
-              sum<T>(nhwc_out_grad, reduce_axis, dtype, false) / nhw;
-
-          auto tmp = nhwc_out_grad * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
-          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
+          auto mean_temp1 = nhwc_out_grad_sum / nhw;
+          auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
           auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
 
           auto x_grad_data = part1 * part2;
@@ -1152,30 +1408,31 @@ void batch_norm_grad(const Tensor& x,
         }
       }
       if (scale_grad) {
-        auto scale_grad_data = sum<T>(
-            nhwc_out_grad * x_sub_mean * rsqrt_var, reduce_axis, dtype, false);
+        auto scale_grad_data = sum_dout_mul_diff * rsqrt_var;
         set_output<T>(scale_grad_data, scale_grad);
       }
       if (bias_grad) {
-        auto bias_grad_data = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
-        set_output<T>(bias_grad_data, bias_grad);
+        set_output<T>(nhwc_out_grad_sum, bias_grad);
       }
       break;
     }
     case DataLayout::kNHWC: {
       if (x_grad) {
         auto x_sub_mean = x_data - mean_data;
+        auto out_grad_data_sum =
+            sum<T>(out_grad_data, reduce_axis, dtype, false);
+        auto nhwc_sum_dout_mul_diff =
+            sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
           set_output<T>(x_grad_data, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;
-          auto mean_temp1 =
-              sum<T>(out_grad_data, reduce_axis, dtype, false) / nhw;
 
-          auto tmp = out_grad_data * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
-          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
-          auto part2 = out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto mean_temp1 = out_grad_data_sum / nhw;
+          auto mean_temp2 =
+              nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1184,16 +1441,11 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(x_grad_data, x_grad);
         }
         if (scale_grad) {
-          auto scale_grad_data = sum<T>(out_grad_data * x_sub_mean * rsqrt_var,
-                                        reduce_axis,
-                                        dtype,
-                                        false);
+          auto scale_grad_data = nhwc_sum_dout_mul_diff * rsqrt_var;
           set_output<T>(scale_grad_data, scale_grad);
         }
         if (bias_grad) {
-          auto bias_grad_data =
-              sum<T>(out_grad_data, reduce_axis, dtype, false);
-          set_output<T>(bias_grad_data, bias_grad);
+          set_output<T>(out_grad_data_sum, bias_grad);
         }
         break;
       }
@@ -1204,5 +1456,78 @@ void batch_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void gelu_grad(const Tensor& x,
+               const Tensor& out_grad,
+               bool approximate,
+               Tensor* x_grad) {
+  if (!x_grad) return;
+  // Promote to fp32 when the input type is fp16 for keeping consistent with
+  // phi kernel
+
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
+    auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
+    if (approximate) {
+      float kbeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+      float kkappa = 0.044715;
+      auto x_sq = promoted_x * promoted_x;
+      auto x_cube = x_sq * promoted_x;
+      auto inner = kbeta * (promoted_x + kkappa * x_cube);
+      auto tanh_inner = tanh<T>(inner);
+
+      auto left = scale<T>(promoted_x, 0.5);
+      auto right = scale<T>(tanh_inner, 1., 1.);
+
+      auto left_derivative = scale<T>(right, 0.5);
+
+      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+      auto inner_derivative = kbeta * (scale<T>(3 * kkappa * x_sq, 1., 1.));
+      auto right_derivative = left * tanh_derivative * inner_derivative;
+
+      set_output<T>(
+          cast<T>(promoted_out_grad * (left_derivative + right_derivative),
+                  x.type()),
+          x_grad);
+    } else {
+      float kalpha = M_SQRT1_2;
+      float kbeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+      auto cdf = scale<T>(scale<T>(erf<T>(kalpha * promoted_x), 1., 1.), 0.5);
+      auto pdf = kbeta * exp<T>(scale<T>(promoted_x * promoted_x, -0.5));
+      set_output<T>(
+          cast<T>(promoted_out_grad * (cdf + promoted_x * pdf), x.type()),
+          x_grad);
+    }
+  } else {
+    // Scale only support fp32 attr in static graph mode, use elementwise_xx
+    // when precision is over fp32.
+    if (approximate) {
+      auto kBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+      auto kKappa = 0.044715;
+      auto x_sq = x * x;
+      auto x_cube = x_sq * x;
+      auto inner = kBeta * (x + kKappa * x_cube);
+      auto tanh_inner = tanh<T>(inner);
+
+      auto left = scale<T>(x, 0.5);
+      auto right = scale<T>(tanh_inner, 1., 1.);
+
+      auto left_derivative = scale<T>(right, 0.5);
+
+      auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+      auto inner_derivative = kBeta * (scale<T>(3 * kKappa * x_sq, 1., 1.));
+      auto right_derivative = left * tanh_derivative * inner_derivative;
+
+      set_output<T>(out_grad * (left_derivative + right_derivative), x_grad);
+    } else {
+      auto kAlpha = M_SQRT1_2;
+      auto kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+      auto cdf = scale<T>(scale<T>(erf<T>(kAlpha * x), 1., 1.), 0.5);
+      auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
+      set_output<T>(out_grad * (cdf + x * pdf), x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle

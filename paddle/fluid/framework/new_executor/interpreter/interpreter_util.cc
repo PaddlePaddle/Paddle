@@ -54,20 +54,14 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "adam",
     "adamw",
     "any_raw",
-    "clip_by_norm",
     "eig_grad",
     "eigh",
-    "graph_sample_neighbors",
-    "group_norm",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
     "less_equal",
     "less_than",
     "merged_adam",
-    "momentum",
-    "multiclass_nms3",
-    "nanmedian",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
@@ -340,6 +334,8 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
+      (!platform::is_xpu_place(place) ||
+       op->Attr<bool>("persist_output") == false) &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
     return OpFuncType::kGpuSync;
@@ -634,16 +630,6 @@ void BuildOpFuncList(const platform::Place& place,
     SingleStreamGuard single_stream_guard(ops[i]);
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-#endif
 
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {

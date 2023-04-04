@@ -550,7 +550,7 @@ class Completer:
         def _find_nodes_related_to_cond(source_node):
             related_nodes = []
             visited = set()
-            frontier = list()
+            frontier = []
             frontier.append(source_node)
             # BFS
             while len(frontier) != 0:
@@ -723,6 +723,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.inputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
             # Step 4: set the process meshes of the outputs in while_op to the process meshes of the outside output nodes
             while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
@@ -749,6 +757,14 @@ class Completer:
                 tensor_dist_attr.process_mesh = (
                     nearest_tensor_dist_attr.process_mesh
                 )
+                for node in while_op_node.outputs:
+                    if node.var().name() == tensor_name:
+                        node_dist_attr = (
+                            self._dist_context.get_dist_attr_for_graph(node)
+                        )
+                        node_dist_attr.process_mesh = (
+                            nearest_tensor_dist_attr.process_mesh
+                        )
 
         # Amend the process meshes related to array
         for array_node_list in self._array_nodes.values():
@@ -1211,7 +1227,7 @@ class Completer:
                             )
                     assert (
                         ref_dims_mapping is not None
-                    ), "[{}] 's dims mapping is NONE".format(input_name)
+                    ), f"[{input_name}] 's dims mapping is NONE"
                     grad_op_dist_attr.set_input_dims_mapping(
                         input_name, ref_dims_mapping
                     )
@@ -1313,9 +1329,7 @@ class Completer:
                     continue
 
                 else:
-                    raise ValueError(
-                        "got unexpect op [{}]".format(str(grad_op.type))
-                    )
+                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr
@@ -1337,7 +1351,7 @@ class Completer:
         def _get_forward_varname_from_grad_varname(grad_var_name):
             assert _is_grad_var_name(
                 grad_var_name
-            ), "[{}] is not a grad varnme.".format(grad_var_name)
+            ), f"[{grad_var_name}] is not a grad varnme."
             return grad_var_name[: grad_var_name.find("@GRAD")]
 
         def _get_op_by_id(ops, id):
@@ -1516,7 +1530,7 @@ class Completer:
                             )
                     assert (
                         ref_dims_mapping is not None
-                    ), "[{}] 's dims mapping is NONE".format(input_name)
+                    ), f"[{input_name}] 's dims mapping is NONE"
                     grad_op_dist_attr.set_input_dims_mapping(
                         input_name, ref_dims_mapping
                     )
@@ -1617,9 +1631,7 @@ class Completer:
                     )
 
                 else:
-                    raise ValueError(
-                        "got unexpect op [{}]".format(str(grad_op.type))
-                    )
+                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr

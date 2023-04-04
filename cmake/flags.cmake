@@ -167,10 +167,6 @@ if(NOT WIN32)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
   endif()
 
-  if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
-    set(COMMON_FLAGS ${COMMON_FLAGS} -faligned-new)
-  endif()
-
   if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
       set(COMMON_FLAGS
@@ -196,7 +192,8 @@ if(NOT WIN32)
   if(NOT WITH_NV_JETSON
      AND NOT WITH_ARM
      AND NOT WITH_SW
-     AND NOT WITH_MIPS)
+     AND NOT WITH_MIPS
+     AND NOT WITH_LOONGARCH)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
   endif()
 endif()

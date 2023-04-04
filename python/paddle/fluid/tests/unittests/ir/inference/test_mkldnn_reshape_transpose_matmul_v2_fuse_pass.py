@@ -18,7 +18,7 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -29,7 +29,7 @@ class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
         self.pass_name = 'reshape_transpose_matmul_mkldnn_fuse_pass'
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=self.data_shape, dtype="float32"
             )
             weight = paddle.create_parameter(

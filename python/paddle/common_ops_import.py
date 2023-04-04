@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle.fluid as fluid  # noqa: F401
+from paddle import fluid  # noqa: F401
 from paddle.fluid import core, dygraph_utils  # noqa: F401
 from paddle.fluid.core import VarDesc  # noqa: F401
 from paddle.fluid.data_feeder import (  # noqa: F401
