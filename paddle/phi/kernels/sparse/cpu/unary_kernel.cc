@@ -141,3 +141,27 @@ PD_REGISTER_KERNEL(cast_csr,
                    int,
                    int64_t,
                    bool) {}
+
+PD_REGISTER_KERNEL(isnan_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IsnanCooKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(isnan_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IsnanCsrKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
