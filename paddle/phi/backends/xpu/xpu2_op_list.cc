@@ -897,6 +897,12 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT64,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"log_loss", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"log_loss_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"fusion_seqpool_cvm_concat", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"fusion_seqpool_cvm_concat_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"data_norm", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"data_norm_grad", XPUKernelSet({phi::DataType::FLOAT32})}, 
   };
 
   return s_xpu2_kernels;

@@ -46,6 +46,13 @@ void* mutable_data(const phi::Place& place,
                    phi::DataType type,
                    const phi::Stream& stream);
 
+template <typename T>
+T* mutable_data_l3(const DDim& dims, const phi::Place& place, size_t requested_size = 0);
+template <typename T>
+T* mutable_data_l3(const phi::Place& place, size_t requested_size = 0);
+void* mutable_data_l3(const phi::Place& place, paddle::experimental::DataType type, size_t requested_size = 0);
+void* mutable_data_l3(const phi::Place& place, size_t requested_size = 0);
+
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
  */
 phi::DataType type() const;

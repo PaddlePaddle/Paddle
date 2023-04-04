@@ -49,6 +49,8 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "xpu/xdnn.h"
+#include "xpu/xctr.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -63,15 +65,17 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"            // NOLINT
-#include "downpour_accessor.h"  // NOLINT
+#include "table/downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+#include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
 DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {
 
 class Dataset;
+class Record;
 
 #ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
@@ -165,7 +169,27 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+#ifdef PADDLE_WITH_PSLIB
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    sign2fid_thread_pool_.init(24);
+#endif
   }
+
+#if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
+  void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
+                          const std::vector<bool> & slot_is_dense);
+  void prepare_next_batch(int thread_id);
+  void build_batch_fidseq(std::vector<paddle::framework::DataFeed*> all_readers);
+#endif
 
   void PullSparse(const paddle::platform::Place& place,
                   const int table_id,
@@ -187,6 +211,20 @@ class PSGPUWrapper {
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int batch_size);
+#if defined(PADDLE_WITH_XPU_KP)
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint32_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
+                int total_len);
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const int hidden_size, const int64_t total_length,
+                   const int batch_size);
+#else
   void CopyKeys(const paddle::platform::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
@@ -200,6 +238,7 @@ class PSGPUWrapper {
                 int slot_num,
                 int total_len,
                 int* key2slot);
+#endif
 
   void divide_to_device(std::shared_ptr<HeterContext> gpu_task);
   void add_slot_feature(std::shared_ptr<HeterContext> gpu_task);
@@ -209,6 +248,7 @@ class PSGPUWrapper {
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
   void PrepareGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
+  void HandlePreloadDoneData(bool is_shuffle);
   void BeginPass();
   void EndPass();
   void add_key_to_local(const std::vector<uint64_t>& keys);
@@ -225,6 +265,7 @@ class PSGPUWrapper {
   void FilterPull(std::shared_ptr<HeterContext> gpu_task,
                   const int shard_id,
                   const int dim_id);
+  #if defined(PADDLE_WITH_CUDA)
   // set mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
@@ -233,6 +274,8 @@ class PSGPUWrapper {
     }
     VLOG(0) << "set infer mode=" << infer_mode;
   }
+  #endif
+  void dump_cache_array();
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
@@ -244,9 +287,11 @@ class PSGPUWrapper {
       this->EndPass();
     }
 #endif
+#ifdef PADDLE_WITH_CUDA
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
     }
+#endif
     data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     buildpull_ready_channel_->Close();
@@ -258,7 +303,9 @@ class PSGPUWrapper {
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
     if (HeterPs_ != NULL) {
+#ifdef PADDLE_WITH_CUDA
       HeterPs_->show_table_collisions();
+#endif
       delete HeterPs_;
       HeterPs_ = NULL;
     }
@@ -266,9 +313,11 @@ class PSGPUWrapper {
       delete[] device_caches_;
       device_caches_ = nullptr;
     }
+
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
+    VLOG(0) << "PSGPUWrapper Begin InitializeGPU";
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
@@ -353,6 +402,7 @@ class PSGPUWrapper {
       device_num_ = static_cast<int>(heter_devices_.size());
 
       // start build cpu&gpu ps thread
+      VLOG(0) << "PSGPUWrapper: before start build thread";
       start_build_thread();
     }
 #ifdef PADDLE_WITH_PSCORE
@@ -633,10 +683,11 @@ class PSGPUWrapper {
     }
     config["sparse_shard_num"] = sparse_table.shard_num();
 
+#if defined(PADDLE_WITH_CUDA)
     GlobalAccessorFactory::GetInstance().Init(accessor_class_);
-
     GlobalAccessorFactory::GetInstance().GetAccessorWrapper()->Configure(
         config);
+#endif
 
     InitializeGPUServer(config);
   }
@@ -903,6 +954,11 @@ class PSGPUWrapper {
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   static std::mutex ins_mutex;
   Dataset* dataset_;
+
+#ifdef PADDLE_WITH_XPU_KP
+  ParallelThreadPool sign2fid_thread_pool_;
+#endif
+
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif

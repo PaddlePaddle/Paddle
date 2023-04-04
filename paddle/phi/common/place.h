@@ -36,6 +36,7 @@ enum class AllocationType : int8_t {
   IPU = 7,
   MLU = 8,
   CUSTOM = 9,
+  XPUL3 = 10,
 };
 
 class CustomRegisteredDeviceMap {
@@ -164,6 +165,16 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
+class XPUL3Place : public Place {
+ public:
+  XPUL3Place() : Place(AllocationType::XPUL3, 0) {}
+  explicit XPUL3Place(int device_id) : Place(AllocationType::XPUL3, device_id) {}
+
+  XPUL3Place(const XPUL3Place&) = default;
+  XPUL3Place(const Place& place)  // NOLINT
+      : Place(AllocationType::XPUL3, place.GetDeviceId()) {}
+};
+
 class NPUPlace : public Place {
  public:
   NPUPlace() : Place(AllocationType::NPU, 0) {}
@@ -231,6 +242,7 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
+using XPUL3Place = phi::XPUL3Place;
 using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
 

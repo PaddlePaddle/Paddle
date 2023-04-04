@@ -1148,6 +1148,14 @@ class DataFeed {
   virtual const std::vector<std::string>& GetUseSlotAlias() {
     return use_slots_;
   }
+  // Get used slots' is_dense info (slot is dense if contain no lod info) 
+  virtual const std::vector<bool>& GetUseSlotIsDense() {
+    return use_slots_is_dense_;
+  }
+
+  virtual const std::vector<bool>& GetUint64UseSlotIsDense() {
+    return uint64_use_slots_is_dense_;
+  }
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
 
@@ -1271,6 +1279,8 @@ class DataFeed {
         "This function(DumpWalkPath) is not implemented."));
   }
 
+  virtual int GetDefaultBatchSize() { return default_batch_size_; }
+
  protected:
   // The following three functions are used to check if it is executed in this
   // order:
@@ -1296,6 +1306,7 @@ class DataFeed {
   // data_feed_desc(proto object)
   std::vector<std::string> use_slots_;
   std::vector<bool> use_slots_is_dense_;
+  std::vector<bool> uint64_use_slots_is_dense_;
 
   // the alias of all slots, and its order is determined by data_feed_desc(proto
   // object)
@@ -1407,7 +1418,8 @@ class InMemoryDataFeed : public DataFeed {
   virtual void LoadIntoMemory();
   virtual void LoadIntoMemoryFromSo();
   virtual void SetRecord(T* records) { records_ = records; }
-  int GetDefaultBatchSize() { return default_batch_size_; }
+  virtual T*  GetRecord() { return records_; }
+  virtual std::vector<std::pair<int, int>>&  GetBatchOffsets() { return batch_offsets_; }
   void AddBatchOffset(const std::pair<int, int>& offset) {
     batch_offsets_.push_back(offset);
   }

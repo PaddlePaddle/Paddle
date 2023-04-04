@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
@@ -293,7 +294,9 @@ void PSGPUWorker::TrainFiles() {
 #endif
 
   // how to accumulate fetched values here
+#if !defined(PADDLE_WITH_XPU_CACHE_BFID)
   device_reader_->Start();
+#endif
   int cur_batch;
   int batch_cnt = 0;
 
@@ -397,6 +400,10 @@ void PSGPUWorker::TrainFiles() {
       }
     }
 
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -484,7 +491,9 @@ void PSGPUWorker::TrainFiles() {
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
   VLOG(0) << "Begin to train files with profiler";
+#if !defined(PADDLE_WITH_XPU_CACHE_BFID)
   device_reader_->Start();
+#endif
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
@@ -521,6 +530,11 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
 
     int run_op_idx = 0;
     dev_ctx_->Wait();

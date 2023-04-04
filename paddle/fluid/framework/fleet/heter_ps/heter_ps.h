@@ -20,12 +20,15 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #endif
-
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 class HeterPs : public HeterPsBase {
  public:
@@ -48,14 +51,12 @@ class HeterPs : public HeterPsBase {
                 size_t feature_value_size,
                 size_t chunk_size,
                 int stream_num) override;
-#if defined(PADDLE_WITH_CUDA)
+
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size,
                               int rank_id) override;
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
-
-#endif
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
   void set_embedx_sgd(const OptimizerConfig& optimizer_config) override;
@@ -63,9 +64,8 @@ class HeterPs : public HeterPsBase {
   void end_pass() override;
   int get_index_by_devid(int devid) override;
   void show_one_table(int gpu_num) override;
-  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len);
+  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len) override;
   void show_table_collisions() override;
-#if defined(PADDLE_WITH_CUDA)
   // dedup
   int dedup_keys_and_fillidx(const int gpu_id,
                              const int total_fea_num,
@@ -77,7 +77,6 @@ class HeterPs : public HeterPsBase {
                              uint32_t* d_offset,
                              uint32_t* d_merged_cnts,
                              bool filter_zero);
-#endif
   // reset table
   void reset_table(const int dev_id,
                    size_t capacity,
@@ -90,10 +89,45 @@ class HeterPs : public HeterPsBase {
 
  private:
   std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
-#if defined(PADDLE_WITH_CUDA)
   GPUOptimizer<GPUAccessor> opt_;
-#endif
 };
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+class HeterPs : public HeterPsBase {
+ public:
+  HeterPs() {}
+  HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  virtual ~HeterPs();
+  HeterPs(const HeterPs&) = delete;
+  HeterPs& operator=(const HeterPs&) = delete;
+
+  void pull_sparse(int num,
+                   FidKey* d_keys,
+                   FeatureValue* d_vals,
+                   size_t len) override;
+  void build_ps(int num,
+                FidKey* h_keys,
+                FeatureValue* h_vals,
+                size_t len,
+                size_t chunk_size,
+                int stream_num) override;
+
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config) override;
+
+  void end_pass() override;
+  int get_index_by_devid(int devid) override;
+  void show_one_table(int gpu_num) override;
+
+  void push_sparse(int num, FidKey* d_keys, FeaturePushValue* d_grads,
+                   size_t len) override;
+  std::shared_ptr<CacheManager> get_cache_manager() {return comm_ -> get_cache_manager();}
+
+ private:
+  std::shared_ptr<HeterComm<FidKey, FeatureValue, FeaturePushValue>> comm_;
+};
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

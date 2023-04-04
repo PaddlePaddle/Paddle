@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+
 namespace phi {
 /* --------------------------- */
 /*   From phi::DenseTensor     */

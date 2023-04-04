@@ -73,17 +73,22 @@ void BindPSGPUWrapper(py::module* m) {
       .def("load_into_memory",
            &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
+      .def("handle_preload_done_data", &framework::PSGPUWrapper::HandlePreloadDoneData,
+           py::call_guard<py::gil_scoped_release>())
 #ifdef PADDLE_WITH_PSLIB
       .def("init_afs_api",
            &framework::PSGPUWrapper::InitAfsApi,
            py::call_guard<py::gil_scoped_release>())
 #endif
-      .def("finalize",
-           &framework::PSGPUWrapper::Finalize,
-           py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_CUDA
       .def("set_mode",
            &framework::PSGPUWrapper::SetMode,
+           py::call_guard<py::gil_scoped_release>())
+#endif
+      .def("finalize",
+           &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
+
 }  // end PSGPUWrapper
 #ifdef PADDLE_WITH_PSLIB
 void BindAfsWrapper(py::module* m) {

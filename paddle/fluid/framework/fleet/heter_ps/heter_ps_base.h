@@ -32,6 +32,36 @@ class HeterPsBase {
   HeterPsBase(const HeterPsBase&) = delete;
   HeterPsBase& operator=(const HeterPsBase&) = delete;
 
+#if defined(PADDLE_WITH_XPU_KP)
+  virtual void pull_sparse(int num,
+                           FidKey* d_keys,
+                           FeatureValue* d_vals,
+                           size_t len) = 0;
+  virtual void build_ps(int num,
+                        FidKey* h_keys,
+                        FeatureValue* h_vals,
+                        size_t len,
+                        size_t chunk_size,
+                        int stream_num) = 0;
+  virtual int get_index_by_devid(int devid) = 0;
+
+  virtual void end_pass() = 0;
+  virtual void show_one_table(int gpu_num) = 0;
+
+  virtual void push_sparse(int num,
+                           FidKey* d_keys,
+                           FeaturePushValue* d_grads,
+                           size_t len) = 0;
+
+  virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config) = 0;
+  virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config) = 0;
+
+  static HeterPsBase* get_instance(size_t capacity,
+                                   std::shared_ptr<HeterPsResource> resource);
+
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
   virtual void pull_sparse(int num,
                            FeatureKey* d_keys,
                            float* d_vals,
@@ -44,7 +74,7 @@ class HeterPsBase {
                         size_t chunk_size,
                         int stream_num) = 0;
   virtual int get_index_by_devid(int devid) = 0;
-#if defined(PADDLE_WITH_CUDA)
+
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms,
@@ -52,10 +82,10 @@ class HeterPsBase {
       int rank_id) = 0;
   virtual void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) = 0;
 
-#endif
   virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
   virtual void show_table_collisions() = 0;
+
   virtual void push_sparse(int num,
                            FeatureKey* d_keys,
                            float* d_grads,
@@ -70,7 +100,7 @@ class HeterPsBase {
       std::unordered_map<std::string, float> fleet_config,
       std::string accessor_type,
       int optimizer_type);
-#if defined(PADDLE_WITH_CUDA)
+      
   // dedup
   virtual int dedup_keys_and_fillidx(const int gpu_id,
                                      const int total_fea_num,
@@ -82,13 +112,14 @@ class HeterPsBase {
                                      uint32_t* d_offset,
                                      uint32_t* d_merged_cnts,
                                      bool filter_zero) = 0;
-#endif
+
   virtual void reset_table(const int dev_id,
                            size_t capacity,
                            const OptimizerConfig& sgd_config,
                            const OptimizerConfig& embedx_config,
                            bool infer_mode) = 0;
   virtual void set_mode(bool infer_mode) = 0;
+#endif
 };
 
 }  // end namespace framework

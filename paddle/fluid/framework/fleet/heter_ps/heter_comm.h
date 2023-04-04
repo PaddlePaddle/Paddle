@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include <memory>
 #include <vector>
+#if defined(PADDLE_WITH_CUDA)
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
-#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
@@ -25,7 +25,6 @@ limitations under the License. */
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
-
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 
@@ -33,6 +32,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
@@ -42,24 +44,30 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename GPUAccessor>
+          typename GPUAccessor = int> // GPUAccessor not yet adapted in XPUPS
 class HeterComm {
+#if defined(PADDLE_WITH_CUDA)
   using HeterCommType = HeterComm<KeyType, ValType, GradType, GPUAccessor>;
+#endif
   static const int COPY_KEY = 0x01;
   static const int COPY_VAL = 0x02;
   static const int COPY_ALL = COPY_KEY | COPY_VAL;
 
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+#if defined(PADDLE_WITH_CUDA)
   HeterComm(size_t capacity,
             std::shared_ptr<HeterPsResource> resource,
             GPUAccessor& gpu_accessor);  // NOLINT
+#endif
+
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -116,7 +124,11 @@ class HeterComm {
                           float* d_grads,
                           size_t len,
                           int& uniq_len);  // NOLINT
+#if defined(PADDLE_WITH_XPU_KP)
+  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
+#else
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+#endif
   void build_ps(int num,
                 KeyType* h_keys,
                 char* pool,
@@ -126,7 +138,9 @@ class HeterComm {
                 int stream_num);
   void dump();
   void show_one_table(int gpu_num);
+#if defined(PADDLE_WITH_CUDA)
   void show_table_collisions();
+#endif
   int get_index_by_devid(int devid);
 
 #if defined(PADDLE_WITH_CUDA)
@@ -248,6 +262,7 @@ class HeterComm {
     int step;
     CopyTask(Path* path_, int step_) : path(path_), step(step_) {}
   };
+
   // inner card
   struct InnerResource {
     uint32_t* d_idx = nullptr;
@@ -503,6 +518,9 @@ class HeterComm {
                    int* h_right,
                    char* src_val,
                    size_t val_size);
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> get_cache_manager() {return cache_mgr_;}
+#endif
 
  protected:
   void pull_merge_sparse(const int gpu_id,
@@ -681,12 +699,16 @@ class HeterComm {
   int block_size_{256};
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
+#if defined(PADDLE_WITH_CUDA)
   GPUAccessor gpu_accessor_;
+#endif
 
  protected:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
+#if defined(PADDLE_WITH_CUDA)
   DynamicGradMerger merger_;
+#endif
   int device_num_ = 8;
   int multi_node_{0};
   int rank_id_ = 0;
@@ -711,6 +733,13 @@ class HeterComm {
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
   int64_t start_time_ = 0;
+
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> cache_mgr_ = nullptr;
+  int multi_mf_dim_{0};
+  int max_mf_dim_{0};
+#endif
+
 };
 
 }  // end namespace framework
