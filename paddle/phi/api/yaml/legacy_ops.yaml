@@ -359,17 +359,6 @@
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
 
-# Part of python API paddle.nn.functional.cross_entropy
-- op : cross_entropy_with_softmax
-  args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
-  output : Tensor(softmax), Tensor(loss)
-  infer_meta :
-    func : CrossEntropyWithSoftmaxInferMeta
-  kernel :
-    func : cross_entropy_with_softmax
-    data_type : input
-  backward : cross_entropy_with_softmax_grad
-
 - op : cumsum
   args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)

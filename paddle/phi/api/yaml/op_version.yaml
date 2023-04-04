@@ -169,6 +169,14 @@
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
 
+- op : softmax_with_cross_entropy
+  version :
+    - checkpoint : Add a new attribute [use_softmax]
+      action :
+        - add_attr : force_cpu
+          comment : A flag to indicate whether to do softmax
+          default : "true"
+
 - op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]
