@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
-                       const std::vector<int64_t> out_strides,
+                       const std::vector<int64_t>& out_strides,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = phi::make_ddim(out_strides);
