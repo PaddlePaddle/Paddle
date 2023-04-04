@@ -254,6 +254,34 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
+/// \brief Turn on custome device.
+///
+/// \param[in] pd_config config
+/// \param[in] device_type device type
+/// \param[in] device_id device_id the custome device card to use.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
+    __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
+///
+/// \brief A boolean state telling whether the custom device is turned on.
+///
+/// \param[in] pd_onfig config
+/// \return Whether the custom device is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseCustomDevice(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get the custom device id.
+///
+/// \return int The custom device id.
+///
+PADDLE_CAPI_EXPORT extern int32_t custom_device_id(__pd_keep PD_Config* pd_config);
+/// \brief Get the custom device type.
+///
+/// \return string The custom device type.
+///
+PADDLE_CAPI_EXPORT extern char* custom_device_type(__pd_keep PD_Config* pd_config);
+///
 /// \brief Get the initial size in MB of the GPU memory pool.
 ///
 /// \param[in] pd_onfig config
