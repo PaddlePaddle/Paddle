@@ -134,7 +134,9 @@ REGISTER_OPERATOR(distributed_push_sparse,
                   ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_push_sparse,
-    ops::DistributedPushSparseKernel<phi::CPUContext, float>,
-    ops::DistributedPushSparseKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(distributed_push_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedPushSparseKernel,
+                          float,
+                          double) {}

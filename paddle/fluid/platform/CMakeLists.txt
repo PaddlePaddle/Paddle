@@ -227,10 +227,18 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  if(WITH_CUSTOM_DEVICE)
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
+           allocator phi_backends)
+  else()
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu

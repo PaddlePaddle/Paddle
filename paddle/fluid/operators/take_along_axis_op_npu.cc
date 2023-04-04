@@ -17,7 +17,6 @@ limitations under the License. */
 #if (CANN_VERSION_CODE >= 504000)
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

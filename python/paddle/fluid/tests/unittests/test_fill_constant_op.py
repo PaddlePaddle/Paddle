@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 def fill_wrapper(shape, value=0.0):
@@ -155,7 +155,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -180,7 +180,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
