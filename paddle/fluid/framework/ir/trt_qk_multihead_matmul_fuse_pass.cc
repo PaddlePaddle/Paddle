@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/qk_attention_fuse_pass.h"
+#include "paddle/fluid/framework/ir/trt_qk_multihead_matmul_fuse_pass.h"
 
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -35,14 +35,14 @@ namespace patterns {
 //    reshape reshape reshape
 //       |      |       |
 //     trans   trans   trans
-//       |(x)   |(y)    |
+//       |(x)   |(x)    |
 //        matmul        |
 //          |           |
 //        scale         |
 //          |           |
 //        softmax       |(y)
 //          |------matmul
-//            (x)     |
+//                    |
 //                  trans
 //                    |
 //                  reshape
@@ -311,11 +311,11 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     int head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
-                 "flash attention plugin, Stop fusing.";
+                 "qk attention plugin, Stop fusing.";
       return;
     }
     VLOG(3) << "trt qk attention get wq_tensor name = " << mul0_w->Name()
-            << "trt qk attention wk_tensor name = " << mul1_w->Name();
+            << "trt qk attention get wk_tensor name = " << mul1_w->Name();
 
     auto* wq_data = wq_tensor->data<float>();
     auto* wk_data = wk_tensor->data<float>();
@@ -579,9 +579,9 @@ void TrtQkMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(qk_attention_fuse_pass,
+REGISTER_PASS(trt_qk_multihead_matmul_fuse_pass,
               paddle::framework::ir::TrtQkMultiHeadMatmulFusePass);
-REGISTER_PASS_CAPABILITY(qk_attention_fuse_pass)
+REGISTER_PASS_CAPABILITY(trt_qk_multihead_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)

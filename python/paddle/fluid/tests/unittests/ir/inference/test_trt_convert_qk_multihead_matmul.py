@@ -351,7 +351,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller1,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "TThe flash attention trt oss plugin do not support static shape yet",
+            "The qk attention trt oss plugin do not support static shape yet",
         )
 
         def teller2(program_config, predictor_config):
@@ -362,7 +362,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller2,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The flash attention trt oss plugin do not support fp32 yet",
+            "The qk attention trt oss plugin do not support fp32 yet",
         )
 
         def teller3(program_config, predictor_config):
@@ -373,7 +373,7 @@ class TrtConvertQkAttentionTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller3,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The flash attention trt oss plugin do not support int8 yet.",
+            "The qk attention trt oss plugin do not support int8 yet.",
         )
 
     def test(self):

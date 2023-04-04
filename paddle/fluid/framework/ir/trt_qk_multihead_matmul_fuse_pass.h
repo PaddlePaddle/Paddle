@@ -91,7 +91,7 @@ class TrtQkMultiHeadMatmulFusePass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const;
 
-  const std::string name_scope_{"qk_multihead_matmul_fuse"};
+  const std::string name_scope_{"trt_qk_multihead_matmul_fuse"};
 
  private:
   int BuildQkFusion(Graph* graph,
