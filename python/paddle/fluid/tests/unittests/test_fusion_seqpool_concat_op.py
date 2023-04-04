@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_pool import (
+from test.sequence.test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
     compute_seqpool_sum,

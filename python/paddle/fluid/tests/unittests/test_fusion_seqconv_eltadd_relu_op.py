@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_conv import seqconv
+from test.sequence.test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):
