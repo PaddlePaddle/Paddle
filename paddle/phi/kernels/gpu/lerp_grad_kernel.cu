@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -35,16 +36,18 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const int out_size,
                                    const int x_size,
                                    const int y_size) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight[idx] * dout[idx];
+    MPType temp_dx =
+        static_cast<MPType>(weight[idx]) * static_cast<MPType>(dout[idx]);
     if (dx) {
       if (idx < x_size) {
-        dx[idx] = dout[idx] - temp_dx;
+        dx[idx] = static_cast<T>(static_cast<MPType>(dout[idx]) - temp_dx);
       }
     }
     if (dy) {
       if (idx < y_size) {
-        dy[idx] = temp_dx;
+        dy[idx] = static_cast<T>(temp_dx);
       }
     }
   }
@@ -58,17 +61,18 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
                                          const int out_size,
                                          const int x_size,
                                          const int y_size) {
-  T weight_scalar = weight[0];
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType weight_scalar = static_cast<MPType>(weight[0]);
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight_scalar * dout[idx];
+    MPType temp_dx = weight_scalar * static_cast<MPType>(dout[idx]);
     if (dx) {
       if (idx < x_size) {
-        dx[idx] = dout[idx] - temp_dx;
+        dx[idx] = static_cast<T>(static_cast<MPType>(dout[idx]) - temp_dx);
       }
     }
     if (dy) {
       if (idx < y_size) {
-        dy[idx] = temp_dx;
+        dy[idx] = static_cast<T>(temp_dx);
       }
     }
   }
@@ -270,5 +274,10 @@ void LerpGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    lerp_grad, GPU, ALL_LAYOUT, phi::LerpGradKernel, float, double) {}
+PD_REGISTER_KERNEL(lerp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LerpGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}

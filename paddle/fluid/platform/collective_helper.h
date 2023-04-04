@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/variant.h"

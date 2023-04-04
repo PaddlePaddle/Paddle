@@ -14,6 +14,7 @@
 
 import random
 import unittest
+from copy import deepcopy
 
 import numpy as np
 
@@ -99,6 +100,30 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = pg.broadcast(tensor_y, 0)
             assert np.array_equal(broadcast_result, tensor_y)
         print("test broadcast api ok")
+
+        # test send_recv
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y_1 = paddle.to_tensor(y)
+        tensor_y_2 = deepcopy(tensor_y_1)
+
+        send_recv_result_1 = paddle.assign(tensor_x)
+        send_recv_result_2 = paddle.assign(tensor_y_2)
+        if pg.rank() == 0:
+            task = pg.send(tensor_x, 1, True)
+        else:
+            task = pg.recv(tensor_y_1, 0, True)
+            assert np.array_equal(send_recv_result_1, tensor_y_1)
+
+        if pg.rank() == 0:
+            task = pg.recv(tensor_x, 1, True)
+            assert np.array_equal(send_recv_result_2, tensor_x)
+        else:
+            task = pg.send(tensor_y_2, 0, True)
+        print("test send_recv api ok")
 
         # test barrier
         # rank 0

@@ -91,9 +91,9 @@ struct NoMaskBwFunctor {
 template <typename T, typename Functor>
 __global__ void VectorizedDropoutBackward(const size_t n,
                                           uint64_t seed,
-                                          T* src,
-                                          T* res,
-                                          const T* dst,
+                                          T* x,
+                                          T* y,
+                                          const T* out_grad,
                                           uint64_t increment,
                                           size_t main_offset,
                                           Functor functor) {
@@ -112,44 +112,38 @@ __global__ void VectorizedDropoutBackward(const size_t n,
 #endif
 
   float rands[kCount];
-  T src_res[kCount * 2];
-  T res_grad[kCount];
+  T x_y[kCount * 2];
 
   using Rand = phi::funcs::uniform_distribution<float>;
   using Cast = kps::IdentityFunctor<T>;
 
   int deal_size = BLOCK_NUM_X * kCount;
   size_t fix = idx * kCount;
+
   for (; fix < main_offset; fix += stride) {
-    kps::ReadData<T, kCount, 1, false>(&src_res[0], dst, deal_size);
+    kps::ReadData<T, kCount, 1, false>(&x_y[0], out_grad + fix, deal_size);
     kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
-    // x_grad
     kps::OperatorTernary<T, float, T, Functor>(
-        &src_res[0], &src_res[0], &rands[0], functor, kCount);
-    kps::WriteData<T, kCount, 1, false>(src + fix, &src_res[0], deal_size);
-    // res
-    kps::ElementwiseUnary<T, T, kCount, 1, Cast>(
-        &res_grad[0], &src_res[kCount], Cast());
-    kps::WriteData<T, kCount, 1, false>(res + fix, &res_grad[0], deal_size);
+        &x_y[0], &x_y[0], &rands[0], functor, kCount);
+
+    kps::WriteData<T, kCount, 1, false>(x + fix, &x_y[0], deal_size);
+    kps::WriteData<T, kCount, 1, false>(y + fix, &x_y[kCount], deal_size);
     if (fix > idx * kCount + 1) {
       __syncthreads();
     }
   }
+
   int remainder = n - fix;
   if (remainder > 0) {
-    kps::ReadData<T, kCount, 1, true>(&src_res[0], dst + fix, remainder);
+    kps::ReadData<T, kCount, 1, true>(&x_y[0], out_grad + fix, remainder);
     kps::ElementwiseRandom<SType, float, kCount, Rand>(
         &rands[0], Rand(), &state);
-    // x_grad
     kps::OperatorTernary<T, float, T, Functor>(
-        &src_res[0], &src_res[0], &rands[0], functor, kCount);
-    kps::WriteData<T, kCount, 1, true>(src + fix, &src_res[0], remainder);
+        &x_y[0], &x_y[0], &rands[0], functor, kCount);
 
-    // res
-    kps::ElementwiseUnary<T, T, kCount, 1, Cast>(
-        &res_grad[0], &src_res[kCount], Cast());
-    kps::WriteData<T, kCount, 1, true>(res + fix, &res_grad[0], remainder);
+    kps::WriteData<T, kCount, 1, true>(x + fix, &x_y[0], remainder);
+    kps::WriteData<T, kCount, 1, true>(y + fix, &x_y[kCount], remainder);
     __syncthreads();
   }
 }
@@ -201,7 +195,6 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     size_t block_size = random_prop[1];
     size_t offset = random_prop[2];
     size_t main_offset = random_prop[3];
-
     auto functor = upscale_in_train
                        ? NoMaskBwFunctor<T, float>(1.0f - dropout_rate)
                        : NoMaskBwFunctor<T, float>(1.0f - dropout_rate, 1.0f);

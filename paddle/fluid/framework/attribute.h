@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/variant.h"
 
@@ -244,6 +245,29 @@ struct ExtractAttribute<std::vector<double>> {
   const std::string& attr_name_;
 };
 
+template <>
+struct ExtractAttribute<paddle::experimental::Scalar> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  paddle::experimental::Scalar* operator()(Attribute& attr) const {
+    paddle::experimental::Scalar* attr_value = nullptr;
+    try {
+      attr_value = &paddle::get<paddle::experimental::Scalar>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type Scalar, its type is %s, index is "
+          "%d",
+          attr_name_,
+          paddle::platform::demangle(attr.type().name()),
+          attr.index()));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
@@ -325,5 +349,12 @@ class AttrReader {
   const AttributeMap* default_attrs_;
 };
 
+paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v);
+proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
+paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v);
+std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
+    const Attribute& v);
+void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
+                             AttributeMap* attrs);
 }  // namespace framework
 }  // namespace paddle

@@ -74,5 +74,5 @@ class FusedDropoutAdd(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}, mode={}{}'.format(self.p, self.mode, name_str)
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}, mode={self.mode}{name_str}'
