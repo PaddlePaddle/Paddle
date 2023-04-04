@@ -323,6 +323,15 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  (void)x;
+  if (weight) {
+    out->share_dims(weight);
+  }
+}
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,
@@ -491,6 +500,25 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
           "Input(Out) and its gradients should have the same shape."));
 
   dx->share_meta(dout);
+}
+
+void HSigmoidLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& w,
+                               const MetaTensor& label,
+                               const MetaTensor& path,
+                               const MetaTensor& code,
+                               const MetaTensor& bias,
+                               MetaTensor* x_grad,
+                               MetaTensor* w_grad,
+                               MetaTensor* bias_grad) {
+  (void)label;
+  (void)path;
+  (void)code;
+  x_grad->share_meta(x);
+  w_grad->share_meta(w);
+  if (bias) {
+    bias_grad->share_meta(bias);
+  }
 }
 
 void InstanceNormGradInferMeta(const MetaTensor& x,

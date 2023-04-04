@@ -43,6 +43,13 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : embedding
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - fix_bug : fix_bug
+          comment : lookup_table_v2 support input type `int64`; after support input type `int32/int64`
+
 - op : equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
