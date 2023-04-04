@@ -3914,6 +3914,14 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
+        export PY_VERSION=3.8
+        export PYTHON_ABI=cp38-cp38
+        export PATH=/opt/_internal/cpython-3.8.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin
+        export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+        pip3.8 config set global.cache-dir "/home/data/cfs/.cache/pip"
+        pip3.8 install -r "${work_dir}/python/requirements.txt"
+        pip3.8 install -r "${work_dir}/python/unittest_py/requirements.txt"
+        pip3.8 install bce-python-sdk==0.8.74
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
