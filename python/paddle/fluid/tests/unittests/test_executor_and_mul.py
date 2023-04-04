@@ -18,14 +18,13 @@ import numpy as np
 
 import paddle
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import zeros
 from paddle.static import data
 from paddle.tensor import array_write
 
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
-        i = zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         a = data(name='a', shape=[-1, 784], dtype='float32')
         array = array_write(x=a, i=i)
 

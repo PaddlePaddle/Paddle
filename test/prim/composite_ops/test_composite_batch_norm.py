@@ -24,7 +24,6 @@ from paddle.fluid import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401
-from paddle.tensor import zeros  # noqa: F401
 
 np.random.seed(2023)
 
