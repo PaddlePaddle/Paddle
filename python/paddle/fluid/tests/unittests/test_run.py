@@ -120,7 +120,9 @@ class Collective_Test(unittest.TestCase):
         config_dir = tempfile.TemporaryDirectory()
         config_path = os.path.join(config_dir.name, 'auto_parallel_config.json')
         with open(config_path, 'w') as wobj:
-            wobj.write('{\"tuner_save_path\":\"parallel_strategy.pkl\",\"tuner_load_path\":\"parallel_strategy.pkl\",\"tuner_run_mode\":\"tuner_and_run\"}')
+            wobj.write(
+                '{\"tuner_save_path\":\"parallel_strategy.pkl\",\"tuner_load_path\":\"parallel_strategy.pkl\",\"tuner_run_mode\":\"tuner_and_run\"}'
+            )
         port = random.randrange(6000, 8000)
         args = "--job_id test4 --devices 0,1 --log_dir {} --auto_parallel_config {}"
         p1 = self.pdrun(args.format(log_dir.name + "/1", config_path))
@@ -132,6 +134,7 @@ class Collective_Test(unittest.TestCase):
         self.assertTrue(len(c1) == 4)
         log_dir.cleanup()
         config_dir.cleanup()
+
 
 class PS_Test(unittest.TestCase):
     def setUp(self):
