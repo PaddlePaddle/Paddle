@@ -214,15 +214,6 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
-- op : bce_loss
-  args : (Tensor input, Tensor label)
-  output : Tensor
-  infer_meta :
-    func : BCELossInferMeta
-  kernel :
-    func : bce_loss
-  backward : bce_loss_grad
-
 - op : bilinear_tensor_product
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
   output : Tensor
