@@ -63,11 +63,13 @@ class TensorArray : public TensorBase,
   /// \brief This overrided function is not used in TensorArray.
   const Place& place() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
   DataType dtype() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
+  void set_type(const DataType dtype);
+
   DataLayout layout() const override;
+
+  void set_layout(const DataLayout layout);
 
   /// \brief This overrided function is not used in TensorArray.
   bool valid() const override;
