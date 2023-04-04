@@ -2021,7 +2021,6 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
-  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
