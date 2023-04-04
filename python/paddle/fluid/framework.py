@@ -51,7 +51,6 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
-    'mlu_places',
     'cuda_pinned_places',
     '_non_static_mode',
     'in_dygraph_mode',
@@ -649,18 +648,6 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_mlu():
-            try:
-                device_count = core.get_mlu_device_count()
-            except Exception as e:
-                device_count = 0
-            if device_count > 0:
-                _global_expected_place_ = core.MLUPlace(_mlu_ids()[0])
-            else:
-                warnings.warn(
-                    "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
-                )
-                _global_expected_place_ = core.CPUPlace()
         elif core.is_compiled_with_custom_device("npu"):
             # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
             try:
@@ -743,15 +730,6 @@ def _custom_device_ids(device_type):
         device_ids = [int(s) for s in custom_devices_env.split(",")]
     else:
         device_ids = range(core.get_custom_device_count(device_type))
-    return device_ids
-
-
-def _mlu_ids():
-    mlus_env = os.getenv("FLAGS_selected_mlus")
-    if mlus_env:
-        device_ids = [int(s) for s in mlus_env.split(",")]
-    else:
-        device_ids = range(core.get_mlu_device_count())
     return device_ids
 
 
@@ -1048,48 +1026,6 @@ def cuda_pinned_places(device_count=None):
     if device_count is None:
         device_count = len(_cuda_ids())
     return [core.CUDAPinnedPlace()] * device_count
-
-
-def mlu_places(device_ids=None):
-    """
-    This function creates a list of :code:`paddle.device.MLUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_mlus` would be checked first. For example, if
-    :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
-    be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
-    If :code:`FLAGS_selected_mlus` is not set, all visible
-    mlu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be
-    [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
-
-    Note:
-        For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
-
-    Parameters:
-        device_ids (list or tuple of int, optional): list of MLU device ids.
-
-    Returns:
-        list of paddle.device.MLUPlace: Created MLU place list.
-
-    Examples:
-        .. code-block:: python
-
-            # required: mlu
-
-            import paddle
-            import paddle.static as static
-
-            paddle.enable_static()
-            mlu_places = static.mlu_places()
-    """
-    assert core.is_compiled_with_mlu(), "Not compiled with MLU"
-    if device_ids is None:
-        device_ids = _mlu_ids()
-    elif not isinstance(device_ids, (list, tuple)):
-        device_ids = [device_ids]
-    return [core.MLUPlace(dev_id) for dev_id in device_ids]
 
 
 class NameScope:
@@ -2645,10 +2581,6 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.NPUPlace(p.npu_device_id())
-        elif p.is_mlu_place():
-            p = core.Place()
-            p.set_place(t._place())
-            place = core.MLUPlace(p.mlu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -2932,7 +2864,6 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
-            self.legacy_attrs = attrs if attrs else {}
 
             self.block = block
             self.desc = desc
@@ -3165,20 +3096,12 @@ class Operator:
 
             self.desc.check_attrs()
 
-            # record all attrs needed by creating op
-            for item in self.desc.attr_names():
-                self.legacy_attrs[item] = self.desc.attr(item)
-
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
-    def _get_runtime_attrs(self):
-        """Record all attrs needed by creating op. This api is only for to_prim process."""
-        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """
@@ -7574,9 +7497,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', 'xpu', 'mlu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' 'xpu' 'mlu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:
@@ -7707,7 +7630,6 @@ def _get_paddle_place(place):
             core.CUDAPlace,
             core.NPUPlace,
             core.IPUPlace,
-            core.MLUPlace,
             core.CustomPlace,
         ),
     ):
@@ -7782,21 +7704,8 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
-    # MLU
-    avaliable_mlu_place = re.match(r'mlu:\d+', place)
-    if avaliable_mlu_place:
-        if not core.is_compiled_with_mlu():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with MLU".format(avaliable_mlu_place.group())
-            )
-        place_info_list = place.split(':', 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.MLUPlace(device_id)
-
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace, MLUPlace and NPUPlace, but received {}.".format(
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace and NPUPlace, but received {}.".format(
             place
         )
     )
