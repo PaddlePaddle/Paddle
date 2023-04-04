@@ -237,6 +237,14 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
+    VLOG(11) << "PrepareData: ";
+    VLOG(11) << "dense_tensor.initialized(): " << dense_tensor.initialized();
+    VLOG(11) << "dense_tensor.holder_or_not(): "
+             << dense_tensor.IsInitialized();
+    if (dense_tensor.IsInitialized()) {
+      VLOG(11) << "dense_tensor.holder_ptr_or_not(): "
+               << dense_tensor.holder_ptr_or_not();
+    }
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&

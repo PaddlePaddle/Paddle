@@ -147,6 +147,7 @@ struct DeviceContext::Impl {
     // is going to allocate allocation on new place, we will clear its holder
     // firstly and then re-alloc it.
     if (tensor->initialized() && tensor->place() != place) {
+      VLOG(11) << "clear holder" << std::endl;
       ClearHolder(tensor);
     }
     auto* allocator =

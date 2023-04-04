@@ -187,10 +187,13 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 phi::DenseTensor* SetKernelOutput(Tensor* out) {
   if (out) {
     if (out->impl() == nullptr) {
+      // std::cout << "out->impl() == nullptr" << std::endl;
       out->set_impl(std::make_shared<phi::DenseTensor>());
     }
+    // std::cout << "out->impl() != nullptr" << std::endl;
     return static_cast<phi::DenseTensor*>(out->impl().get());
   }
+  // std::cout << "out == nullptr" << std::endl;
   return nullptr;
 }
 
@@ -234,6 +237,8 @@ std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out) {
     if (out->at(i)) {
       auto tensor_ptr = std::make_shared<phi::DenseTensor>();
       results[i] = tensor_ptr.get();
+      // std::cout << "(*out)[" << i << "]->impl() == nullptr? " <<
+      // ((*out)[i]->impl() == nullptr) << std::endl;
       (*out)[i]->set_impl(tensor_ptr);
     }
   }

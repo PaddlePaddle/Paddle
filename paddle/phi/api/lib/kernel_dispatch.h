@@ -101,6 +101,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
+    VLOG(11) << "key_set.backend_set = " << key_set.backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
     if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
       disable_gpudnn = true;
