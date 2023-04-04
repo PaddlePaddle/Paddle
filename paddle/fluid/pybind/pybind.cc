@@ -265,14 +265,6 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
-bool IsCompiledWithAscend() {
-#ifndef PADDLE_WITH_ASCEND
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;

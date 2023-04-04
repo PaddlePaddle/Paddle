@@ -2794,7 +2794,6 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
-            self.legacy_attrs = attrs if attrs else {}
 
             self.block = block
             self.desc = desc
@@ -3027,20 +3026,12 @@ class Operator:
 
             self.desc.check_attrs()
 
-            # record all attrs needed by creating op
-            for item in self.desc.attr_names():
-                self.legacy_attrs[item] = self.desc.attr(item)
-
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
-    def _get_runtime_attrs(self):
-        """Record all attrs needed by creating op. This api is only for to_prim process."""
-        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """

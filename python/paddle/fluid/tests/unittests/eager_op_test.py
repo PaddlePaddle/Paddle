@@ -23,6 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
@@ -45,7 +46,6 @@ from paddle.fluid.framework import (
     _current_expected_place,
     canonicalize_attrs,
 )
-from paddle.fluid.op import Operator
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -1514,7 +1514,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
@@ -2059,7 +2059,7 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         places = self._get_places()
@@ -2222,7 +2222,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         self._check_grad_helper()
@@ -2261,7 +2261,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         core._set_prim_all_enabled(False)
@@ -2482,7 +2482,7 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         with fluid.dygraph.base.guard(place=place):
