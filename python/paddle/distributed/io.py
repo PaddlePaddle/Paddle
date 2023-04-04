@@ -86,7 +86,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                 )
             else:
                 origin = load_block.create_var(
-                    name="{}".format(origin_var.name),
+                    name=f"{origin_var.name}",
                     type=origin_var.type,
                     shape=origin_var.shape,
                     dtype=origin_var.dtype,
@@ -247,7 +247,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
                 index = block_id if is_slice else idx
                 slices[index] = slice
-                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
+                slice_varnames[index] = f"{slice.name}.slice.{idx}"
                 remote_varnames[index] = slice.name
                 endpoints[index] = endpoint
 

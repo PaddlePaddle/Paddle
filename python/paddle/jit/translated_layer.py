@@ -519,9 +519,7 @@ class _ProgramHolder:
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = paddle.scale(
-                    var, 1.0, name="translated_layer/scale_{}".format(i)
-                )
+                var = paddle.scale(var, 1.0, name=f"translated_layer/scale_{i}")
                 scale_output_vars.append(var)
         # 2. update output names & descs
         for i, var in enumerate(scale_output_vars):
@@ -648,22 +646,13 @@ def _load_persistable_vars_by_program(
         orig_each_name = program_holder._suffix_varname_dict[each_var.name()]
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
-            if framework._in_eager_without_dygraph_check():
-                new_var = framework.EagerParamBase(
-                    shape=each_var.shape(),
-                    dtype=each_var.dtype(),
-                    name=each_var.name(),
-                    type=each_var.type(),
-                    persistable=True,
-                )
-            else:
-                new_var = framework.ParamBase(
-                    shape=each_var.shape(),
-                    dtype=each_var.dtype(),
-                    name=each_var.name(),
-                    type=each_var.type(),
-                    persistable=True,
-                )
+            new_var = framework.EagerParamBase(
+                shape=each_var.shape(),
+                dtype=each_var.dtype(),
+                name=each_var.name(),
+                type=each_var.type(),
+                persistable=True,
+            )
         else:
             new_var = framework._varbase_creator(
                 type=each_var.type(),
@@ -746,24 +735,12 @@ def _load_persistable_vars(
         # create output varbase
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
-            if framework._in_eager_without_dygraph_check():
-                new_var = framework.EagerParamBase(
-                    shape=[
-                        1
-                    ],  # only to pass check, this shape is not meaningful
-                    dtype=core.VarDesc.VarType.FP32,
-                    name=new_name,
-                    persistable=True,
-                )
-            else:
-                new_var = framework.ParamBase(
-                    shape=[
-                        1
-                    ],  # only to pass check, this shape is not meaningful
-                    dtype=core.VarDesc.VarType.FP32,
-                    name=new_name,
-                    persistable=True,
-                )
+            new_var = framework.EagerParamBase(
+                shape=[1],  # only to pass check, this shape is not meaningful
+                dtype=core.VarDesc.VarType.FP32,
+                name=new_name,
+                persistable=True,
+            )
         else:
             new_var = framework._varbase_creator(
                 name=new_name, persistable=True
@@ -901,29 +878,20 @@ def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
     for i, value in enumerate(input):
-        if not isinstance(value, (np.ndarray, core.VarBase, core.eager.Tensor)):
+        if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
-                "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
+                "The type of input in TranslatedLayer must be numpy array or Variable(Tensor), but received %s."
                 % type(value)
             )
-        # NOTE: In order to unify the API, firstly convert the input to VarBase
+        # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
-            if framework._in_eager_without_dygraph_check():
-                var = core.eager.Tensor(
-                    value=value,
-                    name=program_holder.input_descs[i].name(),
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True,
-                )
-            else:
-                var = core.VarBase(
-                    value=value,
-                    name=program_holder.input_descs[i].name(),
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True,
-                )
+            var = core.eager.Tensor(
+                value=value,
+                name=program_holder.input_descs[i].name(),
+                persistable=False,
+                place=framework._current_expected_place(),
+                zero_copy=True,
+            )
         else:
             var = value
             # NOTE: we changed var name here,
@@ -950,55 +918,27 @@ def _run_dygraph(instance, input, program_holder):
 
     output_vars = []
     for var_desc in program_holder.output_descs:
-        if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(
-                dtype=var_desc.dtype(),
-                dims=var_desc.shape(),
-                name=var_desc.name(),
-                type=var_desc.type(),
-                persistable=False,
-            )
-        else:
-            var = core.VarBase(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
+        var = core.eager.Tensor(
+            dtype=var_desc.dtype(),
+            dims=var_desc.shape(),
+            name=var_desc.name(),
+            type=var_desc.type(),
+            persistable=False,
+        )
         output_vars.append(var)
 
     # hold forward variables
-    if framework._in_eager_without_dygraph_check():
-        tmp_scope_vec = [program_holder.scope]
-    else:
-        tmp_scope_vec = core.VarBase(
-            core.VarDesc.VarType.FP32,
-            [],
-            "program_out_scope",
-            core.VarDesc.VarType.STEP_SCOPES,
-            True,
-        )
-        tmp_scope_vec.value().set_scope(program_holder.scope)
+    tmp_scope_vec = [program_holder.scope]
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
-        if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(
-                dtype=var_desc.dtype(),
-                dims=var_desc.shape(),
-                name=var_desc.name(),
-                type=var_desc.type(),
-                persistable=False,
-            )
-        else:
-            var = core.VarBase(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
+        var = core.eager.Tensor(
+            dtype=var_desc.dtype(),
+            dims=var_desc.shape(),
+            name=var_desc.name(),
+            type=var_desc.type(),
+            persistable=False,
+        )
         double_grad_vars.append(var)
 
     # 2. run program by op
@@ -1058,13 +998,13 @@ def _run_dygraph(instance, input, program_holder):
         tmp_scope_vec,
         _valid_vars(double_grad_vars),
         None,
-        *attrs
+        *attrs,
     )
 
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
-    # set param grad VarBase by forward VarBase(LoDTensor)
+    # set param grad Tensor by forward Tensor(LoDTensor)
     # If we don't change grad_var type here, RunProgramOp need
     # transform SelectedRows to LoDTensor forcibly, it may not
     # be user wanted result.
@@ -1454,20 +1394,18 @@ class TranslatedLayer(layers.Layer):
         # When add parameter or buffer to Layer by follow apis,
         # the variable name can't contain `.`, beccause which may cause
         # AttributeError when access the newly added parameter or buffer
-        # in the form of `self.**.**``, but the ParamBase or BarBase
+        # in the form of `self.**.**``, but the EagerParamBase or BarBase
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
         self._persistable_var_name_dict = {}
         # the TranslatedLayer object holded var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():
-                if isinstance(
-                    var, (framework.ParamBase, framework.EagerParamBase)
-                ):
+                if isinstance(var, framework.EagerParamBase):
                     dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.add_parameter(dy_name, var)
-                elif isinstance(var, (core.VarBase, core.eager.Tensor)):
+                elif isinstance(var, core.eager.Tensor):
                     dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.register_buffer(dy_name, var)

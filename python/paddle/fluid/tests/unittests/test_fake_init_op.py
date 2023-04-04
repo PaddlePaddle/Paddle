@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from op import Operator
+
+from paddle.fluid import core
 
 
 class TestFakeInitOpSelectedRows(unittest.TestCase):

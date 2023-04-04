@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid.core as core
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
+from paddle.fluid import core
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.vision.models import resnet18 as resnet
@@ -220,7 +220,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         elif pd_dtype == paddle.float16:
             return np.float16
         else:
-            raise ValueError("supported dtype {}".format(pd_dtype))
+            raise ValueError(f"supported dtype {pd_dtype}")
 
     def gen_random_grad_tensor(grad):
         np_dtype = pd_dtype_to_np_dtype(grad.dtype)

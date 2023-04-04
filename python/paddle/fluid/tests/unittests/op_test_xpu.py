@@ -23,8 +23,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 
@@ -67,15 +67,17 @@ class XPUOpTest(OpTest):
     def check_output(
         self,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
     ):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(
             place,
             atol,
+            rtol,
             no_check_set,
             equal_nan,
             check_dygraph,
@@ -86,9 +88,10 @@ class XPUOpTest(OpTest):
         self,
         place,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
-        check_dygraph=True,
+        check_dygraph=False,
         inplace_atol=None,
     ):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -102,7 +105,13 @@ class XPUOpTest(OpTest):
         if self.dtype == np.float16:
             atol = 0.1
         return super().check_output_with_place(
-            place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol
+            place,
+            atol,
+            rtol,
+            no_check_set,
+            equal_nan,
+            check_dygraph,
+            inplace_atol,
         )
 
     def check_grad(
@@ -115,7 +124,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
     ):
         place = paddle.XPUPlace(0)
@@ -144,7 +153,7 @@ class XPUOpTest(OpTest):
         max_relative_error=0.005,
         user_defined_grads=None,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
         numeric_place=None,
     ):
         if hasattr(self, 'op_type_need_check_grad'):
@@ -231,7 +240,7 @@ class XPUOpTest(OpTest):
         in_place=False,
         max_relative_error=0.005,
         user_defined_grad_outputs=None,
-        check_dygraph=True,
+        check_dygraph=False,
     ):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}

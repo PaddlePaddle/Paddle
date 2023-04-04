@@ -25,62 +25,38 @@ namespace ir {
 
 class Graph;
 
-void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
-  FusePassBase::Init("inplace_op_var", graph);
-  int found_subgraph_count = 0;
-
-  auto nodes = graph->Nodes();
-  auto is_valid_reshape = [](Node* node) {
-    // Some cases need to consider, please refer to
-    // https://github.com/PaddlePaddle/Paddle/pull/49146
-    if (node->IsOp() && node->Op()->Type() == "reshape2") {
-      auto x_name = node->Op()->Input("X").front();
-      for (auto* var_node : node->inputs) {
-        if (var_node->Name() == x_name) {
-          if (!var_node->Var()->Persistable() && var_node->outputs.size() == 1)
-            return true;
-        }
-      }
-    }
+bool InplaceOpVarPass::IsValidInplaceOp(
+    Node* node, const std::unordered_set<std::string>& deny_var_names) const {
+  if (!node->IsOp() || inplace_ops_.count(node->Op()->Type()) == 0)
     return false;
-  };
 
-  // Record all reshape2 op's input name and output name in block 0.
-  // If the name used in other block, we can not inplace reshape op.
-  std::unordered_set<std::string> var_names, deny_var_names;
-  for (auto* node : nodes) {
-    if (is_valid_reshape(node)) {
-      for (auto n : node->inputs) var_names.insert(n->Name());
-      for (auto n : node->outputs) var_names.insert(n->Name());
-    }
-  }
-  for (size_t i = 1; i < graph->SubGraphsSize(); ++i) {
-    auto sub_graph = graph->GetSubGraph(i);
-    for (auto* node : sub_graph->Nodes()) {
-      if (node->IsOp()) {
-        for (auto var_node : node->inputs) {
-          if (var_names.count(var_node->Name()))
-            deny_var_names.insert(var_node->Name());
-        }
-        for (auto var_node : node->outputs) {
-          if (var_names.count(var_node->Name()))
-            deny_var_names.insert(var_node->Name());
-        }
-      }
-    }
+  // in_var_node should only has one out_op_node
+  auto x_name = node->Op()->Input("X").front();
+  for (auto* var_node : node->inputs) {
+    if (var_node->Name() != x_name) continue;
+    if (var_node->Var()->Persistable() || var_node->outputs.size() != 1)
+      return false;
   }
 
+  // in/out_var_node should be not used in multi graphs.
+  auto out_name = node->Op()->Output("Out").front();
+  if (deny_var_names.count(x_name) > 0 || deny_var_names.count(out_name) > 0)
+    return false;
+
+  return true;
+}
+
+int InplaceOpVarPass::ApplyImpl(
+    ir::Graph* graph,
+    const std::unordered_set<std::string>& deny_var_names) const {
+  int found_subgraph_count = 0;
   // inplace all reshape op.
   auto topo_nodes = TopologySortOperations(*graph);
   for (auto* node : topo_nodes) {
-    if (!is_valid_reshape(node)) continue;
+    if (!IsValidInplaceOp(node, deny_var_names)) continue;
     auto* op_node = node->Op();
     auto input_name = op_node->Input("X")[0];
     auto output_name = op_node->Output("Out")[0];
-    if (deny_var_names.count(input_name) || deny_var_names.count(output_name)) {
-      continue;
-    }
-    ++found_subgraph_count;
     for (auto* out_var : node->outputs) {
       if (out_var->Name() == output_name) {
         out_var->RenameVar(input_name);
@@ -90,9 +66,50 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-
     op_node->RenameOutput(output_name, input_name);
     op_node->Flush();
+    found_subgraph_count++;
+  }
+  return found_subgraph_count;
+}
+
+std::vector<std::string> InplaceOpVarPass::GetControlFlowVarNames(
+    ir::Graph* graph) const {
+  std::vector<std::string> control_flow_var_names;
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp() || control_flow_ops_.count(node->Op()->Type()) == 0)
+      continue;
+    for (auto in_names : node->Op()->Inputs()) {
+      auto var_names = in_names.second;
+      control_flow_var_names.insert(
+          control_flow_var_names.end(), var_names.begin(), var_names.end());
+    }
+    for (auto out_names : node->Op()->Outputs()) {
+      auto var_names = out_names.second;
+      control_flow_var_names.insert(
+          control_flow_var_names.end(), var_names.begin(), var_names.end());
+    }
+  }
+  return control_flow_var_names;
+}
+
+void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("inplace_op_var", graph);
+  if (!graph->IsMainGraph()) {
+    VLOG(3) << "Pass(apply in main graph) will work on all subgraphs.";
+    return;
+  }
+
+  std::unordered_set<std::string> deny_var_names;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    auto control_flow_var_names = GetControlFlowVarNames(graph->GetSubGraph(i));
+    deny_var_names.insert(control_flow_var_names.begin(),
+                          control_flow_var_names.end());
+  }
+
+  int found_subgraph_count = 0;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    found_subgraph_count += ApplyImpl(graph->GetSubGraph(i), deny_var_names);
   }
   AddStatis(found_subgraph_count);
 }
@@ -105,4 +122,16 @@ REGISTER_PASS(inplace_op_var_pass, paddle::framework::ir::InplaceOpVarPass);
 REGISTER_PASS_CAPABILITY(inplace_op_var_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "reshape2", 0));
+            "reshape2", 0))
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "unsqueeze2", 0))
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "unsqueeze", 0))
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "squeeze2", 0))
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "squeeze", 0));

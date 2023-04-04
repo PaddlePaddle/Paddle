@@ -18,13 +18,9 @@ import paddle
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import global_var
 from .layer_function_generator import templatedoc
 
-if global_var._in_eager_mode_:
-    Tensor = paddle.fluid.framework.core.eager.Tensor
-else:
-    from ..framework import VarBase as Tensor
+Tensor = paddle.fluid.framework.core.eager.Tensor
 
 from paddle import _C_ops
 from paddle.tensor.creation import full
@@ -478,13 +474,29 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "equal",
         )
         helper = LayerHelper("equal", **locals())
@@ -531,13 +543,29 @@ def greater_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_equal",
         )
         helper = LayerHelper("greater_equal", **locals())
@@ -584,13 +612,29 @@ def greater_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "greater_than",
         )
         helper = LayerHelper("greater_than", **locals())
@@ -638,13 +682,29 @@ def less_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_equal",
         )
         helper = LayerHelper("less_equal", **locals())
@@ -692,13 +752,29 @@ def less_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "less_than",
         )
         helper = LayerHelper("less_than", **locals())
@@ -746,13 +822,29 @@ def not_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float16", "float32", "float64", "int32", "int64"],
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "int32",
+                "int64",
+                "uint16",
+            ],
             "not_equal",
         )
         helper = LayerHelper("not_equal", **locals())

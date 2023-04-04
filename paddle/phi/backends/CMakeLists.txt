@@ -2,8 +2,14 @@ add_subdirectory(dynload)
 add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
-set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
-set(BACKENDS_DEPS allocator generator)
+set(BACKENDS_DEPS
+    enforce
+    place
+    flags
+    eigen3
+    phi_device_context
+    generator
+    phi_os_info)
 if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
 endif()
@@ -68,15 +74,3 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
-
-set(COMM_UTILS_DEPS process_group)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
-endif()
-cc_library(
-  processgroup_comm_utils
-  SRCS processgroup_comm_utils.cc
-  DEPS ${COMM_UTILS_DEPS})

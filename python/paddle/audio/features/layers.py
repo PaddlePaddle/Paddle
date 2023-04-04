@@ -15,8 +15,7 @@ from functools import partial
 from typing import Optional, Union
 
 import paddle
-import paddle.nn as nn
-from paddle import Tensor
+from paddle import Tensor, nn
 
 from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
