@@ -28,15 +28,10 @@ void IndexSelectGradKernel(const Context& ctx,
                            int dim,
                            DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUType* in_grad_data =
-      reinterpret_cast<XPUType*>(ctx.template Alloc<T>(x_grad));
-  auto* out_grad_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
-
-  auto input_dim = x_grad->dims();
-  dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto output_dim = out_grad.dims();
+  if (dim < 0) {
+    dim += out_grad.dims().size();
+  }
   const auto& index_type = index.dtype();
-
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
@@ -48,31 +43,33 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  std::vector<int> x_grad_shape = phi::vectorize<int>(input_dim);
-  std::vector<int> out_grad_shape = phi::vectorize<int>(output_dim);
-  int r = 0;
-  if (index_type == phi::DataType::INT64) {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "index_select_grad do not support index int64_t"));
-  } else {
+  XPUType* x_grad_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(x_grad));
+  const XPUType* out_grad_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
+
+  auto out_grad_shape = phi::vectorize<int64_t>(out_grad.dims());
+  auto x_grad_shape = phi::vectorize<int64_t>(x_grad->dims());
+
+  int r = xpu::Error_t::SUCCESS;
+  if (index_type == phi::DataType::INT32) {
     const int* index_data = index.data<int>();
-#if 1
-    r = xpu::index_select_grad<XPUType>(ctx.x_context(),
-                                        nullptr,
-                                        index_data,
-                                        out_grad_data,
-                                        dim,
-                                        in_grad_data,
-                                        out_grad_shape,
-                                        x_grad_shape);
-#else
-    (void)(index_data);
-    (void)(out_grad_data);
-    (void)(dim);
-    (void)(in_grad_data);
-    (void)(out_grad_shape);
-    (void)(x_grad_shape);
-#endif
+    r = xpu::index_select_grad<XPUType, int>(ctx.x_context(),
+                                       nullptr,
+                                       index_data,
+                                       out_grad_data,
+                                       dim,
+                                       x_grad_data,
+                                       out_grad_shape,
+                                       x_grad_shape);
+  } else if (index_type == phi::DataType::INT64) {
+    const int64_t* index_data = index.data<int64_t>();
+    r = xpu::index_select_grad<XPUType, int64_t>(ctx.x_context(),
+                                           nullptr,
+                                           index_data,
+                                           out_grad_data,
+                                           dim,
+                                           x_grad_data,
+                                           out_grad_shape,
+                                           x_grad_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_select_grad");
 }
@@ -80,4 +77,4 @@ void IndexSelectGradKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    index_select_grad, XPU, ALL_LAYOUT, phi::IndexSelectGradKernel, float) {}
+    index_select_grad, XPU, ALL_LAYOUT, phi::IndexSelectGradKernel, float, phi::dtype::float16) {}
