@@ -461,15 +461,19 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    fused_elemwise_activation,
-    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
-    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedElemwiseActivationKernel,
+                          float,
+                          double) {}
 
-REGISTER_OP_CPU_KERNEL(
-    fused_elemwise_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
-    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedElemwiseActivationGradKernel,
+                          float,
+                          double) {}
 
 // for memory optimization, we register the fused_elemwise_add_activation OP
 REGISTER_OPERATOR(
@@ -482,12 +486,16 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
                   ops::FusedElemwiseAddActivationNoNeddBufVarInferer,
                   ops::FusedElemwiseAddActivationOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    fused_elemwise_add_activation,
-    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
-    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedElemwiseAddActivationKernel,
+                          float,
+                          double) {}
 
-REGISTER_OP_CPU_KERNEL(
-    fused_elemwise_add_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
-    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedElemwiseAddActivationGradKernel,
+                          float,
+                          double) {}
