@@ -75,10 +75,8 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
 void StreamAnalyzer::ConstructEvents(
     std::vector<Instruction>* instructions) const {
   std::vector<Instruction> cross_step_merged_instructions = *instructions;
-  if (!FLAGS_new_executor_sequential_run) {
-    for (const Instruction& instr : *instructions) {
-      cross_step_merged_instructions.emplace_back(instr);
-    }
+  for (const Instruction& instr : *instructions) {
+    cross_step_merged_instructions.emplace_back(instr);
   }
 
   DependencyBuilder dependency_builder;
