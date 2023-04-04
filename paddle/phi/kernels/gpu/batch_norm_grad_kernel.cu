@@ -1345,14 +1345,14 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
 #endif
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
 #else
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,

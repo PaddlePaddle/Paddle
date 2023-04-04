@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -88,16 +89,6 @@ inline void SetDeviceId(const platform::Place& place) {
     auto dev_id = place.device;
     platform::SetXPUDeviceId(dev_id);
 #endif
-  } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with NPU support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetNPUDeviceId(dev_id);
-#endif
   } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_THROW(platform::errors::Unavailable(
@@ -122,6 +113,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -218,11 +211,6 @@ void InterpreterCore::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -296,12 +284,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
-    is_build_ = true;
     UpdateSyncOpNum();
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
+    is_build_ = true;
   } else {
     RunImpl();
   }
@@ -612,7 +600,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-  dependecy_count_.resize(instr_num);
+  dependecy_count_ = std::vector<size_t>(instr_num, 0);
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
@@ -672,6 +660,7 @@ void InterpreterCore::Convert(
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
   auto nodes = *op_func_nodes;
   auto op_nums = nodes.size();
+  vec_instruction_.clear();
   vec_instruction_.reserve(op_nums);
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
@@ -840,8 +829,6 @@ void InterpreterCore::Convert(
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 
-  BuildSkipShareLoDInfo();
-
   bool inplaced = false;
   for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
@@ -882,6 +869,10 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
         }
       }
     }
+    if (can_skip_lod) {
+      VLOG(8) << "skip share lod for: " << vec_instruction_[i].OpBase()->Type()
+              << " (" << i << ")";
+    }
     vec_instruction_[i].InnerInferShapeContext()->SetSkipLoD(can_skip_lod);
   }
 }
@@ -892,18 +883,6 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
-    // variable values, but only through special `float_status` to checks
-    // whether the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-  }
-#endif
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -1087,6 +1066,7 @@ void InterpreterCore::ExecuteInstructionList(
     // EOF is not a fatal error.
     if (exception_holder_.Type() != "EOF") {
       async_work_queue_->Cancel();
+      async_work_queue_.reset();
     }
     VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
@@ -1324,11 +1304,12 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
-    is_build_ = true;
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
+    BuildSkipShareLoDInfo();
+    is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should

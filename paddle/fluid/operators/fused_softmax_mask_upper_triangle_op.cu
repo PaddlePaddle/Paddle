@@ -354,7 +354,7 @@ __global__ void SoftmaxMaskFuseUpperTriangleGradGPUKernel(const T* grad_input,
   }
 }
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -386,7 +386,8 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
                           "received the last dimension of x is %d",
                           key_seq_len));
 
-    auto& place = *context.template device_context<Place>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto stream = context.cuda_device_context().stream();
 
     int pow2_index = get_pow2_index_value(key_seq_len);
@@ -470,7 +471,7 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -491,7 +492,8 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
     auto query_seq_len = y_dim[2];
     auto key_seq_len = y_dim[3];
 
-    auto& place = *context.template device_context<Place>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto stream = context.cuda_device_context().stream();
 
     int pow2_index = get_pow2_index_value(key_seq_len);
@@ -602,14 +604,18 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fused_softmax_mask_upper_triangle,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::bfloat16>,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_softmax_mask_upper_triangle_grad,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext,
-                                                plat::bfloat16>,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftmaxMaskFuseUpperTriangleKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftmaxMaskFuseUpperTriangleGradKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}

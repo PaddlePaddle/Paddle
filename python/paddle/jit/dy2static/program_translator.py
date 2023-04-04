@@ -549,10 +549,13 @@ class StaticFunction:
 
         with_hook = kwargs.get("with_hook", False)
         is_train = kwargs.get("is_train", True)
+        is_prim_infer = kwargs.get("is_prim_infer", False)
         if "is_train" in kwargs:
             kwargs.pop("is_train")
         if "with_hook" in kwargs:
             kwargs.pop("with_hook")
+        if "is_prim_infer" in kwargs:
+            kwargs.pop("is_prim_infer")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(
@@ -573,9 +576,33 @@ class StaticFunction:
             with_hook=with_hook,
             is_train=is_train,
         )
+        if is_prim_infer:
+            (
+                concrete_program,
+                partial_program_layer,
+            ) = self._program_cache.get_program_without_cache(cache_key)
+        else:
+            # 3. check whether hit the cache or build a new program for the input arguments
+            concrete_program, partial_program_layer = self._program_cache[
+                cache_key
+            ]
+        return concrete_program, partial_program_layer
 
-        # 3. check whether hit the cache or build a new program for the input arguments
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
+    def get_concrete_program_with_cache_key(self, cached_key):
+        """
+        Returns traced concrete program and inner executable partial layer by cached key.
+
+        Args:
+            cached_key(CacheKey): The cached key use to get concrete program.
+
+        Returns:
+            Traced ConcreteProgram and executable translated Layer.
+        """
+        self._raise_when_property()
+        (
+            concrete_program,
+            partial_program_layer,
+        ) = self._program_cache.get_program_without_cache(cached_key)
         return concrete_program, partial_program_layer
 
     def get_traced_count(self):
@@ -633,7 +660,7 @@ class StaticFunction:
         return self.concrete_program_specify_input_spec(input_spec=None)
 
     def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False
+        self, input_spec=None, with_hook=False, is_prim_infer=False
     ):
         """
         Returns recent ConcreteProgram instance of decorated function while
@@ -651,6 +678,8 @@ class StaticFunction:
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
+        # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
+
         if cached_program_len == 0:
             desired_input_spec = input_spec
             if self._function_spec.input_spec is not None:
@@ -678,6 +707,7 @@ class StaticFunction:
                     *desired_input_spec,
                     with_hook=with_hook,
                     is_train=self._is_train_mode(),
+                    is_prim_infer=is_prim_infer,
                 )
                 return concrete_program
             else:
@@ -689,9 +719,14 @@ class StaticFunction:
         elif with_hook:
             cache_key = self._program_cache._recent_cache_key
             cache_key.kwargs["with_hook"] = True
-            concrete_program, _ = self._program_cache[cache_key]
-            return concrete_program
-
+            if not is_prim_infer:
+                concrete_program, _ = self._program_cache[cache_key]
+                return concrete_program
+            else:
+                concrete_program, _ = self.get_concrete_program_with_cache_key(
+                    cache_key
+                )
+                return concrete_program
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging_utils.warn(
@@ -699,12 +734,18 @@ class StaticFunction:
                     self._function_spec, cached_program_len
                 )
             )
-
-        cache_key, (
-            concrete_program,
-            partial_layer,
-        ) = self._program_cache.last()
-        return concrete_program
+        if not is_prim_infer:
+            cache_key, (
+                concrete_program,
+                partial_layer,
+            ) = self._program_cache.last()
+            return concrete_program
+        else:
+            cache_key = self._program_cache._recent_cache_key
+            concrete_program, _ = self.get_concrete_program_with_cache_key(
+                cache_key
+            )
+            return concrete_program
 
     def rollback(self):
         """
@@ -1212,6 +1253,9 @@ class ProgramCache:
                 )
 
         return self._caches[item_id]
+
+    def get_program_without_cache(self, cache_key):
+        return self._build_once(cache_key=cache_key)
 
     def get_program(self, item):
         if not isinstance(item, CacheKey):
