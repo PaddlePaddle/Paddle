@@ -2030,7 +2030,7 @@ class OpTest(unittest.TestCase):
                 )
 
     def _get_places(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == "float16":
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 self.op_type
             ):
