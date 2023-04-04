@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/analysis/passes/offload_params_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -38,6 +39,8 @@ PassRegistry::PassRegistry() {
   passes_.emplace(
       "ir_params_sync_among_devices_pass",
       std::unique_ptr<AnalysisPass>(new IrParamsSyncAmongDevicesPass));
+  passes_.emplace("offload_params_pass",
+                  std::unique_ptr<AnalysisPass>(new OffLoadParamsPass));
   passes_.emplace("adjust_cudnn_workspace_size_pass",
                   std::unique_ptr<AnalysisPass>(new AdjustCudnnWorkSpacePass));
   passes_.emplace("inference_op_replace_pass",
