@@ -21,29 +21,30 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-
 template <typename T>
-struct Node {
+struct GraphWeightedNode {
   T node_id;
   float weight_key;
   T eid;
-  Node() {
+  GraphWeightedNode() {
     node_id = 0;
     weight_key = 0;
     eid = 0;
   }
-  Node(T node_id, float weight_key, T eid = 0)
+  GraphWeightedNode(T node_id, float weight_key, T eid = 0)
       : node_id(node_id), weight_key(weight_key), eid(eid) {}
-  Node(const Node<T>& other) {
+  GraphWeightedNode(const GraphWeightedNode<T>& other) {
     node_id = other.node_id;
     weight_key = other.weight_key;
     eid = other.eid;
   }
-  friend bool operator>(const Node<T>& n1, const Node<T>& n2) {
+  friend bool operator>(const GraphWeightedNode<T>& n1,
+                        const GraphWeightedNode<T>& n2) {
     return n1.weight_key > n2.weight_key;
   }
 };
+
+namespace phi {
 
 template <typename T>
 void SampleWeightedNeighbors(
@@ -54,23 +55,26 @@ void SampleWeightedNeighbors(
     std::mt19937& rng,                                         // NOLINT
     std::uniform_real_distribution<float>& dice_distribution,  // NOLINT
     bool return_eids) {
-  std::priority_queue<Node<T>, std::vector<Node<T>>, std::greater<Node<T>>>
+  std::priority_queue<GraphWeightedNode<T>,
+                      std::vector<GraphWeightedNode<T>>,
+                      std::greater<GraphWeightedNode<T>>>
       min_heap;
   for (size_t i = 0; i < out_src.size(); i++) {
     float weight_key = log2(dice_distribution(rng)) * (1 / out_weight[i]);
     if (static_cast<int>(i) < sample_size) {
       if (!return_eids) {
-        min_heap.push(Node<T>(out_src[i], weight_key));
+        min_heap.push(GraphWeightedNode<T>(out_src[i], weight_key));
       } else {
-        min_heap.push(Node<T>(out_src[i], weight_key, out_eids[i]));
+        min_heap.push(
+            GraphWeightedNode<T>(out_src[i], weight_key, out_eids[i]));
       }
     } else {
-      const Node<T>& small = min_heap.top();
-      Node<T> cmp;
+      const GraphWeightedNode<T>& small = min_heap.top();
+      GraphWeightedNode<T> cmp;
       if (!return_eids) {
-        cmp = Node<T>(out_src[i], weight_key);
+        cmp = GraphWeightedNode<T>(out_src[i], weight_key);
       } else {
-        cmp = Node<T>(out_src[i], weight_key, out_eids[i]);
+        cmp = GraphWeightedNode<T>(out_src[i], weight_key, out_eids[i]);
       }
       bool flag = cmp > small;
       if (flag) {
@@ -82,7 +86,7 @@ void SampleWeightedNeighbors(
 
   int cnt = 0;
   while (!min_heap.empty()) {
-    const Node<T>& tmp = min_heap.top();
+    const GraphWeightedNode<T>& tmp = min_heap.top();
     out_src[cnt] = tmp.node_id;
     if (return_eids) {
       out_eids[cnt] = tmp.eid;
