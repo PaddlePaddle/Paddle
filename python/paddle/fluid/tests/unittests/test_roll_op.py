@@ -111,10 +111,10 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -131,10 +131,10 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -151,10 +151,10 @@ class TestRollBF16OpCase3(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 class TestRollAPI(unittest.TestCase):
