@@ -36,7 +36,7 @@ DenseTensor StridedCopy(const Context& dev_ctx,
   MetaTensor meta_input(input);
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
-  ContiguousKernel<T, Context>(dev_ctx, input, out_strides, &dense_out);
+  StridedCopyKernel<T, Context>(dev_ctx, input, out_strides, &dense_out);
   return dense_out;
 }
 
