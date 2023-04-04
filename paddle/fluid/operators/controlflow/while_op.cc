@@ -101,6 +101,12 @@ class WhileOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    bool offload = false;
+    int offload_vars_pool_idx = -1;
+    if (HasAttr("offload_params")) {
+      offload = true;
+      offload_vars_pool_idx = Attr<int>("offload_vars_pool_idx");
+    }
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)),
                             platform::errors::NotFound(
                                 "Input(Condition) of WhileOp is not found."));

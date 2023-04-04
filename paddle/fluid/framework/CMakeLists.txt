@@ -703,7 +703,8 @@ else()
          lod_rank_table
          feed_fetch_method
          graph_to_program_pass
-         variable_helper)
+         variable_helper
+         offload_vars_pool)
 endif()
 
 cc_library(
@@ -1033,7 +1034,8 @@ else()
          variable_helper
          timer
          monitor
-         fleet_executor)
+         fleet_executor
+         offload_vars_pool)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
@@ -1231,3 +1233,10 @@ cc_test(
   DEPS phi_utils)
 
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+
+if(WITH_GPU)
+  cc_library(
+    offload_vars_pool
+    SRCS offload_vars_pool.cc
+    DEPS op_registry phi_tensor device_context)
+endif()

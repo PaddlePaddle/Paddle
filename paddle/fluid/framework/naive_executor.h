@@ -40,7 +40,8 @@ class NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const platform::Place& place, bool offload = false)
+      : place_(place), offload_(offload) {}
 
   ~NaiveExecutor();
 
@@ -92,6 +93,7 @@ class NaiveExecutor {
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
       reuse_cache_;
   std::vector<phi::DenseTensor*> cluster_buffer_;
+  bool offload_{false};
 };
 
 }  // namespace framework
