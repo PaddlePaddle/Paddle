@@ -77,15 +77,15 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
                            ->assert_is_op_input("elementwise_add", "X")
                            ->AsIntermediate();
 
-  auto elementwise0 =
+  auto* elementwise0 =
       pattern->NewNode(elementwise0_repr())->assert_is_op("elementwise_add");
-  auto elementwise0_w = pattern->NewNode(elementwise0_w_repr())
-                            ->AsInput()
-                            ->assert_is_op_input("elementwise_add", "Y");
-  auto elementwise0_out = pattern->NewNode(elementwise0_out_repr())
-                              ->assert_is_op_output("elementwise_add", "Out")
-                              ->assert_is_op_input("reshape2", "X")
-                              ->AsIntermediate();
+  auto* elementwise0_w = pattern->NewNode(elementwise0_w_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("elementwise_add", "Y");
+  auto* elementwise0_out = pattern->NewNode(elementwise0_out_repr())
+                               ->assert_is_op_output("elementwise_add", "Out")
+                               ->assert_is_op_input("reshape2", "X")
+                               ->AsIntermediate();
 
   auto* reshape2_0 =
       pattern->NewNode(reshape2_0_repr())->assert_is_op("reshape2");
@@ -152,15 +152,15 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
                            ->assert_is_op_input("elementwise_add", "X")
                            ->AsIntermediate();
 
-  auto elementwise1 =
+  auto* elementwise1 =
       pattern->NewNode(elementwise1_repr())->assert_is_op("elementwise_add");
-  auto elementwise1_w = pattern->NewNode(elementwise1_w_repr())
-                            ->AsInput()
-                            ->assert_is_op_input("elementwise_add", "Y");
-  auto elementwise1_out = pattern->NewNode(elementwise1_out_repr())
-                              ->assert_is_op_output("elementwise_add", "Out")
-                              ->assert_is_op_input("reshape2", "X")
-                              ->AsIntermediate();
+  auto* elementwise1_w = pattern->NewNode(elementwise1_w_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("elementwise_add", "Y");
+  auto* elementwise1_out = pattern->NewNode(elementwise1_out_repr())
+                               ->assert_is_op_output("elementwise_add", "Out")
+                               ->assert_is_op_input("reshape2", "X")
+                               ->AsIntermediate();
 
   auto* reshape2_1 =
       pattern->NewNode(reshape2_1_repr())->assert_is_op("reshape2");
@@ -187,15 +187,15 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
                            ->assert_is_op_input("elementwise_add", "X")
                            ->AsIntermediate();
 
-  auto elementwise2 =
+  auto* elementwise2 =
       pattern->NewNode(elementwise2_repr())->assert_is_op("elementwise_add");
-  auto elementwise2_w = pattern->NewNode(elementwise2_w_repr())
-                            ->AsInput()
-                            ->assert_is_op_input("elementwise_add", "Y");
-  auto elementwise2_out = pattern->NewNode(elementwise2_out_repr())
-                              ->assert_is_op_output("elementwise_add", "Out")
-                              ->assert_is_op_input("reshape2", "X")
-                              ->AsIntermediate();
+  auto* elementwise2_w = pattern->NewNode(elementwise2_w_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("elementwise_add", "Y");
+  auto* elementwise2_out = pattern->NewNode(elementwise2_out_repr())
+                               ->assert_is_op_output("elementwise_add", "Out")
+                               ->assert_is_op_input("reshape2", "X")
+                               ->AsIntermediate();
 
   auto* reshape2_2 =
       pattern->NewNode(reshape2_2_repr())->assert_is_op("reshape2");
