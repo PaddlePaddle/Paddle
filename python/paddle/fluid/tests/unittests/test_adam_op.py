@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def adam_wrapper(
@@ -926,7 +926,7 @@ class TestAdamOptimizer(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            print("Start run on {}".format(place))
+            print(f"Start run on {place}")
             for epoch in range(10):
                 pred_res, loss_res = exe.run(
                     main_prog,

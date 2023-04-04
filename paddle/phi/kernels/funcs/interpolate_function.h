@@ -142,13 +142,6 @@ inline std::vector<T> get_new_data_from_tensor(
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (new_data_tensor->place().GetType() == phi::AllocationType::NPU) {
-    phi::Copy(
-        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<T>();
-  }
-#endif
 #ifdef PADDLE_WITH_XPU
   if (new_data_tensor->place().GetType() == phi::AllocationType::XPU) {
     phi::Copy(

@@ -721,14 +721,14 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
-                msg="gradient_1:\n{} \ngradient_2:\n{}".format(g, g2),
+                msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",
             )
 
     def is_grads_equal_zeros(self, grads):
         for g in grads:
             self.assertTrue(
                 self.grad_equal(np.zeros_like(g), g),
-                msg="The gradient should be zeros, but received \n{}".format(g),
+                msg=f"The gradient should be zeros, but received \n{g}",
             )
 
     def create_case(self, net):

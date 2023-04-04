@@ -139,11 +139,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -544,57 +539,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   py::class_<platform::NPUPlace> npuplace(m, "NPUPlace", R"DOC(
     NPUPlace is a descriptor of a device.
     It represents a NPU device on which a tensor will be allocated and a model will run.
-
     Examples:
         .. code-block:: python
-
           # required: npu
-
           import paddle
           place = paddle.NPUPlace(0)
-
         )DOC");
   g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
-  npuplace
-      .def("__init__",
-           [](platform::NPUPlace &self, int dev_id) {
-#ifdef PADDLE_WITH_ASCEND_CL
-             if (UNLIKELY(dev_id < 0)) {
-               LOG(ERROR) << string::Sprintf(
-                   "Invalid NPUPlace(%d), device id must be 0 or "
-                   "positive integer",
-                   dev_id);
-               std::exit(-1);
-             }
-             if (UNLIKELY(dev_id >= platform::GetNPUDeviceCount())) {
-               if (platform::GetNPUDeviceCount() == 0) {
-                 LOG(ERROR) << "Cannot use NPU because there is no NPU "
-                               "detected on your "
-                               "machine.";
-                 std::exit(-1);
-               } else {
-                 LOG(ERROR) << string::Sprintf(
-                     "Invalid NPUPlace(%d), must inside [0, %d), because NPU "
-                     "number on your machine is %d",
-                     dev_id,
-                     platform::GetNPUDeviceCount(),
-                     platform::GetNPUDeviceCount());
-                 std::exit(-1);
-               }
-             }
-             new (&self) platform::NPUPlace(dev_id);
-#else
-             LOG(ERROR) << string::Sprintf(
-                 "Cannot use NPU because you have installed CPU/GPU version "
-                 "PaddlePaddle.\n"
-                 "If you want to use NPU, please try to install NPU version "
-                 "PaddlePaddle by: pip install paddlepaddle-npu\n"
-                 "If you only have CPU, please change NPUPlace(%d) to be "
-                 "CPUPlace().\n",
-                 dev_id);
-             std::exit(-1);
-#endif
-           })
+  npuplace.def("__init__", [](platform::NPUPlace &self, int dev_id) {})
       .def("_type", &PlaceIndex<platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::NPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CUDAPlace>)

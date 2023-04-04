@@ -40,7 +40,7 @@ def run_gen_ncc_id(attr):
 
         for i in range(1, nccl_comm_num):
             startup_program.global_block().create_var(
-                name="NCCLID_{}".format(i),
+                name=f"NCCLID_{i}",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW,
             )
@@ -48,12 +48,12 @@ def run_gen_ncc_id(attr):
         if use_hallreduce:
             for i in range(0, nccl_comm_num):
                 startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID_{}".format(i),
+                    name=f"Hierarchical_inter_NCCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
                 startup_program.global_block().create_var(
-                    name="Hierarchical_exter_NCCLID_{}".format(i),
+                    name=f"Hierarchical_exter_NCCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
@@ -89,7 +89,7 @@ class TestGenNcclIdOp(unittest.TestCase):
         port = self._dist_ut_port_0
         trainers = []
         for i in range(nranks):
-            trainers.append('127.0.0.1:{}'.format(port + i))
+            trainers.append(f'127.0.0.1:{port + i}')
 
         attr = {
             "trainers": trainers,

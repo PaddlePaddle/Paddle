@@ -48,7 +48,7 @@ TEST(Benchmark, EagerScaleCPU) {
   // Prepare Device Contexts
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor = CreateTensorWithValue(ddim,
                                                   paddle::platform::CPUPlace(),
@@ -87,7 +87,7 @@ TEST(Benchmark, EagerMatmulCPU) {
   // Prepare Device Contexts
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CPUPlace(),
@@ -137,7 +137,7 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CPUPlace(),
@@ -187,7 +187,7 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CPUPlace(),
