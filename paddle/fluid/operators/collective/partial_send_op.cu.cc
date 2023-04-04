@@ -62,8 +62,8 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
-    int send_numel = numel / num;
-    int offset = send_numel * id;
+    int64_t send_numel = numel / num;
+    int64_t offset = send_numel * id;
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {

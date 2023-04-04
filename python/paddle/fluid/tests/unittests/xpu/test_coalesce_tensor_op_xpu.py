@@ -93,10 +93,10 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
                 out[0:length] = input[1].flatten()
                 inputs.append(out)
 
-            coalesce_tensor_var = np.concatenate([input for input in inputs])
+            coalesce_tensor_var = np.concatenate(list(inputs))
             if set_constant:
                 coalesce_tensor_var = (
-                    np.ones((len(coalesce_tensor_var))) * constant
+                    np.ones(len(coalesce_tensor_var)) * constant
                 )
                 outputs = [
                     (

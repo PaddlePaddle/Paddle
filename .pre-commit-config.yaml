@@ -5,8 +5,7 @@ exclude: |
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+|
-        python/paddle/fluid/tests/unittests/npu/.+|
-        python/paddle/fluid/tests/unittests/mlu/.+
+        python/paddle/fluid/tests/unittests/npu/.+
     )$
 repos:
 # Common hooks
@@ -40,7 +39,7 @@ repos:
             (?x)^(
                 python/paddle/fluid/(?!tests).+|
                 python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
+                test/dygraph_to_static/test_error.py
             )$
 -   repo: local
     hooks:

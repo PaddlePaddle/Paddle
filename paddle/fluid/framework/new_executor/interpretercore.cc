@@ -88,16 +88,6 @@ inline void SetDeviceId(const platform::Place& place) {
     auto dev_id = place.device;
     platform::SetXPUDeviceId(dev_id);
 #endif
-  } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with NPU support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetNPUDeviceId(dev_id);
-#endif
   } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_THROW(platform::errors::Unavailable(
@@ -218,11 +208,6 @@ void InterpreterCore::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place_)) {
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -893,18 +878,6 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
-    // variable values, but only through special `float_status` to checks
-    // whether the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-  }
-#endif
-
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     // If it is OperatorBase, InferShape do nothing.
@@ -947,23 +920,28 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
-    if (op_with_kernel == nullptr) {
+    if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      // fit for phi
-      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
-        VLOG(4) << "Run phi kernel: " << op->Type();
-        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
-                << &instr_node.DeviceContext();
-        phi::KernelContext phi_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(
-            *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &phi_kernel_context);
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          VLOG(4) << "Run function kernel: " << op->Type();
+          VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                  << &instr_node.DeviceContext();
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&phi_kernel_context);
-
-      } else {
+          (*kernel)(&phi_kernel_context);
+        } else {
+          VLOG(4) << "Run structure kernel: " << op->Type();
+          (*kernel)(instr_node.InnerExecutionContext().get());
+        }
+      } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
     }

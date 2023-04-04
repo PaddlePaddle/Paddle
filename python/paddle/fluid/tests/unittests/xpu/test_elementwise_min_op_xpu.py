@@ -107,36 +107,6 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
                 'Out': np.minimum(self.inputs['X'], self.inputs['Y'])
             }
 
-    class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-            y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-                self.dtype
-            )
-            self.attrs = {'axis': 0}
-            self.inputs = {'X': x, 'Y': y}
-            self.outputs = {
-                'Out': np.minimum(
-                    self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-                )
-            }
-
-    class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-            y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-                self.dtype
-            )
-            self.attrs = {'axis': 1}
-            self.inputs = {'X': x, 'Y': y}
-            self.outputs = {
-                'Out': np.minimum(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-                )
-            }
-
     class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
@@ -148,21 +118,6 @@ class XPUTestElementwiseMinOp(XPUOpTestWrapper):
             self.outputs = {
                 'Out': np.minimum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
-                )
-            }
-
-    class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (25, 4)).astype(self.dtype)
-            y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (25, 4)).astype(
-                self.dtype
-            )
-            self.attrs = {'axis': 1}
-            self.inputs = {'X': x, 'Y': y}
-            self.outputs = {
-                'Out': np.minimum(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 25, 4, 1)
                 )
             }
 

@@ -214,14 +214,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool adaptive_seqlen,
     PD_Bool enable_multi_stream);
 ///
-/// \brief Turn on NPU.
-///
-/// \param[in] pd_onfig config
-/// \param[in] device_id device_id the NPU card to use.
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNpu(
-    __pd_keep PD_Config* pd_config, int32_t device_id);
-///
 /// \brief A boolean state telling whether the XPU is turned on.
 ///
 /// \param[in] pd_onfig config

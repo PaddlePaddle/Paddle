@@ -23,6 +23,7 @@
 - concat
 - elementwise_pow
 - floor
+- gather
 - gather_nd
 - log
 - max
@@ -44,7 +45,6 @@
 - sin
 - cos
 - where
-- reshape
 - split
 - erf
 - tanh

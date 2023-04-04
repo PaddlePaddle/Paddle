@@ -98,7 +98,7 @@ def create_test_fp16(parent):
         def test_check_grad_normal(self):
             self.check_grad(['X'], 'Out', max_relative_error=0.3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
     globals()[cls_name] = TestPadFp16
 

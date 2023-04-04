@@ -139,11 +139,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -696,6 +691,28 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_gemm_epilogue = True
+                     )DOC")
+      .def_property(
+          "fuse_adamw",
+          [](const BuildStrategy &self) { return self.fuse_adamw_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_adamw_ = b;
+          },
+          R"DOC((bool, optional): fuse_adamw indicate whether
+                to fuse all adamw optimizers with multi_tensor_adam,
+                it may make the execution faster. Default is False.
+                Examples:
+                    .. code-block:: python
+                        import paddle
+                        import paddle.static as static
+                        paddle.enable_static()
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_adamw = True
                      )DOC")
       .def_property(
           "fused_attention",
