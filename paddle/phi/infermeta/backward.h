@@ -247,7 +247,7 @@ void InverseGradInferMeta(const MetaTensor& out,
                           MetaTensor* dx);
 
 void KernelWithXShapeInferMeta(const MetaTensor& xshape,
-                               MetaTensor* dx = nullptr);
+                               MetaTensor* dx);
 
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,

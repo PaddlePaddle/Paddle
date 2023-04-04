@@ -582,7 +582,6 @@
     func : FlattenWithXShapeInferMeta
   kernel :
     func : flatten
-    backend : x
     data_type : x
   inplace : (x -> out)
   view : (x -> out)
