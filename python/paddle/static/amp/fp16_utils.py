@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import logging
 
 import numpy as np
@@ -22,10 +21,10 @@ from paddle.fluid import core, framework, global_scope
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-from .fp16_lists import AutoMixedPrecisionLists, get_low_precision_dtypestr
+from .fp16_lists import AutoMixedPrecisionLists, get_low_precision_dtypestr, black_list
 
 _logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+    __name__, logging.DEBUG, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 _valid_types = [
@@ -142,6 +141,13 @@ def _keep_fp32_output(op, out_name):
     return False
 
 
+def set_var_dtype(var_names, block, dtype):
+    for var_name in var_names:
+        var = block._find_var_recursive(var_name)
+        if var.dtype == core.VarDesc.VarType.FP16:
+            var.desc.set_dtype(dtype)
+
+
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
     Insert cast op and rename args of input and output.
@@ -162,6 +168,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
             op, in_name
         ):
+            set_var_dtype(op.input(in_name), block, core.VarDesc.VarType.FP32)
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -419,13 +426,123 @@ def fp16_guard():
     with framework.name_scope(prefix=_fp16_guard_pattern):
         yield
 
+def set_var_dst_dtype(op, var_names, block, global_block, need_set_dtype):
+    to_fp16_var_names = set()
+    for in_var_name in var_names:
+        if _keep_fp32_input(op, in_var_name):
+            continue
+        in_var = None
+        try:
+            in_var = block._var_recursive(in_var_name)
+        except ValueError as e:
+            _logger.debug(
+                "-- {}, try to get it in the global block --".format(e)
+            )
+            in_var = global_block.var(in_var_name)
+            if in_var is not None:
+                _logger.debug(
+                    "-- var {} is got in the global block --".format(
+                        in_var_name
+                    )
+                )
 
-def cast_model_to_fp16(
-    program,
-    amp_lists=None,
-    use_fp16_guard=True,
-    dest_type=core.VarDesc.VarType.FP16,
-):
+            if in_var is None or in_var.type not in _valid_types:
+                continue
+        # if in_var.dtype == core.VarDesc.VarType.FP32 or in_var.dtype == core.VarDesc.VarType.FP16:
+        if not _keep_fp32_output(op, in_var_name):
+            if need_set_dtype:
+                in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+            to_fp16_var_names.add(in_var_name)
+        _logger.debug(
+            "---- op type: {}, var name: {}, var dtype: {} ----".format(
+                op.type, in_var_name, in_var.dtype
+            )
+        )
+    return to_fp16_var_names
+
+
+def set_param_dtype(program, dtype):
+    all_parameters = []
+    for block in program.blocks:
+        all_parameters.extend(block.all_parameters())
+
+    for param in all_parameters:
+        param.desc.set_dtype(dtype)
+
+
+def op_need_keep_fp32(op, amp_lists, use_fp16_guard):
+    need_keep_fp32 = False
+    if _need_keep_fp32(
+        op,
+        amp_lists.unsupported_list.union(amp_lists.black_list),
+        use_fp16_guard,
+    ):
+        print('============= add to fp32 ========= 1 ', op.type)
+        need_keep_fp32 = True
+    if amp_lists.black_varnames is not None and _is_in_black_varnames(
+        op, amp_lists
+    ):
+        print('============= add to fp32 ========= 2 ', op.type)
+        need_keep_fp32 = True
+    if op.type in amp_lists.black_list:
+        print('============= add to fp32 ========= 3 ', op.type)
+        need_keep_fp32 = True
+    return need_keep_fp32
+
+
+def get_promote_dtype(op, amp_dtype, block, amp_lists, black_op_set):
+    dst_dtype = amp_dtype
+    for in_name in op.input_names:
+        # for ipu, all inputs must be converted to fp16
+        if not core.is_compiled_with_ipu() and _keep_fp32_input(op, in_name):
+            _logger.debug(
+                "---- Input {} {} should be kept fp32 ----".format(
+                    in_name, op.input(in_name)
+                )
+            )
+            continue
+        # if this op has inputs
+        if in_name:
+            for in_var_name in op.input(in_name):
+                in_var = block.var(in_var_name)
+                prev_op = None
+                _logger.debug(
+                    "---- Input {} {} dtype is {} ----".format(
+                        in_name, op.input(in_name), in_var.dtype
+                    )
+                )
+                # this in_var isn't the output of other op
+                if in_var.op is None:
+                    if in_var.dtype == core.VarDesc.VarType.FP32:
+                        dst_dtype = core.VarDesc.VarType.FP32
+                        break
+                # inplace
+                elif in_var.op is op:
+                    ops = block.ops
+                    prev_op = find_true_prev_op(ops, op, in_var_name)
+                    if (
+                        prev_op is None
+                        and in_var.dtype == core.VarDesc.VarType.FP32
+                    ):
+                        dst_dtype = core.VarDesc.VarType.FP32
+                        break
+                else:
+                    prev_op = in_var.op
+
+                # if it's one of inputs
+                if prev_op is not None and (
+                    prev_op in black_op_set
+                    or prev_op.type in amp_lists.black_list
+                ):
+                    dst_dtype = core.VarDesc.VarType.FP32
+                    break
+        else:
+            dst_dtype = core.VarDesc.VarType.FP32
+
+    return dst_dtype
+
+
+def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -454,46 +571,39 @@ def cast_model_to_fp16(
         "lod_array_length",
         "write_to_array",
     }
+    amp_lists.white_list = white_list
+    amp_lists.black_list -= black_list
+    print(amp_lists.white_list)
+    print(amp_lists.black_list)
+    print(amp_lists.unsupported_list)
     global_block = program.global_block()
     keep_fp32_ops = set()
+    keep_fp16_ops = set()
     to_fp16_var_names = set()
-    origin_ops = []
-    for block in program.blocks:
-        origin_ops.extend(block.ops)
 
+    # step 1: set all params to fp16
+    set_param_dtype(program, dtype=core.VarDesc.VarType.FP16)
+
+    # step 2: divide op into different sets according to the black/unsupported and white lists
+    # step 3: set input and output vars dtype for keep_fp16_ops
     for block in program.blocks:
         ops = block.ops
         for op in ops:
+            print("================ process op ================")
+            print(op)
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-            if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
+            if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
                 keep_fp32_ops.add(op)
-                continue  # processed below
-            for in_name in op.input_names:
-                # for ipu, all inputs must be converted to fp16
-                if not core.is_compiled_with_ipu() and _keep_fp32_input(
-                    op, in_name
-                ):
-                    continue
-                for in_var_name in op.input(in_name):
-                    in_var = None
-                    try:
-                        in_var = block._var_recursive(in_var_name)
-                    except ValueError as e:
-                        _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
-                        )
-                        in_var = global_block.var(in_var_name)
-                        if in_var is not None:
-                            _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    in_var_name
-                                )
-                            )
-
-                    if in_var is None or in_var.type not in _valid_types:
+            elif op.type in amp_lists.white_list:
+                print('============= add to fp16 ========= 4 ', op.type)
+                keep_fp16_ops.add(op)
+                # set all var to fp16 if necessary
+                for in_name in op.input_names:
+                    # for ipu, all inputs must be converted to fp16
+                    if not core.is_compiled_with_ipu() and _keep_fp32_input(
+                        op, in_name
+                    ):
                         continue
 
                     if in_var.dtype == core.VarDesc.VarType.FP32:
@@ -504,33 +614,20 @@ def cast_model_to_fp16(
                         "-- op type: {}, in var name: {}, in var dtype: {} --".format(
                             op.type, in_var_name, in_var.dtype
                         )
+                    fp16_vars = set_var_dst_dtype(
+                        op, op.input(in_name), block, global_block, False
                     )
-
-            for out_name in op.output_names:
-                # for ipu, all outputs must be converted to fp16
-                if not core.is_compiled_with_ipu() and _keep_fp32_output(
-                    op, out_name
-                ):
-                    continue
-                for out_var_name in op.output(out_name):
-                    out_var = None
-                    try:
-                        out_var = block._var_recursive(out_var_name)
-                    except ValueError as e:
-                        _logger.debug(
-                            "-- {}, try to get it in the global block --".format(
-                                e
-                            )
-                        )
-                        out_var = global_block.var(out_var_name)
-                        if out_var is not None:
-                            _logger.debug(
-                                "-- var {} is got in the global block --".format(
-                                    out_var_name
-                                )
-                            )
-
-                    if out_var is None or out_var.type not in _valid_types:
+                    print("========= fp16_vars ========= ", fp16_vars)
+                    to_fp16_var_names = to_fp16_var_names.union(fp16_vars)
+                    print(
+                        "=========== to_fp16_var_names =========== ",
+                        to_fp16_var_names,
+                    )
+                for out_name in op.output_names:
+                    # for ipu, all outputs must be converted to fp16
+                    if not core.is_compiled_with_ipu() and _keep_fp32_output(
+                        op, out_name
+                    ):
                         continue
 
                     if out_var.dtype == core.VarDesc.VarType.FP32:
@@ -547,25 +644,80 @@ def cast_model_to_fp16(
                     and op.attr(attr_name) == core.VarDesc.VarType.FP32
                 ):
                     op._set_attr(attr_name, dest_type)
+                    set_var_dst_dtype(
+                        op, op.output(out_name), block, global_block, True
+                    )
+            else:
+                # step 4: divide others ops into fp16/fp32 sets.
+                dst_dtype = get_promote_dtype(
+                    op,
+                    core.VarDesc.VarType.FP16,
+                    block,
+                    amp_lists,
+                    keep_fp32_ops,
+                )
+                if dst_dtype == core.VarDesc.VarType.FP16:
+                    print('============= add to fp16 ========= 5 ', op.type)
+                    for in_name in op.input_names:
+                        fp16_vars = set_var_dst_dtype(
+                            op, op.input(in_name), block, global_block, False
+                        )
+                        to_fp16_var_names = to_fp16_var_names.union(fp16_vars)
+                    for out_name in op.output_names:
+                        set_var_dst_dtype(
+                            op, op.output(out_name), block, global_block, True
+                        )
+                    keep_fp16_ops.add(op)
+                else:
+                    print('============= add to fp32 ========= 6 ', op.type)
+                    keep_fp32_ops.add(op)
 
-    # process ops in keep_fp32_ops
-    op_var_rename_map = [
-        collections.OrderedDict() for _ in range(len(program.blocks))
-    ]
+            """
+            if (
+                op.has_attr('in_dtype')
+                and op.attr('in_dtype') == core.VarDesc.VarType.FP32
+            ):
+                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+            if (
+                op.has_attr('out_dtype')
+                and op.attr('out_dtype') == core.VarDesc.VarType.FP32
+            ):
+                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+            if (
+                op.has_attr('dtype')
+                and op.attr('dtype') == core.VarDesc.VarType.FP32
+            ):
+                op._set_attr('dtype', core.VarDesc.VarType.FP16)
+            """
+
+    print("===================== before cast =================")
+    print(program)
+>>>>>>> support promote dtype for static amp training
+
     for block in program.blocks:
         ops = block.ops
         idx = 0
         while idx < len(ops):
             op = ops[idx]
             num_cast_ops = 0
+            if op in keep_fp16_ops:
+                in_var_cast_num = _insert_cast_op(
+                    block,
+                    op,
+                    idx,
+                    core.VarDesc.VarType.FP32,
+                    core.VarDesc.VarType.FP16,
+                )
+                num_cast_ops += in_var_cast_num
             if op in keep_fp32_ops:
-                pre_cast_num = _insert_cast_op(
+                in_var_cast_num = _insert_cast_op(
                     block,
                     op,
                     idx,
                     dest_type,
                     core.VarDesc.VarType.FP32,
                 )
+<<<<<<< HEAD
                 num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
                     out_var = block.vars.get(out_var_name)
@@ -587,9 +739,14 @@ def cast_model_to_fp16(
                                 op_var_rename_map,
                             )
                             num_cast_ops += post_cast_num
+=======
+                num_cast_ops += in_var_cast_num
+
+>>>>>>> support promote dtype for static amp training
             idx += num_cast_ops + 1
 
-    _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
+    print("===================== after cast =================")
+    print(program)
     return to_fp16_var_names
 
 
@@ -667,85 +824,92 @@ def rewrite_program(main_prog, amp_lists, dest_type=core.VarDesc.VarType.FP16):
         main_prog (Program): The main program for training.
         dest_type(core.VarDesc.VarType): the cast type. such as core.VarDesc.VarType.FP16 and core.VarDesc.VarType.BF16.
     """
+    _logger.debug("---- origin program ----")
+    _logger.debug(main_prog)
     block = main_prog.global_block()
     block._sync_with_cpp()
+    global_block = main_prog.global_block()
     ops = block.ops
     white_op_set = set()
     black_op_set = set()
+    # step 1: set param to fp32
+    set_param_dtype(main_prog, dtype=core.VarDesc.VarType.FP32)
+    # step 2:
     for op in ops:
-
         # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder,
         # we don't need to handle reader op and the input of 'create_py_reader' is not
         # in block, which may result in errors.
         # See GeneratorLoader._init_non_iterable() for details.
+        _logger.debug("---- process op: {}  ----".format(op))
+
         if op.type == 'create_py_reader' or op.type == 'read':
             continue
 
-        if amp_lists.black_varnames is not None and _is_in_black_varnames(
-            op, amp_lists
-        ):
-            black_op_set.add(op)
-            continue
-
-        if op.type in amp_lists.black_list:
+        if op_need_keep_fp32(op, amp_lists, use_fp16_guard=False):
+            _logger.debug(
+                "---- Add into fp32_op_set because the op needs to be kept fp32 ----"
+            )
             black_op_set.add(op)
         elif op.type in amp_lists.white_list:
+            _logger.debug(
+                "---- Add into fp16_op_set because the op in white_list ----"
+            )
             white_op_set.add(op)
-        elif op.type in amp_lists.gray_list:
-            is_black_op = False
-            is_white_op = False
-            for in_name in op.input_names:
-                # if this op has inputs
-                if in_name:
-                    for in_var_name in op.input(in_name):
-                        in_var = block.var(in_var_name)
-                        # this in_var isn't the output of other op
-                        if in_var.op is None:
-                            continue
-                        elif in_var.op is op:
-                            prev_op = find_true_prev_op(ops, op, in_var_name)
-                            if prev_op is None:
-                                continue
-                        else:
-                            prev_op = in_var.op
-                        # if it's one of inputs
-                        if (
-                            prev_op in black_op_set
-                            or prev_op.type in amp_lists.black_list
-                        ):
-                            is_black_op = True
-                        elif (
-                            prev_op in white_op_set
-                            or prev_op.type in amp_lists.white_list
-                        ):
-                            is_white_op = True
-            if is_black_op:
-                black_op_set.add(op)
-            elif is_white_op:
-                white_op_set.add(op)
-            else:
-                pass
+            for out_name in op.output_names:
+                set_var_dst_dtype(
+                    op, op.output(out_name), block, global_block, True
+                )
         else:
-            # For numerical safe, we apply fp32 computation on ops that
-            # are not determined which list they should stay.
-            black_op_set.add(op)
+            dst_dtype = get_promote_dtype(
+                op, core.VarDesc.VarType.FP16, block, amp_lists, black_op_set
+            )
+            if dst_dtype == core.VarDesc.VarType.FP16:
+                _logger.debug(
+                    "----  Add into fp16_op_set because it should be promoted to fp16 ----"
+                )
+                white_op_set.add(op)
+                for out_name in op.output_names:
+                    set_var_dst_dtype(
+                        op, op.output(out_name), block, global_block, True
+                    )
+            else:
+                _logger.debug(
+                    "----  Add into fp32_op_set because it should be promoted to fp32 ----"
+                )
+                black_op_set.add(op)
 
     idx = 0
     while idx < len(ops):
         op = ops[idx]
         num_cast_ops = 0
-        if op in black_op_set:
+        if op in white_op_set:
             num_cast_ops = _insert_cast_op(
+<<<<<<< HEAD
                 block, op, idx, dest_type, core.VarDesc.VarType.FP32
+=======
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.FP32,
+                core.VarDesc.VarType.FP16,
+>>>>>>> support promote dtype for static amp training
             )
-        elif op in white_op_set:
+        elif op in black_op_set:
             num_cast_ops = _insert_cast_op(
+<<<<<<< HEAD
                 block, op, idx, core.VarDesc.VarType.FP32, dest_type
+=======
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.FP16,
+                core.VarDesc.VarType.FP32,
+>>>>>>> support promote dtype for static amp training
             )
-        else:
-            pass
 
         idx += num_cast_ops + 1
+    _logger.debug("---- amp program ----")
+    _logger.debug(main_prog)
 
 
 def update_role_var_grad(main_prog, params_grads):
