@@ -256,7 +256,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int64_t>(in->dims());
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];

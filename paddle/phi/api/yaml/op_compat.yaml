@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -168,6 +174,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : auc
+  inputs :
+    {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+  outputs :
+    {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
+
 - op : batch_norm
   backward : batch_norm_grad
   inputs:
@@ -185,6 +197,13 @@
     reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : bce_loss
+  backward : bce_loss_grad
+  inputs :
+    {input : X, label : Label}
+  outputs :
+    out : Out
 
 - op : bernoulli
   inputs :
@@ -573,6 +592,11 @@
 
 - op : embedding (lookup_table_v2)
   backward : embedding_grad (lookup_table_v2_grad)
+  inputs :
+    {x : Ids, weight : W}
+  outputs :
+    out : Out
+  manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
@@ -642,6 +666,15 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : eye
+  outputs :
+    out : Out
+  scalar :
+    num_rows :
+      support_tensor : true
+    num_columns :
+      support_tensor : true
 
 - op : fake_channel_wise_quantize_abs_max
   extra :
@@ -805,6 +838,18 @@
     {ids : Ids, parents : Parents}
   outputs :
     out : Out
+
+- op : gaussian (gaussian_random)
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [bool use_mkldnn = false]
+  manual_signature : [gaussian]
 
 - op : gelu
   backward : gelu_grad
@@ -1321,6 +1366,18 @@
   outputs :
     out : Out
 
+- op : nanmedian
+  backward : nanmedian_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, medians : MedianIndex}
+  int_array:
+    axis:
+      data_type : int
+  extra:
+    outputs : [medians]
+
 - op : nce
   backward : nce_grad
   extra :
@@ -1795,6 +1852,13 @@
   outputs :
     out : Out
 
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
+  outputs :
+    out : Out
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -1838,6 +1902,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
   drop_empty_grad : [x_grad]
+
+- op : stanh
+  backward : stanh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)

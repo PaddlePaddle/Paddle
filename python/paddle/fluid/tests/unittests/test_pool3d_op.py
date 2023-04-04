@@ -399,9 +399,9 @@ class TestPool3D_Op(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        if self.has_cudnn() and self.pool_type != "max":
+        if (
+            self.has_cudnn() or self.dtype == np.uint16
+        ) and self.pool_type != "max":
             place = core.CUDAPlace(0)
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
@@ -510,7 +510,7 @@ def create_test_cudnn_class(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOp")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOp")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -541,7 +541,7 @@ def create_test_cudnn_fp16_class(parent):
                     else:
                         self.check_output_with_place(place, atol=1e-3)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
     globals()[cls_name] = TestCUDNNFp16Case
 
@@ -561,9 +561,49 @@ def create_test_fp16_class(parent):
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=1e-2)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
     globals()[cls_name] = TestFp16Case
+
+
+def create_test_cudnn_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not complied with CUDA and not support the bfloat16",
+    )
+    class TestCUDNNBf16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBf16Op")
+    TestCUDNNBf16Case.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNBf16Case
+
+
+def create_test_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not complied with CUDA and not support the bfloat16",
+    )
+    class TestBf16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+    cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
+    TestBf16Case.__name__ = cls_name
+    globals()[cls_name] = TestBf16Case
 
 
 create_test_cudnn_fp16_class(TestPool3D_Op)
@@ -580,6 +620,20 @@ create_test_fp16_class(TestCase3)
 create_test_fp16_class(TestCase4)
 create_test_fp16_class(TestCase5)
 
+create_test_cudnn_bf16_class(TestPool3D_Op)
+create_test_cudnn_bf16_class(TestCase1)
+create_test_cudnn_bf16_class(TestCase2)
+create_test_cudnn_bf16_class(TestCase3)
+create_test_cudnn_bf16_class(TestCase4)
+create_test_cudnn_bf16_class(TestCase5)
+
+create_test_bf16_class(TestPool3D_Op)
+create_test_bf16_class(TestCase1)
+create_test_bf16_class(TestCase2)
+create_test_bf16_class(TestCase3)
+create_test_bf16_class(TestCase4)
+create_test_bf16_class(TestCase5)
+
 
 # ---- test ceil mode ------
 def create_test_cudnn_use_ceil_class(parent):
@@ -593,7 +647,7 @@ def create_test_cudnn_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNOpCeilMode")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNOpCeilMode")
     TestPool3DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool3DUseCeilCase
 
@@ -607,7 +661,7 @@ def create_test_use_ceil_class(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CeilModeCast")
+    cls_name = "{}_{}".format(parent.__name__, "CeilModeCast")
     TestPool3DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestPool3DUseCeilCase
 
@@ -735,6 +789,13 @@ create_test_cudnn_fp16_class(TestCase2_AsyPadding)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding)
 create_test_cudnn_fp16_class(TestCase5_AsyPadding)
+
+create_test_cudnn_bf16_class(TestPool3D_Op_AsyPadding)
+create_test_cudnn_bf16_class(TestCase1_AsyPadding)
+create_test_cudnn_bf16_class(TestCase2_AsyPadding)
+create_test_cudnn_bf16_class(TestCase3_AsyPadding)
+create_test_cudnn_bf16_class(TestCase4_AsyPadding)
+create_test_cudnn_bf16_class(TestCase5_AsyPadding)
 
 create_test_cudnn_use_ceil_class(TestPool3D_Op_AsyPadding)
 create_test_cudnn_use_ceil_class(TestCase1_AsyPadding)
@@ -983,7 +1044,7 @@ def create_test_padding_SAME_class(parent):
             self.paddings = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -1015,7 +1076,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.paddings = [1, 1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -1041,7 +1102,7 @@ def create_test_padding_VALID_class(parent):
             self.paddings = [1, 1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -1073,7 +1134,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.paddings = [1, 1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 

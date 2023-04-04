@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import os
 import warnings
 
 import paddle
@@ -95,34 +94,6 @@ PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
 PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
-
-
-def low_precision_op_list():
-    if os.getenv("FLAGS_low_precision_op_list") is not None:
-        level = int(os.getenv("FLAGS_low_precision_op_list"))
-        print('<{:-^120}>'.format(" op list "))
-        op_list = paddle.fluid.core.get_low_precision_op_list()
-        op_count = 0
-        print(
-            '<{:-^40}'.format(" Op Name "),
-            '|',
-            '{:-^17}'.format("FP16 Calls"),
-            '|',
-            '{:-^17}'.format("BF16 Calls"),
-            '|',
-            '{:-^17}'.format('FP32 Calls'),
-            '|',
-            '{:-^17}>'.format('Other Calls'),
-        )
-        for x in op_list:
-            # fp16, bf16, fp32, other
-            called = op_list[x].split(",")
-            print(
-                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
-                % (x, called[0], called[1], called[2], called[3])
-            )
-            op_count += 1
-        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
 
 
 def amp_state():
@@ -368,12 +339,11 @@ def amp_guard(
         )
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (
         tracer._expected_place.is_gpu_place()
         or tracer._expected_place.is_xpu_place()
-        or tracer._expected_place.is_mlu_place()
         or tracer._expected_place.is_npu_place()
         or tracer._expected_place.is_custom_place()
     ):
@@ -389,10 +359,6 @@ def amp_guard(
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
-        enable = False
-    # For mlu:
-    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
-        warnings.warn('MLUPlace only support float16 amp.')
         enable = False
     # For custom device:
     if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):

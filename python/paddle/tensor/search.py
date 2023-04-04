@@ -807,7 +807,7 @@ def masked_select(x, mask, name=None):
     which is a tensor with data type of bool.
 
     Args:
-        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64.
+        x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -838,7 +838,7 @@ def masked_select(x, mask, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'paddle.tensor.search.mask_select',
         )
         check_variable_and_dtype(
