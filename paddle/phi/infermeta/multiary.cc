@@ -695,12 +695,12 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      config);
 }
 
-void BilinearTensorProductInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& weight,
-                                    const MetaTensor& bias,
-                                    MetaTensor* out,
-                                    MetaConfig config) {
+void BilinearInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* out,
+                       MetaConfig config) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto weight_dims = weight.dims();
