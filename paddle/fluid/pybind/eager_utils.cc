@@ -1522,6 +1522,16 @@ void SetCUDAGraphPtrListToArgs(
   // PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
   // list = PyList_New((Py_ssize_t)cuda_graph.size());
   VLOG(4) << "yoki list: " << list;
+  /*for (Py_ssize_t i = 0; i < static_cast<Py_ssize_t>(cuda_graph.size()); i++) {
+    VLOG(4) << "yoki: i: " << i;
+    if (cuda_graph[i] != nullptr) {
+      VLOG(4) << "yoki to pyobject";
+      PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+    } else {
+      Py_INCREF(Py_None);
+      PyList_SET_ITEM(list, i, Py_None);
+    }
+  }*/
   Py_ssize_t len = PyList_Size(list);
   if (len != 0) {
     for (Py_ssize_t i = 0; i < len; i++) {
@@ -1536,10 +1546,10 @@ void SetCUDAGraphPtrListToArgs(
       VLOG(4) << "yoki: i: " << i;
       if (cuda_graph[i] != nullptr) {
         VLOG(4) << "yoki to pyobject";
-        PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+        PyList_Insert(list, i, ToPyObject(cuda_graph[i]));
       } else {
         Py_INCREF(Py_None);
-        PyList_SET_ITEM(list, i, Py_None);
+        PyList_Insert(list, i, Py_None);
       }
     } 
   }
@@ -1568,12 +1578,13 @@ std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> GetCUDAGrap
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
     if (len == 0) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      return {};
+      /*PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of CUDAGraphWithInOuts, but got "
           "empty list",
           op_type,
           arg_name,
-          arg_idx));
+          arg_idx));*/
     }
     for (Py_ssize_t i = 0; i < len; i++) {
       result.emplace_back(CastPyArg2CUDAGraphPtr(PyList_GetItem(list, i)));
