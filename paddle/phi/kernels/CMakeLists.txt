@@ -205,20 +205,40 @@ elseif(WITH_XPU)
       file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
     endforeach()
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
+    file(
+      GLOB kernel_cc_relative
+      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+      "*.cc"
+      "cpu/*.cc"
+      "selected_rows/*.cc"
+      "selected_rows/cpu/*.cc"
+      "sparse/*.cc"
+      "sparse/cpu/*.cc"
+      "strings/*.cc"
+      "strings/cpu/*.cc"
+      "fusion/*.cc"
+      "fusion/cpu/*.cc")
+    foreach(kernel ${kernel_cc_relative})
+      file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${kernel}
+           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/${kernel})
+    endforeach()
+    file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
     xpu_add_library(
       phi_xpu
       STATIC
       ${kernel_xpu}
       ${kernel_xpu_kps}
-      ${kernel_cc}
+      ${kernel_xpu_cc}
       DEPENDS
       ${COMMON_KERNEL_DEPS})
+    kernel_declare("${kernel_xpu_cc}")
   else()
     add_library(phi_xpu ${kernel_xpu} ${kernel_cc})
+    kernel_declare("${kernel_cc}")
   endif()
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")
-  kernel_declare("${kernel_cc}")
+
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
 else()
