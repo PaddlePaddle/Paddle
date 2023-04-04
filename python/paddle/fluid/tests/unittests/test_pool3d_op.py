@@ -399,7 +399,9 @@ class TestPool3D_Op(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.has_cudnn() and self.pool_type != "max":
+        if (
+            self.has_cudnn() or self.dtype == np.uint16
+        ) and self.pool_type != "max":
             place = core.CUDAPlace(0)
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
@@ -576,13 +578,8 @@ def create_test_cudnn_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                if core.is_bfloat16_supported(place):
-                    if core.is_compiled_with_rocm():
-                        self.check_output_with_place(place)
-                    else:
-                        self.check_output_with_place(place)
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBf16Op")
     TestCUDNNBf16Case.__name__ = cls_name
@@ -601,10 +598,8 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                if core.is_bfloat16_supported(place):
-                    self.check_output_with_place(place)
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
     TestBf16Case.__name__ = cls_name
