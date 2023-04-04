@@ -2117,6 +2117,10 @@
   outputs :
     out : Out
 
+- op : truncated_gaussian_random
+  outputs :
+    out : Out
+
 - op : unbind
   inputs :
     input : X
