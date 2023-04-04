@@ -276,7 +276,8 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
                         "The offset exceeds the size of tensor."));
 
   T b = static_cast<T>(0);
-  if (platform::is_cpu_place(self.place())) {
+  if (platform::is_cpu_place(self.place()) ||
+      platform::is_cuda_pinned_place(self.place())) {
     b = self.data<T>()[offset];
   } else if (platform::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
@@ -284,7 +285,8 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
     auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self.place())) {
+  } else if (platform::is_gpu_place(self.place()) ||
+             platform::is_cuda_pinned_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
     auto p = self.place();
@@ -293,13 +295,6 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 #endif
   } else if (platform::is_mlu_place(self.place())) {
 #ifdef PADDLE_WITH_MLU
-    const T *a = self.data<T>();
-    auto p = self.place();
-    paddle::memory::Copy(
-        platform::CPUPlace(), &b, p, a + offset, sizeof(T), nullptr);
-#endif
-  } else if (platform::is_npu_place(self.place())) {
-#if defined(PADDLE_WITH_ASCEND_CL)
     const T *a = self.data<T>();
     auto p = self.place();
     paddle::memory::Copy(
@@ -334,7 +329,8 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T));
 #endif
-  } else if (platform::is_gpu_place(self->place())) {
+  } else if (platform::is_gpu_place(self->place()) ||
+             platform::is_cuda_pinned_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
@@ -343,13 +339,6 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_mlu_place(self->place())) {
 #ifdef PADDLE_WITH_MLU
-    auto p = self->place();
-    T *a = self->mutable_data<T>(p);
-    paddle::memory::Copy(
-        p, a + offset, platform::CPUPlace(), &elem, sizeof(T), nullptr);
-#endif
-  } else if (platform::is_npu_place(self->place())) {
-#if defined(PADDLE_WITH_ASCEND_CL)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(
@@ -424,21 +413,6 @@ void SetTensorFromPyArrayT(
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
-#endif
-  } else if (paddle::platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    platform::Place tmp_place = place;
-    platform::NPUDeviceGuard guard(tmp_place.device);
-    auto dst = self->mutable_data<T>(place);
-    platform::NPUMemcpySync(
-        dst, array.data(), array.nbytes(), ACL_MEMCPY_HOST_TO_DEVICE);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &ctx = *pool.Get(place);
-    ctx.Wait();
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use NPUPlace in CPU/GPU/XPU version. "
-        "Please recompile or reinstall Paddle with NPU support."));
 #endif
   } else if (paddle::platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
@@ -1090,39 +1064,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use CUDAPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
-#endif
-  } else if (is_npu_tensor) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "PyArray is not writable, in which case memory leak "
-                          "or double free would occur"));
-    PADDLE_ENFORCE_EQ(
-        py_arr.owndata(),
-        true,
-        platform::errors::InvalidArgument(
-            "PyArray does not own data, in which case  memory leak "
-            "or double free would occur"));
-
-    size_t copy_bytes = sizeof_dtype * numel;
-    auto p = tensor.place();
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &ctx = *pool.Get(tensor.place());
-    paddle::memory::Copy(
-        platform::CPUPlace(),
-        py_arr.mutable_data(),
-        p,
-        tensor_buf_ptr,
-        copy_bytes,
-        reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
-    ctx.Wait();
-    return py_arr;
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use NPUPlace in CPU/GPU/XPU version, "
-        "Please recompile or reinstall Paddle with NPU support."));
 #endif
   } else if (is_mlu_tensor) {
 #ifdef PADDLE_WITH_MLU

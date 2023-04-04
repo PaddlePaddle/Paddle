@@ -487,9 +487,7 @@ class PretrainedTokenizer:
                 print("Already cached %s" % path)
                 resolved_vocab_files[file_id] = path
             else:
-                print(
-                    "Downloading %s and saved to %s" % (file_path, default_root)
-                )
+                print(f"Downloading {file_path} and saved to {default_root}")
                 try:
                     resolved_vocab_files[file_id] = get_path_from_url(
                         file_path, default_root

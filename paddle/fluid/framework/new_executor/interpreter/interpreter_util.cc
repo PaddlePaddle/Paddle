@@ -56,8 +56,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "any_raw",
     "eig_grad",
     "eigh",
-    "graph_sample_neighbors",
-    "group_norm",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
@@ -632,16 +630,6 @@ void BuildOpFuncList(const platform::Place& place,
     SingleStreamGuard single_stream_guard(ops[i]);
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-#endif
 
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {

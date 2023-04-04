@@ -404,9 +404,9 @@ class TestCUDNNLstmOp(OpTest):
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
-            weight_names.append('weight{}'.format(i))
+            weight_names.append(f'weight{i}')
         for i in range(2 * self.num_layers):
-            weight_names.append('bias{}'.format(i))
+            weight_names.append(f'bias{i}')
         return weight_names
 
     def setUp(self):
@@ -474,7 +474,7 @@ class TestCUDNNLstmOp(OpTest):
         init_c = np.zeros((self.num_layers, batch_size, hidden_size)).astype(
             self.dtype
         )
-        state_out = np.ndarray((300)).astype("uint8")
+        state_out = np.ndarray(300).astype("uint8")
 
         if core.is_compiled_with_rocm():
             for i in range(len(flat_w)):
@@ -508,7 +508,7 @@ class TestCUDNNLstmOp(OpTest):
             'Out': output,
             "LastH": last_hidden,
             'LastC': last_cell,
-            'Reserve': np.ndarray((400)).astype("uint8"),
+            'Reserve': np.ndarray(400).astype("uint8"),
             'StateOut': state_out,
         }
 

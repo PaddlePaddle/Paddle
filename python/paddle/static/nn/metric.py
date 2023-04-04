@@ -76,7 +76,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
         if total is None:
             total = _varbase_creator(dtype="int32")
 
-        _k = k.numpy().item(0) if isinstance(k, Variable) else k
+        _k = k.item(0) if isinstance(k, Variable) else k
         topk_out, topk_indices = _legacy_C_ops.top_k_v2(
             input, 'k', _k, 'sorted', False
         )
