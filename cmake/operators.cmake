@@ -62,7 +62,6 @@ function(op_library TARGET)
   set(hip_cc_srcs)
   set(xpu_cc_srcs)
   set(xpu_kp_cc_srcs)
-  set(npu_cc_srcs)
   set(mlu_cc_srcs)
   set(cudnn_cu_cc_srcs)
   set(miopen_cu_cc_srcs)
@@ -74,9 +73,7 @@ function(op_library TARGET)
   set(MKLDNN_FILE)
   set(op_common_deps operator op_registry math_function layer
                      common_infer_shape_functions)
-  if(WITH_ASCEND_CL)
-    set(op_common_deps ${op_common_deps} npu_op_runner)
-  endif()
+
   if(WITH_MLU)
     set(op_common_deps ${op_common_deps} mlu_baseop)
   endif()
@@ -175,12 +172,6 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${TARGET}.kps)
       endif()
     endif()
-    if(WITH_ASCEND_CL)
-      string(REPLACE "_op" "_op_npu" NPU_FILE "${TARGET}")
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${NPU_FILE}.cc)
-        list(APPEND npu_cc_srcs ${NPU_FILE}.cc)
-      endif()
-    endif()
     if(WITH_MLU)
       string(REPLACE "_op" "_op_mlu" MLU_FILE "${TARGET}")
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MLU_FILE}.cc)
@@ -213,8 +204,6 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${src})
       elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.kps$")
         list(APPEND xpu_kp_cc_srcs ${src})
-      elseif(WITH_ASCEND_CL AND ${src} MATCHES ".*_op_npu.cc$")
-        list(APPEND npu_cc_srcs ${src})
       elseif(WITH_MLU AND ${src} MATCHES ".*_op_mlu.cc$")
         list(APPEND mlu_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
@@ -331,23 +320,11 @@ function(op_library TARGET)
       SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu_kp_cc_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
   else()
-    # deal with CANN version control while registering NPU operators before build
-    if(WITH_ASCEND_CL)
-      if(CANN_VERSION LESS 504000)
-        list(REMOVE_ITEM npu_cc_srcs "multinomial_op_npu.cc")
-        list(REMOVE_ITEM npu_cc_srcs "take_along_axis_op_npu.cc")
-      endif()
-    endif()
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc source files.
       compose_unity_target_sources(
-        ${UNITY_TARGET}
-        cc
-        ${cc_srcs}
-        ${mkldnn_cc_srcs}
-        ${xpu_cc_srcs}
-        ${npu_cc_srcs}
+        ${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
         ${mlu_cc_srcs})
       if(TARGET ${UNITY_TARGET})
         # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
@@ -364,8 +341,7 @@ function(op_library TARGET)
     else()
       cc_library(
         ${TARGET}
-        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs}
-             ${mlu_cc_srcs}
+        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${mlu_cc_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   endif()
@@ -377,7 +353,6 @@ function(op_library TARGET)
   list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
-  list(LENGTH npu_cc_srcs npu_cc_srcs_len)
   list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
 
   # Define operators that don't need pybind here.
@@ -541,18 +516,6 @@ function(op_library TARGET)
     endforeach()
   endif()
 
-  # pybind USE_OP_DEVICE_KERNEL for NPU
-  if(WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
-    foreach(npu_src ${npu_cc_srcs})
-      set(op_name "")
-      find_register(${npu_src} "REGISTER_OP_NPU_KERNEL" op_name)
-      if(NOT ${op_name} EQUAL "")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, NPU);\n")
-        set(pybind_flag 1)
-      endif()
-    endforeach()
-  endif()
-
   # pybind USE_OP_DEVICE_KERNEL for MLU
   if(WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
     foreach(mlu_src ${mlu_cc_srcs})
@@ -624,7 +587,6 @@ function(register_operators)
     "*_op.cc")
   string(REPLACE "_mkldnn" "" OPS "${OPS}")
   string(REPLACE "_xpu" "" OPS "${OPS}")
-  string(REPLACE "_npu" "" OPS "${OPS}")
   string(REPLACE "_mlu" "" OPS "${OPS}")
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)
