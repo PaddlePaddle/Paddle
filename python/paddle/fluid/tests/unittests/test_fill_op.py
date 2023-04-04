@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestFillOp1(OpTest):

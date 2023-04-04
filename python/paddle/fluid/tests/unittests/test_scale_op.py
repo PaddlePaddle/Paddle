@@ -18,11 +18,11 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
 

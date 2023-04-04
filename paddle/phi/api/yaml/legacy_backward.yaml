@@ -134,17 +134,6 @@
   composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics)
   backward : batch_norm_double_grad
 
-- backward_op : bce_loss_grad
-  forward : bce_loss (Tensor input, Tensor label) -> Tensor(out)
-  args : (Tensor input, Tensor label, Tensor out_grad)
-  output : Tensor(input_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [input]
-  kernel :
-    func : bce_loss_grad
-  inplace : (out_grad -> input_grad)
-
 - backward_op : bilinear_tensor_product_grad
   forward : bilinear_tensor_product (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
