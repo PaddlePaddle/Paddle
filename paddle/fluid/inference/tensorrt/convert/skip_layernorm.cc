@@ -160,7 +160,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         pluginPtr->fields = fields.data();
 
         auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+            "CustomSkipLayerNormPluginDynamicWithSmooth", pluginPtr);
 
         free(pluginPtr);
 
@@ -171,7 +171,8 @@ class SkipLayerNormOpConverter : public OpConverter {
             plugin_layer,
             nullptr,
             platform::errors::InvalidArgument(
-                "fail to add CustomSkipLayerNormPluginDynamic layer"));
+                "fail to add CustomSkipLayerNormPluginDynamicWithSmooth "
+                "layer"));
         layer = plugin_layer;
       } else {
         nvinfer1::PluginFieldCollection* pluginPtr =
