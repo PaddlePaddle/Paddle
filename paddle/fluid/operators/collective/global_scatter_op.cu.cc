@@ -259,7 +259,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -281,9 +281,12 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(global_scatter,
-                        ops::GlobalScatterOpCUDAKernel<float>,
-                        ops::GlobalScatterOpCUDAKernel<double>,
-                        ops::GlobalScatterOpCUDAKernel<int>,
-                        ops::GlobalScatterOpCUDAKernel<int64_t>,
-                        ops::GlobalScatterOpCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(global_scatter,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GlobalScatterOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

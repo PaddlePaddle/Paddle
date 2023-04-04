@@ -76,6 +76,8 @@ class MpAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INPLACE_OP_INFERER(MpAllReduceSumInplaceInferer, {"X", "Out"});
 
+DEFINE_C_ALLREDUCE_CPU_KERNEL(MpAllReduceSum, kRedSum);
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -89,9 +91,12 @@ REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumOpMaker,
                   ops::MpAllReduceSumInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(mp_allreduce_sum,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, float>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, double>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int64_t>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::MpAllReduceSumCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -43,7 +43,7 @@ struct LRNFunctor {
                   const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNKernel : public framework::OpKernel<T> {
  public:
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
@@ -99,7 +99,7 @@ class LRNKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
                   const phi::DenseTensor& x,

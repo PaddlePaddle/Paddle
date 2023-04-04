@@ -261,7 +261,7 @@ __global__ void GroupNormForward(const T* x,
 }
 
 template <typename T>
-class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class GroupNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -608,7 +608,7 @@ __global__ void GetXGradientCUDAKernel(int imsize,
 }
 
 template <typename T>
-class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class GroupNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -826,9 +826,8 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(group_norm,
-                        ops::GroupNormKernel<phi::GPUContext, float>,
-                        ops::GroupNormKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(group_norm_grad,
-                        ops::GroupNormGradKernel<phi::GPUContext, float>,
-                        ops::GroupNormGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    group_norm, GPU, ALL_LAYOUT, ops::GroupNormKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    group_norm_grad, GPU, ALL_LAYOUT, ops::GroupNormGradKernel, float, double) {
+}

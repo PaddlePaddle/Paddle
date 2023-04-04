@@ -78,7 +78,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMPKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
@@ -279,7 +279,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMPGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>

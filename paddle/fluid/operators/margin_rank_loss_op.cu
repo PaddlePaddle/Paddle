@@ -16,7 +16,10 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(margin_rank_loss,
-                        ops::MarginRankLossKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(margin_rank_loss_grad,
-                        ops::MarginRankLossGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    margin_rank_loss, GPU, ALL_LAYOUT, ops::MarginRankLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(margin_rank_loss_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::MarginRankLossGradKernel,
+                          float) {}

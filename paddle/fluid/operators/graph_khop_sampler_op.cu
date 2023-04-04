@@ -412,7 +412,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
                           thrust::raw_pointer_cast(values.data()));
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -668,6 +668,9 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = phi::GPUContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,
-                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int32_t>,
-                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(graph_khop_sampler,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GraphKhopSamplerOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

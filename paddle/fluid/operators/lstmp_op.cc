@@ -405,9 +405,7 @@ REGISTER_OPERATOR(lstmp,
                   ops::LSTMPGradMaker<paddle::framework::OpDesc>,
                   ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
-REGISTER_OP_CPU_KERNEL(lstmp,
-                       ops::LSTMPKernel<phi::CPUContext, float>,
-                       ops::LSTMPKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(lstmp_grad,
-                       ops::LSTMPGradKernel<phi::CPUContext, float>,
-                       ops::LSTMPGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    lstmp, CPU, ALL_LAYOUT, ops::LSTMPKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstmp_grad, CPU, ALL_LAYOUT, ops::LSTMPGradKernel, float, double) {}

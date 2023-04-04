@@ -29,7 +29,7 @@ __global__ void SimpleMarkerKernel(T* in, T* out, int ndim) {
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MarkerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -61,4 +61,5 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(marker, ops::MarkerOpCUDAKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    marker, GPU, ALL_LAYOUT, ops::MarkerOpCUDAKernel, float) {}

@@ -30,7 +30,7 @@ namespace operators {
 
 using DataLayout = phi::DataLayout;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GroupNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -210,7 +210,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GroupNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

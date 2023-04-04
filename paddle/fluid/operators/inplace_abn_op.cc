@@ -210,7 +210,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -270,7 +270,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -373,9 +373,11 @@ REGISTER_OPERATOR(inplace_abn,
                   InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
-REGISTER_OP_CPU_KERNEL(inplace_abn,
-                       ops::InplaceABNKernel<phi::CPUContext, float>,
-                       ops::InplaceABNKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(inplace_abn_grad,
-                       ops::InplaceABNGradKernel<phi::CPUContext, float>,
-                       ops::InplaceABNGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    inplace_abn, CPU, ALL_LAYOUT, ops::InplaceABNKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(inplace_abn_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::InplaceABNGradKernel,
+                          float,
+                          double) {}

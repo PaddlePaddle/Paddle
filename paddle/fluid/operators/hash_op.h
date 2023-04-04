@@ -38,7 +38,7 @@ inline void HashOutputSize(const framework::DDim& in_dims,
   out_dims.emplace_back(1);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class HashKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {

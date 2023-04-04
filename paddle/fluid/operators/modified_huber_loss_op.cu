@@ -39,7 +39,7 @@ struct ModifiedHuberLossBackward {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -74,7 +74,12 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(modified_huber_loss,
-                        ops::ModifiedHuberLossKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(modified_huber_loss_grad,
-                        ops::ModifiedHuberLossGradGPUKernel<float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    modified_huber_loss, GPU, ALL_LAYOUT, ops::ModifiedHuberLossKernel, float) {
+}
+PD_REGISTER_STRUCT_KERNEL(modified_huber_loss_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ModifiedHuberLossGradGPUKernel,
+                          float) {}

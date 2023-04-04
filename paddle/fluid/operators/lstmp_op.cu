@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/lstmp_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(lstmp,
-                        ops::LSTMPKernel<phi::GPUContext, float>,
-                        ops::LSTMPKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(lstmp_grad,
-                        ops::LSTMPGradKernel<phi::GPUContext, float>,
-                        ops::LSTMPGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    lstmp, GPU, ALL_LAYOUT, ops::LSTMPKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstmp_grad, GPU, ALL_LAYOUT, ops::LSTMPGradKernel, float, double) {}

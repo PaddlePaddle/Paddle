@@ -400,5 +400,7 @@ REGISTER_OPERATOR(lrn,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(lrn, CPU, ALL_LAYOUT, ops::LRNKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lrn_grad, CPU, ALL_LAYOUT, ops::LRNGradKernel, float) {}

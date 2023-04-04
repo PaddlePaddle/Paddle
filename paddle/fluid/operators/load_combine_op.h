@@ -28,7 +28,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LoadCombineOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

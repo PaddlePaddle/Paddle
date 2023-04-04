@@ -99,7 +99,7 @@ __global__ void LookupTableGrad(T *table,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -147,7 +147,7 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -249,13 +249,19 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(lookup_table,
-                        ops::LookupTableCUDAKernel<float>,
-                        ops::LookupTableCUDAKernel<double>,
-                        ops::LookupTableCUDAKernel<plat::float16>,
-                        ops::LookupTableCUDAKernel<int8_t>,
-                        ops::LookupTableCUDAKernel<int16_t>);
-REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
-                        ops::LookupTableGradCUDAKernel<float>,
-                        ops::LookupTableGradCUDAKernel<double>,
-                        ops::LookupTableGradCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(lookup_table,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LookupTableCUDAKernel,
+                          float,
+                          double,
+                          int8_t,
+                          int16_t,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(lookup_table_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LookupTableGradCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}

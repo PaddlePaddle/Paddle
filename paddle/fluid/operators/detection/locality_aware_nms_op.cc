@@ -160,7 +160,7 @@ void GetMaxScoreIndexWithLocalityAware(
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
   void LocalityAwareNMSFast(phi::DenseTensor* bbox,
@@ -520,6 +520,9 @@ REGISTER_OPERATOR(
     ops::LocalityAwareNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(locality_aware_nms,
-                       ops::LocalityAwareNMSKernel<float>,
-                       ops::LocalityAwareNMSKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(locality_aware_nms,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LocalityAwareNMSKernel,
+                          float,
+                          double) {}
