@@ -22,7 +22,6 @@ from paddle.fluid.framework import (
     core,
     dygraph_only,
 )
-from paddle.fluid.layers.utils import _contain_var, _convert_to_tensor_list
 from paddle.framework import LayerHelper, in_dygraph_mode
 
 
@@ -49,6 +48,35 @@ def _get_reduce_axis(axis, x):
     else:
         reduce_all = False
     return reduce_all, axis
+
+
+def _contain_var(list_or_tuple):
+    """
+    Check whether list or tuple contains variable.
+    """
+    for item in list_or_tuple:
+        if isinstance(item, Variable):
+            return True
+    return False
+
+
+def _convert_to_tensor_list(old_list, dtype="int32"):
+    """
+    Converts all elements of a list to Variable.
+    """
+    from paddle.fluid.layers import fill_constant
+
+    new_list_tensor = []
+    for ele in old_list:
+
+        if isinstance(ele, Variable):
+            ele.stop_gradient = True
+            new_list_tensor.append(ele)
+        else:
+            assert isinstance(ele, int)
+            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
+            new_list_tensor.append(temp_out)
+    return new_list_tensor
 
 
 def _get_reduce_axis_with_tensor(axis, x):
