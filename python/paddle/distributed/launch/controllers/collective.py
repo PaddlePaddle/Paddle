@@ -63,10 +63,8 @@ class CollectiveController(Controller):
                     "tuner_run_mode", 'tuner_and_run'
                 )
 
-            self.ctx.logger.info(
-                "tuner_run_mode is: {}".format(self._tuner_run_mode)
-            )
-            endpoint = "127.0.0.1:{}".format(self.ctx.node.get_free_port())
+            self.ctx.logger.info(f"tuner_run_mode is: {self._tuner_run_mode}")
+            endpoint = f"127.0.0.1:{self.ctx.node.get_free_port()}"
             pod_replicas = self.pod_replicas()
             if self._tuner_run_mode in ['tuner_only', 'tuner_and_run']:
                 e = {
@@ -80,7 +78,7 @@ class CollectiveController(Controller):
                     "PADDLE_GLOBAL_SIZE": "{}".format(
                         pod_replicas * int(self.ctx.args.nnodes)
                     ),
-                    "PADDLE_LOCAL_SIZE": "{}".format(pod_replicas),
+                    "PADDLE_LOCAL_SIZE": f"{pod_replicas}",
                 }
                 log_file = "tuner.log"
                 self.add_container(envs=e, log_file=log_file, is_init=True)
