@@ -2188,10 +2188,10 @@ EOF
 
         protobuf_version=`pip list | grep "protobuf" | awk '{print $2}'`
         if [[ "$protobuf_version" == 3.* ]]; then
-            echo "Your current protobuf version is 3.x"
+            echo "Your current protobuf version is $protobuf_version"
             ctest -L "RUN_TYPE=GPUPS" --timeout 120
-        elif [[ "$protobuf_version" == 4.* ]]; then
-            echo "Your current protobuf version is 4.x"
+        else
+            echo "Your current protobuf version is $protobuf_version"
             #get all unittests need to be run by protobuf 3
             python ${PADDLE_ROOT}/tools/test_run_by_protobuf_3.py > all_ut_run_by_protobuf3
             # get all unittets need to be run in gpups ci
@@ -2207,9 +2207,6 @@ EOF
             ut_endTime_s=`date +%s`
             echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
             pip install protobuf==$protobuf_version
-        else
-            echo "You should check your protobuf version, which currently supports 3.x and 4.x "
-            exit 8;
         fi
 
         ut_endTime_s=`date +%s`
