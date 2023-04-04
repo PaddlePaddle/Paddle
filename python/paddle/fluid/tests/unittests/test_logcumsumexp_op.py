@@ -338,13 +338,12 @@ class TestLogcumsumexpBF16Op(OpTest):
         output = np_logcumsumexp(input, **attrs)
         self.inputs = {'X': convert_float_to_uint16(input)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CPUPlace(0))
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 if __name__ == '__main__':
