@@ -457,7 +457,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (!flag_varseqlen) {
             std::vector<nvinfer1::ITensor*> output_transformer;
             output_transformer.emplace_back(plugin_layer->getOutput(0));
-            output_transformer.emplace_back(input);
+            output_transformer.emplace_back(
+                engine_->GetITensor(op_desc.Input("Input").front()));
             output_transformer.emplace_back(pos_id_tensor);
             plugin::TransformerOutputConvertPlugin* plugin =
                 new plugin::TransformerOutputConvertPlugin();
