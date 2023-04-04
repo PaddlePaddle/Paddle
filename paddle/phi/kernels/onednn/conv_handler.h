@@ -191,15 +191,10 @@ class ConvOneDNNHandlerT
 
       if (bias) {
         auto bias_tz = phi::vectorize(bias->dims());
-        dnnl::memory::desc bias_md;
-        if (funcs::is_int8<T>()) {
-          bias_md = funcs::OneDNNMemDesc(bias_tz,
-                                         dnnl::memory::data_type::s32,
-                                         funcs::OneDNNMemoryFormat::x);
-        } else {
-          bias_md = funcs::OneDNNMemDesc(
-              bias_tz, data_type, funcs::OneDNNMemoryFormat::x);
-        }
+        dnnl::memory::desc bias_md =
+            funcs::OneDNNMemDesc(bias_tz,
+                                 dnnl::memory::data_type::f32,
+                                 funcs::OneDNNMemoryFormat::x);
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
@@ -338,16 +333,10 @@ class ConvOneDNNHandlerT
       dnnl::primitive_attr conv_attr;
       if (bias) {
         auto bias_tz = phi::vectorize(bias->dims());
-        dnnl::memory::desc bias_md;
-        if (funcs::is_int8<T>()) {
-          bias_md = funcs::OneDNNMemDesc(bias_tz,
-                                         dnnl::memory::data_type::s32,
-                                         funcs::OneDNNMemoryFormat::x);
-        } else {
-          bias_md = funcs::OneDNNMemDesc(bias_tz,
-                                         dnnl::memory::data_type::f32,
-                                         funcs::OneDNNMemoryFormat::x);
-        }
+        dnnl::memory::desc bias_md =
+            funcs::OneDNNMemDesc(bias_tz,
+                                 dnnl::memory::data_type::f32,
+                                 funcs::OneDNNMemoryFormat::x);
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
