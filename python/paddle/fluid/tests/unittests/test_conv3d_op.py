@@ -395,7 +395,7 @@ class TestConv3DOp(OpTest):
         ).astype(self.dtype)
 
         if self.is_bfloat16_op():
-            output = output.astype(np.float32)
+            output = convert_float_to_uint16(output)
             self.inputs = {
                 'Input': convert_float_to_uint16(input),
                 'Filter': convert_float_to_uint16(filter),

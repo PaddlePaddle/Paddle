@@ -19,10 +19,9 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from eager_op_test import OpTest, convert_float_to_uint16
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.testsuite import create_op
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -176,16 +175,6 @@ def create_test_cudnn_bf16_class(parent):
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestConv3DCUDNNBF16(parent):
-        def get_numeric_grad(self, place, check_name):
-            scope = core.Scope()
-            self._check_grad_helper()
-            op = create_op(
-                scope, self.op_type, self.inputs, self.outputs, self.attrs
-            )
-            return get_numeric_gradient(
-                place, scope, op, self.inputs_fp32, check_name, ['Output']
-            )
-
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = np.uint16
@@ -193,17 +182,6 @@ def create_test_cudnn_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             self.check_output_with_place(place)
-
-        def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
-            numeric_grads = self.get_numeric_grad(place, 'Input')
-            self.check_grad_with_place(
-                place,
-                ['Input'],
-                'Output',
-                no_grad_set={'Filter'},
-                user_defined_grads=[numeric_grads],
-            )
 
         def test_check_grad(self):
             if self.use_cudnn:
@@ -214,15 +192,22 @@ def create_test_cudnn_bf16_class(parent):
                     'Output',
                 )
 
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                no_grad_set={'Filter'},
+            )
+
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
-            numeric_grads = self.get_numeric_grad(place, 'Filter')
             self.check_grad_with_place(
                 place,
                 ['Filter'],
                 'Output',
                 no_grad_set={'Input'},
-                user_defined_grads=[numeric_grads],
             )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
@@ -293,7 +278,6 @@ class TestConv3DTransposeOp(OpTest):
         ).astype("float32")
 
         if self.is_bfloat16_op():
-            output = output.astype(np.float32)
             self.inputs = {
                 'Input': convert_float_to_uint16(input),
                 'Filter': convert_float_to_uint16(filter),
@@ -302,6 +286,7 @@ class TestConv3DTransposeOp(OpTest):
                 'Input': input,
                 'Filter': filter,
             }
+
         else:
             output = output.astype(self.dtype)
             self.inputs = {
