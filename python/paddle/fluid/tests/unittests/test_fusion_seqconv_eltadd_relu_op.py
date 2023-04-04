@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
+from test.sequence.test_sequence_conv import seqconv
 
 import numpy as np
 from eager_op_test import OpTest
-from test.sequence.test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):

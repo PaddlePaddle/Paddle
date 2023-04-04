@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-
-import numpy as np
-from eager_op_test import OpTest
 from test.sequence.test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
     compute_seqpool_sum,
 )
+
+import numpy as np
+from eager_op_test import OpTest
 from test_cvm_op import cvm_compute
 
 
