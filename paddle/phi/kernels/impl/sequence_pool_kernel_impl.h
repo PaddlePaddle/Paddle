@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace phi {
@@ -62,7 +63,6 @@ void SequencePoolKernel(const Context& ctx,
   }
   dims[0] = lod[lod_level - 1].size() - 1;
   out->Resize({dims});
-  //  out->mutable_data<Context>(ctx.GetPlace());
   ctx.template Alloc<T>(out);
   phi::DenseTensor* index = nullptr;
 
@@ -71,7 +71,6 @@ void SequencePoolKernel(const Context& ctx,
       (is_test || (ctx.GetPlace() == phi::CPUPlace()) == false)) {
     index = max_index;
     index->Resize({dims});
-    //    index->mutable_data<int>(ctx.GetPlace());
     ctx.template Alloc<T>(index);
   }
   phi::funcs::SequencePoolFunctor<Context, T> pool;

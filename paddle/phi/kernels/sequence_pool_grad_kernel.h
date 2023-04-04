@@ -12,8 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/impl/sequence_pool_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(
-    sequence_pool, GPU, ALL_LAYOUT, phi::SequencePoolKernel, float) {}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+template <typename T, typename Context>
+void SequencePoolGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& max_index,
+                            const DenseTensor& out_grad,
+                            bool is_test,
+                            std::string pooltype,
+                            float pad_value,
+                            DenseTensor* x_grad);
+
+}  // namespace phi

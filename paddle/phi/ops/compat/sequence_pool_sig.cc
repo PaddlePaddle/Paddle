@@ -24,6 +24,16 @@ KernelSignature SequencePoolOpArgumentMapping(
                          {"Out", "MaxIndex"});
 }
 
+KernelSignature SequencePoolGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("sequence_pool_grad",
+                         {"X", "MaxIndex", GradVarName("Out")},
+                         {"is_test", "pooltype", "pad_value"},
+                         {GradVarName("X")});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(sequence_pool, phi::SequencePoolOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sequence_pool_grad,
+                           phi::SequencePoolGradOpArgumentMapping);
