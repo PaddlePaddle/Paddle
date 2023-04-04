@@ -73,14 +73,16 @@ void TileKernel(const Context& dev_ctx,
     std::vector<const DenseTensor*> ins = {&new_x};
     vec_x_dims[i] *= repeat_times_data[i];
     if (i != repeat_times_data.size() - 1) {
-      DenseTensor tmp_out;
-      tmp_out.Resize(make_ddim(vec_x_dims));
-      dev_ctx.template Alloc<T>(&tmp_out);
-      std::vector<DenseTensor*> outs = {&tmp_out};
-      phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-          dev_ctx, ins, &outs, i, kps::IdentityFunctor<T>());
-      tmp_out.Resize(out_dims);
-      new_x = tmp_out;
+      if (repeat_times_data[i] != 1) {
+        DenseTensor tmp_out;
+        tmp_out.Resize(make_ddim(vec_x_dims));
+        dev_ctx.template Alloc<T>(&tmp_out);
+        std::vector<DenseTensor*> outs = {&tmp_out};
+        phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+            dev_ctx, ins, &outs, i, kps::IdentityFunctor<T>());
+        tmp_out.Resize(out_dims);
+        new_x = tmp_out;
+      }
       vec_x_dims[i] *= vec_x_dims[i + 1];
       vec_x_dims[i + 1] = 1;
     } else {
