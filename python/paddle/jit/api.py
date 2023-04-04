@@ -233,8 +233,8 @@ def to_static(
     function=None,
     input_spec=None,
     build_strategy=None,
-    property=False,
     backend=None,
+    **kwargs,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -253,8 +253,8 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        property(bool, Optional): Whether the fucntion is python property. The default is False.
         backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -278,6 +278,7 @@ def to_static(
             print(x_v) # [[2. 2.]]
 
     """
+    property = kwargs.get("property", False)
 
     def decorated(python_func):
         """
