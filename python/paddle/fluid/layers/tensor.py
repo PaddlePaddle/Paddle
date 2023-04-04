@@ -38,7 +38,6 @@ from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'fill_constant_batch_size_like',
     'zeros',
 ]
 
