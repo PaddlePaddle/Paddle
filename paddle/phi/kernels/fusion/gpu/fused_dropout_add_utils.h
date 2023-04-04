@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
