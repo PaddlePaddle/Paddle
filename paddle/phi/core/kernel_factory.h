@@ -343,6 +343,8 @@ class KernelFactory {
 
   std::map<const std::string, OpCount> GetLowPrecisionKernelList();
 
+  void ClearLowPrecisionKernelList() { low_precision_kernels_.clear(); }
+
  private:
   KernelFactory() = default;
 

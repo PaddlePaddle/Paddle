@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -770,12 +771,6 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
     target_rank = std::max(target_rank, input_ddim.size());
   }
 
-  PADDLE_ENFORCE_GT(target_rank,
-                    0,
-                    errors::InvalidArgument("BroadcastTensorsOp requires at "
-                                            "least one input tensor to have "
-                                            "rank greater than zero"));
-
   std::vector<int64_t> target_dims(target_rank, 0);
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   for (int index = 0; index < target_rank; index++) {
@@ -849,30 +844,19 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              std::vector<MetaTensor*> output,
                              MetaTensor* fused_output,
                              MetaConfig config) {
-  if (config.is_runtime) {
-    return;
-  }
   if (size_of_dtype == -1) {
     size_of_dtype = phi::SizeOf(dtype);
   }
-
-  auto alignment = [](size_t size, size_t align_size) {
-    size_t remaining = size % align_size;
-    auto aligned_size = remaining == 0 ? size : size + (align_size - remaining);
-    VLOG(4) << remaining << " " << size << " " << align_size << " "
-            << aligned_size;
-    return aligned_size;
-  };
-  VLOG(4) << "align_size: " << align_size;
-  if (use_align && align_size > 0) {
+  if (config.is_runtime) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int64_t numel = 0;
-
     for (size_t i = 0; i < input.size(); ++i) {
       const auto& dim = input[i]->dims();
       auto size = phi::product(dim);
       auto len = use_align
-                     ? alignment(static_cast<size_t>(size) * size_of_dtype,
-                                 align_size) /
+                     ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                      phi::GPUPlace(),
+                                      align_size) /
                            size_of_dtype
                      : static_cast<size_t>(size);
       numel += len;
@@ -881,6 +865,38 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
       fused_output->set_dims(phi::make_ddim({numel}));
       fused_output->set_dtype(dtype);
       VLOG(4) << "fused_output size:" << phi::make_ddim({numel});
+    }
+#else
+    return;
+#endif
+  } else {
+    auto alignment = [](size_t size, size_t align_size) {
+      size_t remaining = size % align_size;
+      auto aligned_size =
+          remaining == 0 ? size : size + (align_size - remaining);
+      VLOG(4) << remaining << " " << size << " " << align_size << " "
+              << aligned_size;
+      return aligned_size;
+    };
+    VLOG(4) << "align_size: " << align_size;
+    if (use_align && align_size > 0) {
+      int64_t numel = 0;
+
+      for (size_t i = 0; i < input.size(); ++i) {
+        const auto& dim = input[i]->dims();
+        auto size = phi::product(dim);
+        auto len = use_align
+                       ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                   align_size) /
+                             size_of_dtype
+                       : static_cast<size_t>(size);
+        numel += len;
+      }
+      if (fused_output) {
+        fused_output->set_dims(phi::make_ddim({numel}));
+        fused_output->set_dtype(dtype);
+        VLOG(4) << "fused_output size:" << phi::make_ddim({numel});
+      }
     }
   }
 }

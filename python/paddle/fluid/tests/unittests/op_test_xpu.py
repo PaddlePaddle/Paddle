@@ -67,6 +67,7 @@ class XPUOpTest(OpTest):
     def check_output(
         self,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=False,
@@ -76,6 +77,7 @@ class XPUOpTest(OpTest):
         self.check_output_with_place(
             place,
             atol,
+            rtol,
             no_check_set,
             equal_nan,
             check_dygraph,
@@ -86,6 +88,7 @@ class XPUOpTest(OpTest):
         self,
         place,
         atol=0.001,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=False,
@@ -102,7 +105,13 @@ class XPUOpTest(OpTest):
         if self.dtype == np.float16:
             atol = 0.1
         return super().check_output_with_place(
-            place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol
+            place,
+            atol,
+            rtol,
+            no_check_set,
+            equal_nan,
+            check_dygraph,
+            inplace_atol,
         )
 
     def check_grad(

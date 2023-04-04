@@ -150,8 +150,7 @@ class Converter:
                 )
             except ValueError as err:
                 raise ValueError(
-                    "Fail to convert tensor '{}'. ".format(str(tensor_name))
-                    + str(err)
+                    f"Fail to convert tensor '{str(tensor_name)}'. " + str(err)
                 )
 
         for tensor_name in self._pre_strategy:

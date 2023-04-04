@@ -86,9 +86,10 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   layout = other.layout;
   lod = other.lod;
   offset = other.offset;
-  strides = other.strides;
-  if (strides.size() == 1 && strides[0] == 0) {
+  if (product(other.strides) <= 0) {
     strides == calc_strides(dims, layout);
+  } else {
+    strides = other.strides;
   }
 }
 
@@ -100,9 +101,10 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   layout = other.layout;
   lod = other.lod;
   offset = other.offset;
-  strides = other.strides;
-  if (strides.size() == 1 && strides[0] == 0) {
+  if (product(other.strides) <= 0) {
     strides == calc_strides(dims, layout);
+  } else {
+    strides = other.strides;
   }
   return *this;
 }
@@ -115,10 +117,12 @@ DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   layout = other.layout;
   lod = std::move(other.lod);
   offset = other.offset;
-  strides = std::move(other.strides);
-  if (strides.size() == 1 && strides[0] == 0) {
+  if (product(other.strides) <= 0) {
     strides == calc_strides(dims, layout);
+  } else {
+    strides = std::move(other.strides);
   }
+
   return *this;
 }
 

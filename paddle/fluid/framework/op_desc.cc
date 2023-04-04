@@ -765,8 +765,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
 
   attrs_ptr->operator[](name) = v;
   VLOG(10) << "op_type: " << Type() << ", attr name: " << name
-           << " , type index: "
-           << TransToPhiDataType(this->attrs_[name].index());
+           << " , type index: " << attrs_ptr->operator[](name).index();
   need_update_ = true;
 }
 
