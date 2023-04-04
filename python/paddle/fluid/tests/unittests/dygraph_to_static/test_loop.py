@@ -82,7 +82,7 @@ def while_loop_dyfunc_with_none(x):
 
 def for_loop_dyfunc(max_len):
     for i in range(max_len):
-        ret = fluid.layers.zeros(shape=[1], dtype='float32')
+        ret = paddle.zeros(shape=[1], dtype='float32')
         paddle.increment(ret, value=2.0)
     return ret
 
@@ -102,21 +102,21 @@ def for_loop_dyfunc2(max_len):
 
 
 def for_loop_dyfunc3(max_len):
-    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    ret = paddle.zeros(shape=[1], dtype='float32')
     for i in range(1, 10, 2):
         paddle.increment(ret, value=2.0)
     return ret
 
 
 def for_loop_dyfunc4(max_len):
-    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    ret = paddle.zeros(shape=[1], dtype='float32')
     for i in range(10, 1, -2):
         paddle.increment(ret, value=2.0)
     return ret
 
 
 def for_loop_dyfunc_not_support(max_len):
-    ret = fluid.layers.zeros(shape=[1], dtype='float32')
+    ret = paddle.zeros(shape=[1], dtype='float32')
     a = -2
     for i in range(10, 1, a):
         paddle.increment(ret, value=2.0)
@@ -163,7 +163,7 @@ def while_loop_class_var(x):
     foo = Foo()
     i = fluid.dygraph.to_variable(x)
     while i < 10:
-        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
         i += 1
     return foo.c
@@ -194,14 +194,14 @@ def for_loop_class_var(max_len):
     )
 
     for i in range(max_len):
-        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
     return foo.c
 
 
 def var_create_in_for_loop(max_len):
     for i in range(max_len):
-        ret = fluid.layers.zeros(shape=[3, 4, 5], dtype='float64')
+        ret = paddle.zeros(shape=[3, 4, 5], dtype='float64')
     return ret
 
 
@@ -213,7 +213,7 @@ def nested_for_loop_dyfunc():
             a = 2 + j
 
     for i in range(three):
-        b = fluid.layers.zeros(shape=[1], dtype='float32')
+        b = paddle.zeros(shape=[1], dtype='float32')
 
     return b
 

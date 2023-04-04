@@ -219,7 +219,7 @@ class BaseModel(paddle.nn.Layer):
         enc_cell_0 = to_variable(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
@@ -321,7 +321,7 @@ class BaseModel(paddle.nn.Layer):
         enc_cell_0 = to_variable(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for j in range(self.num_layers):
@@ -738,7 +738,7 @@ class AttentionModel(paddle.nn.Layer):
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         enc_hidden_0.stop_gradient = True
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
