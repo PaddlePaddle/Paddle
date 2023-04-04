@@ -727,6 +727,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  PADDLE_ENFORCE_NE(
+      use_calc_stream,
+      true,
+      platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();

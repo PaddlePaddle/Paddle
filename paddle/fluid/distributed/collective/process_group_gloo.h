@@ -218,6 +218,10 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override {
+    PADDLE_ENFORCE_NE(
+        use_calc_stream,
+        true,
+        platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
     return GetDeviceContext(place);
   }
 
