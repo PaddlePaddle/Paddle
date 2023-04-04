@@ -22,6 +22,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
@@ -50,6 +51,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -489,6 +491,49 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
+    PyObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
+                    meta_info_map.end(),
+                    paddle::platform::errors::NotFound(
+                        "Can't find %s in Eager OpMetaInfoMap which should be "
+                        "created by LoadOpMetaInfoAndRegisterOp, please make "
+                        "sure you registered your op first and try again. ",
+                        op_type));
+
+  const auto& inputs =
+      paddle::OpMetaInfoHelper::GetInputs(meta_info_map.at(op_type)[0]);
+  const auto& outputs =
+      paddle::OpMetaInfoHelper::GetOutputs(meta_info_map.at(op_type)[0]);
+  const auto& inplace_map =
+      paddle::OpMetaInfoHelper::GetInplaceMap(meta_info_map.at(op_type)[0]);
+  VLOG(7) << "Custom operator " << op_type
+          << " get InplaceMap for python, inplace map size = "
+          << inplace_map.size();
+
+  std::unordered_map<int, int> inplace_idx_map;
+  for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
+    auto& input = inputs[in_idx];
+    if (inplace_map.find(input) == inplace_map.end()) {
+      continue;
+    }
+    auto out_iter = find(outputs.begin(), outputs.end(), inplace_map.at(input));
+    PADDLE_ENFORCE(
+        out_iter != outputs.end(),
+        phi::errors::NotFound("Can't find the mapped value of %s, please check "
+                              "the input of `Inplace` again and make "
+                              "sure you registered your op accurately. ",
+                              input));
+    inplace_idx_map[distance(outputs.begin(), out_iter)] = in_idx;
+  }
+
+  return ToPyObject(inplace_idx_map);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -536,6 +581,27 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
     ctx.AssignInplaceOutputs();
 
+    // handle optional None output when construct backward graph
+    for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
+      if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
+        size_t idx = ctx.OutputRangeAt(i).first;
+        paddle::Tensor* out_tensor = ctx.MutableOutputAt(idx);
+        if (!out_tensor->initialized()) {
+          PADDLE_ENFORCE(
+              outputs.at(idx).find(paddle::kOptionalSuffix) !=
+                  std::string::npos,
+              phi::errors::InvalidArgument(
+                  "Custom operator's %d-th output is not initialized. "
+                  "Please check your implementation again. If you are "
+                  "using inplace optional output, then you must use "
+                  "`paddle::Optional` to decorate this output",
+                  idx));
+          // We can also consider using `autograd_meta` to tolerant nullptr.
+          out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
+        }
+      }
+    }
+
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
     std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
     std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
@@ -571,11 +637,13 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
                                         ins_auto_grad_metas[i][j],
                                         require_any_grad);
-          // Bump Inplace Version
-          ctx.MutableInputAt(start_idx + j).bump_inplace_version();
-          VLOG(3) << "Custom operator: Tensor("
-                  << ctx.InputAt(start_idx + j).name()
-                  << ") uses Inplace Strategy.";
+          if (ctx.MutableInputAt(start_idx + j).defined()) {
+            // Bump Inplace Version
+            ctx.MutableInputAt(start_idx + j).bump_inplace_version();
+            VLOG(3) << "Custom operator: Tensor("
+                    << ctx.InputAt(start_idx + j).name()
+                    << ") uses Inplace Strategy.";
+          }
         }
       }
     }
@@ -1131,6 +1199,11 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"run_partial_grad",
      (PyCFunction)(void (*)(void))eager_api_run_partial_grad,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_get_custom_operator_inplace_map",
+     (PyCFunction)(void (*)(
+         void))eager_api__get_custom_operator_inplace_reverse_idx,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_run_custom_op",

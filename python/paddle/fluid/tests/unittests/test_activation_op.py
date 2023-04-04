@@ -2038,9 +2038,10 @@ class TestGeluApproximate(TestActivation):
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
 
-        # The backward decomposite of gelu is inconsistent with raw kernel,
-        # lower threshold to support 1e-5 for pass the unittest
-        self.rev_comp_rtol = 1e-5
+        # The backward decomposite of gelu is inconsistent with raw kernel on
+        # cpu device, lower threshold to support 1e-8 for pass the unittest
+        self.rev_comp_rtol = 1e-8
+        self.rev_comp_atol = 1e-8
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -2068,9 +2069,10 @@ class TestGelu(TestActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
-        # The backward decomposite of gelu is inconsistent with raw kernel,
-        # lower threshold to support 1e-5 for pass the unittest
-        self.rev_comp_rtol = 1e-5
+        # The backward decomposite of gelu is inconsistent with raw kernel on
+        # cpu, lower threshold to support 1e-8 for pass the unittest
+        self.rev_comp_rtol = 1e-8
+        self.rev_comp_atol = 1e-8
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -2104,9 +2106,10 @@ class TestGELUAPI(unittest.TestCase):
         )
         self.enable_cinn = False
 
-        # The backward decomposite of gelu is inconsistent with raw kernel,
-        # lower threshold to support 1e-5 for pass the unittest
-        self.rev_comp_rtol = 1e-5
+        # The backward decomposite of gelu is inconsistent with raw kernel on
+        # cpu, lower threshold to support 1e-8 for pass the unittest
+        self.rev_comp_rtol = 1e-8
+        self.rev_comp_atol = 1e-8
 
     def test_static_api(self):
         with paddle_static_guard():
@@ -3850,7 +3853,7 @@ def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
         def init_kernel_type(self):
             self.attrs = {"use_cudnn": True}
 
-    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    cls_name = "{}_{}".format(parent.__name__, "cudnn")
     TestActCudnn.__name__ = cls_name
     globals()[cls_name] = TestActCudnn
 
@@ -3870,11 +3873,17 @@ def create_test_act_fp16_class(
     check_prim=False,
     enable_cinn=True,
     grad_atol=1e-2,
+    **kwargs
 ):
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     class TestActFp16(parent):
+        def setUp(self):
+            super().setUp()
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
         def init_dtype(self):
             self.dtype = np.float16
 
@@ -3905,7 +3914,7 @@ def create_test_act_fp16_class(
                     max_relative_error=grad_atol,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "fp16")
+    cls_name = "{}_{}".format(parent.__name__, "fp16")
     TestActFp16.__name__ = cls_name
     globals()[cls_name] = TestActFp16
 
@@ -3937,7 +3946,13 @@ create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu, check_prim=True)
-create_test_act_fp16_class(TestGelu, check_prim=True, enable_cinn=False)
+create_test_act_fp16_class(
+    TestGelu,
+    check_prim=True,
+    enable_cinn=False,
+    rev_comp_rtol=1e-3,
+    rev_comp_atol=1e-3,
+)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
@@ -3981,6 +3996,10 @@ def create_test_act_bf16_class(
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=grad_atol
             )
+
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
+    TestActBF16.__name__ = cls_name
+    globals()[cls_name] = TestActBF16
 
 
 create_test_act_bf16_class(TestActivation)

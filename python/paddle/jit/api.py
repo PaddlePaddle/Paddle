@@ -59,7 +59,6 @@ from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
-    ParamBase,
     Program,
     Variable,
     Parameter,
@@ -390,7 +389,7 @@ class _SaveLoadConfig:
                 % type(input)
             )
             for var in spec:
-                if not isinstance(var, core.VarBase):
+                if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
                         "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var)
@@ -543,7 +542,7 @@ def _get_input_var_names(inputs, input_spec):
                 # name is None, the input_spec only can be InputSpec
                 raise ValueError(name_none_error % spec)
             elif spec.name not in input_var_names:
-                # the input_spec can be `InputSpec` or `VarBase`
+                # the input_spec can be `InputSpec` or `Tensor`
                 raise ValueError(name_no_exists_error % spec.name)
             else:
                 result_list.append(spec.name)
@@ -602,9 +601,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -909,6 +908,7 @@ def save(layer, path, input_spec=None, **configs):
 
     # 1. input build & check
     prog_translator = ProgramTranslator()
+    is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
             "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
@@ -973,7 +973,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
+            elif isinstance(var, (core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
@@ -1022,7 +1022,9 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     static_func.concrete_program_specify_input_spec(
-                        inner_input_spec, with_hook=with_hook
+                        inner_input_spec,
+                        with_hook=with_hook,
+                        is_prim_infer=is_prim_infer,
                     )
                 )
             elif 'forward' == attr_func:
@@ -1042,7 +1044,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
-                        with_hook=with_hook
+                        with_hook=with_hook, is_prim_infer=is_prim_infer
                     )
                 )
                 # the input_spec has been used in declarative, which is equal to
@@ -1062,7 +1064,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     attr_func.concrete_program_specify_input_spec(
-                        inner_input_spec
+                        inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
             else:
@@ -1132,7 +1134,7 @@ def save(layer, path, input_spec=None, **configs):
                     extra_info_dict[
                         'stop_gradient'
                     ] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                    if isinstance(param_or_buffer, EagerParamBase):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
@@ -1151,7 +1153,7 @@ def save(layer, path, input_spec=None, **configs):
 
         # NOTE(chenweihang): [ Get output variables ]
         # the rule is like [ Get input variables name ]. For output var,
-        # we only support VarBase spec, and actually, we only need the
+        # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
         # print(concrete_program.main_program)
         # print(concrete_program.outputs, configs.output_spec)
@@ -1828,7 +1830,7 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX

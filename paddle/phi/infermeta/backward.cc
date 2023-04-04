@@ -323,6 +323,15 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  (void)x;
+  if (weight) {
+    out->share_dims(weight);
+  }
+}
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,
@@ -883,6 +892,18 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
+}
+
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy) {
+  if (dx) {
+    dx->share_dims(x);
+  }
+  if (dy) {
+    dy->share_dims(y);
+  }
 }
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,

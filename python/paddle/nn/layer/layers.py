@@ -170,7 +170,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _input(self, inputs_in):
         inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input in".format(self.layer_type)
+            raise f"{self.layer_type} layer only takes one input in"
         return inputs[0]
 
     def _multiple_param_attr(self, length, param_attr_in=None):
@@ -179,9 +179,7 @@ class LayerObjectHelper(LayerHelperBase):
             param_attr = [param_attr]
 
         if len(param_attr) != 1 and len(param_attr) != length:
-            raise ValueError(
-                "parameter number mismatch in {}".format(self.name)
-            )
+            raise ValueError(f"parameter number mismatch in {self.name}")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
             for i in range(length):
@@ -200,9 +198,7 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param_attr_in = ParamAttr._to_attr(param_attr_in)
         if isinstance(param_attr_in, bool):
-            raise ValueError(
-                'Param_attr should not be False in {}'.format(self.name)
-            )
+            raise ValueError(f'Param_attr should not be False in {self.name}')
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
@@ -239,9 +235,7 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
-            raise ValueError(
-                "no Parameter name %s found in %s" % (name, self.name)
-            )
+            raise ValueError(f"no Parameter name {name} found in {self.name}")
         return param
 
     # TODO: this should not be called anymore after all activation func move to Layers
@@ -1068,10 +1062,8 @@ class Layer:
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
-            raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not (
-            type(tensor) == core.VarBase or type(tensor) == core.eager.Tensor
-        ):
+            raise KeyError(f"attribute '{name}' already exists.")
+        elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a Paddle.Tensor, but received {}.".format(
                     type(tensor).__name__
@@ -1361,7 +1353,7 @@ class Layer:
         elif name == '':
             raise KeyError("The name of parameter can not be empty.")
         elif hasattr(self, name) and name not in self._parameters:
-            raise KeyError("The parameter '{}' already exists.".format(name))
+            raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
             parameter, framework.Parameter
         ):
@@ -1524,7 +1516,7 @@ class Layer:
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if isinstance(value, (core.VarBase, core.eager.Tensor)):
+                if isinstance(value, core.eager.Tensor):
                     if _buffers is None:
                         raise ValueError(
                             "super().__init__() should be called first"
@@ -1559,14 +1551,14 @@ class Layer:
                             )
                         elif (
                             _buffers[name] is None
-                            or type(getattr(self, name)) == core.VarBase
+                            or type(getattr(self, name)) == core.eager.Tensor
                         ):
                             _buffers[name] = assign(value)
                         else:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'".format(
+                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
                                 name, type(value).__name__
                             )
                         )
@@ -1857,9 +1849,7 @@ class Layer:
             state = state_dict.get(key, None)
             if state is None:
                 missing_keys.append(key)
-                raise ValueError(
-                    "{} is not found in the provided dict.".format(key)
-                )
+                raise ValueError(f"{key} is not found in the provided dict.")
             if isinstance(state, (dict, list)):
                 if len(state) != len(param):
                     missing_keys.append(key)
@@ -1896,7 +1886,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn("Skip loading for {}. ".format(key) + str(err))
+                warnings.warn(f"Skip loading for {key}. " + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)

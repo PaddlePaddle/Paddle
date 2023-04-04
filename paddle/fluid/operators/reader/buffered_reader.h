@@ -26,8 +26,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 #endif
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
@@ -56,6 +54,8 @@ class BufferedReader : public framework::DecoratedReader {
                  bool pin_memory = false);
 
   ~BufferedReader() override;
+
+  platform::Place GetPlace() const { return place_; }
 
  private:
   void ReadTillBufferFullAsync();

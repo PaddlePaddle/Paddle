@@ -354,7 +354,7 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                              use_fused_matmul_bias);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -446,7 +446,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -565,23 +565,35 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
-                        ops::FusedGateAttentionOpKernel<float>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>,
-                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
-                        ops::FusedGateAttentionGradKernel<float>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>,
-                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionOpKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionGradKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
 #else
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
-                        ops::FusedGateAttentionOpKernel<float>,
-                        ops::FusedGateAttentionOpKernel<double>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>,
-                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
-                        ops::FusedGateAttentionGradKernel<float>,
-                        ops::FusedGateAttentionGradKernel<double>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>,
-                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionOpKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionGradKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
 #endif

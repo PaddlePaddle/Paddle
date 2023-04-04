@@ -337,7 +337,7 @@ class PipelineParallel(MetaParallelBase):
                     assert len(outputs) == len(output_tensor_grad)
                     paddle.autograd.backward(
                         tensors=outputs,
-                        grad_tensors=[t for t in output_tensor_grad],
+                        grad_tensors=list(output_tensor_grad),
                     )
                 else:
                     paddle.autograd.backward(

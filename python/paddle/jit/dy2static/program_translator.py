@@ -550,10 +550,13 @@ class StaticFunction:
 
         with_hook = kwargs.get("with_hook", False)
         is_train = kwargs.get("is_train", True)
+        is_prim_infer = kwargs.get("is_prim_infer", False)
         if "is_train" in kwargs:
             kwargs.pop("is_train")
         if "with_hook" in kwargs:
             kwargs.pop("with_hook")
+        if "is_prim_infer" in kwargs:
+            kwargs.pop("is_prim_infer")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(
@@ -574,9 +577,33 @@ class StaticFunction:
             with_hook=with_hook,
             is_train=is_train,
         )
+        if is_prim_infer:
+            (
+                concrete_program,
+                partial_program_layer,
+            ) = self._program_cache.get_program_without_cache(cache_key)
+        else:
+            # 3. check whether hit the cache or build a new program for the input arguments
+            concrete_program, partial_program_layer = self._program_cache[
+                cache_key
+            ]
+        return concrete_program, partial_program_layer
 
-        # 3. check whether hit the cache or build a new program for the input arguments
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
+    def get_concrete_program_with_cache_key(self, cached_key):
+        """
+        Returns traced concrete program and inner executable partial layer by cached key.
+
+        Args:
+            cached_key(CacheKey): The cached key use to get concrete program.
+
+        Returns:
+            Traced ConcreteProgram and executable translated Layer.
+        """
+        self._raise_when_property()
+        (
+            concrete_program,
+            partial_program_layer,
+        ) = self._program_cache.get_program_without_cache(cached_key)
         return concrete_program, partial_program_layer
 
     def get_traced_count(self):
@@ -634,7 +661,7 @@ class StaticFunction:
         return self.concrete_program_specify_input_spec(input_spec=None)
 
     def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False
+        self, input_spec=None, with_hook=False, is_prim_infer=False
     ):
         """
         Returns recent ConcreteProgram instance of decorated function while
@@ -652,6 +679,8 @@ class StaticFunction:
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
+        # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
+
         if cached_program_len == 0:
             desired_input_spec = input_spec
             if self._function_spec.input_spec is not None:
@@ -679,6 +708,7 @@ class StaticFunction:
                     *desired_input_spec,
                     with_hook=with_hook,
                     is_train=self._is_train_mode(),
+                    is_prim_infer=is_prim_infer,
                 )
                 return concrete_program
             else:
@@ -690,9 +720,14 @@ class StaticFunction:
         elif with_hook:
             cache_key = self._program_cache._recent_cache_key
             cache_key.kwargs["with_hook"] = True
-            concrete_program, _ = self._program_cache[cache_key]
-            return concrete_program
-
+            if not is_prim_infer:
+                concrete_program, _ = self._program_cache[cache_key]
+                return concrete_program
+            else:
+                concrete_program, _ = self.get_concrete_program_with_cache_key(
+                    cache_key
+                )
+                return concrete_program
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging_utils.warn(
@@ -700,12 +735,18 @@ class StaticFunction:
                     self._function_spec, cached_program_len
                 )
             )
-
-        cache_key, (
-            concrete_program,
-            partial_layer,
-        ) = self._program_cache.last()
-        return concrete_program
+        if not is_prim_infer:
+            cache_key, (
+                concrete_program,
+                partial_layer,
+            ) = self._program_cache.last()
+            return concrete_program
+        else:
+            cache_key = self._program_cache._recent_cache_key
+            concrete_program, _ = self.get_concrete_program_with_cache_key(
+                cache_key
+            )
+            return concrete_program
 
     def rollback(self):
         """
@@ -1214,6 +1255,9 @@ class ProgramCache:
 
         return self._caches[item_id]
 
+    def get_program_without_cache(self, cache_key):
+        return self._build_once(cache_key=cache_key)
+
     def get_program(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
@@ -1266,8 +1310,12 @@ class PrimHooker(PartialProgramLayerHook):
     def after_append_backward(self, whole_program, backward_start_idx):
         backward_length = len(whole_program.block(0).ops) - backward_start_idx
         if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
-            _to_prim(whole_program.blocks, whitelist=self.custom_vjps)
+            # only process backward part of block
+            _to_prim(whole_program.blocks, backward_length=backward_length)
         new_start_index = len(whole_program.block(0).ops) - backward_length
+        if backward_length > 0:
+            # only process forward part of block
+            _to_prim(whole_program.blocks, start_idx=new_start_index)
         return whole_program, new_start_index
 
     def after_infer(self, infer_program):
@@ -1693,9 +1741,21 @@ def enable_to_static(enable_to_static_bool):
 
 
 @switch_to_static_graph
-def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
+def _to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=-1,
+    backward_length=-1,
+):
     """Swith to static graph and call to_prim."""
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 
-    primapi.to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
+    primapi.to_prim(
+        blocks,
+        blacklist=blacklist,
+        whitelist=whitelist,
+        start_idx=start_idx,
+        backward_length=backward_length,
+    )

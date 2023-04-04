@@ -26,6 +26,16 @@
     func : all_reduce
     param: [x, reduce_type]
 
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+  kernel :
+    func : arange
+  data_transform :
+    skip_transform : start, end, step
+
 - op : assign
   args : (Tensor x)
   output : Tensor
@@ -47,6 +57,19 @@
     func : broadcast
     param: [x, root]
 
+- op : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
+  backward : embedding_grad
+
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -59,6 +82,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : eye
+  args : (Scalar(int64_t) num_rows, Scalar(int64_t) num_columns = -1, DataType dtype = DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
+  kernel :
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
+
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
@@ -68,6 +102,17 @@
     func : frobenius_norm
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
+
+- op : gaussian
+  args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : GaussianInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
 
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -116,6 +161,19 @@
     param : [x, y, axis]
     backend : x
     force_backend : force_cpu
+
+- op : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
+  kernel :
+    func : linspace
+    param: [start, stop, number, dtype]
+    data_type : dtype
+  data_transform :
+    skip_transform : start, stop, number
 
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)

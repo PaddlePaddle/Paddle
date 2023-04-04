@@ -765,8 +765,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
 
   attrs_ptr->operator[](name) = v;
   VLOG(10) << "op_type: " << Type() << ", attr name: " << name
-           << " , type index: "
-           << TransToPhiDataType(this->attrs_[name].index());
+           << " , type index: " << attrs_ptr->operator[](name).index();
   need_update_ = true;
 }
 
@@ -935,7 +934,7 @@ struct SetAttrDescVisitor {
   void operator()(const std::string &v) const { attr_->set_s(v); }
   void operator()(const paddle::experimental::Scalar &v) const {
     auto *s = new proto::Scalar;
-    *s = make_scalar_proto(v);
+    *s = MakeScalarProto(v);
     attr_->set_allocated_scalar(s);
   }
 
@@ -995,7 +994,7 @@ struct SetAttrDescVisitor {
     std::vector<proto::Scalar> scalars;
     scalars.reserve(v.size());
     for (const auto &item : v) {
-      scalars.emplace_back(make_scalar_proto(item));
+      scalars.emplace_back(MakeScalarProto(item));
     }
     VectorToRepeated(scalars, attr_->mutable_scalars());
   }

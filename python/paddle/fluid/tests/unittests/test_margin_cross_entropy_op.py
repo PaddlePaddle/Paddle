@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle.fluid import Program, core, program_guard
@@ -177,6 +177,91 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
 class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), atol=5e-2)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
+            ["Logits"],
+            "Loss",
+            numeric_grad_delta=6e-1,
+            max_relative_error=6e-1,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMarginCrossEntropyBF16Op(OpTest):
+    def initParams(self):
+        self.python_api = python_api
+        self.op_type = "margin_cross_entropy"
+        self.python_out_sig = ["Loss"]
+        self.axis = -1
+        self.batch_dim = 5
+        self.feat_dim = 41
+        self.num_class = 37
+
+    def init_loss_params(self):
+        self.margin1 = 1.0
+        self.margin2 = 0.5
+        self.margin3 = 0.0
+        self.scale = 2.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        # For bfloat16, converts float32 to uint16
+        self.np_dtype = "float32"
+
+    def setUp(self):
+        self.initParams()
+        self.init_loss_params()
+        self.init_dtype()
+
+        datas = np.random.uniform(
+            -0.99, 0.99, [self.batch_dim, self.feat_dim]
+        ).astype(self.np_dtype)
+        datas = datas / np.sqrt(np.sum(np.square(datas), axis=1, keepdims=True))
+        weights = np.random.uniform(
+            -0.99, 0.99, [self.feat_dim, self.num_class]
+        ).astype(self.np_dtype)
+        weights = weights / np.sqrt(
+            np.sum(np.square(weights), axis=0, keepdims=True)
+        )
+        logits = np.matmul(datas, weights)
+
+        labels = np.random.randint(
+            0, self.num_class, (self.batch_dim,), dtype="int64"
+        )
+
+        loss, softmax = margin_cross_entropy(
+            logits,
+            labels,
+            self.axis,
+            self.margin1,
+            self.margin2,
+            self.margin3,
+            self.scale,
+        )
+
+        self.inputs = {
+            "Logits": convert_float_to_uint16(logits),
+            "Label": labels,
+        }
+        self.outputs = {
+            "Softmax": convert_float_to_uint16(softmax.astype(self.np_dtype)),
+            "Loss": convert_float_to_uint16(loss.astype(self.np_dtype)),
+        }
+        self.attrs = {
+            'margin1': self.margin1,
+            'margin2': self.margin2,
+            'margin3': self.margin3,
+            'scale': self.scale,
+        }
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0), atol=5e-2)
