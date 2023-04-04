@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
