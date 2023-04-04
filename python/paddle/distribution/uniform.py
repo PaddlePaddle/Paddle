@@ -161,7 +161,7 @@ class Uniform(distribution.Distribution):
         batch_shape = list((self.low + self.high).shape)
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
+            zero_tmp = paddle.tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
             )
             uniform_random_tmp = random.uniform_random_batch_size_like(

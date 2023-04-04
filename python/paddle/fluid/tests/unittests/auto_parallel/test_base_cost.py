@@ -98,7 +98,7 @@ def mlp_forward(train_program, start_program):
             name="label", shape=[batch_size, 1], dtype='float32'
         )
 
-        fill_constant_out = paddle.fluid.layers.fill_constant_batch_size_like(
+        fill_constant_out = paddle.tensor.fill_constant_batch_size_like(
             input=input, shape=[batch_size], value=1, dtype="int32"
         )
         embedding = paddle.nn.Embedding(10, hidden_size, sparse=True)

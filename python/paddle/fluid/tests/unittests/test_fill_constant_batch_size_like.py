@@ -33,7 +33,7 @@ def fill_constant_batch_size_like(
     output_dim_idx=0,
     force_cpu=False,
 ):
-    return paddle.fluid.layers.fill_constant_batch_size_like(
+    return paddle.tensor.fill_constant_batch_size_like(
         input, shape, data_type, value, input_dim_idx, output_dim_idx, force_cpu
     )
 

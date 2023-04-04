@@ -424,10 +424,10 @@ class TestFakeInit(TranspilerTest):
         neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
-        label_ones = fluid.layers.fill_constant_batch_size_like(
+        label_ones = paddle.tensor.fill_constant_batch_size_like(
             true_logits, shape=[-1, 1], value=1.0, dtype='float32'
         )
-        label_zeros = fluid.layers.fill_constant_batch_size_like(
+        label_zeros = paddle.tensor.fill_constant_batch_size_like(
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 

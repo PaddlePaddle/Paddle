@@ -73,7 +73,7 @@ class TestDistOpCost(unittest.TestCase):
                 auto.shard_tensor(
                     x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None]
                 )
-                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                tmp = paddle.tensor.fill_constant_batch_size_like(
                     input=x, shape=[2, 8], value=1, dtype='float32'
                 )
                 weight_attr = paddle.ParamAttr()
@@ -135,7 +135,7 @@ class TestDistOpCost(unittest.TestCase):
                     ["x", None],
                 )
                 # embedding
-                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                tmp = paddle.tensor.fill_constant_batch_size_like(
                     input=x, shape=[4], value=1, dtype='int32'
                 )
                 embedding = paddle.nn.Embedding(10, 8)
@@ -243,7 +243,7 @@ class TestDistOpCost(unittest.TestCase):
                     ["x", None],
                 )
                 # embedding
-                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                tmp = paddle.tensor.fill_constant_batch_size_like(
                     input=x, shape=[4], value=1, dtype='int32'
                 )
                 embedding = paddle.nn.Embedding(10, 8)
@@ -351,7 +351,7 @@ class TestDistOpCost(unittest.TestCase):
                     ["x", None],
                 )
                 # embedding
-                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                tmp = paddle.tensor.fill_constant_batch_size_like(
                     input=x, shape=[4], value=1, dtype='int32'
                 )
                 embedding = paddle.nn.Embedding(10, 8)
