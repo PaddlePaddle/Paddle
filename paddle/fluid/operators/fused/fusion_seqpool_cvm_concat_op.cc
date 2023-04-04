@@ -96,7 +96,7 @@ Fusion Sequence Pool of pooltype(sum, average and sqrt) and Concat Operator.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -172,6 +172,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
-                       ops::FusionSeqPoolCVMConcatKernel<float>,
-                       ops::FusionSeqPoolCVMConcatKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_seqpool_cvm_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionSeqPoolCVMConcatKernel,
+                          float,
+                          double) {}

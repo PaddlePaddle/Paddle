@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestShareDataOp(OpTest):

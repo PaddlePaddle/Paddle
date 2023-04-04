@@ -1607,7 +1607,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
+    @non_static_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -1644,7 +1644,17 @@ class Variable(metaclass=VariableMetaClass):
                 loss.backward()
 
         """
-        pass
+        from .backward import append_backward
+
+        if retain_graph is True:
+            raise AssertionError(
+                "`retain_graph` == True is not supported in @to_static function."
+                "please set retain_graph = False."
+            )
+        param_grad_list = append_backward(self)
+        for param, param_grad in param_grad_list:
+            # set grad to simulate dygraph loss.backward() in static mode.
+            setattr(param, "grad", param_grad)
 
     @fake_interface_only
     def gradient(self):
@@ -2851,7 +2861,6 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
-            self.legacy_attrs = attrs if attrs else {}
 
             self.block = block
             self.desc = desc
@@ -3084,20 +3093,12 @@ class Operator:
 
             self.desc.check_attrs()
 
-            # record all attrs needed by creating op
-            for item in self.desc.attr_names():
-                self.legacy_attrs[item] = self.desc.attr(item)
-
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
-    def _get_runtime_attrs(self):
-        """Record all attrs needed by creating op. This api is only for to_prim process."""
-        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """
@@ -7390,6 +7391,19 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@signature_safe_contextmanager
+def dygraph_guard_if_declarative():
+    from .dygraph.base import in_declarative_mode
+    from .dygraph import Tracer
+
+    if in_declarative_mode():
+        # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
+        with _dygraph_guard(tracer=Tracer()):
+            yield
+    else:
+        yield
 
 
 @signature_safe_contextmanager

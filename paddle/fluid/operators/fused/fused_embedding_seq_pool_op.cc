@@ -201,9 +201,15 @@ REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool,
-                       ops::FusedEmbeddingSeqPoolKernel<float>,
-                       ops::FusedEmbeddingSeqPoolKernel<double>);
-REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool_grad,
-                       ops::FusedEmbeddingSeqPoolGradKernel<float>,
-                       ops::FusedEmbeddingSeqPoolGradKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_seq_pool,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedEmbeddingSeqPoolKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_seq_pool_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedEmbeddingSeqPoolGradKernel,
+                          float,
+                          double) {}
