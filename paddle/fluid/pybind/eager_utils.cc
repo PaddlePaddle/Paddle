@@ -1520,14 +1520,28 @@ void SetCUDAGraphPtrListToArgs(
   // VLOG(4) << "yoki args: " << args;
   // VLOG(4) << "yoki arg_idx: " << arg_idx;
   // PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  // list = PyList_New((Py_ssize_t)cuda_graph.size());
   VLOG(4) << "yoki list: " << list;
   Py_ssize_t len = PyList_Size(list);
-  for (Py_ssize_t i = 0; i < len; i++) {
-    VLOG(4) << "yoki: i: " << i;
-    if (cuda_graph[i] != nullptr) {
-      VLOG(4) << "yoki to pyobject";
-      PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+  if (len != 0) {
+    for (Py_ssize_t i = 0; i < len; i++) {
+      VLOG(4) << "yoki: i: " << i;
+      if (cuda_graph[i] != nullptr) {
+        VLOG(4) << "yoki to pyobject";
+        PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+      }
     }
+  } else {
+    for (Py_ssize_t i = 0; i < static_cast<Py_ssize_t>(cuda_graph.size()); i++) {
+      VLOG(4) << "yoki: i: " << i;
+      if (cuda_graph[i] != nullptr) {
+        VLOG(4) << "yoki to pyobject";
+        PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+      } else {
+        Py_INCREF(Py_None);
+        PyList_SET_ITEM(list, i, Py_None);
+      }
+    } 
   }
 }
 
