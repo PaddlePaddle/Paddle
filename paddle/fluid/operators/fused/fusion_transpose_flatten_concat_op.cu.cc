@@ -24,7 +24,7 @@ namespace operators {
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -119,6 +119,10 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fusion_transpose_flatten_concat,
-                        ops::TransposeFlattenConcatFusionKernel<float>,
-                        ops::TransposeFlattenConcatFusionKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(fusion_transpose_flatten_concat,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TransposeFlattenConcatFusionKernel,
+                          float,
+                          double) {}
