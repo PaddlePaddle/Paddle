@@ -55,7 +55,7 @@ def get_var_with_recursion(var_name, block, program):
         # parent_block = program.blocks[block.parent_idx]
         # if var_name in parent_block.vars:
         #     var = parent_block.vars[var_name]
-    assert var is not None, "{} is not found".format(var.name)
+    assert var is not None, f"{var.name} is not found"
 
     return var
 
@@ -1340,15 +1340,13 @@ class Resharder:
         if op_input:
             op_input_dims_mapping = dist_attr[1]
             if all(
-                map(
-                    lambda x: x,
-                    [
-                        tensor_dims_mapping,
-                        tensor_process_mesh,
-                        op_input_dims_mapping,
-                        op_process_mesh,
-                    ],
-                )
+                x
+                for x in [
+                    tensor_dims_mapping,
+                    tensor_process_mesh,
+                    op_input_dims_mapping,
+                    op_process_mesh,
+                ]
             ):
                 # judge whether need reshard by dims_mapping
                 if tensor_dims_mapping != op_input_dims_mapping:
@@ -1379,15 +1377,13 @@ class Resharder:
         else:
             op_output_dims_mapping = dist_attr[1]
             if all(
-                map(
-                    lambda x: x,
-                    [
-                        tensor_dims_mapping,
-                        tensor_process_mesh,
-                        op_output_dims_mapping,
-                        op_process_mesh,
-                    ],
-                )
+                x
+                for x in [
+                    tensor_dims_mapping,
+                    tensor_process_mesh,
+                    op_output_dims_mapping,
+                    op_process_mesh,
+                ]
             ):
                 if tensor_dims_mapping != op_output_dims_mapping:
                     raise ValueError(
@@ -1483,15 +1479,15 @@ class Resharder:
                         [source_partition_index, [source_process], [False]]
                     )
                 else:
-                    partition_list = list(
-                        [item[0] for item in partition_process_mapping_list]
-                    )
-                    process_list = list(
-                        [item[1] for item in partition_process_mapping_list]
-                    )
-                    has_used = list(
-                        [item[2] for item in partition_process_mapping_list]
-                    )
+                    partition_list = [
+                        item[0] for item in partition_process_mapping_list
+                    ]
+                    process_list = [
+                        item[1] for item in partition_process_mapping_list
+                    ]
+                    has_used = [
+                        item[2] for item in partition_process_mapping_list
+                    ]
 
                     if partition_list.count(source_partition_index) == 1:
                         index = partition_list.index(source_partition_index)
@@ -1536,15 +1532,15 @@ class Resharder:
                         )
                         and source_partition_index not in has_sent
                     ):
-                        idx = list(
-                            [item[0] for item in partition_process_mapping_list]
-                        ).index(source_partition_index)
-                        has_used = list(
-                            [item[2] for item in partition_process_mapping_list]
-                        )[idx]
-                        process_list = list(
-                            [item[1] for item in partition_process_mapping_list]
-                        )[idx]
+                        idx = [
+                            item[0] for item in partition_process_mapping_list
+                        ].index(source_partition_index)
+                        has_used = [
+                            item[2] for item in partition_process_mapping_list
+                        ][idx]
+                        process_list = [
+                            item[1] for item in partition_process_mapping_list
+                        ][idx]
                         i = 0
                         while i < len(has_used):
                             if not has_used[i]:
@@ -1554,7 +1550,7 @@ class Resharder:
                             i += 1
 
                         if i == len(has_used):
-                            has_used = list(map(lambda x: False, has_used))
+                            has_used = [False for x in has_used]
                             to_send_process = process_list[0]
                             has_used[0] = True
                         assert (
@@ -1744,11 +1740,9 @@ class Resharder:
             if isinstance(op_desc, AllGatherOpDesc):  # noqa: F401
                 if var_name not in self.has_allgather.keys():
                     self.has_allgather[var_name] = []
-                if not self.has_allgather[
-                    var_name
-                ] or op_desc.group not in list(
-                    map(lambda x: x[0], self.has_allgather[var_name])
-                ):
+                if not self.has_allgather[var_name] or op_desc.group not in [
+                    x[0] for x in self.has_allgather[var_name]
+                ]:
                     if op_desc.is_bool:
                         # for bool data allgather, cast to int64 -> allgather -> cast bool
                         out_cast = Inserter.insert_cast_op(
@@ -1948,9 +1942,7 @@ class Resharder:
                     )
                 idx = idx_list[0]
 
-            elif isinstance(op_desc, SliceOpDesc) or isinstance(
-                op_desc, AllGatherConcatOpDesc
-            ):
+            elif isinstance(op_desc, (SliceOpDesc, AllGatherConcatOpDesc)):
                 target_tensor = None
                 if isinstance(op_desc, SliceOpDesc):
                     assert (
@@ -2716,6 +2708,8 @@ class Resharder:
                 )
                 # simplified processing: ignore union process mesh and output reshard
                 dist_op = self.dist_context.get_dist_op_for_program(op)
+                if not dist_tensor or not dist_op:
+                    return reshard_op_cost
                 dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
                     tensor.name
                 )

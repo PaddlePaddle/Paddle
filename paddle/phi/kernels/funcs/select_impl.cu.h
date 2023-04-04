@@ -268,7 +268,7 @@ __device__ void SelectKernelImpl(OutT *out,
   using IdT = int64_t;
   // Set index data type
   using Add = kps::AddFunctor<IdT>;  // for cumsum
-  using Cast = NonZeroFunctor<InT>;  // for mask
+  using Cast = NonZeroFunctor<MT>;   // for mask
 
   IdT init_idx = static_cast<IdT>(0.0f);
   MT init_mask = static_cast<MT>(0.0f);

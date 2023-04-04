@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
@@ -47,7 +47,7 @@ class XPUTestWhereOp(XPUOpTestWrapper):
         def init_data(self):
             self.x = np.random.uniform(-3, 5, (100)).astype(self.dtype)
             self.y = np.random.uniform(-3, 5, (100)).astype(self.dtype)
-            self.cond = np.zeros((100)).astype("bool")
+            self.cond = np.zeros(100).astype("bool")
 
         def init_config(self):
             self.op_type = "where"

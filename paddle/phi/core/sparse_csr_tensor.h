@@ -110,9 +110,13 @@ class SparseCsrTensor : public TensorBase,
   /// \return The data type of the tensor.
   DataType dtype() const noexcept override { return meta_.dtype; }
 
+  void set_type(const DataType dtype) { meta_.dtype = dtype; }
+
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept override { return meta_.layout; }
+
+  void set_layout(const DataLayout layout) { meta_.layout = layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.

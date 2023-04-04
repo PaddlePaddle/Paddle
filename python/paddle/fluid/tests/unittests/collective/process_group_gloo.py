@@ -14,6 +14,7 @@
 
 import random
 import unittest
+from copy import deepcopy
 
 import numpy as np
 
@@ -100,6 +101,30 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(broadcast_result, tensor_y)
         print("test broadcast api ok")
 
+        # test send_recv
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y_1 = paddle.to_tensor(y)
+        tensor_y_2 = deepcopy(tensor_y_1)
+
+        send_recv_result_1 = paddle.assign(tensor_x)
+        send_recv_result_2 = paddle.assign(tensor_y_2)
+        if pg.rank() == 0:
+            task = pg.send(tensor_x, pg.size() - 1, True)
+        elif pg.rank() == pg.size() - 1:
+            task = pg.recv(tensor_y_1, 0, True)
+            assert np.array_equal(send_recv_result_1, tensor_y_1)
+
+        if pg.rank() == 0:
+            task = pg.recv(tensor_x, pg.size() - 1, True)
+            assert np.array_equal(send_recv_result_2, tensor_x)
+        elif pg.rank() == pg.size() - 1:
+            task = pg.send(tensor_y_2, 0, True)
+        print("test send_recv api ok")
+
         # test barrier
         # rank 0
         if pg.rank() == 0:
@@ -178,6 +203,30 @@ class TestProcessGroupFp32(unittest.TestCase):
         else:
             assert np.array_equal(tensor_y, out2)
         print("test scatter api ok\n")
+
+        # test Gather
+        def test_gather(root):
+            tensor_x = [
+                paddle.zeros(self.shape).astype(self.dtype)
+                for _ in range(pg.size())
+            ]
+            tensor_y = [
+                paddle.to_tensor(
+                    np.random.random(self.shape).astype(self.dtype)
+                )
+                for _ in range(pg.size())
+            ]
+            if pg.rank() == root:
+                task = pg.gather(tensor_y[root], tensor_x, root, True)
+                task.wait()
+                assert np.array_equal(tensor_x, tensor_y)
+            else:
+                task = pg.gather(tensor_y[pg.rank()], tensor_x, root, True)
+                task.wait()
+
+        test_gather(0)
+        test_gather(pg.size() - 1)
+        print("test gather api ok\n")
 
 
 if __name__ == "__main__":

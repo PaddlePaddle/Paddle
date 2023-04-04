@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-import numpy.random as random
+from numpy import random
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest

@@ -105,7 +105,6 @@ class AmpScaler:
         if enable and not (
             tracer._expected_place.is_gpu_place()
             or tracer._expected_place.is_xpu_place()
-            or tracer._expected_place.is_mlu_place()
             or tracer._expected_place.is_npu_place()
             or tracer._expected_place.is_custom_place()
         ):
@@ -179,7 +178,7 @@ class AmpScaler:
                     scaled.backward()
                     scaler.minimize(optimizer, scaled)
         """
-        check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
+        check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
 
         if not self._enable:
             return var

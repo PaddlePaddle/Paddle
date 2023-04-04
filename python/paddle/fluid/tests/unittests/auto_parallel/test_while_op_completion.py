@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext

@@ -21,8 +21,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
@@ -190,12 +190,12 @@ class TestDygraphDeepCF(unittest.TestCase):
 
     def load_data(self):
         sys.stderr.write('loading from %s\n' % self.data_path)
-        likes = dict()
+        likes = {}
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:
             for l in f.readlines():
-                uid, iid, rating = [int(v) for v in l.split('\t')]
+                uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
                 if float(rating) > 0.0:
@@ -333,7 +333,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
-                    sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
+                    sys.stderr.write(f'dynamic loss: {slice} {dy_loss}\n')
 
         with fluid.dygraph.guard():
             paddle.seed(seed)
@@ -367,9 +367,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     adam2.minimize(loss2)
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
-                    sys.stderr.write(
-                        'dynamic loss: %s %s\n' % (slice, dy_loss2)
-                    )
+                    sys.stderr.write(f'dynamic loss: {slice} {dy_loss2}\n')
 
         with fluid.dygraph.guard():
             paddle.seed(seed)
@@ -405,9 +403,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     eager_loss = loss.numpy()
-                    sys.stderr.write(
-                        'eager loss: %s %s\n' % (slice, eager_loss)
-                    )
+                    sys.stderr.write(f'eager loss: {slice} {eager_loss}\n')
 
         self.assertEqual(static_loss, dy_loss)
         self.assertEqual(static_loss, dy_loss2)

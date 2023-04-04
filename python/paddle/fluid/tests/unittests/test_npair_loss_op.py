@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def npairloss(anchor, positive, labels, l2_reg=0.002):
@@ -129,7 +128,7 @@ class TestNpairLossOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             anchor_np = np.random.random((2, 4)).astype("float32")
             positive_np = np.random.random((2, 4)).astype("float32")
-            labels_np = np.random.random((2)).astype("float32")
+            labels_np = np.random.random(2).astype("float32")
             anchor_data = paddle.static.data(
                 name='anchor', shape=[2, 4], dtype='float32'
             )

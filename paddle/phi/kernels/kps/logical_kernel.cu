@@ -77,12 +77,14 @@ PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #else
+using float16 = phi::dtype::float16;
 #define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
   PD_REGISTER_KERNEL(logical_and,                            \
                      KPS,                                    \
                      ALL_LAYOUT,                             \
                      phi::Logical##func_type##Kernel,        \
                      float,                                  \
+                     float16,                                \
                      double,                                 \
                      bool,                                   \
                      int64_t,                                \

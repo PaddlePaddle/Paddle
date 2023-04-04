@@ -18,7 +18,7 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -291,11 +291,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             elif core.is_compiled_with_npu():
                 place = core.NPUPlace(genv.device_id)
                 core.HCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_mlu():
-                place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             elif core.is_compiled_with_xpu():

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -32,7 +32,7 @@ class TestUnStackOpBase(OpTest):
     def get_y_names(self):
         y_names = []
         for i in range(self.input_dim[self.axis]):
-            y_names.append('y{}'.format(i))
+            y_names.append(f'y{i}')
         return y_names
 
     def setUp(self):
@@ -58,10 +58,10 @@ class TestUnStackOpBase(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names(), check_eager=True)
+        self.check_grad(['X'], self.get_y_names())
 
 
 class TestStackOp3(TestUnStackOpBase):

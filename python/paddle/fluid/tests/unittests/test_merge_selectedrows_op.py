@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid import core
 
 
 class TestMergeSelectedRows(unittest.TestCase):

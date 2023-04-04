@@ -17,12 +17,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -277,7 +276,7 @@ class TestDataNormOp(OpTest):
         test check backward, check grad
         """
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
@@ -341,7 +340,7 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         test check backward, check grad
         """
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(), check_dygraph=False)
 
 
 class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
@@ -400,7 +399,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         test check backward, check grad
         """
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(), check_dygraph=False)
 
 
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
@@ -464,7 +463,7 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         test check backward, check grad
         """
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(), check_dygraph=False)
 
 
 class TestDataNormOpWithSlotDim(OpTest):
@@ -522,7 +521,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         test check backward, check grad
         """
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(), check_dygraph=False)
 
 
 class TestDataNormOpErrorr(unittest.TestCase):
