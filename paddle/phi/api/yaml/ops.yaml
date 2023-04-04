@@ -1124,7 +1124,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : nextafter
-  backward : nextafter_grad
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")

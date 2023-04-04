@@ -1382,7 +1382,6 @@
     attrs : [bool use_mkldnn = false]
 
 - op : nextafter
-  backward : nextafter_grad
   inputs :
     {x: X, y : Y}
   outputs :

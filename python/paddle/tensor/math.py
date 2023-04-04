@@ -5413,3 +5413,35 @@ def vander(x, n=None, increasing=False, name=None):
         res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
     res = res[:, ::-1] if not increasing else res
     return res
+
+
+def nextafter(x, y, name=None):
+    r"""
+    Return the next floating-point value after input towards other, elementwise.
+    The shapes of input and other must be broadcastable.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.nextafter(x, y)
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
+        helper = LayerHelper('nextafter', **locals())
+        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
+        helper.append_op(
+            type='trace', inputs={'X': x, 'Y': y}, outputs={'Out': out}
+        )
+    return out

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/nextafter_kernel.h"
+#include <algorithm>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 
@@ -26,9 +28,9 @@ void NextafterKernel(const Context& ctx,
   if (x.numel() == 0 || y.numel() == 0) {
     return;
   }
-  auto* out_data = dev_ctx.template Alloc<T>(out);
-  auto* x_data = x.data<T>();
-  auto* y_data = y.data<T>();
+  auto out_data = dev_ctx.template Alloc<T>(out);
+  auto x_data = x.data<T>();
+  auto y_data = y.data<T>();
   int x_numel = x.numel();
 
   for (int i = 0; i < x_numel; ++i) {
