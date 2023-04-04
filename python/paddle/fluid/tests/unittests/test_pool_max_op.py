@@ -262,7 +262,7 @@ def create_test_fp16_class(parent):
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestMaxPool3dFP16.__name__ = cls_name
     globals()[cls_name] = TestMaxPool3dFP16
 
@@ -295,7 +295,7 @@ def create_test_bf16_class(parent):
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestMaxPool3dBF16.__name__ = cls_name
     globals()[cls_name] = TestMaxPool3dBF16
 
@@ -385,7 +385,7 @@ def create_test_fp16_class(parent):
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestMaxPool2dFP16.__name__ = cls_name
     globals()[cls_name] = TestMaxPool2dFP16
 
@@ -418,7 +418,7 @@ def create_test_bf16_class(parent):
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestMaxPool2dBF16.__name__ = cls_name
     globals()[cls_name] = TestMaxPool2dBF16
 
