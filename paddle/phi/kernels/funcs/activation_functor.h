@@ -2668,10 +2668,12 @@ struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
 
-  // reciprocal(x) = 1 / x
-  __device__ __forceinline__ T operator()(const T x) const { return one / x; }
+  __device__ __forceinline__ T operator()(const T x) const {
+    return static_cast<T>(one / static_cast<MPType>(x));
+  }
 };
 
 template <typename T>

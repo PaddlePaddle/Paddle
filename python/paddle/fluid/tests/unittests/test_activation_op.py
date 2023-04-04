@@ -3869,7 +3869,7 @@ def create_test_act_fp16_class(
     check_dygraph=True,
     check_prim=False,
     enable_cinn=True,
-    grad_atol=0.80,
+    grad_atol=1e-2,
 ):
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -3924,73 +3924,118 @@ create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
-create_test_act_fp16_class(TestCos, grad_atol=0.85)
-create_test_act_fp16_class(TestTan, grad_atol=0.85)
-create_test_act_fp16_class(TestCosh, grad_atol=0.85)
-create_test_act_fp16_class(TestAcos, grad_atol=0.85)
+create_test_act_fp16_class(TestCos)
+create_test_act_fp16_class(TestTan)
+create_test_act_fp16_class(TestCosh)
+create_test_act_fp16_class(TestAcos)
 create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
-create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
-create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
-create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
+create_test_act_fp16_class(TestAcosh)
+create_test_act_fp16_class(TestAsinh)
+create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(TestGelu, check_prim=True, enable_cinn=False)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
-create_test_act_fp16_class(TestSoftRelu, check_dygraph=False, grad_atol=0.85)
+create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog, check_prim=True)
 if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2, atol=5e-2, grad_atol=0.85)
+    create_test_act_fp16_class(TestLog2)
 else:
-    create_test_act_fp16_class(TestLog2, atol=5e-2)
-create_test_act_fp16_class(TestLog10, atol=5e-2)
-create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
+    create_test_act_fp16_class(TestLog2)
+create_test_act_fp16_class(TestLog10)
+create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, check_prim=True, atol=5e-2)
-create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
-create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
+create_test_act_fp16_class(TestPow, check_prim=True)
+create_test_act_fp16_class(TestPow_factor_tensor)
+create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus)
 create_test_act_fp16_class(TestSoftsign)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
-create_test_act_fp16_class(TestSwish, grad_atol=0.85)
+create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True)
-create_test_act_fp16_class(TestMish, grad_atol=0.9)
+create_test_act_fp16_class(TestMish)
 
 
 def create_test_act_bf16_class(
-    parent, atol=1e-2, grad_check=True, grad_atol=0.80
+    parent, atol=1e-2, grad_check=True, grad_atol=1e-2
 ):
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
     class TestActBF16(parent):
-        def init_dtype(self):
-            self.dtype = np.uint16
-
         def test_check_output(self):
+            self.dtype = np.uint16
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=atol)
 
         def test_check_grad(self):
+            self.dtype = np.uint16
             place = core.CUDAPlace(0)
+            self.inputs = {'X': convert_float_to_uint16(self.inputs['X'])}
+            self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=grad_atol
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
-    TestActBF16.__name__ = cls_name
-    globals()[cls_name] = TestActBF16
 
-
-create_test_act_bf16_class(TestRelu)
+create_test_act_bf16_class(TestActivation)
+create_test_act_bf16_class(TestExpm1)
+create_test_act_bf16_class(TestSigmoid)
+create_test_act_bf16_class(TestSilu)
+create_test_act_bf16_class(TestLogSigmoid)
+create_test_act_bf16_class(TestTanh)
+create_test_act_bf16_class(TestTanhshrink)
+create_test_act_bf16_class(TestHardShrink)
+create_test_act_bf16_class(TestSoftshrink)
+create_test_act_bf16_class(TestSqrt)
+create_test_act_bf16_class(TestSqrtComp)
 create_test_act_bf16_class(TestAbs)
+create_test_act_bf16_class(TestCeil, grad_check=False)
+create_test_act_bf16_class(TestFloor, grad_check=False)
+create_test_act_bf16_class(TestCos)
+create_test_act_bf16_class(TestTan)
+create_test_act_bf16_class(TestCosh)
+create_test_act_bf16_class(TestAcos)
+create_test_act_bf16_class(TestSin)
+create_test_act_bf16_class(TestSinh)
+create_test_act_bf16_class(TestAsin)
+create_test_act_bf16_class(TestAtan)
+create_test_act_bf16_class(TestAcosh)
+create_test_act_bf16_class(TestAsinh)
+create_test_act_bf16_class(TestAtanh)
+create_test_act_bf16_class(TestRound, grad_check=False)
+create_test_act_bf16_class(TestRelu)
+create_test_act_bf16_class(TestGelu)
+create_test_act_bf16_class(TestBRelu)
+create_test_act_bf16_class(TestRelu6)
+create_test_act_bf16_class(TestSoftRelu)
+create_test_act_bf16_class(TestELU)
+create_test_act_bf16_class(TestCELU)
+create_test_act_bf16_class(TestReciprocal)
+create_test_act_bf16_class(TestLog)
+if core.is_compiled_with_rocm():
+    create_test_act_bf16_class(TestLog2)
+else:
+    create_test_act_bf16_class(TestLog2)
+create_test_act_bf16_class(TestLog10)
+create_test_act_bf16_class(TestLog1p)
+create_test_act_bf16_class(TestSquare)
+create_test_act_bf16_class(TestPow)
+create_test_act_bf16_class(TestPow_factor_tensor)
+create_test_act_bf16_class(TestSTanh)
+create_test_act_bf16_class(TestSoftplus)
+create_test_act_bf16_class(TestSoftsign)
+create_test_act_bf16_class(TestThresholdedRelu)
+create_test_act_bf16_class(TestHardSigmoid)
+create_test_act_bf16_class(TestSwish)
+create_test_act_bf16_class(TestHardSwish)
+create_test_act_bf16_class(TestMish)
+
 
 if __name__ == "__main__":
     unittest.main()

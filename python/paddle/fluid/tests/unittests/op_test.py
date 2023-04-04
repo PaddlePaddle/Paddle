@@ -896,7 +896,9 @@ class OpTest(unittest.TestCase):
                 np_dyg,
                 rtol=1e-05,
                 equal_nan=False,
-                err_msg='Output ('
+                err_msg='Operator ('
+                + self.op_type
+                + ') Output ('
                 + name
                 + ') has diff at '
                 + str(place)
@@ -1119,7 +1121,9 @@ class OpTest(unittest.TestCase):
                     actual_out,
                     rtol=1e-05,
                     atol=inplace_atol,
-                    err_msg='Output ('
+                    err_msg='Operator ('
+                    + self.op_type
+                    + ') Output ('
                     + name
                     + ') has diff at '
                     + str(place)
@@ -1136,7 +1140,9 @@ class OpTest(unittest.TestCase):
                 np.testing.assert_array_equal(
                     expect_out,
                     actual_out,
-                    err_msg='Output ('
+                    err_msg='Operator ('
+                    + self.op_type
+                    + ') Output ('
                     + name
                     + ') has diff at '
                     + str(place)
@@ -1607,7 +1613,9 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                         equal_nan=equal_nan,
                         err_msg=(
-                            "Output ("
+                            "Operator ("
+                            + self.op_type
+                            + ") Output ("
                             + name
                             + ") has diff at "
                             + str(place)
@@ -1624,7 +1632,9 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                         equal_nan=equal_nan,
                     ),
-                    "Output ("
+                    "Operator ("
+                    + self.op_type
+                    + ") Output ("
                     + name
                     + ") has diff at "
                     + str(place)
@@ -1806,7 +1816,9 @@ class OpTest(unittest.TestCase):
                         .get_tensor()
                         .recursive_sequence_lengths(),
                         expect[1],
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has different lod at "
                         + str(place)
@@ -1830,7 +1842,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                             equal_nan=equal_nan,
                             err_msg=(
-                                "Output ("
+                                "Operator ("
+                                + self.op_type
+                                + ") Output ("
                                 + name
                                 + ") has diff at "
                                 + str(place)
@@ -1847,7 +1861,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                             equal_nan=equal_nan,
                         ),
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has diff at "
                         + str(place)
