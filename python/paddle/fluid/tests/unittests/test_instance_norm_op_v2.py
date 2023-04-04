@@ -178,7 +178,6 @@ class TestInstanceNormFP32OP(OpTest):
         self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
-            max_relative_error=self.max_relative_error,
         )
 
     def init_dtype(self):
@@ -195,7 +194,6 @@ class TestInstanceNormFP32OP(OpTest):
 
     def set_err_thre(self):
         self.atol = 1e-3
-        self.max_relative_error = 5e-3
 
 
 @unittest.skipIf(
@@ -240,8 +238,6 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
         self.init_dtype()
         self.init_shape()
         self.init_value()
-        self.atol = 1e-2
-        self.max_relative_error = 1e-2
         self.inputs = {
             'X': convert_float_to_uint16(self.value),
             'Scale': self.scale,
@@ -255,6 +251,7 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
         y, mean, variance = self.compute_output(
             self.value, self.scale, self.bias, self.eps
         )
+        self.python_out_sig = ['Y']
         self.outputs = {
             'Y': convert_float_to_uint16(y),
             'SavedMean': mean,
@@ -263,7 +260,7 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=self.atol)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -271,7 +268,6 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             place,
             ['X', 'Scale', 'Bias'],
             'Y',
-            max_relative_error=self.max_relative_error,
         )
 
 
