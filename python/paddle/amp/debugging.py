@@ -269,7 +269,7 @@ class TensorInfo:
                 elif words[0] == "num_zero":
                     self.num_zero = np.int64(words[1])
         except Exception as e:
-            print("!! Error parsing {}".format(line))
+            print(f"!! Error parsing {line}")
         return self
 
 
@@ -354,7 +354,7 @@ class MixedPrecisionTensorInfo:
 
     def __str__(self):
         def _float_str(value):
-            return "{:.6f}".format(value) if value is not None else value
+            return f"{value:.6f}" if value is not None else value
 
         debug_str = "[MixedPrecisionTensorInfo] op_type={}, numel={}".format(
             self.op_type, self.numel
@@ -500,9 +500,9 @@ class ExcelWriter:
             worksheet.write(row, col, "--")
         else:
             if abs(value) < 1e-5:
-                value_str = "{:.6E}".format(value)
+                value_str = f"{value:.6E}"
             else:
-                value_str = "{:.6f}".format(value)
+                value_str = f"{value:.6f}"
             if check_finite and is_infinite(value, np.float16):
                 worksheet.write(row, col, value_str, self.red_bg_cell_format)
             else:
@@ -514,7 +514,7 @@ class ExcelWriter:
         if value is None:
             worksheet.write(row, col, "--")
         else:
-            value_str = "{:>10d}".format(value)
+            value_str = f"{value:>10d}"
             worksheet.write(row, col, value_str)
 
     def _write_infinite_status(self, worksheet, value, row, col):
@@ -533,7 +533,7 @@ class ExcelWriter:
         if value is None:
             worksheet.write(row, col, "--")
         else:
-            value_str = "{:.6f}".format(value)
+            value_str = f"{value:.6f}"
             if _in_range(value, scale=1) or _in_range(value, loss_scale):
                 worksheet.write(row, col, value_str)
             else:
@@ -558,7 +558,7 @@ class ExcelWriter:
             # only fp32 values
             worksheet.merge_range("E1:H1", "fp32", self.title_format)
             worksheet.merge_range(
-                "I1:J1", "fp32 (scale={})".format(loss_scale), self.title_format
+                "I1:J1", f"fp32 (scale={loss_scale})", self.title_format
             )
             title_names.extend(
                 [
@@ -573,7 +573,7 @@ class ExcelWriter:
         elif self.log_fp32_dir is None:
             # only fp16 values
             worksheet.merge_range(
-                "E1:J1", "fp16 (scale={})".format(loss_scale), self.title_format
+                "E1:J1", f"fp16 (scale={loss_scale})", self.title_format
             )
             title_names.extend(
                 [
@@ -590,7 +590,7 @@ class ExcelWriter:
             # fp32 and fp16 values
             worksheet.merge_range("E1:H1", "fp32", self.title_format)
             worksheet.merge_range(
-                "I1:N1", "fp16 (scale={})".format(loss_scale), self.title_format
+                "I1:N1", f"fp16 (scale={loss_scale})", self.title_format
             )
             worksheet.merge_range("O1:Q1", "fp16 / fp32", self.title_format)
             title_names.extend(
@@ -739,9 +739,7 @@ class ExcelWriter:
 
             row += 1
 
-        print(
-            "-- OP Types produce infinite outputs: {}".format(infinite_op_types)
-        )
+        print(f"-- OP Types produce infinite outputs: {infinite_op_types}")
 
 
 def parse_log(log_dir, filename, specified_op_list=None):
@@ -757,7 +755,7 @@ def parse_log(log_dir, filename, specified_op_list=None):
         for i in range(len(lines)):
             if i % 10 == 0:
                 print(
-                    "-- Processing {:-8d} / {:-8d} line".format(i, len(lines)),
+                    f"-- Processing {i:-8d} / {len(lines):-8d} line",
                     end="\r",
                 )
             # [op=adamw] [tensor=encoder_layer_20_multi_head_att_output_fc_0.w_0], numel: 294912, max: 0.005773, min: -0.005774
@@ -921,6 +919,7 @@ def compare_accuracy(
             False,
         )
 
-    print("-- Write to {}".format(output_filename))
+    print(f"-- Write to {output_filename}")
+
     print("")
     excel_writer.close()
