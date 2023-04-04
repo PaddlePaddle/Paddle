@@ -121,7 +121,7 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 PD_REGISTER_STRUCT_KERNEL(fusion_transpose_flatten_concat,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::TransposeFlattenConcatFusionKernel,
                           float,

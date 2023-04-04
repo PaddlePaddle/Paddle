@@ -158,5 +158,5 @@ PD_REGISTER_STRUCT_KERNEL(fused_embedding_eltwise_layernorm,
                           GPU,
                           ALL_LAYOUT,
                           ops::EmbeddingEltWiseLayerNormKernel,
-                          float, ) {}
+                          float) {}
 #endif
