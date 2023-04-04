@@ -74,9 +74,9 @@ class TestFlipOp(OpTest):
         self.op_type = 'flip'
         self.python_api = paddle.tensor.flip
         self.init_test_case()
-        self.input = np.random.random(self.in_shape).astype(self.dtype)
         self.init_attrs()
         self.init_dtype()
+        self.input = np.random.random(self.in_shape).astype(self.dtype)
         output = self.calc_ref_res()
 
         if self.is_bfloat16_op():
