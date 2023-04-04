@@ -95,6 +95,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_CUDA
 class GpuPinnedVector {
  public:
   GpuPinnedVector() {}
@@ -139,6 +140,7 @@ class GpuPinnedVector {
   memory::allocation::AllocationPtr mem_gpu_;
   size_t len_;
 };
+#endif
 
 const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
@@ -256,8 +258,10 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<int>,
     std::vector<float>,
     std::vector<std::string>,
-    RawTensor,
-    GpuPinnedVector>;
+#ifdef PADDLE_WITH_CUDA
+    GpuPinnedVector,
+#endif
+    RawTensor>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
