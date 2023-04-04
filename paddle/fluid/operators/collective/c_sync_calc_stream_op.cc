@@ -33,21 +33,22 @@ Call calculation stream synchronization.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+using MLU = plat::MLUPlace;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
                              ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<double, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<int, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<int64_t, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<plat::float16, plat::MLUPlace>);
+                       ops::CSyncCalcStreamKernel<float, MLU>,
+                       ops::CSyncCalcStreamKernel<double, MLU>,
+                       ops::CSyncCalcStreamKernel<int, MLU>,
+                       ops::CSyncCalcStreamKernel<int64_t, MLU>,
+                       ops::CSyncCalcStreamKernel<plat::float16, MLU>);
 
 REGISTER_OP_MLU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<double, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<int, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<int64_t, plat::MLUPlace>,
-                       ops::CSyncCalcStreamKernel<plat::float16, plat::MLUPlace>);
+                       ops::CSyncCalcStreamKernel<float, MLU>,
+                       ops::CSyncCalcStreamKernel<double, MLU>,
+                       ops::CSyncCalcStreamKernel<int, MLU>,
+                       ops::CSyncCalcStreamKernel<int64_t, MLU>,
+                       ops::CSyncCalcStreamKernel<plat::float16, MLU>);
