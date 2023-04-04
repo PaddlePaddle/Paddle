@@ -852,8 +852,6 @@ endif()
 
 add_subdirectory(ir)
 
-add_subdirectory(standalone_executor)
-
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
