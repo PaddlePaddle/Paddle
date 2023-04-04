@@ -1121,7 +1121,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta
+    func : NextafterInferMeta
   kernel :
     func : nextafter
 

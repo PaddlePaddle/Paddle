@@ -28,7 +28,7 @@ void NextafterKernel(const Context& ctx,
   if (x.numel() == 0 || y.numel() == 0) {
     return;
   }
-  auto out_data = dev_ctx.template Alloc<T>(out);
+  auto out_data = ctx.template Alloc<T>(out);
   auto x_data = x.data<T>();
   auto y_data = y.data<T>();
   int x_numel = x.numel();

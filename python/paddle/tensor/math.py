@@ -5432,7 +5432,10 @@ def nextafter(x, y, name=None):
         .. code-block:: python
 
             import paddle
-
+            out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            print(out)
+            #Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #       [1.00000012, 1.99999988])
     """
     if in_dygraph_mode():
         return _C_ops.nextafter(x, y)
@@ -5442,6 +5445,6 @@ def nextafter(x, y, name=None):
         helper = LayerHelper('nextafter', **locals())
         out = helper.create_variable_for_type_inference(dtype=paddle.float32)
         helper.append_op(
-            type='trace', inputs={'X': x, 'Y': y}, outputs={'Out': out}
+            type='nextafter', inputs={'X': x, 'Y': y}, outputs={'Out': out}
         )
     return out
