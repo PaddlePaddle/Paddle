@@ -1537,11 +1537,12 @@ void roll_grad(const Tensor& x,
                const std::vector<int64_t>& axis,
                Tensor* x_grad) {
   if (x_grad) {
-    int64_t nums = shifts.size();
+    auto shifts_ = shifts.GetData();
+    int64_t nums = shifts_.size();
     for (int64_t i = 0; i < nums; i++) {
-      shifts[i] = 0 - shifts[i];
+      shifts_[i] = 0 - shifts_[i];
     }
-    auto x_grad_output = roll<T>(out_grad, shifts, axis);
+    auto x_grad_output = roll<T>(out_grad, shifts_, axis);
     set_output<T>(x_grad_output, x_grad);
   }
 }

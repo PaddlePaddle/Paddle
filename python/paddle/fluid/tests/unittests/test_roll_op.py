@@ -54,7 +54,7 @@ class TestRollOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestRollOpCase2(TestRollOp):
