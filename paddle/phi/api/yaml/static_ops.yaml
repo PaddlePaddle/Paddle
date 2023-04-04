@@ -196,6 +196,17 @@
     func : one_hot_raw
     data_type : x
 
+- op : randint
+  args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : RandintInferMeta
+    param : [low, high, shape, dtype]
+  kernel :
+    func : randint
+    param : [low, high, shape, dtype]
+    data_type : dtype
+
 - op : reduce
   args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
   output : Tensor(out)

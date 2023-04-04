@@ -1545,6 +1545,18 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
+- op : randint
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [int seed = 0]
+  manual_signature : [randint]
+
 - op : real
   backward : real_grad
   inputs :

@@ -223,7 +223,6 @@ register_unity_group(
   quantize_op.cc
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
-  randint_op.cc
   random_crop_op.cc
   randperm_op.cc
   range_op.cc
@@ -504,7 +503,6 @@ register_unity_group(
   pull_box_sparse_op.cu)
 register_unity_group(
   cu
-  randint_op.cu
   random_crop_op.cu
   randperm_op.cu
   range_op.cu
