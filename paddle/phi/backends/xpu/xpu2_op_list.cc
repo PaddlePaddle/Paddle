@@ -336,6 +336,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16})},
       {"fused_multi_transformer_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"fused_multi_transformer_int8_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16})},
       {"unfold",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"unfold_grad",
@@ -877,6 +879,16 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT64,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"empty_like",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT64,
+                     phi::DataType::INT32,
+                     phi::DataType::INT64,
+                     phi::DataType::INT8,
+                     phi::DataType::UINT8,
+                     phi::DataType::INT16,
+                     phi::DataType::BOOL,
+                     phi::DataType::FLOAT16})},
   };
 
   return s_xpu2_kernels;
