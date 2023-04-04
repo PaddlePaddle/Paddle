@@ -2122,6 +2122,19 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
+#if defined(PADDLE_WITH_XPU)
+  m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) >
+           phi::backends::xpu::XPUVersion::XPU1;
+  });
+  m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
+    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    return platform::get_xpu_version(place.device) >
+           phi::backends::xpu::XPUVersion::XPU1;
+  });
+#endif
+
 #if defined(PADDLE_WITH_MLU)
   m.def("is_float16_supported",
         [](const platform::MLUPlace &place) -> bool { return true; });
@@ -2132,8 +2145,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
   m.def("is_float16_supported",
         [](const platform::CPUPlace &place) -> bool { return false; });
-  m.def("is_bfloat16_supported",
-        [](const platform::CPUPlace &place) -> bool { return true; });
+  m.def("is_bfloat16_supported", [](const platform::CPUPlace &place) -> bool {
+    return SupportsBfloat16();
+  });
 
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT

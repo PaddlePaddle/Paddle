@@ -20,8 +20,6 @@ from .auto_cast import FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import FP16_BLACK_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
-from .auto_cast import is_float16_supported
-from .auto_cast import is_bfloat16_supported
 
 from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
@@ -30,6 +28,12 @@ from .grad_scaler import OptimizerState  # noqa: F401
 
 from . import debugging  # noqa: F401
 
+from paddle.fluid import core
+from paddle.fluid.framework import (
+    _current_expected_place,
+    _get_paddle_place,
+)
+
 __all__ = [
     'auto_cast',
     'GradScaler',
@@ -37,3 +41,55 @@ __all__ = [
     'is_float16_supported',
     'is_bfloat16_supported',
 ]
+
+
+def is_float16_supported(device=None):
+    """
+    Determine whether the current place supports float16 in the auto-mixed-precision training.
+
+    Args:
+        device (str, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
+            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_float16_supported() # True or False
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_float16_supported(device)
+
+
+def is_bfloat16_supported(device=None):
+    """
+    Determine whether the current place supports bfloat16 in the auto-mixed-precision training.
+
+    Args:
+        device (str, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
+            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_bfloat16_supported() # True or False
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_bfloat16_supported(device)

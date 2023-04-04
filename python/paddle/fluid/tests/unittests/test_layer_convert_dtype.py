@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, nn
+from paddle import nn
 from paddle.fluid import core
 
 
@@ -99,7 +99,7 @@ class TestDtypeConvert(unittest.TestCase):
 
     def test_excluded_layers_type_error(self):
         self.assertRaises(
-            AssertionError, self.verify_trans_dtype, excluded_layers=111
+            TypeError, self.verify_trans_dtype, excluded_layers=111
         )
 
 
@@ -108,25 +108,46 @@ class TestDtypeConvert(unittest.TestCase):
 )
 class TestSupportedTypeInfo(unittest.TestCase):
     def test_cpu(self):
-        place = fluid.CPUPlace()
-        res = paddle.amp.is_float16_supported(place)
+        res = paddle.amp.is_float16_supported('cpu')
         self.assertEqual(res, False)
-        res = paddle.amp.is_bfloat16_supported(place)
+        res = paddle.amp.is_bfloat16_supported('cpu')
         self.assertEqual(res, True)
 
     def test_gpu_fp16_supported(self):
         res = paddle.amp.is_float16_supported()
         self.assertEqual(res, True)
-        place = fluid.CUDAPlace(0)
-        res = paddle.amp.is_float16_supported(place)
+        res = paddle.amp.is_float16_supported('gpu')
+        self.assertEqual(res, True)
+        res = paddle.amp.is_float16_supported('gpu:0')
         self.assertEqual(res, True)
 
+    @unittest.skipIf(
+        paddle.device.cuda.get_device_capability()[0] >= 8.0,
+        "run test when maximum gpu's compute capability is 8.0.",
+    )
     def test_gpu_bf16_unsupported(self):
         res = paddle.amp.is_bfloat16_supported()
         self.assertEqual(res, False)
-        place = fluid.CUDAPlace(0)
-        res = paddle.amp.is_bfloat16_supported(place)
+        res = paddle.amp.is_bfloat16_supported('gpu')
         self.assertEqual(res, False)
+
+    @unittest.skipIf(
+        paddle.device.cuda.get_device_capability()[0] < 8.0,
+        "run test when gpu's compute capability is at least 8.0.",
+    )
+    def test_gpu_bf16_supported(self):
+        res = paddle.amp.is_bfloat16_supported()
+        self.assertEqual(res, True)
+        res = paddle.amp.is_bfloat16_supported('gpu')
+        self.assertEqual(res, True)
+
+    def test_device_value_error(self):
+        self.assertRaises(
+            ValueError, paddle.amp.is_float16_supported, device='xxx'
+        )
+        self.assertRaises(
+            ValueError, paddle.amp.is_float16_supported, device=111
+        )
 
 
 if __name__ == '__main__':

@@ -2167,7 +2167,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: None.
 
         Returns:
             Layer: self
@@ -2188,25 +2188,21 @@ class Layer:
                         out = self.dropout(out)
                         return out
 
-                x = paddle.randn([10, 1], 'float32')
                 model = Model()
                 model.float()
-                out = model(x)
-
         '''
 
-        excluded_layers = (
-            [nn.BatchNorm] if excluded_layers is None else excluded_layers
-        )
-
-        assert isinstance(
-            excluded_layers, (type, list)
-        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
-            type(excluded_layers).__name__
-        )
+        excluded_layers = [] if excluded_layers is None else excluded_layers
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float32, excluded_layers)
@@ -2240,25 +2236,24 @@ class Layer:
                         out = self.dropout(out)
                         return out
 
-                x = paddle.randn([10, 1], 'float32')
                 model = Model()
-                model.float16()
-                out = model(x)
-
+                if paddle.amp.is_float16_supported():
+                    model.float16()
         '''
 
         excluded_layers = (
             [nn.BatchNorm] if excluded_layers is None else excluded_layers
         )
 
-        assert isinstance(
-            excluded_layers, (type, list)
-        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
-            type(excluded_layers).__name__
-        )
-
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.float16, excluded_layers)
@@ -2292,25 +2287,24 @@ class Layer:
                         out = self.dropout(out)
                         return out
 
-                x = paddle.randn([10, 1], 'float32')
                 model = Model()
-                model.bfloat16()
-                out = model(x)
-
+                if paddle.amp.is_bfloat16_supported():
+                    model.bfloat16()
         '''
 
         excluded_layers = (
             [nn.BatchNorm] if excluded_layers is None else excluded_layers
         )
 
-        assert isinstance(
-            excluded_layers, (type, list)
-        ), "excluded_layers should be type nn.Layer or list, but got {}.".format(
-            type(excluded_layers).__name__
-        )
-
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
 
         def layer_trans(layer):
             _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)
