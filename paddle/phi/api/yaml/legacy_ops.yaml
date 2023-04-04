@@ -1342,16 +1342,6 @@
   intermediate : noise
   backward : rrelu_grad
 
-- op : segment_pool
-  args : (Tensor x, Tensor segment_ids, str pooltype)
-  output : Tensor(out), Tensor(summed_ids)
-  infer_meta :
-    func : SegmentPoolInferMeta
-  kernel :
-    func : segment_pool
-    data_type : x
-  backward : segment_pool_grad
-
 - op : shape
   args : (Tensor input)
   output : Tensor(out)

@@ -1676,6 +1676,13 @@
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
+- op : segment_pool
+  backward : segment_pool_grad
+  inputs :
+    {x : X, segment_ids : SegmentIds}
+  outputs :
+    {out : Out, summed_ids : SummedIds}
+
 - op : selu
   backward : selu_grad
   inputs :

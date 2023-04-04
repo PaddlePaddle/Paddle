@@ -64,7 +64,7 @@ def segment_sum(data, segment_ids, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+        return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
             data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
@@ -130,11 +130,9 @@ def segment_mean(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")
     if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MEAN"
-        )
+        out = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype', "MEAN")
         return out
 
     check_variable_and_dtype(
@@ -200,12 +198,10 @@ def segment_min(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MIN")
 
     if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MIN"
-        )
+        out = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype', "MIN")
         return out
 
     check_variable_and_dtype(
@@ -271,13 +267,11 @@ def segment_max(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, "MAX")
+        out = _C_ops.segment_pool(data, segment_ids, "MAX")
         return out
 
     if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MAX"
-        )
+        out = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype', "MAX")
         return out
 
     check_variable_and_dtype(

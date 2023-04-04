@@ -1340,6 +1340,18 @@
     func : scatter_nd_add_grad
   no_need_buffer : updates
 
+- backward_op : segment_pool_grad
+  forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype="SUM") -> Tensor(out), Tensor(summed_ids)
+  args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tensor out_grad, str pooltype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : segment_pool_grad
+    data_type : out_grad
+  optional : summed_ids
+
 - backward_op : selu_grad
   forward : selu (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, float scale, float alpha)
