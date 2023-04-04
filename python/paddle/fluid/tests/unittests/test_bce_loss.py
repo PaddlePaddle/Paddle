@@ -293,47 +293,13 @@ class TestBceLossOpFloat16(TestBceLossOp):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.core.CUDAPlace(0)
-            if fluid.core.is_float16_supported(place):
-                self.check_output_with_place(place, ['X'], 'Out')
+        self.check_output()
 
     def test_check_grad(self):
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.core.CUDAPlace(0)
-            if fluid.core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    max_relative_error=1e-2,
-                )
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [10, 10]
-
-
-class TestBceLossOpStaticFP16(unittest.TestCase):
-    def test_fp16(self):
-        input_data = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
-            "float16"
-        )
-        label_data = paddle.randint(low=0, high=2, shape=[10, 10]).astype(
-            "float16"
-        )
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            y = paddle.static.data(shape=[10, 10], name='y', dtype='float16')
-            out = paddle.nn.functional.binary_cross_entropy(
-                x, y, reduction="none"
-            )
-            if fluid.core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(
-                    feed={'x': input_data, 'y': label_data}, fetch_list=[out]
-                )
 
 
 if __name__ == "__main__":
