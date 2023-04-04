@@ -767,6 +767,28 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fused_feedforward = True
                      )DOC")
       .def_property(
+          "flash_attention",
+          [](const BuildStrategy &self) { return self.flash_attention_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.flash_attention_ = b;
+          },
+          R"DOC((bool, optional): flash_attention indicate whether
+                to replace regular attention methods with flashattention schema,
+                it may make the execution faster. Default is False.
+                Examples:
+                    .. code-block:: python
+                        import paddle
+                        import paddle.static as static
+                        paddle.enable_static()
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.flash_attention = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {

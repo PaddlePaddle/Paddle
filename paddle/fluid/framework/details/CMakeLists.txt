@@ -378,6 +378,7 @@ set(IR_PASS_DEPS
     fused_attention_pass
     fuse_adamw_op_pass
     fused_feedforward_pass
+    flash_attention_pass
     delete_dropout_op_pass)
 
 if(WITH_CINN)

@@ -153,6 +153,19 @@ class InplaceAddtoOpPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
 
+@register_pass("flash_attention")
+class FlashAttentionPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "flash_attention_pass"
+
+    def _type(self):
+        return PassType.CALC_OPT
+
+
 def _set_cinn_op_flag(flag_name, extra_ops):
     values = core.globals()[flag_name]
     values = [v.strip() for v in values.split(";") if v.strip()]

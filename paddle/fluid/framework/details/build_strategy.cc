@@ -192,6 +192,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_adamw_, "fuse_adamw_op_pass");
 #endif
 
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 800)
+    AppendPassWithCheck(strategy_.flash_attention_, "flash_attention_pass");
+#endif
+
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
@@ -530,6 +534,9 @@ USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);
 USE_PASS(fuse_adamw_op_pass);
+#endif
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 800)
+USE_PASS(flash_attention_pass);
 #endif
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
