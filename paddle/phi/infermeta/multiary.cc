@@ -695,12 +695,12 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      config);
 }
 
-void BilinearTensorProductInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& weight,
-                                    const MetaTensor& bias,
-                                    MetaTensor* out,
-                                    MetaConfig config) {
+void BilinearInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* out,
+                       MetaConfig config) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto weight_dims = weight.dims();
@@ -770,12 +770,6 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
   for (const auto& input_ddim : input_dims) {
     target_rank = std::max(target_rank, input_ddim.size());
   }
-
-  PADDLE_ENFORCE_GT(target_rank,
-                    0,
-                    errors::InvalidArgument("BroadcastTensorsOp requires at "
-                                            "least one input tensor to have "
-                                            "rank greater than zero"));
 
   std::vector<int64_t> target_dims(target_rank, 0);
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))

@@ -112,7 +112,6 @@ register_unity_group(
   gather_op.cc
   gather_tree_op.cc
   gaussian_random_batch_size_like_op.cc
-  gaussian_random_op.cc
   mkldnn/gaussian_random_mkldnn_op.cc
   group_norm_op.cc
   gru_op.cc)
@@ -425,7 +424,7 @@ register_unity_group(
   gather_nd_op.cu
   gather_op.cu
   gather_tree_op.cu
-  gaussian_random_op.cu
+  gaussian_random_batch_size_like_op.cu
   grid_sampler_op.cu
   group_norm_op.cu)
 register_unity_group(

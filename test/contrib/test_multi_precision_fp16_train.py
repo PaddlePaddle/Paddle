@@ -180,7 +180,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 )
                 loss_v = loss[0] if isinstance(loss, np.ndarray) else loss
                 print(
-                    'PassID {0:1}, Train Batch ID {1:04}, train loss {2:2.4}'.format(
+                    'PassID {:1}, Train Batch ID {:04}, train loss {:2.4}'.format(
                         pass_id, batch_id + 1, float(loss_v)
                     )
                 )
@@ -194,7 +194,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 )
                 test_loss_list.append(float(loss_t))
                 print(
-                    'PassID {0:1}, Test Batch ID {1:04}, test loss {2:2.4}'.format(
+                    'PassID {:1}, Test Batch ID {:04}, test loss {:2.4}'.format(
                         pass_id, tid + 1, float(loss_t)
                     )
                 )

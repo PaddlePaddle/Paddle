@@ -54,26 +54,6 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::NPU: {
-#ifdef PADDLE_WITH_ASCEND_CL
-      phi::NPUPlace p(place.GetDeviceId());
-      return visitor(p);
-#else
-      PADDLE_THROW(phi::errors::Unavailable(
-          ("Paddle is not compiled with NPU. Cannot visit npu_pinned")));
-      return typename Visitor::result_type();
-#endif
-    }
-    case phi::AllocationType::NPUPINNED: {
-#ifdef PADDLE_WITH_ASCEND_CL
-      phi::NPUPinnedPlace p;
-      return visitor(p);
-#else
-      PADDLE_THROW(phi::errors::Unavailable(
-          ("Paddle is not compiled with NPU. Cannot visit npu_pinned")));
-      return typename Visitor::result_type();
-#endif
-    }
     case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
       phi::IPUPlace p(place.GetDeviceId());
