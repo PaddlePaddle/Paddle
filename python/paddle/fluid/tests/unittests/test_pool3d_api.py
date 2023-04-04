@@ -354,6 +354,7 @@ class TestPool3D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def test_pool3d(self):
+        paddle.enable_static()
         for place in self.places:
 
             self.check_max_dygraph_results(place)
@@ -366,7 +367,8 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
-    def test_static_pf16_gpu(self):
+    def test_static_fp16_gpu(self):
+        paddle.enable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
@@ -376,6 +378,36 @@ class TestPool3D_API(unittest.TestCase):
 
                 x = paddle.static.data(
                     name="x", shape=[1, 2, 3, 32, 32], dtype="float16"
+                )
+
+                m = paddle.nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0].shape, [1, 2, 1, 16, 16])
+
+    def test_static_bf16_gpu(self):
+        paddle.enable_static()
+        if (
+            paddle.fluid.core.is_compiled_with_cuda()
+            and paddle.fluid.core.is_bfloat16_supported(core.CUDAPlace(0))
+        ):
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([1, 2, 3, 32, 32]).astype(np.uint16)
+
+                x = paddle.static.data(
+                    name="x", shape=[1, 2, 3, 32, 32], dtype="bfloat16"
                 )
 
                 m = paddle.nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
