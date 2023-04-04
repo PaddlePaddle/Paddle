@@ -444,9 +444,7 @@ class OpConverter {
       itensors.push_back(one_rank_tensor);
       itensors.push_back(oldShape);
       concat_shape_tensor = Concat(itensors);
-      auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      shuffle->setInput(1, *concat_shape_tensor);
-      input = shuffle->getOutput(0);
+      input = Reshape(input, concat_shape_tensor);
     }
     return input;
   }
