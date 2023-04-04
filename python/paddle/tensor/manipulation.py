@@ -4792,29 +4792,43 @@ def index_put_(x, indices, value, accumulate=False, name=None):
             isBoolIndex = True
             if len(indices) != 1:
                 raise IndexError(
-                    "When indices contains a bool tensor, its length must be 1, but received {}.".format(
+                    "When indices contains a bool tensor, its dims should be the same as X and its length must be 1, but received {}.".format(
                         len(indices)
                     )
                 )
+        elif (
+            index.dtype == core.VarDesc.VarType.INT64
+            or index.dtype == core.VarDesc.VarType.INT32
+        ):
+            continue
+        else:
+            raise IndexError(
+                "Data type of tensor in indices shoule be bool, int32 or int64, but received {}.".format(
+                    index.dtype
+                )
+            )
 
     if accumulate:
-        if isBoolIndex:
-            nonzero_ix = paddle.nonzero(indices[0])
-            x[:] = scatter_nd_add(x, nonzero_ix, value)
-            return
-        else:
-            if len(indices) != x.ndim:
-                raise IndexError(
-                    "When accumulate is True, size of indices shoule be equal to dims of x, but received {}.".format(
-                        len(indices)
-                    )
-                )
-            flat_indices = []
-            for ix in indices:
-                flat_indices.append(paddle.flatten(ix))
-            ix_tensor = paddle.stack(flat_indices, 1)
-            x[:] = scatter_nd_add(x, ix_tensor, value)
-            return
+        x[indices] += value
+        return x
+        # if isBoolIndex:
+        #     nonzero_ix = paddle.nonzero(indices[0])
+        #     x[:] = scatter_nd_add(x, nonzero_ix, value)
+        #     return
+        # else:
+        #     if len(indices) != x.ndim:
+        #         raise IndexError(
+        #             "When accumulate is True, size of indices shoule be equal to dims of x, but received {}.".format(
+        #                 len(indices)
+        #             )
+        #         )
+        #     bd_indices = paddle.broadcast_tensors(indices)
+        #     flat_indices = []
+        #     for ix in bd_indices:
+        #         flat_indices.append(paddle.flatten(ix))
+        #     ix_tensor = paddle.stack(flat_indices, 1)
+        #     x[:] = scatter_nd_add(x, ix_tensor, value)
+        #     return
     else:
         if in_dygraph_mode():
             if x.__advanced_index__(indices, value):
