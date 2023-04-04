@@ -28,7 +28,7 @@
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
-template <typename T, typename AccT, int BlockDim>
+template <typename T, int BlockDim>
 static __global__ void GradComputeDX(const T *dy,
                                      const BatchNormParamType<T> *scale,
                                      const BatchNormParamType<T> *mean,
@@ -67,13 +67,12 @@ static __global__ void GradComputeDX(const T *dy,
   }
   __syncthreads();
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
-    AccT tmp =
+    dx[i] = static_cast<T>(
         (static_cast<BatchNormParamType<T>>(dy[i]) -
          dy_sum_val / static_cast<BatchNormParamType<T>>(sample_size) -
          (static_cast<BatchNormParamType<T>>(x[i]) - mean_val) *
              dy_x_sub_mean_sum_val * inv_var_val * inv_var_val / sample_size) *
-        static_cast<BatchNormParamType<T>>(scale[c]) * inv_var_val;
-    dx[i] = static_cast<T>(dx[i]);
+        scale[c] * inv_var_val);
   }
 }
 
@@ -496,7 +495,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 #endif
   } else {
     if (d_x) {
-      GradComputeDX<T, AccT, block><<<NxC, block, 0, dev_ctx.stream()>>>(
+      GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
           d_y.data<T>(),
           scale_tmp.data<BatchNormParamType<T>>(),
           saved_mean_data,
