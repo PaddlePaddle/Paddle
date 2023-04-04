@@ -21,6 +21,10 @@ import paddle
 from paddle.fluid import core
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestCompareAccuracyApi(unittest.TestCase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
