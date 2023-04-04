@@ -95,7 +95,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_CUDA
 class GpuPinnedVector {
  public:
   GpuPinnedVector() {}
@@ -104,6 +103,7 @@ class GpuPinnedVector {
     memcpy(reinterpret_cast<char *>(mem_cpu_->ptr()), buf, len);
     len_ = len;
   }
+#ifdef PADDLE_WITH_CUDA
   void pinedcpu_to_gpu(paddle::gpuStream_t stream, phi::Place place) {
     mem_gpu_ = memory::Alloc(place, len_);
     cudaMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
@@ -112,20 +112,7 @@ class GpuPinnedVector {
                     cudaMemcpyHostToDevice,
                     stream);
   }
-  void cpu_to_gpu(void *buf,
-                  size_t len,
-                  paddle::gpuStream_t stream,
-                  phi::Place place) {
-    mem_cpu_ = memory::Alloc(phi::GPUPinnedPlace(), len);
-    memcpy(reinterpret_cast<char *>(mem_cpu_->ptr()), buf, len);
-    mem_gpu_ = memory::Alloc(place, len);
-    cudaMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
-                    reinterpret_cast<char *>(mem_cpu_->ptr()),
-                    len,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    len_ = len;
-  }
+#endif
   template <typename Type>
   Type *get_gpu_ptr() {
     return reinterpret_cast<Type *>(mem_gpu_->ptr());
@@ -140,7 +127,6 @@ class GpuPinnedVector {
   memory::allocation::AllocationPtr mem_gpu_;
   size_t len_;
 };
-#endif
 
 const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
