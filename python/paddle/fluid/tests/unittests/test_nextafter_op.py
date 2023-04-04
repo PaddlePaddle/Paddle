@@ -29,8 +29,8 @@ def numpy_nextafter(x, y):
 
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
-        self.x = np.random.rand([2, 1, 3]).astype("float32")
-        self.y = np.random.rand([2, 1, 3]).astype("float32")
+        self.x = np.random.rand(2, 1, 3).astype("float32")
+        self.y = np.random.rand(2, 1, 3).astype("float32")
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
