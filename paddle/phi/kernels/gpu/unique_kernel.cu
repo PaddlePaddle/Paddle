@@ -608,7 +608,12 @@ void UniqueKernel(const Context& context,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    unique, GPU, ALL_LAYOUT, phi::UniqueKernel, float, double, int64_t, int) {}
+    unique, GPU, ALL_LAYOUT, phi::UniqueKernel, float, double, int64_t, int) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+    }
 
 PD_REGISTER_KERNEL(unique_raw,
                    GPU,
@@ -617,4 +622,9 @@ PD_REGISTER_KERNEL(unique_raw,
                    float,
                    double,
                    int64_t,
-                   int) {}
+                   int) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+                   }
