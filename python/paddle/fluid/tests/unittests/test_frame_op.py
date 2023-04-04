@@ -159,7 +159,7 @@ class TestFrameBF16OP(OpTest):
         self.python_api = paddle.signal.frame
         self.shape, self.dtype, self.attrs = self.initTestCase()
         x = np.random.random(size=self.shape).astype(np.float32)
-        out = frame_from_librosa(x, **self.attrs)
+        out = frame_from_librosa(x, **self.attrs).copy()
         self.inputs = {
             'X': convert_float_to_uint16(x),
         }
