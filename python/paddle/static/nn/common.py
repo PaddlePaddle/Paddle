@@ -306,7 +306,10 @@ def instance_norm(
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'instance_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'instance_norm',
     )
     if param_attr is False:
         assert (
