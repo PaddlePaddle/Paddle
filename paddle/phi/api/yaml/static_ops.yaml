@@ -197,7 +197,7 @@
     data_type : x
 
 - op : randint
-  args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64)
+  args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
   output : Tensor(out)
   infer_meta :
     func : RandintInferMeta

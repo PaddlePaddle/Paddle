@@ -1553,8 +1553,6 @@
       data_type : int64_t
       tensor_name : ShapeTensor
       tensors_name : ShapeTensorList
-  extra :
-    attrs : [int seed = 0]
   manual_signature : [randint]
 
 - op : real
