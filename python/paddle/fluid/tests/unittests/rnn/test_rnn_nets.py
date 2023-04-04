@@ -104,11 +104,19 @@ class TestSimpleRNN(unittest.TestCase):
     def test_predict(self):
         predict_test_util(self.place, "SimpleRNN")
 
+    def test_model_to(self):
+        rnn = paddle.nn.SimpleRNN(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        # Check if it raise an error
+        rnn.to(self.place)
+
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
         self.test_with_input_lengths()
         self.test_predict()
+        self.test_model_to()
 
 
 class TestGRU(unittest.TestCase):
@@ -189,11 +197,19 @@ class TestGRU(unittest.TestCase):
     def test_predict(self):
         predict_test_util(self.place, "GRU")
 
+    def test_model_to(self):
+        rnn = paddle.nn.GRU(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        # Check if it raise an error
+        rnn.to(self.place)
+
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
         self.test_with_input_lengths()
         self.test_predict()
+        self.test_model_to()
 
 
 class TestLSTM(unittest.TestCase):
@@ -282,11 +298,19 @@ class TestLSTM(unittest.TestCase):
         predict_test_util(self.place, "LSTM")
         predict_test_util(self.place, "LSTM", False)
 
+    def test_model_to(self):
+        rnn = paddle.nn.LSTM(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        # Check if it raise an error
+        rnn.to(self.place)
+
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
         self.test_with_input_lengths()
         self.test_predict()
+        self.test_model_to()
 
 
 def predict_test_util(place, mode, stop_gradient=True):
