@@ -29,7 +29,6 @@ from .fp16_lists import AutoMixedPrecisionLists, check_amp_dtype
 from .fp16_utils import (
     cast_model_to_fp16,
     cast_parameters_to_fp16,
-    rewrite_program,
     update_role_var_grad,
 )
 from .function_overload import FunctionType, overload
@@ -230,14 +229,12 @@ class OptimizerWithMixedPrecision:
                     self._train_program,
                     self._amp_lists,
                     self._use_fp16_guard,
-<<<<<<< HEAD
                     self._amp_vartype,
                 )
             else:
                 rewrite_program(
                     self._train_program, self._amp_lists, self._amp_vartype
                 )
-=======
                     level='O2',
                 )
             else:
@@ -248,7 +245,6 @@ class OptimizerWithMixedPrecision:
                     level='O1',
                 )
                 # rewrite_program(self._train_program, self._amp_lists)
->>>>>>> unify o1 and o2
 
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
@@ -374,11 +370,22 @@ class OptimizerWithMixedPrecision:
                     test_program,
                     self._amp_lists,
                     self._use_fp16_guard,
+<<<<<<< HEAD
                     self._amp_vartype,
                 )
             elif use_fp16_test:
                 rewrite_program(
                     test_program, self._amp_lists, self._amp_vartype
+=======
+                    level='O2',
+                )
+            elif use_fp16_test:
+                cast_model_to_fp16(
+                    test_program,
+                    self._amp_lists,
+                    self._use_fp16_guard,
+                    level='O1',
+>>>>>>> polish code
                 )
 
     def apply_gradients(self, params_grads):
