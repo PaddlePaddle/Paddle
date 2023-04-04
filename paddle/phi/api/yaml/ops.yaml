@@ -1002,10 +1002,11 @@
   backward : masked_select_grad
 
 - op : matrix_nms
-  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2.0, int background_label = 0, bool normalized = true)
+  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2., int background_label = 0, bool normalized = true)
   output : Tensor(out), Tensor(index), Tensor(roisnum)
   infer_meta :
     func : MatrixNMSInferMeta
+  optional : roisnum
   kernel :
     func : matrix_nms
 

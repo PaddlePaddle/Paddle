@@ -1242,6 +1242,8 @@
     {bboxes : BBoxes, scores : Scores}
   outputs :
     {out : Out, index : Index, roisnum : RoisNum}
+  get_expected_kernel_type :
+    matrix_nms : GetMatrixNmsExpectedKernelType
 
 - op : matrix_power
   inputs :
