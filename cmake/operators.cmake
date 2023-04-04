@@ -105,9 +105,6 @@ function(op_library TARGET)
              ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
         list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
       endif()
-      if(WITH_NV_JETSON)
-        list(REMOVE_ITEM cu_srcs "decode_jpeg_op.cu")
-      endif()
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
         set(PART_CUDA_KERNEL_FILES
             ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu
@@ -308,7 +305,6 @@ function(op_library TARGET)
     list(REMOVE_ITEM hip_srcs "eigh_op.cu")
     list(REMOVE_ITEM hip_srcs "lstsq_op.cu")
     list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
-    list(REMOVE_ITEM hip_srcs "decode_jpeg_op.cu")
     hip_library(
       ${TARGET}
       SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs}
