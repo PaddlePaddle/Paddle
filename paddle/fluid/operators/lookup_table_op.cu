@@ -250,7 +250,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 PD_REGISTER_STRUCT_KERNEL(lookup_table,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::LookupTableCUDAKernel,
                           float,
@@ -259,7 +259,7 @@ PD_REGISTER_STRUCT_KERNEL(lookup_table,
                           int16_t,
                           plat::float16) {}
 PD_REGISTER_STRUCT_KERNEL(lookup_table_grad,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::LookupTableGradCUDAKernel,
                           float,

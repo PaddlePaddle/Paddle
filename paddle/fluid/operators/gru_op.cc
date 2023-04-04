@@ -317,7 +317,6 @@ template <typename T, typename DeviceContext>
 class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
-    using DeviceContext = phi::CPUContext;
     using LodTensorPtr = phi::DenseTensor*;
     bool is_test = context.Attr<bool>("is_test");
 
