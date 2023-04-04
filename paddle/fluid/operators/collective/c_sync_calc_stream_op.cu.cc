@@ -20,6 +20,8 @@ PD_REGISTER_STRUCT_KERNEL(c_sync_calc_stream,
                           GPU,
                           ALL_LAYOUT,
                           ops::CSyncCalcStreamKernel,
-                          float double,
+                          float,
+                          double,
                           int,
-                          int64_t plat::float16) {}
+                          int64_t,
+                          plat::float16) {}
