@@ -32,4 +32,3 @@ class AscendTriggerCPUKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
