@@ -1705,6 +1705,7 @@ class TestDistBase(unittest.TestCase):
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
+            "FLAGS_new_executor_static_build": "1",
         }
 
         if check_error_log:

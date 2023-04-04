@@ -79,7 +79,7 @@ __global__ void MaximumFirst(T* mat, int num_raws, int num_cols, T max_value) {
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -283,6 +283,9 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fused_token_prune,
-                        ops::FusedTokenPruneOpCUDAKernel<float>,
-                        ops::FusedTokenPruneOpCUDAKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fused_token_prune,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedTokenPruneOpCUDAKernel,
+                          float,
+                          double) {}
