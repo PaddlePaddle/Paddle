@@ -416,6 +416,54 @@ class OpConverter {
     return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
   }
 
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::ITensor* newShape) {
+    nvinfer1::ITensor* oldShape = Shape(input);
+    if (oldShape == newShape) {
+      return input;
+    }
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setInput(1, *newShape);
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
+                                     const int nbDims) {
+    auto oldShape = Shape(input);
+    auto oldShapeDims = oldShape->getDimensions();
+    const int rank = oldShapeDims.nbDims;
+    if (rank > nbDims) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot broadcast a higher rank tensor to a lower rank tensor."));
+    }
+    if (rank < nbDims) {
+      nvinfer1::ITensor* concat_shape_tensor;
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(nbDims - rank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(oldShape);
+      concat_shape_tensor = Concat(itensors);
+      auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      shuffle->setInput(1, *concat_shape_tensor);
+      input = shuffle->getOutput(0);
+    }
+    return input;
+  }
+
+  nvinfer1::ITensor* BroadcastTensors(nvinfer1::ITensor* a,
+                                      nvinfer1::ITensor* b) {
+    const int aDims = a->getDimensions().nbDims;
+    const int bDims = b->getDimensions().nbDims;
+    if (aDims == bDims) {
+      VLOG(3) << "Broadcast two equal rank tensors";
+    }
+    if (aDims > bDims) {
+      return BroadcastTensor(b, aDims);
+    }
+    return BroadcastTensor(a, bDims);
+  }
+
   // Concat not make rank changed
   nvinfer1::ITensor* Concat(const std::vector<nvinfer1::ITensor*>& inputs,
                             int axis = 0) {

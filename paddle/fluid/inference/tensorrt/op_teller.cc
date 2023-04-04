@@ -2703,6 +2703,25 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "cumsum") {
+#if !IS_TRT_VERSION_GE(7220)
+      VLOG(3) << "cumsum is not supported when TensorRT < 7.2.2";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the cumsum does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+    }
+
     if (op_type == "temporal_shift") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
@@ -2904,7 +2923,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_groupnorm_act",
       "preln_groupnorm_act",
       "temporal_shift",
-      "grid_sampler"};
+      "grid_sampler",
+      "cumsum"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -3062,7 +3082,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_groupnorm_act",
       "preln_groupnorm_act",
       "temporal_shift",
-      "grid_sampler"};
+      "grid_sampler",
+      "cumsum"};
 };
 
 struct GenericPluginTeller : public Teller {
