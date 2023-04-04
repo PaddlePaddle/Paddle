@@ -818,6 +818,7 @@
   kernel :
     func : leaky_relu_grad
   backward : leaky_relu_double_grad
+  composite: leaky_relu_grad(x, out_grad, negative_slope, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : lerp_grad
@@ -1449,6 +1450,7 @@
     param : [x]
   kernel :
     func : silu_grad
+  composite : silu_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_double_grad

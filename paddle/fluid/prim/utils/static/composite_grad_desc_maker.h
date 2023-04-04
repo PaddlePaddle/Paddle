@@ -376,7 +376,7 @@ class CompositeGradOpMakerBase {
   }
 
   std::vector<framework::VarDesc*> MultiInputGrad(
-      const std::string& name, bool drop_empty_grad = true) const {
+      const std::string& name) const {
     std::vector<std::string> ret_val;
     std::vector<framework::VarDesc*> input_grads;
     auto var_names = this->MultiForwardInputVarName(name);
@@ -393,39 +393,7 @@ class CompositeGradOpMakerBase {
                        return framework::kEmptyVarName;
                      }
                    });
-    if (!drop_empty_grad) {
-      for (const auto& name : ret_val) {
-        if (original_block_->HasVar(name)) {
-          // Copy Var from original block to active block, or create a new one.
-          CopyVarFromOrig(name);
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->FindVar(name));
-        } else {
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->Var(name));
-        }
-      }
-      return input_grads;
-    }
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
-
-    std::vector<std::string> dropped_ret_val;
-    dropped_ret_val.reserve(ret_val.size());
-    std::copy_if(
-        ret_val.begin(),
-        ret_val.end(),
-        std::back_inserter(dropped_ret_val),
-        [](const std::string& str) { return str != framework::kEmptyVarName; });
-    for (const auto& name : dropped_ret_val) {
-      // TODO(jiabin): Will this cause fill zeros error?
+    for (const auto& name : ret_val) {
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.
         CopyVarFromOrig(name);
@@ -437,6 +405,15 @@ class CompositeGradOpMakerBase {
       }
     }
     return input_grads;
+    PADDLE_ENFORCE_LE(
+        var_names.size(),
+        1UL,
+        platform::errors::Unavailable(
+            "BUG from operator developer:"
+            " for input argument with a list of variables, "
+            " drop_empty_grad is not allowed because it makes"
+            " the correspondence bewteen a variable and its gradient"
+            " ambiguous."));
   }
 
   std::vector<framework::VarDesc*> MultiOutputGrad(
