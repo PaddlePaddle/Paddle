@@ -211,9 +211,7 @@ class TestEmptylikeBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'empty_like'
         self.dtype = np.uint16
-        self.__class__.op_type = self.op_type
-        self.python_api = paddle.empty_like
-        self.x = np.random.random((200, 3)).astype('int32')
+        self.x = np.random.random((200, 3)).astype('float32')
         output = np.empty_like(self.x, dtype='float32')
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -228,11 +226,9 @@ class TestEmptylikeBF16Op(OpTest):
             'always_full_zero or always_non_full_zero.',
         )
 
-    def test_dygraph_api_out(self):
-        paddle.disable_static()
-        out = paddle.empty_like(self.x, dtype='float32')
-        self.__check_out__(out.numpy())
-        paddle.enable_static()
+    def test_api_out(self):
+        out = np.empty_like(self.x, dtype='bfloat16')
+        self.__check_out__(out)
 
 
 class TestEmptyError(unittest.TestCase):
