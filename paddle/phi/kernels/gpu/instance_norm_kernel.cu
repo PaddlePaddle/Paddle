@@ -231,6 +231,14 @@ PD_REGISTER_KERNEL(instance_norm,
                    ALL_LAYOUT,
                    phi::InstanceNormKernel,
                    float,
+                   phi::dtype::float16) {}
+#elif CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
@@ -240,6 +248,5 @@ PD_REGISTER_KERNEL(instance_norm,
                    phi::InstanceNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #endif
