@@ -331,6 +331,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         output = np_logcumsumexp(input, **attrs)
         self.inputs = {'X': convert_float_to_uint16(input)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
+        self.place = core.CUDAPlace(0)
 
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {
