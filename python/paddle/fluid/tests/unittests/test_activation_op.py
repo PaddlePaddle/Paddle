@@ -3914,7 +3914,7 @@ def create_test_act_fp16_class(
                     max_relative_error=grad_atol,
                 )
 
-    cls_name = "{}_{}".format(parent.__name__, "fp16")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestActFp16.__name__ = cls_name
     globals()[cls_name] = TestActFp16
 
@@ -3987,6 +3987,7 @@ def create_test_act_bf16_class(
     check_prim=False,
     enable_cinn=True,
     grad_atol=1e-2,
+    **kwargs
 ):
     class TestActBF16(parent):
         def test_check_output(self):
