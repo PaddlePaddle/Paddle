@@ -369,8 +369,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
                                                       "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
-    OR WITH_ROCM
-   )
+    OR WITH_ROCM)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op

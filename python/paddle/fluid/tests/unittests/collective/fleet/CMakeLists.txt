@@ -82,8 +82,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_rnn_dp
@@ -269,8 +268,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                                                                      "350")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_lars_meta_optimizer
@@ -322,8 +320,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer
@@ -336,8 +333,7 @@ if((WITH_GPU
   )
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer MODULES
@@ -355,8 +351,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_raw_program_meta_optimizer
@@ -434,8 +429,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                                                                          "350")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND (LINUX))
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
@@ -462,8 +456,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
                        PROPERTIES TIMEOUT "60")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer_with_recompute
@@ -476,8 +469,7 @@ if((WITH_GPU
   )
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
@@ -527,8 +519,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
                                                                          "200")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
@@ -582,8 +573,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer MODULES
@@ -596,8 +586,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_new_group
@@ -609,8 +598,7 @@ if((WITH_GPU
     "PADDLE_DIST_UT_PORT=21268;http_proxy=;https_proxy=")
 endif()
 if((WITH_GPU
-    OR WITH_XPU
-   )
+    OR WITH_XPU)
    AND (LINUX))
   bash_test_modules(
     test_c_comm_init_op
