@@ -61,8 +61,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "layer_norm_grad",
     "less_equal",
     "less_than",
-    "merged_adam",
-    "sync_batch_norm_grad",};
+    "merged_adam",};
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
