@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn.utils import spectral_norm
 
 

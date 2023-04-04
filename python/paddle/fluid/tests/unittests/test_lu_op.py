@@ -19,11 +19,11 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def scipy_lu(A, pivot):
@@ -122,12 +122,14 @@ class TestLUOp(OpTest):
         lshape = np.array(sL.shape)
         ushape = np.array(sU.shape)
 
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-        )
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-            ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-        )
+        lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - lshape)[-2]),
+            (0, (ashape - lshape)[-1]),
+        ]
+        upad = (len(sU.shape) - 2) * [(0, 0)] + [
+            (0, (ashape - ushape)[-2]),
+            (0, (ashape - ushape)[-1]),
+        ]
 
         NsL = np.pad(sL, lpad)
         NsU = np.pad(sU, upad)
@@ -154,10 +156,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], check_eager=True)
+        self.check_grad(['X'], ['Out'])
 
 
 # m = n 2D
@@ -262,12 +264,14 @@ class TestLUAPI(unittest.TestCase):
                     lshape = np.array(sL.shape)
                     ushape = np.array(sU.shape)
 
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1]))
-                    )
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list(
-                        ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1]))
-                    )
+                    lpad = (len(sL.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - lshape)[-2]),
+                        (0, (ashape - lshape)[-1]),
+                    ]
+                    upad = (len(sU.shape) - 2) * [(0, 0)] + [
+                        (0, (ashape - ushape)[-2]),
+                        (0, (ashape - ushape)[-1]),
+                    ]
 
                     NsL = np.pad(sL, lpad)
                     NsU = np.pad(sU, upad)

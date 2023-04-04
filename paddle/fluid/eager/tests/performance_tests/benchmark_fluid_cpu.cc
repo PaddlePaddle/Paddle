@@ -51,7 +51,7 @@ TEST(Benchmark, FluidScaleCPU) {
   platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
@@ -97,7 +97,7 @@ TEST(Benchmark, FluidMatmulCPU) {
   platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
     std::shared_ptr<imperative::VarBase> Y(new imperative::VarBase(true, "Y"));
@@ -156,7 +156,7 @@ TEST(Benchmark, FluidMLPCPU) {
   platform::CPUPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     std::vector<float> x_src_data(MLP_M * MLP_N, MLP_X_VAL);
     std::vector<float> w_src_data(MLP_N * MLP_K, MLP_W_VAL);
     std::vector<float> b_src_data(MLP_K, MLP_B_VAL);

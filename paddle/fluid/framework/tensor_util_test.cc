@@ -299,32 +299,6 @@ TEST(TensorToVector, Tensor_bool) {
     }
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  {
-    std::vector<bool> src_vec = {
-        false,
-        true,
-        false,
-        true,
-        false,
-        true,
-        false,
-        true,
-        false,
-    };
-    phi::DenseTensor npu_tensor;
-    paddle::platform::NPUPlace place(0);
-    paddle::platform::NPUDeviceContext npu_ctx(place);
-    paddle::framework::TensorFromVector<bool>(src_vec, npu_ctx, &npu_tensor);
-
-    std::vector<bool> dst;
-    paddle::framework::TensorToVector<bool>(npu_tensor, npu_ctx, &dst);
-
-    for (int i = 0; i < 3 * 3; ++i) {
-      EXPECT_EQ(src_vec[i], dst[i]);
-    }
-  }
-#endif
 }
 
 TEST(TensorFromDLPack, Tensor) {

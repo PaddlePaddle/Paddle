@@ -139,11 +139,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -178,6 +173,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -493,6 +489,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+      .def("_set_complex64_element", TensorSetElement<paddle::complex64>)
+      .def("_get_complex64_element", TensorGetElement<paddle::complex64>)
+      .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
+      .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
       .def("_place", [](phi::DenseTensor &self) { return self.place(); })
       .def("_dtype",
            [](phi::DenseTensor &self) {

@@ -94,8 +94,8 @@ bool NativePaddlePredictor::Init(
                             platform::errors::PreconditionNotMet(
                                 "The sub_scope should not be nullptr."));
   } else {
-    paddle::framework::InitDevices();
     paddle::framework::InitMemoryMethod();
+    paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     scope_.reset(new paddle::framework::Scope());
   }
@@ -278,23 +278,6 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with XPU, should not reach here."));
-#endif
-    } else {
-#ifdef PADDLE_WITH_ASCEND_CL
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
-      auto dst_npu_place = place_;
-      memory::Copy(dst_npu_place,
-                   static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
-                   inputs[i].data.data(),
-                   inputs[i].data.length(),
-                   dev_ctx->stream());
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Not compile with NPU, should not reach here."));
 #endif
     }
 

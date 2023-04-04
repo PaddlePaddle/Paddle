@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
@@ -333,7 +333,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
 def _get_wrapped_dist_state_dict(dist_state_dict):
 
-    wrapped_state_dict = dict()
+    wrapped_state_dict = {}
     if dist.get_world_size() <= 1:
         for _, v in dist_state_dict.items():
             wrapped_state_dict[v.name] = v

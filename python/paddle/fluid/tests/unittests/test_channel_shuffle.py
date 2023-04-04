@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -193,9 +193,9 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            channel_shuffle_str = 'groups={}'.format(groups)
+            channel_shuffle_str = f'groups={groups}'
             if data_format != 'NCHW':
-                channel_shuffle_str += ', data_format={}'.format(data_format)
+                channel_shuffle_str += f', data_format={data_format}'
             self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
 
     def test_dygraph1(self):

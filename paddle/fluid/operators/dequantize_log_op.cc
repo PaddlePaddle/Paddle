@@ -107,7 +107,6 @@ This calculation is an opposite operation of QuantizeLogOp:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     dequantize_log,
@@ -115,4 +114,6 @@ REGISTER_OPERATOR(
     ops::DequantizeLogOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(dequantize_log, ops::DequantizeLogKernel<CPU, int8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    dequantize_log, CPU, ALL_LAYOUT, ops::DequantizeLogKernel, int8_t) {}

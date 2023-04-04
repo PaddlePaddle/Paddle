@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 # cast output to complex for numpy.linalg.eig
@@ -348,7 +348,7 @@ class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
-        a = np.random.random((3)).astype('float32')
+        a = np.random.random(3).astype('float32')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
 

@@ -72,15 +72,15 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.outputs = {'Loss': loss.astype('float32')}
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
         def test_check_grad(self):
             self.check_grad_with_place(
                 paddle.XPUPlace(0),
                 ['X'],
                 'Loss',
-                no_grad_set=set(["Target"]),
-                check_eager=True,
+                no_grad_set={"Target"},
+                check_dygraph=True,
             )
 
         def initTestCase(self):

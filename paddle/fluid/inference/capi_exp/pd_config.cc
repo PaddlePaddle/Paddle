@@ -171,11 +171,6 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                     enable_multi_stream);
 }
 
-void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableNpu(device_id);
-}
-
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
