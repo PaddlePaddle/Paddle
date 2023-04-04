@@ -21,9 +21,10 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
-from paddle.nn.layer import layers
+from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
 from .utils import (
@@ -211,6 +212,8 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
 
+        self._sync_lr_value_with_scheduler()
+
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -224,6 +227,21 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def _sync_lr_value_with_scheduler(self):
+        """Update lr_var value with calculated by lr_scheduler."""
+        main_program = self._origin_main_program
+        if hasattr(main_program, 'lr_scheduler') and hasattr(
+            main_program, 'lr_var'
+        ):
+            lr_scheduler = main_program.lr_scheduler
+            lr_var = main_program.lr_var
+
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_scheduler = self._origin_main_program.lr_scheduler
+            lr_value = lr_scheduler()
+            data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
+            lr_var.set_value(data)
 
     def set_hooker(self, hooker):
         self._hooker = hooker
@@ -246,7 +264,8 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _double_grads(self):
-        return self._get_double_grads(self._origin_main_program)
+        # TODO: check the affects.
+        return None
 
     # whole
     @switch_to_static_graph
@@ -665,23 +684,6 @@ class PartialProgramLayer:
 
         self._params = required_params
 
-    def _get_double_grads(self, program):
-        double_grads = []
-        for block in program.blocks:
-            for name in block.vars:
-                if "@GRAD" in name:
-                    var_desc = block.vars[name].desc
-                    var_base = None
-                    var_base = core.eager.Tensor(
-                        var_desc.dtype(),
-                        var_desc.shape(),
-                        var_desc.name(),
-                        var_desc.type(),
-                        False,
-                    )
-                    double_grads.append(var_base)
-        return self._valid_vars(double_grads)
-
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
@@ -1060,9 +1062,11 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def partial_program_from(concrete_program):
+def partial_program_from(concrete_program, from_method=False):
     inputs = concrete_program.inputs
-    if inputs and isinstance(inputs[0], layers.Layer):
+
+    # NOTE(SigureMo): Remove the first arg `self` from method args.
+    if inputs and from_method:
         inputs = inputs[1:]
 
     return PartialProgramLayer(

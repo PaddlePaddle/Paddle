@@ -926,6 +926,7 @@ def save(layer, path, input_spec=None, **configs):
 
     # 1. input build & check
     prog_translator = ProgramTranslator()
+    is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
             "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
@@ -1039,7 +1040,9 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     static_func.concrete_program_specify_input_spec(
-                        inner_input_spec, with_hook=with_hook
+                        inner_input_spec,
+                        with_hook=with_hook,
+                        is_prim_infer=is_prim_infer,
                     )
                 )
             elif 'forward' == attr_func:
@@ -1059,7 +1062,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
-                        with_hook=with_hook
+                        with_hook=with_hook, is_prim_infer=is_prim_infer
                     )
                 )
                 # the input_spec has been used in declarative, which is equal to
@@ -1079,7 +1082,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     attr_func.concrete_program_specify_input_spec(
-                        inner_input_spec
+                        inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
             else:

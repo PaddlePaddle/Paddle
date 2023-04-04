@@ -187,7 +187,6 @@ class TestBert(unittest.TestCase):
         paddle.set_flags(
             {'FLAGS_deny_cinn_ops': "gaussian_random;uniform_random"}
         )
-        core._add_skip_comp_ops("layer_norm")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

@@ -143,6 +143,17 @@
     data_type : x
   optional : ins_tag_weight
 
+- op : bce_loss
+  args : (Tensor input, Tensor label)
+  output : Tensor
+  infer_meta :
+    func : BCELossInferMeta
+  kernel :
+    func : bce_loss
+    data_type : input
+  inplace : (input -> out)
+  backward : bce_loss_grad
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
