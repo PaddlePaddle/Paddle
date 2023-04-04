@@ -17,7 +17,9 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    distributed_push_sparse,
-    ops::DistributedPushSparseKernel<phi::GPUContext, float>,
-    ops::DistributedPushSparseKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(distributed_push_sparse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DistributedPushSparseKernel,
+                          float,
+                          double) {}

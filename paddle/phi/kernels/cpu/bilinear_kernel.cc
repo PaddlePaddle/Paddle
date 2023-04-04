@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/bilinear_kernel.h"
 
-namespace phi {
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/bilinear_kernel_impl.h"
 
-KernelSignature BCELossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "bce_loss_grad", {"X", "Label", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(bce_loss_grad, phi::BCELossGradOpArgumentMapping);
+PD_REGISTER_KERNEL(
+    bilinear, CPU, ALL_LAYOUT, phi::BilinearKernel, float, double) {}
