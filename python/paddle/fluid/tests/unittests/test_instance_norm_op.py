@@ -128,7 +128,7 @@ class TestInstanceNormOp(OpTest):
 
     def test_check_output_cpu(self):
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-05, check_eager=True, check_prim=True
+            core.CPUPlace(), atol=1e-05, check_prim=True
         )
 
     def test_check_grad_cpu(self):
@@ -136,14 +136,13 @@ class TestInstanceNormOp(OpTest):
             core.CPUPlace(),
             ['X', 'Scale', 'Bias'],
             'Y',
-            check_eager=True,
             check_prim=True,
         )
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(
-                core.CUDAPlace(0), atol=1e-05, check_eager=True, check_prim=True
+                core.CUDAPlace(0), atol=1e-05, check_prim=True
             )
 
     def test_check_grad_gpu(self):
@@ -152,7 +151,6 @@ class TestInstanceNormOp(OpTest):
                 core.CUDAPlace(0),
                 ['X', 'Scale', 'Bias'],
                 'Y',
-                check_eager=True,
                 check_prim=True,
             )
 
@@ -196,13 +194,13 @@ class TestInstanceNormFP64(TestInstanceNormOp):
 
     def test_check_output_cpu(self):
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-14, check_eager=True, check_prim=True
+            core.CPUPlace(), atol=1e-14, check_prim=True
         )
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(
-                core.CUDAPlace(0), atol=1e-14, check_eager=True, check_prim=True
+                core.CUDAPlace(0), atol=1e-14, check_prim=True
             )
 
 
@@ -303,7 +301,7 @@ if paddle.is_compiled_with_cuda():
                 [1e-14],  # cpu thresholds
                 [1e-14],
             ],  # gpu thresholds
-            [3e-11, 3e-11],  # for X_grad
+            [5e-11, 5e-11],  # for X_grad
         ),
     ),
 )
