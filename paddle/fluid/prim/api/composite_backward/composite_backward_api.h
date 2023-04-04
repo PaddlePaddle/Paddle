@@ -1529,5 +1529,21 @@ void gelu_grad(const Tensor& x,
     }
   }
 }
+
+template <typename T>
+void roll_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& shifts,
+               const std::vector<int64_t>& axis,
+               Tensor* x_grad) {
+  if (x_grad) {
+    int64_t nums = shifts.size();
+    for (int64_t i = 0; i < nums; i++) {
+      shifts[i] = 0 - shifts[i];
+    }
+    auto x_grad_output = roll<T>(out_grad, shifts, axis);
+    set_output<T>(x_grad_output, x_grad);
+  }
+}
 }  // namespace prim
 }  // namespace paddle

@@ -1275,6 +1275,7 @@
   kernel :
     func : roll_grad
     data_type : x
+  composite : roll_grad(x, out_grad, shifts, axis, x_grad)
   no_need_buffer : x
 
 - backward_op : round_grad
