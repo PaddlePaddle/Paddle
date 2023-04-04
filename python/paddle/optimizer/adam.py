@@ -389,7 +389,7 @@ class Adam(Optimizer):
             return adam_op
 
     @imperative_base.no_grad
-    @framework.dygraph_only
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -412,6 +412,10 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
+        if paddle.fluid.dygraph.base.in_declarative_mode():
+            self._declarative_step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:

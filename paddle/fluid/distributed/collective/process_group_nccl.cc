@@ -475,6 +475,71 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> partial_tensors;
+  if (rank_ == opts.root_rank) {
+    partial_tensors.reserve(size_);
+    size_t offset = 0;
+    size_t numel = out_tensor->numel() / size_;
+    for (auto i = 0; i < size_; i++) {
+      partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
+      offset += numel;
+    }
+  }
+  return Gather(&partial_tensors, in_tensor, opts, sync_op, use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    std::vector<phi::DenseTensor>* gather_tensors_ptr,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  auto& gather_tensors = *gather_tensors_ptr;
+  PADDLE_ENFORCE_GT(size_,
+                    opts.root_rank,
+                    phi::errors::InvalidArgument(
+                        "root world size [%d]  is less than root rank [%d]",
+                        size_,
+                        opts.root_rank));
+  auto gather_func = [&](ncclComm_t comm, gpuStream_t stream) {
+    // shape check
+    if (FLAGS_enable_nccl_dynamic_check) {
+      phi::distributed::NCCLDynamicCheck::CheckGatherShape(
+          in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm);
+    }
+    GroupStart();
+    // root receive from all devices
+    if (rank_ == opts.root_rank) {
+      for (auto i = 0; i < size_; i++) {
+        auto& gather_tensor = gather_tensors[i];
+        NCCL_CHECK(
+            phi::dynload::ncclRecv(gather_tensor.data(),
+                                   gather_tensor.numel(),
+                                   phi::ToNCCLDataType(gather_tensor.dtype()),
+                                   i,
+                                   comm,
+                                   stream));
+      }
+    }
+    // send to root
+    NCCL_CHECK(phi::dynload::ncclSend(in_tensor.data(),
+                                      in_tensor.numel(),
+                                      phi::ToNCCLDataType(in_tensor.dtype()),
+                                      opts.root_rank,
+                                      comm,
+                                      stream));
+    GroupEnd();
+  };
+  return RunFnInNCCLEnv(
+      gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     phi::DenseTensor* tensor,
     int src_rank,

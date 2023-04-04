@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestSparseSquareOp(unittest.TestCase):

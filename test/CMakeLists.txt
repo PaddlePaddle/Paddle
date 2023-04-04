@@ -15,47 +15,23 @@ function(py_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     if(py_test_modules_SERIAL)
@@ -138,7 +114,9 @@ if(WITH_TESTING)
   endif()
   # add_subdirectory(ir)
   add_subdirectory(legacy_test)
-  # add_subdirectory(mkldnn)
+  if(WITH_MKLDNN)
+    add_subdirectory(mkldnn)
+  endif()
   add_subdirectory(prim)
   # add_subdirectory(ps)
   add_subdirectory(quantization)

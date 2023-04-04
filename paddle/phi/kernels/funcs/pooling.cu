@@ -993,6 +993,7 @@ template class Pool2dDirectCUDAFunctor<AvgPool<float>, float>;
 template class MaxPool2dGradFunctor<phi::GPUContext, float>;
 template class MaxPool2dGradFunctor<phi::GPUContext, double>;
 template class MaxPool2dGradFunctor<phi::GPUContext, dtype::float16>;
+template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
@@ -1015,6 +1016,18 @@ template class Pool2dGradFunctor<phi::GPUContext,
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             MaxPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             AvgPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 MaxPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3D(const int nthreads,
@@ -1863,6 +1876,7 @@ template class Pool3dDirectCUDAFunctor<AvgPool<float>, float>;
 template class MaxPool3dGradFunctor<phi::GPUContext, float>;
 template class MaxPool3dGradFunctor<phi::GPUContext, double>;
 template class MaxPool3dGradFunctor<phi::GPUContext, dtype::float16>;
+template class MaxPool3dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool3dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool3dFunctor<phi::GPUContext, AvgPool<float>, float>;
@@ -1879,12 +1893,24 @@ template class Pool3dFunctor<phi::GPUContext,
 template class Pool3dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
+template class Pool3dFunctor<phi::GPUContext,
+                             MaxPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool3dFunctor<phi::GPUContext,
+                             AvgPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
 template class Pool3dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool3dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
+template class Pool3dGradFunctor<phi::GPUContext,
+                                 MaxPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool3dGradFunctor<phi::GPUContext,
+                                 AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
 
 template <typename T1, typename T2>
 __global__ void KernelMaxPool2dWithIdx(const int nthreads,

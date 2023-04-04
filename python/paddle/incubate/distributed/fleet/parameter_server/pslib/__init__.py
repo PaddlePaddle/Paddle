@@ -23,6 +23,8 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.base import DistributedOptimizer
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
+from paddle.common_ops_import import LayerHelper
+
 import paddle
 
 
@@ -961,6 +963,51 @@ def _fleet_embedding(
         param_attr(ParamAttr): To specify the weight parameter property
         dtype(str): data type of output
     """
+
+    def _pull_sparse(
+        input,
+        size,
+        table_id,
+        accessor_class,
+        name="embedding",
+        ctr_label_name="",
+        padding_id=0,
+        dtype='float32',
+        scale_sparse_grad=True,
+    ):
+        helper = LayerHelper(name, **locals())
+        inputs = helper.multiple_input()
+        outs = [helper.create_variable_for_type_inference(dtype)]
+        input_names = [i.name for i in inputs]
+        attrs = {
+            'EmbeddingDim': size,
+            'TableId': table_id,
+            'AccessorClass': accessor_class,
+            'CtrLabelName': ctr_label_name,
+            'PaddingId': padding_id,
+            'ScaleSparseGrad': scale_sparse_grad,
+            'InputNames': input_names,
+            # this is only for compatible with embedding op
+            'is_distributed': True,
+        }
+        # this is only for compatible with embedding op
+        w, _ = helper.create_or_get_global_variable(
+            name=name,
+            shape=[size],
+            dtype=dtype,
+            is_bias=False,
+            persistable=True,
+        )
+        helper.append_op(
+            type='pull_sparse',
+            inputs={'Ids': inputs, 'W': w},
+            outputs={'Out': outs},
+            attrs=attrs,
+        )
+        if len(outs) == 1:
+            return outs[0]
+        return outs
+
     # check and set params
     _prepare_params(
         input, size, is_sparse, is_distributed, padding_idx, param_attr, dtype
@@ -970,7 +1017,8 @@ def _fleet_embedding(
     if padding_idx is None:
         padding_idx = 0
     global FLEET_GLOBAL_DICT
-    return paddle.static.nn._pull_sparse(
+
+    return _pull_sparse(
         input=input,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
@@ -1003,6 +1051,51 @@ def _fleet_embedding_v2(
         param_attr(ParamAttr): To specify the weight parameter property
         dtype(str): data type of output
     """
+
+    def _pull_sparse_v2(
+        input,
+        size,
+        table_id,
+        accessor_class,
+        name="embedding",
+        ctr_label_name="",
+        padding_id=0,
+        dtype='float32',
+        scale_sparse_grad=True,
+    ):
+        helper = LayerHelper(name, **locals())
+        inputs = helper.multiple_input()
+        outs = [helper.create_variable_for_type_inference(dtype)]
+        input_names = [i.name for i in inputs]
+        attrs = {
+            'EmbeddingDim': size,
+            'TableId': table_id,
+            'AccessorClass': accessor_class,
+            'CtrLabelName': ctr_label_name,
+            'PaddingId': padding_id,
+            'ScaleSparseGrad': scale_sparse_grad,
+            'InputNames': input_names,
+            # this is only for compatible with embedding op
+            'is_distributed': True,
+        }
+        # this is only for compatible with embedding op
+        w, _ = helper.create_or_get_global_variable(
+            name=name,
+            shape=[size],
+            dtype=dtype,
+            is_bias=False,
+            persistable=True,
+        )
+        helper.append_op(
+            type='pull_sparse_v2',
+            inputs={'Ids': inputs, 'W': w},
+            outputs={'Out': outs},
+            attrs=attrs,
+        )
+        if len(outs) == 1:
+            return outs[0]
+        return outs
+
     # check and set params
     _prepare_params(
         input, size, is_sparse, is_distributed, padding_idx, param_attr, dtype
@@ -1012,7 +1105,7 @@ def _fleet_embedding_v2(
     if padding_idx is None:
         padding_idx = 0
 
-    return paddle.static.nn._pull_sparse_v2(
+    return _pull_sparse_v2(
         input=input,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
