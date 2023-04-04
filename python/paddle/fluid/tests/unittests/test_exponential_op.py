@@ -345,22 +345,10 @@ class TestExponentialAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestExponentialFP16Op(OpTest):
-    def setUp(self):
-        paddle.enable_static()
-        self.op_type = "exponential"
-        self.python_api = paddle.tensor.exponential_
-        self.lam = 0.5
-        self.dtype = np.float16
-        self.inputs = {'X': np.empty([1024, 1024]).astype(self.dtype)}
-        self.attrs = {"lambda": self.lam}
-        self.outputs = {'Out': np.ones([1024, 1024]).astype(self.dtype)}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+class TestExponentialFP16Op(TestExponentialOp1):
+    def config(self):
+        self.lam = 0.25
+        self.dtype = "float16"
 
 
 @unittest.skipIf(
