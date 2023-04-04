@@ -281,10 +281,10 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFloat16(TestBceLossOp):
     def setUp(self):
-        input_np = paddle.uniform(min=0.1, max=0.8, shape=[10, 10]).astype(
+        input_np = np.random.uniform(0.1, 0.8, self.shape).astype(
             "float16"
         )
-        label_np = paddle.randint(low=0, high=2, shape=[10, 10]).astype(
+        label_np = np.random.randint(0, 2, self.shape).astype(
             "float16"
         )
         output_np = bce_loss(input_np, label_np)
