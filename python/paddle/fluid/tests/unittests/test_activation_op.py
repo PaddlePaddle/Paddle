@@ -3980,7 +3980,13 @@ create_test_act_fp16_class(TestMish)
 
 
 def create_test_act_bf16_class(
-    parent, atol=1e-2, grad_check=True, grad_atol=1e-2
+    parent,
+    atol=1e-2,
+    grad_check=True,
+    check_dygraph=True,
+    check_prim=False,
+    enable_cinn=True,
+    grad_atol=1e-2,
 ):
     class TestActBF16(parent):
         def test_check_output(self):
@@ -4002,20 +4008,20 @@ def create_test_act_bf16_class(
     globals()[cls_name] = TestActBF16
 
 
-create_test_act_bf16_class(TestActivation)
+create_test_act_bf16_class(TestActivation, check_prim=True)
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid)
-create_test_act_bf16_class(TestSilu)
+create_test_act_bf16_class(TestSigmoid, check_prim=True)
+create_test_act_bf16_class(TestSilu, check_prim=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh)
 create_test_act_bf16_class(TestTanhshrink)
 create_test_act_bf16_class(TestHardShrink)
 create_test_act_bf16_class(TestSoftshrink)
-create_test_act_bf16_class(TestSqrt)
-create_test_act_bf16_class(TestSqrtComp)
-create_test_act_bf16_class(TestAbs)
+create_test_act_bf16_class(TestSqrt, check_prim=True)
+create_test_act_bf16_class(TestSqrtComp, check_prim=True)
+create_test_act_bf16_class(TestAbs, check_prim=True)
 create_test_act_bf16_class(TestCeil, grad_check=False)
-create_test_act_bf16_class(TestFloor, grad_check=False)
+create_test_act_bf16_class(TestFloor, grad_check=False, check_prim=True)
 create_test_act_bf16_class(TestCos)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
@@ -4028,15 +4034,21 @@ create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
 create_test_act_bf16_class(TestRound, grad_check=False)
-create_test_act_bf16_class(TestRelu)
-create_test_act_bf16_class(TestGelu)
+create_test_act_bf16_class(TestRelu, check_prim=True)
+create_test_act_bf16_class(
+    TestGelu,
+    check_prim=True,
+    enable_cinn=False,
+    rev_comp_rtol=1e-3,
+    rev_comp_atol=1e-3,
+)
 create_test_act_bf16_class(TestBRelu)
 create_test_act_bf16_class(TestRelu6)
-create_test_act_bf16_class(TestSoftRelu)
+create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
 create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal)
-create_test_act_bf16_class(TestLog)
+create_test_act_bf16_class(TestLog, check_prim=True)
 if core.is_compiled_with_rocm():
     create_test_act_bf16_class(TestLog2)
 else:
@@ -4044,7 +4056,7 @@ else:
 create_test_act_bf16_class(TestLog10)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare)
-create_test_act_bf16_class(TestPow)
+create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_factor_tensor)
 create_test_act_bf16_class(TestSTanh)
 create_test_act_bf16_class(TestSoftplus)
@@ -4052,7 +4064,7 @@ create_test_act_bf16_class(TestSoftsign)
 create_test_act_bf16_class(TestThresholdedRelu)
 create_test_act_bf16_class(TestHardSigmoid)
 create_test_act_bf16_class(TestSwish)
-create_test_act_bf16_class(TestHardSwish)
+create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
 
 
