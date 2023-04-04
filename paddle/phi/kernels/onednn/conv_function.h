@@ -73,6 +73,8 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  const DenseTensor* filter,
                  const DenseTensor* bias,
                  const DenseTensor* residual_param,
+                 const DenseTensor* filterDW,
+                 const DenseTensor* biasDW,
                  const std::vector<int>& strides,
                  const std::vector<int>& paddings,
                  const std::string& padding_algorithm,
@@ -84,6 +86,8 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  const std::string& fuse_activation,
                  bool fuse_residual_conn,
                  bool force_fp32_output,
+                 const std::string& depthwise_type,
+                 const std::string& fuse_activation_dw,
                  DenseTensor* output) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   const bool is_conv3d = strides.size() == 3U;
@@ -98,6 +102,8 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                                                              input,
                                                              filter,
                                                              bias,
+                                                             filterDW,
+                                                             biasDW,
                                                              strides,
                                                              paddings,
                                                              padding_algorithm,
@@ -109,18 +115,15 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                                                              fuse_activation,
                                                              fuse_residual_conn,
                                                              force_fp32_output,
+                                                             depthwise_type,
+                                                             fuse_activation_dw,
                                                              output,
                                                              unique_name);
         auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, is_conv3d, is_test);
 
-        const std::string& depthwise_type =
-            dev_ctx.HasDnnAttr("depthwise_type")
-                ? PADDLE_GET_CONST(std::string,
-                                   dev_ctx.GetDnnAttr("depthwise_type"))
-                : "";
-        if (unlikely(depthwise_type == "k3s2p1")) {
+        if (depthwise_type == "k3s2p1") {
           double h = static_cast<double>(output->dims()[2]);
           double w = static_cast<double>(output->dims()[3]);
           int64_t new_h = std::ceil(h / 2.0);
@@ -149,20 +152,16 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
         }
 
-        if (unlikely(depthwise_type != "")) {
-          const auto* dw_filter = dev_ctx.GetDnnInput("FilterDW");
+        if (!depthwise_type.empty()) {
           auto dw_weights_memory_p =
-              handler.AcquireDepthwiseWeightsMemoryWithReorder(dw_filter);
+              handler.AcquireDepthwiseWeightsMemoryWithReorder(filterDW,
+                                                               is_test);
           args.insert({DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_WEIGHTS,
                        *dw_weights_memory_p});
 
-          const auto* dw_bias = dev_ctx.HasDnnInput("BiasDW")
-                                    ? dev_ctx.GetDnnInput("BiasDW")
-                                    : nullptr;
-
-          if (likely(dw_bias)) {
+          if (biasDW) {
             auto dw_bias_memory_p =
-                handler.AcquireDepthwiseBiasMemoryWithReorder(dw_bias);
+                handler.AcquireDepthwiseBiasMemoryWithReorder(biasDW);
             args.insert(
                 {DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_BIAS, *dw_bias_memory_p});
           }
@@ -220,6 +219,8 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                              input,
                                                              filter,
                                                              bias,
+                                                             nullptr,
+                                                             nullptr,
                                                              strides,
                                                              paddings,
                                                              padding_algorithm,
@@ -231,6 +232,8 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                              fuse_activation,
                                                              fuse_residual_conn,
                                                              force_fp32_output,
+                                                             "",
+                                                             "",
                                                              output,
                                                              unique_name);
 
@@ -318,6 +321,8 @@ void ConvOnednn(const Context& dev_ctx,
                 const DenseTensor* filter,
                 const DenseTensor* bias,
                 const DenseTensor* residual_param,
+                const DenseTensor* filterDW,
+                const DenseTensor* biasDW,
                 const std::vector<int>& strides,
                 const std::vector<int>& paddings,
                 const std::string& padding_algorithm,
@@ -329,6 +334,8 @@ void ConvOnednn(const Context& dev_ctx,
                 const std::string& fuse_activation,
                 bool fuse_residual_connection,
                 bool force_fp32_output,
+                const std::string& depthwise_type,
+                const std::string& fuse_activation_dw,
                 DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
@@ -350,6 +357,8 @@ void ConvOnednn(const Context& dev_ctx,
                             filter,
                             bias,
                             residual_param,
+                            filterDW,
+                            biasDW,
                             strides,
                             paddings,
                             padding_algorithm,
@@ -361,6 +370,8 @@ void ConvOnednn(const Context& dev_ctx,
                             fuse_activation,
                             fuse_residual_connection,
                             force_fp32_output,
+                            depthwise_type,
+                            fuse_activation_dw,
                             out);
     } else if (dst_dt == dnnl::memory::data_type::bf16) {
       ComputeFP32<T, dtype::bfloat16>(dev_ctx,
@@ -368,6 +379,8 @@ void ConvOnednn(const Context& dev_ctx,
                                       filter,
                                       bias,
                                       residual_param,
+                                      filterDW,
+                                      biasDW,
                                       strides,
                                       paddings,
                                       padding_algorithm,
@@ -379,6 +392,8 @@ void ConvOnednn(const Context& dev_ctx,
                                       fuse_activation,
                                       fuse_residual_connection,
                                       force_fp32_output,
+                                      depthwise_type,
+                                      fuse_activation_dw,
                                       out);
     }
   } else {

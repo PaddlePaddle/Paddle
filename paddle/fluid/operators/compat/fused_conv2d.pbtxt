@@ -41,12 +41,30 @@ def {
   }
 }
 extra {
+  inputs {
+    name: "BiasDW"
+  }
+  inputs {
+    name: "FilterDW"
+  }
+  attrs {
+    name: "fuse_activation_dw"
+    type: STRING
+  }
   attrs {
     name: "fuse_activation"
     type: STRING
   }
   attrs {
+    name: "fuse_alpha_dw"
+    type: FLOAT
+  }
+  attrs {
     name: "fuse_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "fuse_beta_dw"
     type: FLOAT
   }
   attrs {
@@ -81,4 +99,8 @@ extra {
     name: "force_fp32_output"
     type: BOOLEAN
   }
+  attrs {
+    name: "depthwise_type"
+    type: STRING
+  } 
 }

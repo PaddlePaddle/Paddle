@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv1x1_depthwise_conv_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -26,6 +27,43 @@ using string::PrettyLogDetail;
 
 Conv1x1DepthwiseConvOneDNNFusePass::Conv1x1DepthwiseConvOneDNNFusePass() {
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -144,15 +182,21 @@ void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
     auto* depthwise_conv_op = depthwise_conv->Op();
 
     if (!conv_op->HasAttr("use_mkldnn") ||
-        !(PADDLE_GET_CONST(bool, conv_op->GetAttr("use_mkldnn")))) {
+        !(PADDLE_GET_CONST(bool, conv_op->GetAttr("use_mkldnn"))) ||
+        (!depthwise_conv_op->HasAttr("use_mkldnn") ||
+         !(PADDLE_GET_CONST(bool, depthwise_conv_op->GetAttr("use_mkldnn"))))) {
       VLOG(4) << "The conv1x1 + depthwise_conv fusion may happen only when "
                  "oneDNN library is used.";
       return;
     }
 
-    if (conv_op->HasAttr("mkldnn_data_type") &&
-        PADDLE_GET_CONST(std::string, conv_op->GetAttr("mkldnn_data_type")) !=
-            "float32") {
+    if ((conv_op->HasAttr("mkldnn_data_type") &&
+         PADDLE_GET_CONST(std::string, conv_op->GetAttr("mkldnn_data_type")) !=
+             "float32") ||
+        (depthwise_conv_op->HasAttr("mkldnn_data_type") &&
+         PADDLE_GET_CONST(std::string,
+                          depthwise_conv_op->GetAttr("mkldnn_data_type")) !=
+             "float32")) {
       VLOG(4) << "The conv1x1 + depthwise_conv fusion is implemented only on "
                  "float32.";
       return;
@@ -171,6 +215,11 @@ void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
       return;
     }
 
+    if (conv_op->Type() == "conv2d") {
+      ConvertToFusedOp(conv_op);
+    }
+
+    std::cout << "------ fuse -------------\n";
     conv_op->SetInput("FilterDW", {depthwise_conv_weights->Name()});
 
     int stride =
@@ -179,7 +228,6 @@ void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
                                depthwise_conv_op->GetAttr("strides"))[0]
             : 0;
     const std::string depthwise_type = "k3s" + std::to_string(stride) + "p1";
-
     conv_op->SetAttr("depthwise_type", depthwise_type);
 
     const auto fuse_activation =
@@ -237,7 +285,9 @@ void Conv1x1DepthwiseConvOneDNNFusePass::ApplyImpl(Graph* graph) const {
 
 REGISTER_PASS(conv1x1_depthwise_conv_mkldnn_fuse_pass,
               paddle::framework::ir::Conv1x1DepthwiseConvOneDNNFusePass);
+
 REGISTER_PASS_CAPABILITY(conv1x1_depthwise_conv_mkldnn_fuse_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().LE(
-            "conv2d", 1));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .LE("fused_conv2d", 1));
