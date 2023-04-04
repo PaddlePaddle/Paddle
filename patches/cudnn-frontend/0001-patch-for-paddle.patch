@@ -1,34 +1,33 @@
-From b54dd87c62d3ba45da185c046eca51ff037598a4 Mon Sep 17 00:00:00 2001
-From: Tian Zheng <tizheng@nvidia.com>
-Date: Mon, 13 Feb 2023 20:59:38 -0800
-Subject: [PATCH] patch for paddle
-
----
- include/cudnn_frontend_ExecutionPlan.h | 4 ++++
- include/cudnn_frontend_Operation.h     | 5 +++--
- include/cudnn_frontend_find_plan.h     | 6 +++---
- 3 files changed, 10 insertions(+), 5 deletions(-)
-
 diff --git a/include/cudnn_frontend_ExecutionPlan.h b/include/cudnn_frontend_ExecutionPlan.h
-index e361821..26c0a8c 100644
+index e361821..27598f9 100644
 --- a/include/cudnn_frontend_ExecutionPlan.h
 +++ b/include/cudnn_frontend_ExecutionPlan.h
-@@ -168,6 +168,10 @@ class ExecutionPlan_v8 : public BackendDescriptor {
+@@ -167,6 +167,10 @@ class ExecutionPlan_v8 : public BackendDescriptor {
+         return json_string;
  #endif
      }
- 
++    
 +    ManagedOpaqueDescriptor GetEngineConfig() const {
 +        return engine_config;
 +    }
-+
+ 
      ExecutionPlan_v8(ExecutionPlan_v8 const &) = default;
      ExecutionPlan_v8 &
-     operator=(ExecutionPlan_v8 const &) = default;
 diff --git a/include/cudnn_frontend_Operation.h b/include/cudnn_frontend_Operation.h
-index 097e970..cf3f4b7 100644
+index 097e970..a43f6df 100644
 --- a/include/cudnn_frontend_Operation.h
 +++ b/include/cudnn_frontend_Operation.h
-@@ -2013,8 +2013,9 @@ class OperationBuilder_v8 {
+@@ -564,6 +564,9 @@ class OperationBuilder_v8 {
+                 m_operation.operationTag = "Identity";
+                 break;
+ #endif
++            default:
++                m_operation.operationTag = "Unknown";
++                break;
+         }
+ 
+         status = cudnnBackendSetAttribute(m_operation.pointer->get_backend_descriptor(),
+@@ -2013,8 +2016,9 @@ class OperationBuilder_v8 {
              m_operation.feature_vector.push_back(yTensor_strA[i]); // n, c, (g), d, h , w 
          }
  
@@ -40,6 +39,19 @@ index 097e970..cf3f4b7 100644
  
          m_operation.feature_vector.push_back(alpha_as_int);
          m_operation.feature_vector.push_back(beta_as_int);
+diff --git a/include/cudnn_frontend_PointWiseDesc.h b/include/cudnn_frontend_PointWiseDesc.h
+index 7a69b66..76d6f26 100644
+--- a/include/cudnn_frontend_PointWiseDesc.h
++++ b/include/cudnn_frontend_PointWiseDesc.h
+@@ -131,6 +131,8 @@ class PointWiseDesc_v8 : public BackendDescriptor {
+             case CUDNN_POINTWISE_BINARY_SELECT:
+                 return 4;
+ #endif
++            default:
++                return -1;
+         }
+         return -1;
+     }
 diff --git a/include/cudnn_frontend_find_plan.h b/include/cudnn_frontend_find_plan.h
 index f20432a..c36fc60 100644
 --- a/include/cudnn_frontend_find_plan.h
@@ -71,6 +83,3 @@ index f20432a..c36fc60 100644
  
              cudaEventRecord(stop, stream);
              cudaEventSynchronize(stop);
--- 
-2.25.1
-
