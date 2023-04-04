@@ -34,10 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 

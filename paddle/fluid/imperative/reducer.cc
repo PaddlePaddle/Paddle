@@ -31,7 +31,7 @@ namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_CNCL)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   phi::DenseTensor *tensor =
@@ -305,17 +305,10 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
   } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    ConcatTensorsWithType(
-        static_cast<const platform::NPUDeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
-#else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat npu grads since it's not compiled with HCCL,"
         "Please recompile or reinstall Paddle with HCCL support."));
-#endif
+
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_CNCL
     ConcatTensorsWithType(
@@ -365,17 +358,10 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
   } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    SplitTensorsWithType(
-        static_cast<const platform::NPUDeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
-#else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split npu grad since it's not compiled with HCCL,"
         "Please recompile or reinstall Paddle with HCCL support."));
-#endif
+
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_CNCL
     SplitTensorsWithType(
@@ -1129,9 +1115,8 @@ void Reducer::FinalizeBackward() {
 
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||      \
-    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL) || \
-    defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_CNCL)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

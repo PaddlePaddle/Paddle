@@ -34,8 +34,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "xpu/refactor/math.h"
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-#endif
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
@@ -269,32 +267,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD_CUSTOM(platform::complex<double>);
 #endif
   }
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::DeviceContext* ctx = pool.Get(place);
-    auto dev_ctx = dynamic_cast<platform::NPUDeviceContext*>(ctx);
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
-      dst_tensor->mutable_data<float>(place);
-    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
-      dst_tensor->mutable_data<double>(place);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
-      dst_tensor->mutable_data<platform::float16>(place);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-    }
-    const auto& runner = operators::NpuOpRunner(
-        "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
-    runner.Run(dev_ctx->stream());
-    return;
-  }
-#endif
 
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {

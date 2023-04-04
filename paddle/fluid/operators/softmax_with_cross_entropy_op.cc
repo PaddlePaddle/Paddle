@@ -41,7 +41,7 @@ class SoftmaxWithCrossEntropyOpMaker
         "The outputs value of softmax activation by given the input batch, "
         "which will be used in backward calculation.")
         .AsIntermediate();
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     AddOutput(
         "Backprop",
         "(Tensor, default: Tensor<float>), A tensor in same shape with "
@@ -135,7 +135,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
                       true,
                       platform::errors::InvalidArgument(
                           "Output(Softmax) should be not null."));
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Backprop"),
                       true,
                       platform::errors::InvalidArgument(
@@ -206,10 +206,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Softmax", logits_dims);
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
-    ctx->SetOutputDim("Backprop", logits_dims);
-    ctx->ShareLoD("Logits", /*->*/ "Backprop");
-#endif
+
     logits_dims[axis] = 1;
     ctx->SetOutputDim("Loss", logits_dims);
 
@@ -238,7 +235,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                       true,
                       platform::errors::InvalidArgument(
                           "Input(Softmax) should be not null."));
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     PADDLE_ENFORCE_EQ(ctx->HasInput("Backprop"),
                       true,
                       platform::errors::InvalidArgument(
@@ -327,7 +324,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", this->Input("Label"));
     grad_op->SetInput("Softmax", this->Output("Softmax"));
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     grad_op->SetInput("Backprop", this->Output("Backprop"));
 #endif
     grad_op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
@@ -359,7 +356,7 @@ REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyGradInplaceInferer);
 
 REGISTER_OP_VERSION(softmax_with_cross_entropy)
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     .AddCheckpoint(
         R"ROC(
               Add a new attribute [use_softmax] )ROC",

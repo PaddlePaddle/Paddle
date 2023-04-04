@@ -101,9 +101,6 @@ int main(int argc, char** argv) {
 
   int ret = RUN_ALL_TESTS();
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  paddle::platform::AclInstance::Instance().Finalize();
-#endif
   if (env_str) free(env_str);
   if (undefok_str) free(undefok_str);
   return ret;

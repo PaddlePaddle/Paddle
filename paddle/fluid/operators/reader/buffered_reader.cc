@@ -63,21 +63,6 @@ BufferedReader::BufferedReader(
   }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place_)) {
-    int dev_idx = place_.device;
-    compute_stream_ =
-        ((platform::NPUDeviceContext *)(platform::DeviceContextPool::Instance()
-                                            .Get(place_)))
-            ->stream();
-    events_.resize(buffer_size);
-    for (auto &event : events_) {
-      event = platform::NpuEventResourcePool::Instance().New(dev_idx);
-    }
-    stream_ = platform::NpuStreamResourcePool::Instance().New(dev_idx);
-  }
-#endif
-
 #ifdef PADDLE_WITH_MLU
   if (platform::is_mlu_place(place_)) {
     int dev_idx = place_.device;
@@ -272,56 +257,6 @@ void BufferedReader::ReadAsync(size_t i) {
         }
         platform::GpuStreamSync(stream_.get());
       }
-    }
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      TensorVec &npu = npu_buffer_[i];
-      if (npu.empty()) {
-        npu.resize(cpu.size());
-      } else {
-        PADDLE_ENFORCE_EQ(
-            npu.size(),
-            cpu.size(),
-            platform::errors::InvalidArgument(
-                "Input tensor number on NPU and CPU devices are not matched. "
-                "The number on NPU is %d, on CPU is %d",
-                npu.size(),
-                cpu.size()));
-      }
-
-      std::vector<void *> npu_ptrs;
-      npu_ptrs.reserve(cpu.size());
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        npu[i].Resize(cpu[i].dims());
-        npu[i].set_layout(cpu[i].layout());
-        npu_ptrs.emplace_back(npu[i].mutable_data(place_, cpu[i].type()));
-      }
-
-      platform::SetNPUDeviceId(place_.device);
-      platform::NPUEventRecord(events_[i].get(), compute_stream_);
-      platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
-
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
-                                         platform::TracerEventType::UserDefined,
-                                         1);
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data();
-        auto npu_ptr = npu_ptrs[i];
-        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-        if ((platform::is_npu_place(cpu_place))) {
-          memory::Copy(
-              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-        } else {
-          memory::Copy(
-              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-          platform::NPUStreamSync(stream_.get());
-        }
-        npu[i].set_lod(cpu[i].lod());
-      }
-      platform::NPUStreamSync(stream_.get());
     }
 #endif
 

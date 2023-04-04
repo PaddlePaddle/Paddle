@@ -266,51 +266,5 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
-  NPUDeviceGuard guard(place_.device);
-  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context_, place_.device));
-  // NOTE(zhiqiu): Usually, no need to create context explicitly,
-  // ACL creates a default context which contains 1 default stream
-  // and 1 sync strean after aclrtSetDevice.
-  platform::GetCurrentNPUContext(&context_);
-  stream_.reset(new stream::NPUStream(place));
-}
-
-NPUDeviceContext::~NPUDeviceContext() {
-  // NPUDeviceGuard guard(place_.device);
-  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context_));
-}
-
-void NPUDeviceContext::Wait() const {
-  platform::RecordEvent record_event(
-      "NPUDeviceContext/wait", platform::TracerEventType::UserDefined, 2);
-  VLOG(4) << "NPU context(" << this << ")  Wait";
-  stream_->Wait();
-}
-
-aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
-
-const Place& NPUDeviceContext::GetPlace() const { return place_; }
-
-aclrtContext NPUDeviceContext::context() const { return context_; }
-
-NPUPinnedDeviceContext::NPUPinnedDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-NPUPinnedDeviceContext::NPUPinnedDeviceContext(NPUPinnedPlace place)
-    : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
-
-#endif
-
 }  // namespace platform
 }  // namespace paddle

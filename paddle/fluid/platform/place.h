@@ -19,8 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 //
-#ifdef PADDLE_WITH_ASCEND_CL
-#endif
 
 #include "paddle/phi/common/place.h"
 namespace paddle {
@@ -95,24 +93,14 @@ typename Visitor::result_type VisitPlace(const Place &place,
 #endif
     }
     case phi::AllocationType::NPU: {
-#ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPlace p(place.GetDeviceId());
-      return visitor(p);
-#else
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
       return typename Visitor::result_type();
-#endif
     }
     case phi::AllocationType::NPUPINNED: {
-#ifdef PADDLE_WITH_ASCEND_CL
-      platform::NPUPinnedPlace p;
-      return visitor(p);
-#else
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
       return typename Visitor::result_type();
-#endif
     }
     case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU

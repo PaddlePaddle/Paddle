@@ -458,17 +458,6 @@ PreparedOp PrepareImpl(
     }
   }
 #endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_iter == kernels.end() &&
-      paddle::platform::is_npu_place(fluid_kernel_type.place_)) {
-    VLOG(3) << "missing NPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << fluid_kernel_type
-            << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(fluid_kernel_type);
-  }
-#endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_ipu_place(fluid_kernel_type.place_)) {

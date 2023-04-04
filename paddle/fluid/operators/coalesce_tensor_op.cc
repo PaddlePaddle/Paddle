@@ -57,26 +57,7 @@ struct FillConstantVisitor {
   void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
                                        std::is_same<T, int16_t>::value)>::type
                  * = nullptr) const {
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(dtype_));
-      tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
-      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
-
-      const auto &runner =
-          NpuOpRunner("FillD",
-                      {tensor_tmp},
-                      {*tensor_},
-                      {{"dims", phi::vectorize(tensor_->dims())}});
-      auto stream =
-          context_.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-      runner.Run(stream);
-    } else {
-      phi::funcs::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-    }
-#elif defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_MLU)
     if (platform::is_mlu_place(context_.GetPlace())) {
       FillMLUTensorWithHostValue<T>(context_, static_cast<T>(value_), tensor_);
     } else {
@@ -235,12 +216,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     // Init the continuous space
     size_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      framework::VisitDataType(
-          dtype,
-          FillConstantVisitor<DeviceContext>(
-              dev_ctx, fused_tensor, static_cast<float>(0.0), dtype, context));
-#endif
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
         auto sub_tensor = fused_tensor->Slice(
@@ -533,25 +508,6 @@ REGISTER_OPERATOR(coalesce_tensor,
                   CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-REGISTER_OP_CUDA_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-REGISTER_OP_NPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-#endif
 
 #if defined(PADDLE_WITH_MLU)
 REGISTER_OP_MLU_KERNEL(

@@ -33,11 +33,8 @@ static void StreamCallbackFunc(gpuStream_t stream,
 #endif
 #endif
 
-#if PADDLE_WITH_ASCEND_CL
-        static void StreamCallbackFunc(void *user_data)
-#endif
 #if PADDLE_WITH_MLU
-            static void StreamCallbackFunc(void *user_data)
+        static void StreamCallbackFunc(void *user_data)
 #endif
 {
   std::unique_ptr<std::function<void()>> func(
@@ -75,12 +72,6 @@ void StreamCallbackManager<Stream>::AddCallback(
 #endif
 #endif
 
-#if PADDLE_WITH_ASCEND_CL
-  VLOG(3) << "aclrtLaunchCallback at stream: " << stream_;
-  // TODO(zhiqiu): failed to call aclrtLaunchCallback
-  NPULaunchCallback(StreamCallbackFunc, func, ACL_CALLBACK_BLOCK, stream_);
-#endif
-
 #if PADDLE_WITH_MLU
   VLOG(3) << "MLULaunchCallback at stream: " << stream_;
   cnrtInvokeHostFunc(stream_, StreamCallbackFunc, func);
@@ -94,9 +85,6 @@ void StreamCallbackManager<Stream>::Wait() const {
 #endif
 #ifdef PADDLE_WITH_MLU
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  NPUStreamSync(stream_);
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -112,9 +100,7 @@ template struct StreamCallbackManager<gpuStream_t>;
 #ifdef PADDLE_WITH_HIP
 template struct StreamCallbackManager<hipStream_t>;
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-template struct StreamCallbackManager<aclrtStream>;
-#endif
+
 #ifdef PADDLE_WITH_MLU
 template struct StreamCallbackManager<mluStream>;
 #endif
