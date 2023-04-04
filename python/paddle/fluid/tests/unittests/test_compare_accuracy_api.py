@@ -15,8 +15,6 @@
 import os
 import unittest
 
-import numpy as np
-
 import paddle
 from paddle.fluid import core
 
@@ -26,22 +24,6 @@ from paddle.fluid import core
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCompareAccuracyApi(unittest.TestCase):
-    def generate_inputs(self, shape, dtype="float32"):
-        data = np.random.random(size=shape).astype(dtype)
-        # [-10, 10)
-        x = (data * 20 - 10) * np.random.randint(
-            low=0, high=2, size=shape
-        ).astype(dtype)
-        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
-        return x, y
-
-    def get_reference_num_nan_inf(self, x):
-        out = np.log(x)
-        num_nan = np.sum(np.isnan(out))
-        num_inf = np.sum(np.isinf(out))
-        print(f"[reference] num_nan={num_nan}, num_inf={num_inf}")
-        return num_nan, num_inf
-
     def test_num_nan_inf(self):
         path1 = "workerlog_fp32_log_dir"
         paddle.fluid.core.set_nan_inf_debug_path(path1)
