@@ -16,35 +16,58 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
 
 namespace ops = paddle::operators;
-using CUDA = phi::GPUContext;
 using float16 = paddle::platform::float16;
-REGISTER_OP_CUDA_KERNEL(fake_quantize_abs_max,
-                        ops::FakeQuantizeAbsMaxKernel<CUDA, float>,
-                        ops::FakeQuantizeAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_abs_max,
-                        ops::FakeQuantizeDequantizeAbsMaxKernel<CUDA, float>,
-                        ops::FakeQuantizeDequantizeAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fake_channel_wise_quantize_abs_max,
-    ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float>,
-    ops::FakeChannelWiseQuantizeAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(fake_quantize_range_abs_max,
-                        ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float>,
-                        ops::FakeQuantizeRangeAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fake_quantize_moving_average_abs_max,
-    ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float>,
-    ops::FakeQuantizeMovingAverageAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
-                        ops::MovingAverageAbsMaxScaleKernel<CUDA, float>,
-                        ops::MovingAverageAbsMaxScaleKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>,
-    ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(stright_throuth_estimator_grad,
-                        ops::StrightThroughEstimatorGradKernel<CUDA, float>,
-                        ops::StrightThroughEstimatorGradKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fake_channel_wise_quantize_dequantize_abs_max,
-    ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CUDA, float>);
+
+PD_REGISTER_STRUCT_KERNEL(fake_quantize_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeQuantizeAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeQuantizeDequantizeAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeChannelWiseQuantizeAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_quantize_range_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeQuantizeRangeAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_quantize_moving_average_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeQuantizeMovingAverageAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::MovingAverageAbsMaxScaleKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(stright_throuth_estimator_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::StrightThroughEstimatorGradKernel,
+                          float,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel,
+                          float) {}

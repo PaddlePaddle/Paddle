@@ -151,6 +151,8 @@ REGISTER_OPERATOR(distributed_lookup_table,
                   ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_lookup_table,
-    ops::DistributedLookupTableKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedLookupTableKernel,
+                          float) {}
