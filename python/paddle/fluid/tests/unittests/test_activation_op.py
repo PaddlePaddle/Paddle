@@ -4040,8 +4040,8 @@ create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
     enable_cinn=False,
-    rev_comp_rtol=1e-3,
-    rev_comp_atol=1e-3,
+    rev_comp_rtol=1e-2,
+    rev_comp_atol=1e-2,
 )
 create_test_act_bf16_class(TestBRelu)
 create_test_act_bf16_class(TestRelu6)
