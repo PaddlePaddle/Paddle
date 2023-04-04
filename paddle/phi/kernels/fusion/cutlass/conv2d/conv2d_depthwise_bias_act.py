@@ -178,11 +178,11 @@ def generate_conv2d_depthwise():
                         # groups_per_cta: per cta would process
                         # warp_m: per warp would process
                         [8, 8, 16, 16],
-                        [8, 16, 16, 16],
-                        [16, 8, 16, 16],
+                        # [8, 16, 16, 16],
+                        # [16, 8, 16, 16],
                         [8, 8, 32, 16],
-                        [8, 16, 32, 16],
-                        [16, 8, 32, 16],
+                        # [8, 16, 32, 16],
+                        # [16, 8, 32, 16],
                     ]
                     filter_size = filter_shape[0] * filter_shape[1]
                     for tile in tiles:
@@ -200,6 +200,8 @@ def generate_conv2d_depthwise():
                         kernel_dict["swizzling_shape"] = intlist2str(
                             [1, 1, tile[0], tile[1]]
                         )
+
+                        kernel_dict["split_k_slices"] = "(oh * ow + 63) / 64"
 
                         kernel_dict["filter_shape"] = intlist2str(filter_shape)
                         kernel_dict["strided_shape"] = stride_shape

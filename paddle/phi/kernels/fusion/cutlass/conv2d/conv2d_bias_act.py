@@ -168,6 +168,7 @@ def generate_sm75_1688():
     kernel_dict["align_b"] = "8"
     # this should divided by oc
     kernel_dict["epilogue_vector_length"] = "8"
+    kernel_dict["split_k_slices"] = "1"
 
     sm75_code = ""
     for epi_func in SupportedAct:

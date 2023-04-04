@@ -71,6 +71,7 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
   int ow = params.ow;
   int dilation_h = params.dilation_h;
   int dilation_w = params.dilation_w;
+  int split_k_slices = ${split_k_slices};
 
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
                                                 {oc, kh, kw, ic / groups},
@@ -79,7 +80,7 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
                                                 {dilation_h, dilation_w},
                                                 {batch, oh, ow, oc},
                                                 cutlass::conv::Mode::kCrossCorrelation,
-                                                1,
+                                                split_k_slices,
                                                 groups);
 """
 
