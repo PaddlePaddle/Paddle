@@ -1564,6 +1564,12 @@
       tensors_name : ShapeTensorList
   manual_signature : [randint]
 
+- op : randperm
+  outputs :
+    out : Out
+  extra :
+    attrs : [int seed = 0]
+
 - op : real
   backward : real_grad
   inputs :

@@ -223,7 +223,6 @@ register_unity_group(
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
   random_crop_op.cc
-  randperm_op.cc
   range_op.cc
   rank_attention_op.cc
   rank_loss_op.cc
@@ -502,7 +501,6 @@ register_unity_group(
 register_unity_group(
   cu
   random_crop_op.cu
-  randperm_op.cu
   range_op.cu
   reverse_op.cu
   partial_concat_op.cu
