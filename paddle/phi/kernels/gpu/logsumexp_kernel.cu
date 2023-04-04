@@ -83,9 +83,6 @@ void LogsumexpKernel(const Context& dev_ctx,
       keeped_outdim_vec.push_back(xdim[i]);
     }
   }
-  if (outdim_vec.size() == 0) {
-    outdim_vec.push_back(1);
-  }
 
   auto outdim = phi::make_ddim(outdim_vec);
   auto keeped_outdim = phi::make_ddim(keeped_outdim_vec);
