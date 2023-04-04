@@ -652,8 +652,32 @@ class StaticFunction:
             prim_state=self._prim_state,
         )
 
-        # 3. check whether hit the cache or build a new program for the input arguments
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
+        if is_prim_infer:
+            (
+                concrete_program,
+                partial_program_layer,
+            ) = self._program_cache.get_program_without_cache(cache_key)
+        else:
+            # 3. check whether hit the cache or build a new program for the input arguments
+            concrete_program, partial_program_layer = self._program_cache[
+                cache_key
+            ]
+        return concrete_program, partial_program_layer
+
+    def get_concrete_program_with_cache_key(self, cached_key):
+        """
+        Returns traced concrete program and inner executable partial layer by cached key.
+
+        Args:
+            cached_key(CacheKey): The cached key use to get concrete program.
+        Returns:
+            Traced ConcreteProgram and executable translated Layer.
+        """
+        self._raise_when_property()
+        (
+            concrete_program,
+            partial_program_layer,
+        ) = self._program_cache.get_program_without_cache(cached_key)
         return concrete_program, partial_program_layer
 
     def get_traced_count(self):
