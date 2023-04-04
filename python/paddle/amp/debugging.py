@@ -793,9 +793,6 @@ def merge_tensor_info_list(
                     tensor_info_key + "#" + str(count)
                 ] = tensor_info
 
-            # for key, value in fp32_count.items():
-            #    print("{} : {}".format(key, value))
-
         fp32_read_count = {}
         for i in range(len(fp16_tensor_info_list)):
             if i % 10 == 0:
