@@ -71,6 +71,37 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
   }}
 }};
 """
+    elif op_name == 'hierarchical_sigmoid_grad':
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {{
+    auto w_grad_var_name = framework::GradVarName("W");
+    auto bias_grad_var_name = framework::GradVarName("Bias");
+    if (ctx->HasOutput(bias_grad_var_name)) {{
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias")
+              << " is set to phi::DenseTensor";
+      ctx->SetOutputType(bias_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
+    }}
+    auto attr = ctx->GetAttr("is_sparse");
+    bool is_sparse = PADDLE_GET(bool, attr);
+    if (is_sparse) {{
+      VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
+    }} else {{
+      VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
+              << " is set to phi::DenseTensor";
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
+    }}
+    ctx->SetOutputDataType(w_grad_var_name, ctx->GetInputDataType("W"));
+  }}
+}};
+"""
     elif op_name == "merge_selected_rows":
         return f"""
     class {to_pascal_case(op_name)}InferVarType

@@ -5,6 +5,15 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : accuracy
+  args : (Tensor x, Tensor indices, Tensor label)
+  output : Tensor(accuracy), Tensor(correct), Tensor(total)
+  infer_meta :
+    func : AccuracyInferMeta
+  kernel :
+    func : accuracy
+    data_type : x
+
 - op : acos
   args : (Tensor x)
   output : Tensor
@@ -133,6 +142,17 @@
     func : auc
     data_type : x
   optional : ins_tag_weight
+
+- op : bce_loss
+  args : (Tensor input, Tensor label)
+  output : Tensor
+  infer_meta :
+    func : BCELossInferMeta
+  kernel :
+    func : bce_loss
+    data_type : input
+  inplace : (input -> out)
+  backward : bce_loss_grad
 
 - op : bernoulli
   args : (Tensor x)

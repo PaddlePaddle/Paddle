@@ -16,14 +16,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 
 namespace ops = paddle::operators;
-using CUDA = phi::GPUContext;
 using float16 = paddle::platform::float16;
-REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
-                        ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
-                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>,
-                        ops::FakeDequantizeMaxAbsKernel<CUDA, float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fake_channel_wise_dequantize_max_abs,
-    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float>,
-    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>,
-    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float16>);
+
+PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeDequantizeMaxAbsKernel,
+                          float,
+                          double,
+                          float16) {}
+PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FakeChannelWiseDequantizeMaxAbsKernel,
+                          float,
+                          double,
+                          float16) {}

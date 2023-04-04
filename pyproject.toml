@@ -15,7 +15,6 @@ extend_skip_glob = [
     "python/paddle/fluid/tra**",
     "python/paddle/utils/gast/**",
     "python/paddle/fluid/tests/unittests/npu/**",
-    "python/paddle/fluid/tests/unittests/mlu/**",
 ]
 
 [tool.ruff]
@@ -25,7 +24,6 @@ exclude = [
     "./python/paddle/fluid/tra**",
     "./python/paddle/utils/gast/**",
     "./python/paddle/fluid/tests/unittests/npu/**",
-    "./python/paddle/fluid/tests/unittests/mlu/**",
 ]
 target-version = "py37"
 select = [

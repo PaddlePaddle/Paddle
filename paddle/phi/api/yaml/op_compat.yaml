@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -191,6 +197,13 @@
     reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : bce_loss
+  backward : bce_loss_grad
+  inputs :
+    {input : X, label : Label}
+  outputs :
+    out : Out
 
 - op : bernoulli
   inputs :
@@ -579,6 +592,11 @@
 
 - op : embedding (lookup_table_v2)
   backward : embedding_grad (lookup_table_v2_grad)
+  inputs :
+    {x : Ids, weight : W}
+  outputs :
+    out : Out
+  manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
@@ -820,6 +838,18 @@
     {ids : Ids, parents : Parents}
   outputs :
     out : Out
+
+- op : gaussian (gaussian_random)
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [bool use_mkldnn = false]
+  manual_signature : [gaussian]
 
 - op : gelu
   backward : gelu_grad

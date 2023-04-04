@@ -43,6 +43,13 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : embedding
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - fix_bug : fix_bug
+          comment : lookup_table_v2 support input type `int64`; after support input type `int32/int64`
+
 - op : equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
@@ -60,6 +67,19 @@
           default : paddle::none
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
+
+- op : gaussian_random
+  version :
+    - checkpoint : Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
+               and modify the attribute of [shape]
+      action :
+        - add_input : ShapeTensor
+          comment : The output shape supports Tensor type. ShapeTensor is dispensable.
+        - add_input : ShapeTensorList
+          comment : The output shape supports list filled with Tensor. ShapeTensorList is dispensable.
+        - modify_attr : shape
+          comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
+          default : std::vector<int64_t>{}
 
 - op : greater_equal
   version :

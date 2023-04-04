@@ -416,6 +416,8 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var == nullptr) return;
+    // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
+    // `var->GetMutable<phi::SelectedRows>()` will failed.
     if (var->IsType<phi::SelectedRows>() && meta_tensor.is_selected_rows()) {
       auto* selected_rows = var->GetMutable<phi::SelectedRows>();
       auto& input_selected_rows =
