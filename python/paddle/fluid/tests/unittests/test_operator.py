@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+import op
 
-from paddle.fluid import op
 from paddle.fluid.proto import framework_pb2
 
 
