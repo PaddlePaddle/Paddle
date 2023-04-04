@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BilinearTensorProductGradKernel(const Context& dev_ctx,
-                                     const DenseTensor& x,
-                                     const DenseTensor& y,
-                                     const DenseTensor& weight,
-                                     const DenseTensor& dout,
-                                     DenseTensor* dx,
-                                     DenseTensor* dy,
-                                     DenseTensor* dweight,
-                                     DenseTensor* dbias);
+void BilinearGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& weight,
+                        const DenseTensor& dout,
+                        DenseTensor* dx,
+                        DenseTensor* dy,
+                        DenseTensor* dweight,
+                        DenseTensor* dbias);
 
 }  // namespace phi
