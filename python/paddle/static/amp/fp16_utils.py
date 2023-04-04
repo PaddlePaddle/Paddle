@@ -21,7 +21,11 @@ from paddle.fluid import core, framework, global_scope
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
+<<<<<<< HEAD
 from .fp16_lists import AutoMixedPrecisionLists, get_low_precision_dtypestr, black_list
+=======
+from .fp16_lists import AutoMixedPrecisionLists, black_list
+>>>>>>> unify o1 and o2
 
 _logger = get_logger(
     __name__, logging.DEBUG, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -141,13 +145,6 @@ def _keep_fp32_output(op, out_name):
     return False
 
 
-def set_var_dtype(var_names, block, dtype):
-    for var_name in var_names:
-        var = block._find_var_recursive(var_name)
-        if var.dtype == core.VarDesc.VarType.FP16:
-            var.desc.set_dtype(dtype)
-
-
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
     Insert cast op and rename args of input and output.
@@ -168,7 +165,6 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
             op, in_name
         ):
-            set_var_dtype(op.input(in_name), block, core.VarDesc.VarType.FP32)
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -426,67 +422,101 @@ def fp16_guard():
     with framework.name_scope(prefix=_fp16_guard_pattern):
         yield
 
+<<<<<<< HEAD
 def set_var_dst_dtype(op, var_names, block, global_block, need_set_dtype):
     to_fp16_var_names = set()
     for in_var_name in var_names:
         if _keep_fp32_input(op, in_var_name):
             continue
         in_var = None
+=======
+
+def set_var_dst_dtype(
+    op, var_names, block, global_block, dtype, need_set_dtype
+):
+    low_precison_var_names = set()
+    for var_name in var_names:
+        var = None
+>>>>>>> unify o1 and o2
         try:
-            in_var = block._var_recursive(in_var_name)
+            var = block._var_recursive(var_name)
         except ValueError as e:
             _logger.debug(
                 "-- {}, try to get it in the global block --".format(e)
             )
-            in_var = global_block.var(in_var_name)
-            if in_var is not None:
+            var = global_block.var(var_name)
+            if var is not None:
                 _logger.debug(
-                    "-- var {} is got in the global block --".format(
-                        in_var_name
-                    )
+                    "-- var {} is got in the global block --".format(var_name)
                 )
 
-            if in_var is None or in_var.type not in _valid_types:
+            if var is None or var.type not in _valid_types:
                 continue
-        # if in_var.dtype == core.VarDesc.VarType.FP32 or in_var.dtype == core.VarDesc.VarType.FP16:
-        if not _keep_fp32_output(op, in_var_name):
+
+        def is_float_dtype(dtype):
+            return (
+                dtype == core.VarDesc.VarType.FP32
+                or var.dtype == core.VarDesc.VarType.FP16
+                or var.dtype == core.VarDesc.VarType.BF16
+                or dtype == core.VarDesc.VarType.FP64
+            )
+
+        if is_float_dtype(var.dtype):
+            low_precison_var_names.add(var_name)
             if need_set_dtype:
-                in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
-            to_fp16_var_names.add(in_var_name)
+                var.desc.set_dtype(dtype)
+
         _logger.debug(
             "---- op type: {}, var name: {}, var dtype: {} ----".format(
-                op.type, in_var_name, in_var.dtype
+                op.type, var_name, var.dtype
             )
         )
-    return to_fp16_var_names
+
+    return low_precison_var_names
 
 
-def set_param_dtype(program, dtype):
+def set_param_dtype(program, dtype, amp_lists, use_fp16_guard):
+    keep_fp32_var_names = set()
     all_parameters = []
     for block in program.blocks:
         all_parameters.extend(block.all_parameters())
+        ops = block.ops
+        for op in ops:
+            if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
+                for in_name in op.input_names:
+                    keep_fp32_var_names = keep_fp32_var_names.union(
+                        op.input(in_name)
+                    )
+            else:
+                for in_name in op.input_names:
+                    if not core.is_compiled_with_ipu() and _keep_fp32_input(
+                        op, in_name
+                    ):
+                        keep_fp32_var_names = keep_fp32_var_names.union(
+                            op.input(in_name)
+                        )
 
     for param in all_parameters:
-        param.desc.set_dtype(dtype)
+        if param.name not in keep_fp32_var_names:
+            _logger.debug("-- set param {} to {} --.".format(param.name, dtype))
+            param.desc.set_dtype(dtype)
 
 
 def op_need_keep_fp32(op, amp_lists, use_fp16_guard):
     need_keep_fp32 = False
     if _need_keep_fp32(
         op,
-        amp_lists.unsupported_list.union(amp_lists.black_list),
+        amp_lists.unsupported_list,
         use_fp16_guard,
     ):
-        print('============= add to fp32 ========= 1 ', op.type)
         need_keep_fp32 = True
-    if amp_lists.black_varnames is not None and _is_in_black_varnames(
+    elif amp_lists.black_varnames is not None and _is_in_black_varnames(
         op, amp_lists
     ):
-        print('============= add to fp32 ========= 2 ', op.type)
         need_keep_fp32 = True
-    if op.type in amp_lists.black_list:
-        print('============= add to fp32 ========= 3 ', op.type)
+    elif op.type in amp_lists.black_list:
         need_keep_fp32 = True
+
     return need_keep_fp32
 
 
@@ -542,7 +572,43 @@ def get_promote_dtype(op, amp_dtype, block, amp_lists, black_op_set):
     return dst_dtype
 
 
-def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
+def process_op_input_and_outputs(op, block, global_block, dtype):
+    low_precison_var_names = set()
+    # Get the FP16 input because the low_precison_var_names is required for the parameter casting.
+    # The dtype of the input is not set to fp16, because it is done in the step 3 of cast_model_to_fp16.
+    for in_name in op.input_names:
+        # for ipu, all inputs must be converted to fp16
+        if not core.is_compiled_with_ipu() and _keep_fp32_input(op, in_name):
+            continue
+        in_vars = set_var_dst_dtype(
+            op,
+            op.input(in_name),
+            block,
+            global_block,
+            dtype,
+            need_set_dtype=False,
+        )
+        low_precison_var_names = low_precison_var_names.union(in_vars)
+    # Set the output to FP16 because its consumer OP needs to determine if the dtype needs
+    # to be promoted.
+    for out_name in op.output_names:
+        # for ipu, all outputs must be converted to fp16
+        if not core.is_compiled_with_ipu() and _keep_fp32_output(op, out_name):
+            continue
+        set_var_dst_dtype(
+            op,
+            op.output(out_name),
+            block,
+            global_block,
+            dtype,
+            need_set_dtype=True,
+        )
+    return low_precison_var_names
+
+
+def cast_model_to_fp16(
+    program, amp_lists=None, use_fp16_guard=True, level='O2'
+):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -555,8 +621,10 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                               constructing the program. Default True.
         dest_type(core.VarDesc.VarType): the cast type. such as core.VarDesc.VarType.FP16 and core.VarDesc.VarType.BF16.
     """
-
+    _logger.debug("---- before cast model to fp16 ----")
+    _logger.debug(program)
     if amp_lists is None:
+<<<<<<< HEAD
         dtype = get_low_precision_dtypestr(dest_type)
         amp_lists = AutoMixedPrecisionLists(dtype)
     amp_lists.unsupported_list -= {
@@ -576,28 +644,49 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     print(amp_lists.white_list)
     print(amp_lists.black_list)
     print(amp_lists.unsupported_list)
+=======
+        amp_lists = AutoMixedPrecisionLists()
+    # For amp o2 there is no blacklist by default.
+    if level == 'O2':
+        amp_lists.black_list = amp_lists.black_list - black_list
+        if amp_lists._custom_black_list:
+            amp_lists.black_list = amp_lists.black_list.union(
+                amp_lists._custom_black_list
+            )
+>>>>>>> unify o1 and o2
     global_block = program.global_block()
     keep_fp32_ops = set()
     keep_fp16_ops = set()
     to_fp16_var_names = set()
 
     # step 1: set all params to fp16
-    set_param_dtype(program, dtype=core.VarDesc.VarType.FP16)
+    param_dtype = (
+        core.VarDesc.VarType.FP16
+        if level == 'O2'
+        else core.VarDesc.VarType.FP32
+    )
+    set_param_dtype(
+        program,
+        dtype=param_dtype,
+        amp_lists=amp_lists,
+        use_fp16_guard=use_fp16_guard,
+    )
 
-    # step 2: divide op into different sets according to the black/unsupported and white lists
-    # step 3: set input and output vars dtype for keep_fp16_ops
+    # step 2: divide op into different sets according to the black/unsupported and white lists.
     for block in program.blocks:
         ops = block.ops
         for op in ops:
-            print("================ process op ================")
-            print(op)
+            _logger.debug("-- process op: {}  --".format(op))
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
             if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
                 keep_fp32_ops.add(op)
+                _logger.debug(
+                    "---- Add into keep_fp32_ops because the op needs to be kept fp32 ----"
+                )
             elif op.type in amp_lists.white_list:
-                print('============= add to fp16 ========= 4 ', op.type)
                 keep_fp16_ops.add(op)
+<<<<<<< HEAD
                 # set all var to fp16 if necessary
                 for in_name in op.input_names:
                     # for ipu, all inputs must be converted to fp16
@@ -647,8 +736,18 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                     set_var_dst_dtype(
                         op, op.output(out_name), block, global_block, True
                     )
+=======
+                # get fp16 inputs and set op's outputs to fp16 for promote judgments
+                fp16_var_names = process_op_input_and_outputs(
+                    op, block, global_block, core.VarDesc.VarType.FP16
+                )
+                to_fp16_var_names = to_fp16_var_names.union(fp16_var_names)
+                _logger.debug(
+                    "---- Add into keep_fp16_ops because the op in white_list ----"
+                )
+>>>>>>> unify o1 and o2
             else:
-                # step 4: divide others ops into fp16/fp32 sets.
+                # divide others ops into fp16/fp32 sets according to promoting principle.
                 dst_dtype = get_promote_dtype(
                     op,
                     core.VarDesc.VarType.FP16,
@@ -657,21 +756,21 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                     keep_fp32_ops,
                 )
                 if dst_dtype == core.VarDesc.VarType.FP16:
-                    print('============= add to fp16 ========= 5 ', op.type)
-                    for in_name in op.input_names:
-                        fp16_vars = set_var_dst_dtype(
-                            op, op.input(in_name), block, global_block, False
-                        )
-                        to_fp16_var_names = to_fp16_var_names.union(fp16_vars)
-                    for out_name in op.output_names:
-                        set_var_dst_dtype(
-                            op, op.output(out_name), block, global_block, True
-                        )
                     keep_fp16_ops.add(op)
+                    fp16_var_names = process_op_input_and_outputs(
+                        op, block, global_block, core.VarDesc.VarType.FP16
+                    )
+                    to_fp16_var_names = to_fp16_var_names.union(fp16_var_names)
+                    _logger.debug(
+                        "----  Add into keep_fp16_ops because it should be promoted to fp16 ----"
+                    )
                 else:
-                    print('============= add to fp32 ========= 6 ', op.type)
                     keep_fp32_ops.add(op)
+                    _logger.debug(
+                        "----  Add into keep_fp32_ops because it should be promoted to fp32 ----"
+                    )
 
+<<<<<<< HEAD
             """
             if (
                 op.has_attr('in_dtype')
@@ -694,6 +793,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     print(program)
 >>>>>>> support promote dtype for static amp training
 
+=======
+    # step 3: insert cast op for op's inputs.
+>>>>>>> unify o1 and o2
     for block in program.blocks:
         ops = block.ops
         idx = 0
@@ -744,9 +846,8 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
 
 >>>>>>> support promote dtype for static amp training
             idx += num_cast_ops + 1
-
-    print("===================== after cast =================")
-    print(program)
+    _logger.debug("---- after cast model to fp16 ----")
+    _logger.debug(program)
     return to_fp16_var_names
 
 
@@ -803,6 +904,7 @@ def cast_parameters_to_fp16(
                 _logger.warning(f"Cannot find {param.name}")
 
 
+<<<<<<< HEAD
 def rewrite_program(main_prog, amp_lists, dest_type=core.VarDesc.VarType.FP16):
     """
     Traverse all ops in current block and insert cast op according to
@@ -912,6 +1014,8 @@ def rewrite_program(main_prog, amp_lists, dest_type=core.VarDesc.VarType.FP16):
     _logger.debug(main_prog)
 
 
+=======
+>>>>>>> unify o1 and o2
 def update_role_var_grad(main_prog, params_grads):
     """
     Update op_role_var attr for some ops to make sure the gradients

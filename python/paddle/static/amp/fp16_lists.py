@@ -270,4 +270,40 @@ gray_list = {
     'fused_multi_transformer',
 }
 
+<<<<<<< HEAD
+=======
+# The set of ops that don't support fp16 calculation
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_sys_unsupported_fp16_list = []
+if core.is_compiled_with_xpu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'XPU', core.VarDesc.VarType.FP16
+    )
+elif core.is_compiled_with_custom_device('npu'):
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'NPU', core.VarDesc.VarType.FP16
+    )
+else:
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'GPU', core.VarDesc.VarType.FP16
+    )
+
+supported_fp16_list = {
+    "conditional_block_grad",
+    "conditional_block",
+    "conditional_block_infer",
+    "select_input",
+    "while",
+    "while_grad",
+    "cast",
+    "tensor_array_to_tensor",
+    "lod_array_length",
+    "write_to_array",
+}
+
+unsupported_fp16_list = (
+    _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
+) - supported_fp16_list
+
+>>>>>>> unify o1 and o2
 CustomOpLists = AutoMixedPrecisionLists

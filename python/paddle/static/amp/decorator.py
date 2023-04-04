@@ -230,12 +230,25 @@ class OptimizerWithMixedPrecision:
                     self._train_program,
                     self._amp_lists,
                     self._use_fp16_guard,
+<<<<<<< HEAD
                     self._amp_vartype,
                 )
             else:
                 rewrite_program(
                     self._train_program, self._amp_lists, self._amp_vartype
                 )
+=======
+                    level='O2',
+                )
+            else:
+                cast_model_to_fp16(
+                    self._train_program,
+                    self._amp_lists,
+                    self._use_fp16_guard,
+                    level='O1',
+                )
+                # rewrite_program(self._train_program, self._amp_lists)
+>>>>>>> unify o1 and o2
 
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
