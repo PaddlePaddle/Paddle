@@ -16,7 +16,6 @@ from functools import reduce
 
 import paddle
 import paddle.fluid.param_attr as attr
-from paddle.common_ops_import import Variable
 from paddle.jit.api import to_static
 from paddle.nn import Layer
 
@@ -362,16 +361,6 @@ class FC(Layer):
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True
         )
-
-    # TODO(songyouwei): We should remove _w property
-    @property
-    def _w(self, i=0):
-        return self.__w[i]
-
-    @_w.setter
-    def _w(self, value, i=0):
-        assert isinstance(self.__w[i], Variable)
-        self.__w[i].set_value(value)
 
     @property
     def weight(self):
