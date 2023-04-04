@@ -10,15 +10,6 @@
     func : abs
   backward : abs_grad
 
-- op : accuracy
-  args : (Tensor x, Tensor indices, Tensor label)
-  output : Tensor(accuracy), Tensor(correct), Tensor(total)
-  infer_meta :
-    func : AccuracyInferMeta
-  kernel :
-    func : accuracy
-    data_type : x
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -201,15 +192,6 @@
     param : [shape, dtype, values]
     data_type : dtype
     backend : place > output
-
-- op : auc
-  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
-  output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
-  infer_meta :
-    func : AucInferMeta
-  kernel :
-    func : auc
-  optional : ins_tag_weight
 
 - op : average_accumulates_
   args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
