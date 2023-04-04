@@ -151,10 +151,15 @@ REGISTER_OPERATOR(
 
 REGISTER_OPERATOR(push_box_extended_sparse, ops::PushBoxExtendedSparseOp);
 
-REGISTER_OP_CPU_KERNEL(pull_box_extended_sparse,
-                       ops::PullBoxExtendedSparseCPUKernel<float>,
-                       ops::PullBoxExtendedSparseCPUKernel<double>);
-
-REGISTER_OP_CPU_KERNEL(push_box_extended_sparse,
-                       ops::PushBoxExtendedSparseCPUKernel<float>,
-                       ops::PushBoxExtendedSparseCPUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(pull_box_extended_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PullBoxExtendedSparseCPUKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_box_extended_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PushBoxExtendedSparseCPUKernel,
+                          float,
+                          double) {}

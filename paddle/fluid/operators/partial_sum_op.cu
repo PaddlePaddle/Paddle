@@ -235,16 +235,22 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(partial_sum,
-                        ops::PartialSumOpCUDAKernel<float>,
-                        ops::PartialSumOpCUDAKernel<double>,
-                        ops::PartialSumOpCUDAKernel<int>,
-                        ops::PartialSumOpCUDAKernel<int64_t>,
-                        ops::PartialSumOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(partial_sum_grad,
-                        ops::PartialSumGradOpCUDAKernel<float>,
-                        ops::PartialSumGradOpCUDAKernel<double>,
-                        ops::PartialSumGradOpCUDAKernel<int>,
-                        ops::PartialSumGradOpCUDAKernel<int64_t>,
-                        ops::PartialSumGradOpCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_sum,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialSumOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(partial_sum_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialSumGradOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

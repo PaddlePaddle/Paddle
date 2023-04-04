@@ -58,10 +58,9 @@ class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(number_count,
-                       ops::NumberCountOpCPUKernel<int>,
-                       ops::NumberCountOpCPUKernel<int64_t>);
-
 REGISTER_OP_WITHOUT_GRADIENT(number_count,
                              ops::NumberCountOp,
                              ops::NumberCountOpMaker);
+
+PD_REGISTER_STRUCT_KERNEL(
+    number_count, CPU, ALL_LAYOUT, ops::NumberCountOpCPUKernel, int, int64_t) {}

@@ -108,7 +108,7 @@ static void PushBoxExtendedSparseFunctor(
 #endif
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -116,7 +116,7 @@ class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

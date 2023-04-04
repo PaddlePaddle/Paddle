@@ -45,16 +45,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#ifdef PADDLE_WITH_XPU_KP
-REGISTER_OP_KERNEL(pull_box_sparse,
-                   KP,
-                   plat::XPUPlace,
-                   ops::PullBoxSparseKernel<float>);
-REGISTER_OP_KERNEL(push_box_sparse,
-                   KP,
-                   plat::XPUPlace,
-                   ops::PushBoxSparseKernel<float>);
-#else
-REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseKernel<float>);
-REGISTER_OP_CUDA_KERNEL(push_box_sparse, ops::PushBoxSparseKernel<float>);
-#endif
+PD_REGISTER_STRUCT_KERNEL(
+    pull_box_sparse, KPS, ALL_LAYOUT, ops::PullBoxSparseKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    push_box_sparse, KPS, ALL_LAYOUT, ops::PushBoxSparseKernel, float) {}

@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -118,9 +118,12 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(partial_recv,
-                        ops::PartialRecvOpCUDAKernel<float>,
-                        ops::PartialRecvOpCUDAKernel<double>,
-                        ops::PartialRecvOpCUDAKernel<int>,
-                        ops::PartialRecvOpCUDAKernel<int64_t>,
-                        ops::PartialRecvOpCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_recv,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialRecvOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

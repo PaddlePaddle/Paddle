@@ -79,7 +79,7 @@ __global__ void NumberCount(const T* numbers,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NumberCountOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -111,4 +111,5 @@ class NumberCountOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(number_count, ops::NumberCountOpCUDAKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    number_count, GPU, ALL_LAYOUT, ops::NumberCountOpCUDAKernel, int64_t) {}

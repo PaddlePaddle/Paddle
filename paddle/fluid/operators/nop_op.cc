@@ -58,8 +58,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(nop, ops::NopOp, ops::NopOpMaker);
 
-REGISTER_OP_CPU_KERNEL(nop, ops::NopKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(nop, CPU, ALL_LAYOUT, ops::NopKernel, float) {}
 
-REGISTER_OP_CUDA_KERNEL(nop, ops::NopKernel<float>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(nop, GPU, ALL_LAYOUT, ops::NopKernel, float) {}
+#endif
 
 REGISTER_OP_NPU_KERNEL(nop, ops::NopKernel<float>);

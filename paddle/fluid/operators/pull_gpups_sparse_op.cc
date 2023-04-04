@@ -145,9 +145,16 @@ REGISTER_OPERATOR(pull_gpups_sparse,
                   ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_gpups_sparse,
-                       ops::PullGpuPSSparseCPUKernel<float>,
-                       ops::PullGpuPSSparseCPUKernel<double>)
-REGISTER_OP_CPU_KERNEL(push_gpups_sparse,
-                       ops::PushGpuPSSparseCPUKernel<float>,
-                       ops::PushGpuPSSparseCPUKernel<double>)
+
+PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PullGpuPSSparseCPUKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PushGpuPSSparseCPUKernel,
+                          float,
+                          double) {}
