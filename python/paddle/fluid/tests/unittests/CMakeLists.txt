@@ -821,10 +821,8 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -851,20 +849,6 @@ if(WIN32)
     SRCS cc_imp_py_test.cc
     DEPS python)
 endif()
-
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
-if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
-endif()
-
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
-add_subdirectory(asp)
 
 add_subdirectory(ir)
 
@@ -929,6 +913,11 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
+
+  # NODE(Ruibiao): Remove it after static build is enabled by default.
+  set_tests_properties(
+    test_dist_mnist_fp16_allreduce test_dist_mnist_pg
+    PROPERTIES ENVIRONMENT FLAGS_new_executor_static_build=true)
 endif()
 
 # setting timeout value as 15S
@@ -993,7 +982,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
@@ -1005,7 +994,7 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
@@ -1207,9 +1196,12 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scatter_op
     test_gather_op
+    test_layer_norm_op
     test_cast_op
-    test_dropout_op)
+    test_dropout_op
+    test_group_norm_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1242,3 +1234,52 @@ set_tests_properties(
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+
+# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
+set(STATIC_BUILD_TESTS
+    test_adagrad_op
+    test_adamw_op
+    test_arg_min_max_op
+    test_bincount_op
+    test_decoupled_py_reader
+    test_fake_quantize_op
+    test_fetch_lod_tensor_array
+    test_imperative_optimizer
+    test_lamb_op
+    test_layer_norm_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
+    test_matmul_op
+    test_matmul_v2_op
+    test_merged_adam_op
+    test_momentum_op
+    test_nce
+    test_paddle_save_load_binary
+    test_reduce_op
+    test_segment_ops
+    test_sparse_momentum_op
+    test_sgd_op_bf16
+    test_softmax_mask_fuse_upper_triangle_op
+    test_sparse_conv_op
+    test_sparse_norm_op
+    test_sparse_pooling_op
+    test_tensor_array_to_tensor
+    test_while_op
+    test_one_hot_v2_op)
+
+foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
+  py_test_modules(
+    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
+    FLAGS_new_executor_static_build=true)
+endforeach()
+
+set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
+                                                                      120)
+set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
+                                                                       250)
+set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_paddle_save_load_binary_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)

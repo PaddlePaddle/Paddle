@@ -424,8 +424,8 @@ def create_convert_ifelse_node(
     to replace original `python if/else` statement.
     """
     if is_if_expr:
-        true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
-        false_func_source = "lambda : {}".format(ast_to_source_code(false_func))
+        true_func_source = f"lambda : {ast_to_source_code(true_func)}"
+        false_func_source = f"lambda : {ast_to_source_code(false_func)}"
     else:
         true_func_source = true_func.name
         false_func_source = false_func.name

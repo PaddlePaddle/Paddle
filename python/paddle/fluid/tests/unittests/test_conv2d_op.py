@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
@@ -159,7 +159,7 @@ def create_test_cudnn_class(parent):
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -193,7 +193,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
                     place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNFp16
 
@@ -246,7 +246,7 @@ def create_test_cudnn_bf16_class(parent):
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16")
     TestConv2DCUDNNBF16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNBF16
 
@@ -260,7 +260,7 @@ def create_test_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLast")
     TestChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestChannelLastCase
 
@@ -283,7 +283,7 @@ def create_test_cudnn_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
 
@@ -324,7 +324,7 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLastFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLastFp16")
     TestCudnnChannelLastFp16.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastFp16
 
@@ -335,7 +335,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -346,7 +346,7 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -366,7 +366,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -386,14 +386,41 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
+
+
+def conv2d_wrapper(
+    x,
+    weight,
+    stride=1,
+    padding=0,
+    padding_algorithm="EXPLICIT",
+    dilation=1,
+    groups=1,
+    data_format="NCDHW",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv2d(
+        x,
+        weight,
+        stride,
+        padding,
+        padding_algorithm,
+        dilation,
+        groups,
+        data_format,
+    )
 
 
 class TestConv2DOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
@@ -732,6 +759,7 @@ class TestConv2DOpError(unittest.TestCase):
 class TestConv2DOp_v2(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
+        self.python_api = conv2d_wrapper
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False

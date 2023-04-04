@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_meta.h"
 namespace phi {
 
@@ -108,6 +109,13 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           SparseCsrTensor* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const TensorArray& src,
+          Place dst_place,
+          bool blocking,
+          TensorArray* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,

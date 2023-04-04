@@ -158,7 +158,7 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), "Unexpected: comm op [{}] has NOT ring id.".format(str(op))
+                ), f"Unexpected: comm op [{str(op)}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
@@ -483,9 +483,7 @@ class DataParallelOptimizationPass(PassBase):
 
             # create coalesce tensor
             group.coalesce_var = block.create_var(
-                name=unique_name.generate(
-                    self.coalesce_prefix + '_{}'.format(i)
-                ),
+                name=unique_name.generate(self.coalesce_prefix + f'_{i}'),
                 dtype=group.dtype,
                 persistable=False,
                 stop_gradient=True,
@@ -503,7 +501,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), "should found scale op but found {}".format(str(scale_op))
+                ), f"should found scale op but found {str(scale_op)}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -549,7 +547,7 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexpected: try to remove op {}".format(str(block.ops[idx]))
+                ), f"Unexpected: try to remove op {str(block.ops[idx])}"
                 block._remove_op(idx, False)
 
             # insert coalesce op
@@ -643,7 +641,7 @@ class DataParallelOptimizationPass(PassBase):
                     )
 
         # insert dependency op
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, op_role in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
@@ -719,9 +717,7 @@ class DataParallelOptimizationPass(PassBase):
                     len(individual_grads)
                 )
             )
-            self._logger.debug(
-                "individual gradient {}".format(individual_grads)
-            )
+            self._logger.debug(f"individual gradient {individual_grads}")
 
 
 class GradientsGroup:

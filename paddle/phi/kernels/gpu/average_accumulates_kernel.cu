@@ -97,4 +97,8 @@ PD_REGISTER_KERNEL(average_accumulates,
                    ALL_LAYOUT,
                    phi::AverageAccumulatesKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(3).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(4).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(5).SetDataType(phi::DataType::INT64);
+}
