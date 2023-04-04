@@ -16,16 +16,18 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
-
+// Allocate the required memory based on the size and number of inputs, outputs,
+// and operators, and construct it in the order of: OpOutlineResult,
+// OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              ir::DictionaryAttribute attibute) {
-  // Get num of Results.
+  // 1. Calculate the required memory size for OpResults + Operation +
+  // OpOperands.
   uint32_t num_results = output_types.size();
   uint32_t num_operands = inputs.size();
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
-  // Calculate the memory space required for OpResults + Operation + OpOperands
   size_t result_mem_size =
       num_results > max_inline_result_num
           ? sizeof(detail::OpOutlineResultImpl) *
@@ -35,9 +37,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   size_t operand_mem_size = sizeof(detail::OpOperandImpl) * num_operands;
   size_t op_mem_size = sizeof(Operation);
   size_t base_size = result_mem_size + op_mem_size + operand_mem_size;
-  // Malloc memory and construct OpResults, Operation, OpOperands.
-  char *malloc_memory = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
-  char *base_ptr = malloc_memory;
+  // 2. Malloc memory.
+  char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+  // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
       new (base_ptr)
@@ -48,8 +50,10 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
       base_ptr += sizeof(detail::OpInlineResultImpl);
     }
   }
+  // 3.2. Construct Operation.
   Operation *op = new (base_ptr) Operation(num_results, num_operands, attibute);
   base_ptr += sizeof(Operation);
+  // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
     throw("The address of OpOperandImpl must be divisible by 8.");
   }
@@ -57,14 +61,14 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  VLOG(4) << "Construct an Operation ----------------->";
-  VLOG(4) << op->print();
-  VLOG(4) << "---------------------------------------->";
+  VLOG(4) << "Construct an Operation: " << op->print();
   return op;
 }
 
+// Call destructors for OpResults, Operation, and OpOperands in sequence, and
+// finally free memory.
 void Operation::destroy() {
-  // Get aligned_ptr by result_num.
+  // 1. Get aligned_ptr by result_num.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
@@ -74,13 +78,12 @@ void Operation::destroy() {
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   char *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
-  // Deconstruct OpResult.
+  // 2.1. Deconstruct OpResult.
   char *base_ptr = aligned_ptr;
   for (size_t idx = num_results_; idx > 0; idx--) {
     if (!reinterpret_cast<detail::OpResultImpl *>(base_ptr)->use_empty()) {
       throw("Cannot destroy a value that still has uses!");
     }
-    VLOG(4) << "Deconstruct OpResult: " << reinterpret_cast<void *>(base_ptr);
     if (idx > max_inline_result_num) {
       reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
           ->~OpOutlineResultImpl();
@@ -91,27 +94,23 @@ void Operation::destroy() {
       base_ptr += sizeof(detail::OpInlineResultImpl);
     }
   }
-  // Deconstruct Operation.
+  // 2.2. Deconstruct Operation.
   if (reinterpret_cast<uintptr_t>(base_ptr) !=
       reinterpret_cast<uintptr_t>(this)) {
     throw("Operation address error");
   }
-  VLOG(4) << "Deconstruct Operation: " << reinterpret_cast<void *>(base_ptr);
   reinterpret_cast<Operation *>(base_ptr)->~Operation();
   base_ptr += sizeof(Operation);
-  // Deconstruct OpOpOerand.
+  // 2.3. Deconstruct OpOpOerand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    VLOG(4) << "Deconstruct OpOperandImpl: "
-            << reinterpret_cast<void *>(base_ptr);
     reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-
-  VLOG(4) << "Destroy an Operation --------------------->";
-  VLOG(4) << "aligned_ptr = " << reinterpret_cast<void *>(aligned_ptr)
-          << ", size = " << result_mem_size;
+  // 3. Free memory.
+  VLOG(4) << "Destroy an Operation: {ptr = "
+          << reinterpret_cast<void *>(aligned_ptr)
+          << ", size = " << result_mem_size << "}";
   aligned_free(reinterpret_cast<void *>(aligned_ptr));
-  VLOG(4) << "------------------------------------------>";
 }
 
 Operation::Operation(uint32_t num_results,

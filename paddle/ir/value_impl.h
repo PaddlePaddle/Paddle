@@ -179,6 +179,9 @@ class OpOperandImpl {
   void remove_from_ud_chain() {
     if (!back_user_addr_) return;
     if (back_user_addr_ == source_->first_user_addr()) {
+      /// NOTE: In ValueImpl, offset_first_user_ use lower three bits storage
+      /// index information, so need to be updated using the SetFirstUser method
+      /// here.
       source_->SetFirstUser(next_user_);
     } else {
       *back_user_addr_ = next_user_;
@@ -205,6 +208,7 @@ class OpOperandImpl {
 
   ir::detail::OpOperandImpl *next_user_ = nullptr;
 
+  /// *back_user_addr_ is prev_user
   ir::detail::OpOperandImpl **back_user_addr_ = nullptr;
 
   ir::detail::ValueImpl *source_ = nullptr;
