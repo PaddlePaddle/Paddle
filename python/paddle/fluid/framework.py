@@ -1620,7 +1620,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
+    @non_static_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -1657,7 +1657,17 @@ class Variable(metaclass=VariableMetaClass):
                 loss.backward()
 
         """
-        pass
+        from .backward import append_backward
+
+        if retain_graph is True:
+            raise AssertionError(
+                "`retain_graph` == True is not supported in @to_static function."
+                "please set retain_graph = False."
+            )
+        param_grad_list = append_backward(self)
+        for param, param_grad in param_grad_list:
+            # set grad to simulate dygraph loss.backward() in static mode.
+            setattr(param, "grad", param_grad)
 
     @fake_interface_only
     def gradient(self):
@@ -7394,6 +7404,19 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@signature_safe_contextmanager
+def dygraph_guard_if_declarative():
+    from .dygraph.base import in_declarative_mode
+    from .dygraph import Tracer
+
+    if in_declarative_mode():
+        # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
+        with _dygraph_guard(tracer=Tracer()):
+            yield
+    else:
+        yield
 
 
 @signature_safe_contextmanager
