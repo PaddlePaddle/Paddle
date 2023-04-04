@@ -200,3 +200,14 @@
     func : ShareBufferInferMeta
   kernel :
     func : share_buffer
+
+- op : uniform
+  args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype]
+  kernel :
+    func : uniform
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype

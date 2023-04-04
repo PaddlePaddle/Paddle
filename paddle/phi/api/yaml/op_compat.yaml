@@ -2052,6 +2052,23 @@
   outputs :
     out : Y
 
+- op : uniform (uniform_random)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+      min :
+        data_type : float
+        support_tensor : true
+      max :
+        data_type : float
+        support_tensor : true
+  manual_signature : [uniform]
+
 - op : unique_consecutive
   inputs :
     x : X
