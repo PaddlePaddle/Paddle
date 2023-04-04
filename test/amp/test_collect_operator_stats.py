@@ -64,6 +64,10 @@ class TestAMPList(unittest.TestCase):
 
         self._check_result(dtype=out.dtype)
 
+    def test_static(self):
+        paddle.enable_static()
+        paddle.disable_static()
+
 
 if __name__ == "__main__":
     unittest.main()
