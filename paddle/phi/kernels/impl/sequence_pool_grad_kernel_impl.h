@@ -32,8 +32,8 @@ void SequencePoolGradKernel(const Context& dev_ctx,
   if (pooltype == "MAX") {
     index = &max_index;
   }
-  dev_ctx.template Alloc(x_grad);
-  phi::funcs::SequencePoolGradFunctor<DeviceContext, T> pool;
+  dev_ctx.template Alloc<T>(x_grad);
+  phi::funcs::SequencePoolGradFunctor<Context, T> pool;
   pool(dev_ctx, pooltype, out_grad, x_grad, index);
 }
 
