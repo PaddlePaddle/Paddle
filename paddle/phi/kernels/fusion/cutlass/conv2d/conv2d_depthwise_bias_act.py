@@ -138,7 +138,7 @@ def generate_conv2d_depthwise():
         "opcode_class": "cutlass::arch::OpClassSimt",
         "arch": "cutlass::arch::Sm70",
         "Ishape": "1,1,1",
-        "stages": "4",
+        "stages": "2",
         # alpha is always float!
         "element_epilogue": "float",
         "math_operator": "cutlass::arch::OpMultiplyAdd",
