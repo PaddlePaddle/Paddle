@@ -86,7 +86,7 @@ inline void run_program_ad_func(
   // if require_any_grad is False, don't save any middle vars.
   // RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
   VLOG(3) << "yoki: cuda_graph.size0: " << cuda_graph.size();
-  RunProgramAPI(x, params, out, step_scope, dout, cuda_graph, require_any_grad, attrs);
+  RunProgramAPI(x, params, out, step_scope, dout, cuda_graph, pylist, require_any_grad, attrs);
   VLOG(3) << "yoki: cuda_graph.size1: " << cuda_graph.size();
   VLOG(2) << "start run run_program grad";
 

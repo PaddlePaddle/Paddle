@@ -338,12 +338,16 @@ paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
 // end of Slice related methods
 
 
-void SetCUDAGraphPtrListToArgs(
+/*void SetCUDAGraphPtrListToArgs(
     const std::string& op_type,
     std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph,
     PyObject* args,
     ssize_t arg_idx,
-    bool dispensable);
+    bool dispensable);*/
+
+void SetCUDAGraphPtrListToArgs(
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph,
+    PyObject* list);
 
 std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> GetCUDAGraphPtrListFromArgs(
     const std::string& op_type,

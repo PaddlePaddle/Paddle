@@ -62,7 +62,7 @@ static PyObject *eager_api_run_program(PyObject *self,
       }
     };*/
     run_program_ad_func(X, Params, Out, OutScope, DOut, CUDAGraph, pylist, attrs);
-    SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
+    // SetCUDAGraphPtrListToArgs("run_program", CUDAGraph, args, 5, true);
     // VLOG(3) << "yoki: CUDAGraph.size1: " << CUDAGraph.size();
     // for (size_t i = 0; i < CUDAGraph.size(); ++i) {
     //   VLOG(3) << "yoki: i: " << i << " : " << CUDAGraph[i];

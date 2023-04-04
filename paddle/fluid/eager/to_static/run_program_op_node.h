@@ -471,6 +471,7 @@ inline void RunProgramAPI(
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     std::vector<paddle::Tensor *> &dout,                  // NOLINT
     std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> &inner_graphs,   // NOLINT
+    PyObject* pylist,
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -522,6 +523,17 @@ inline void RunProgramAPI(
         callable, {x}, {out, dout}, place, mode, pool_id);
       VLOG(10) << "Capture Forward CUDA Graph";
       VLOG(4) << "yoki: inner_graphs[" << graph_idx << "]: " << inner_graphs[graph_idx].get();
+
+      paddle::pybind::SetCUDAGraphPtrListToArgs(inner_graphs, pylist);
+
+      /*Py_ssize_t len = PyList_Size(pylist);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        VLOG(4) << "yoki: i: " << i;
+        if (inner_graphs[i] != nullptr) {
+          VLOG(4) << "yoki to pyobject";
+          PyList_SET_ITEM(pylist, i, paddle::pybind::ToPyObject(inner_graphs[i]));
+        }
+      }*/
     } else {
       VLOG(10) << "Run Forward CUDA Graph directly";
       paddle::operators::ExecuteCUDAGraph2({x}, {out, dout},
@@ -818,14 +830,15 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     // callback_();
     // callback_(pylist_);
     VLOG(4) << "yoki list: " << pylist_;
-    Py_ssize_t len = PyList_Size(pylist_);
+    paddle::pybind::SetCUDAGraphPtrListToArgs(cuda_graph_, pylist_);
+    /*Py_ssize_t len = PyList_Size(pylist_);
     for (Py_ssize_t i = 0; i < len; i++) {
       VLOG(4) << "yoki: i: " << i;
       if (cuda_graph_[i] != nullptr) {
         VLOG(4) << "yoki to pyobject";
         PyList_SET_ITEM(pylist_, i, paddle::pybind::ToPyObject(cuda_graph_[i]));
       }
-    }
+    }*/
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
   }

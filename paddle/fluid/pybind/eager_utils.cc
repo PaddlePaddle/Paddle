@@ -1489,7 +1489,7 @@ std::shared_ptr<paddle::operators::CUDAGraphWithInOuts> CastPyArg2CUDAGraphPtr(P
 }
 
 
-void SetCUDAGraphPtrListToArgs(
+/*void SetCUDAGraphPtrListToArgs(
     const std::string& op_type,
     std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph,
     PyObject* args,
@@ -1499,6 +1499,27 @@ void SetCUDAGraphPtrListToArgs(
   VLOG(4) << "yoki args: " << args;
   VLOG(4) << "yoki arg_idx: " << arg_idx;
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  VLOG(4) << "yoki list: " << list;
+  Py_ssize_t len = PyList_Size(list);
+  for (Py_ssize_t i = 0; i < len; i++) {
+    VLOG(4) << "yoki: i: " << i;
+    if (cuda_graph[i] != nullptr) {
+      VLOG(4) << "yoki to pyobject";
+      PyList_SET_ITEM(list, i, ToPyObject(cuda_graph[i]));
+    }
+  }
+}*/
+
+void SetCUDAGraphPtrListToArgs(
+    // const std::string& op_type,
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> cuda_graph,
+    PyObject* list) {
+    // ssize_t arg_idx,
+    // bool dispensable) {
+  VLOG(4) << "yoki enter";
+  // VLOG(4) << "yoki args: " << args;
+  // VLOG(4) << "yoki arg_idx: " << arg_idx;
+  // PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
   VLOG(4) << "yoki list: " << list;
   Py_ssize_t len = PyList_Size(list);
   for (Py_ssize_t i = 0; i < len; i++) {
