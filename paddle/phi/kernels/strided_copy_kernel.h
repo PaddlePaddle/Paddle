@@ -20,12 +20,13 @@ namespace phi {
  * @brief copy memory with strides.
  * @param  ctx     device context
  * @param  input   Source tensor need copy from
+ * @param  out_strides   Dist tensor's strides
  * @param  out     Dist tensor need copy to
  */
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
-                       const std::vector<int64_t> out_strides,
+                       const std::vector<int64_t>& out_strides,
                        DenseTensor* out);
 
 template <typename T, typename Context>
