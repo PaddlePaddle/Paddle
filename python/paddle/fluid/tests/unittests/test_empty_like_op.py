@@ -216,19 +216,18 @@ class TestEmptylikeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
-    def __check_out__(self, out):
-        max_value = np.nanmax(out)
-        min_value = np.nanmin(out)
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        max_value = np.nanmax(outs[0])
+        min_value = np.nanmin(outs[0])
         always_non_full_zero = max_value >= min_value
         always_full_zero = max_value == 0.0 and min_value == 0.0
         self.assertTrue(
             always_full_zero or always_non_full_zero,
             'always_full_zero or always_non_full_zero.',
         )
-
-    def test_api_out(self):
-        out = np.empty_like(self.x, dtype='bfloat16')
-        self.__check_out__(out)
 
 
 class TestEmptyError(unittest.TestCase):
