@@ -374,7 +374,7 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 assert (
                     var_tmp.name in state_dict
-                ), "optimizer Tensor {} not found".format(var_tmp.name)
+                ), f"optimizer Tensor {var_tmp.name} not found"
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -382,9 +382,9 @@ class Optimizer:
                 load_para = state_dict[var_tmp.name]
 
                 if isinstance(load_para, Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = load_para.numpy()
+                    load_para_np = np.array(load_para)
+                elif isinstance(load_para, core.eager.Tensor):
+                    load_para_np = np.array(load_para)
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -444,7 +444,7 @@ class Optimizer:
                     dtype=_lr_dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
 
                 self._learning_rate_map[

@@ -42,7 +42,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             elif kwargs["mode"] == "channel":
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
-                    return np.zeros((1)).astype(np.float32)
+                    return np.zeros(1).astype(np.float32)
                 if kwargs['data_format'] == 'NCHW':
                     return np.random.random(kwargs['in_shape'][1]).astype(
                         np.float32
@@ -54,7 +54,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             else:
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
-                    return np.zeros((1)).astype(np.float32)
+                    return np.zeros(1).astype(np.float32)
                 return np.random.random(kwargs['in_shape']).astype(np.float32)
 
         prelu_op = OpConfig(

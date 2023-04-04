@@ -54,9 +54,9 @@ def get_cluster_from_args(args, selected_gpus):
         if args.started_port is not None:
             started_port = args.started_port
 
-        free_ports = [
-            x for x in range(started_port, started_port + len(selected_gpus))
-        ]
+        free_ports = list(
+            range(started_port, started_port + len(selected_gpus))
+        )
 
     trainer_endpoints = []
     for ip in node_ips:
@@ -179,10 +179,10 @@ class Cluster:
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
-            ep = "{}:{}".format(pod.addr, pod.port)
+            ep = f"{pod.addr}:{pod.port}"
             assert (
                 pod.port is not None and pod.addr is not None
-            ), "{} not a valid endpoint".format(ep)
+            ), f"{ep} not a valid endpoint"
             r.append(ep)
 
         return r
@@ -200,7 +200,7 @@ class JobServer:
         self.endpoint = None
 
     def __str__(self):
-        return "{}".format(self.endpoint)
+        return f"{self.endpoint}"
 
     def __eq__(self, j):
         return self.endpint == j.endpoint
@@ -268,20 +268,16 @@ class Pod:
             or self.addr != pod.addr
             or self.port != pod.port
         ):
-            logger.debug("pod {} != {}".format(self, pod))
+            logger.debug(f"pod {self} != {pod}")
             return False
 
         if len(self.trainers) != len(pod.trainers):
-            logger.debug(
-                "trainers {} != {}".format(self.trainers, pod.trainers)
-            )
+            logger.debug(f"trainers {self.trainers} != {pod.trainers}")
             return False
 
         for i in range(len(self.trainers)):
             if self.trainers[i] != pod.trainers[i]:
-                logger.debug(
-                    "trainer {} != {}".format(self.trainers[i], pod.trainers[i])
-                )
+                logger.debug(f"trainer {self.trainers[i]} != {pod.trainers[i]}")
                 return False
 
         return True
@@ -295,9 +291,9 @@ class Pod:
     def get_visible_gpus(self):
         r = ""
         for g in self.gpus:
-            r += "{},".format(g)
+            r += f"{g},"
 
-        assert r != "", "this pod {} can't see any gpus".format(self)
+        assert r != "", f"this pod {self} can't see any gpus"
 
         r = r[:-1]
         return r
@@ -336,7 +332,7 @@ def terminate_local_procs(procs):
             p.proc.terminate()
             if p.log_fn:
                 p.log_fn.close()
-            logger.debug("terminate process id:{}".format(p.proc.pid))
+            logger.debug(f"terminate process id:{p.proc.pid}")
 
     # wait all process terminiated
     time.sleep(3)
@@ -354,7 +350,7 @@ def terminate_local_procs(procs):
         time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
-    exit(1)
+    sys.exit(1)
 
 
 def get_host_name_ip():
@@ -380,7 +376,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         default=default,
         type=type,
         help=help + ' Default: %(default)s.',
-        **kwargs
+        **kwargs,
     )
 
 
@@ -481,15 +477,15 @@ def start_local_trainers(
         proc_env = _prepare_trainer_env(cluster, t)
         current_env.update(proc_env)
 
-        logger.debug("trainer proc env:{}".format(current_env))
+        logger.debug(f"trainer proc env:{current_env}")
 
         cmd = [sys.executable, "-u", training_script] + training_script_args
 
-        logger.info("start trainer proc:{} env:{}".format(cmd, proc_env))
+        logger.info(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
         if log_dir is not None:
-            os.system("mkdir -p {}".format(log_dir))
+            os.system(f"mkdir -p {log_dir}")
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
@@ -543,7 +539,7 @@ def watch_local_trainers(procs, nranks):
 
         if error:
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
@@ -572,5 +568,5 @@ def watch_local_trainers(procs, nranks):
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print(f"{arg}: {value}")
     print("------------------------------------------------")

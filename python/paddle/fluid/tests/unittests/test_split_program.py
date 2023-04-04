@@ -69,7 +69,7 @@ class TestSplitProgram(unittest.TestCase):
                 np.testing.assert_array_equal(
                     actual,
                     expected,
-                    err_msg='{}\n{}\n'.format(actual, expected),
+                    err_msg=f'{actual}\n{expected}\n',
                 )
 
     def get_places(self):

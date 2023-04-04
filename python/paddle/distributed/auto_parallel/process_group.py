@@ -109,14 +109,14 @@ class ProcessGroup:
                 not self.is_instantiate()
             ), "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
-        self._ranks = sorted(list(set(self.ranks)))
+        self._ranks = sorted(set(self.ranks))
 
     def local_rank(self, global_rank):
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
             raise AssertionError(
-                "Rank {} doesn't belong to this group".format(global_rank)
+                f"Rank {global_rank} doesn't belong to this group"
             )
 
     def is_instantiate(self):

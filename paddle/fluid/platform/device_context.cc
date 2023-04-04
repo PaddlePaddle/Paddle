@@ -249,31 +249,6 @@ void EmplaceDeviceContexts(
           platform::errors::Unimplemented("IPUPlace is not supported. Please "
                                           "re-compile with WITH_IPU option."));
 #endif
-    } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      EmplaceDeviceContext<NPUDeviceContext>(
-          place_to_device_context,
-          place,
-          disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "NPUPlace is not supported. Please "
-          "re-compile with WITH_ASCEND_CL option."));
-#endif
-    } else if (platform::is_npu_pinned_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      EmplaceDeviceContext<NPUPinnedDeviceContext>(
-          place_to_device_context,
-          place,
-          disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "NPUPinnedPlace is not supported. Please re-compile with "
-          "WITH_ASCEND_CL "
-          "option."));
-#endif
     }
   }
 }
