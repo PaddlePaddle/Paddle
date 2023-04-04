@@ -2206,7 +2206,7 @@ EOF
             ctest -R ${ut_run_by_protobuf3_in_gpups} --timeout 120
             ut_endTime_s=`date +%s`
             echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-            pip install protobuf==4.21.12
+            pip install protobuf==$protobuf_version
         else
             echo "You should check your protobuf version, which currently supports 3.x and 4.x "
             exit 8;
