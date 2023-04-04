@@ -123,8 +123,8 @@ __global__ void DoubleGradComputeDX(const T *x,
     ddx_sum += ddx_i;
     dy_mul_ddx_sum += (ddx_i * dy_i);
 
-    dy_mul_x_sub_mean_sum += dy_i * tmp;
-    ddx_mul_x_sub_mean_sum += ddx_i * tmp;
+    dy_mul_x_sub_mean_sum += (dy_i * tmp);
+    ddx_mul_x_sub_mean_sum += (ddx_i * tmp);
   }
 
   dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
@@ -148,18 +148,18 @@ __global__ void DoubleGradComputeDX(const T *x,
   if (ddx != nullptr) {
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(dx[i]);
-      tmp += (static_cast<AccT>(x[i]) - mean_val) * var_val * var_val *
-                 var_val / sample_size *
-                 (ddx_sum_val * dy_sum_val / sample_size - dy_mul_ddx_sum_val +
-                  3. * dy_mul_x_sub_mean_sum_val * var_val *
-                      ddx_mul_x_sub_mean_sum_val * var_val / sample_size) +
-             ddx_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
-                 var_val *
-                 (dy_sum_val / sample_size - static_cast<AccT>(dy[i]) +
-                  dy_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
-                      var_val *
-                      (ddx_sum_val / sample_size - static_cast<AccT>(ddx[i]))) *
-                 scale[c];
+      tmp +=
+          ((static_cast<AccT>(x[i]) - mean_val) * var_val * var_val * var_val /
+               sample_size *
+               (ddx_sum_val * dy_sum_val / sample_size - dy_mul_ddx_sum_val +
+                3. * dy_mul_x_sub_mean_sum_val * var_val *
+                    ddx_mul_x_sub_mean_sum_val * var_val / sample_size) +
+           ddx_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
+               var_val * (dy_sum_val / sample_size - static_cast<AccT>(dy[i])) +
+           dy_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
+               var_val *
+               (ddx_sum_val / sample_size - static_cast<AccT>(ddx[i]))) *
+          scale[c];
       dx[i] = static_cast<T>(tmp);
     }
   }
@@ -205,7 +205,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
   AccT ddx_mul_x_sub_mean_sum = 0;
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
     AccT ddx_i = static_cast<AccT>(ddx[i]);
-    ddx_sum = ddx_i;
+    ddx_sum += ddx_i;
     ddx_mul_x_sub_mean_sum += (ddx_i * (static_cast<AccT>(x[i]) - mean_val));
   }
   ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
@@ -219,11 +219,10 @@ __global__ void DoubleGradComputeDDY(const T *x,
   if (ddx != nullptr) {
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(ddy[i]);
-      tmp += static_cast<AccT>(ddy[i]) +
-             scale[c] * var_val *
-                 (static_cast<AccT>(ddx[i]) - ddx_sum_val / sample_size -
-                  (static_cast<AccT>(x[i]) - mean_val) * var_val *
-                      ddx_mul_x_sub_mean_sum_val * var_val / sample_size);
+      tmp += scale[c] * var_val *
+             (static_cast<AccT>(ddx[i]) - ddx_sum_val / sample_size -
+              (static_cast<AccT>(x[i]) - mean_val) * var_val *
+                  ddx_mul_x_sub_mean_sum_val * var_val / sample_size);
       ddy[i] = static_cast<T>(tmp);
     }
   }
@@ -269,11 +268,9 @@ __global__ void DoubleGradComputeDScale(const T *x,
   AccT dy_sum = 0;
   AccT dy_mul_x_sub_mean_sum = 0;
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
-    T dy_i = dy[i];
-    dy_sum = dy_sum + static_cast<AccT>(dy_i);
-    dy_mul_x_sub_mean_sum =
-        dy_mul_x_sub_mean_sum +
-        (static_cast<AccT>(dy_i) * (static_cast<AccT>(x[i]) - mean_val));
+    AccT dy_i = static_cast<AccT>(dy[i]);
+    dy_sum += dy_i;
+    dy_mul_x_sub_mean_sum += (dy_i * (static_cast<AccT>(x[i]) - mean_val));
   }
   dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
   dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
@@ -287,16 +284,15 @@ __global__ void DoubleGradComputeDScale(const T *x,
   if (ddx != nullptr) {
     AccT dscale_tmp = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      dscale_tmp = dscale_tmp +
-                   static_cast<AccT>(ddx[i]) * var_val *
-                       (static_cast<AccT>(dy[i]) - dy_sum_val / sample_size -
-                        dy_mul_x_sub_mean_sum_val *
-                            (static_cast<AccT>(x[i]) - mean_val) * var_val *
-                            var_val / sample_size);
+      dscale_tmp +=
+          static_cast<AccT>(ddx[i]) * var_val *
+          (static_cast<AccT>(dy[i]) - dy_sum_val / sample_size -
+           dy_mul_x_sub_mean_sum_val * (static_cast<AccT>(x[i]) - mean_val) *
+               var_val * var_val / sample_size);
     }
     dscale_tmp = BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
     if (threadIdx.x == 0) {
-      dscale[ncid] = dscale[ncid] + dscale_tmp;
+      dscale[ncid] += dscale_tmp;
     }
     __syncthreads();
   }

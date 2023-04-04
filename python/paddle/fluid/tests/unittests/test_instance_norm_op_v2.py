@@ -235,7 +235,7 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
         self.python_api = instance_norm_warpper
         self.eps = 1e-5
         self.data_format = "NCHW"
-        self.init_dtype()
+        self.dtype = np.uint16
         self.init_shape()
         self.init_value()
         self.inputs = {
@@ -257,6 +257,12 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             'SavedMean': mean,
             'SavedVariance': 1.0 / variance,
         }
+
+    def init_value(self):
+        np.random.seed(0)
+        self.value = np.random.random(self.shape).astype(np.float32)
+        self.scale = np.random.random([self.shape[1]]).astype(np.float32)
+        self.bias = np.random.random([self.shape[1]]).astype(np.float32)
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
