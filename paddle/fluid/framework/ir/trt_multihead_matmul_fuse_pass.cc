@@ -447,7 +447,7 @@ PDNode* TrtMultiHeadMatmulPattern::operator()() {
 
 PDNode* TrtMultiHeadMatmulV3Pattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
-  input0->assert_is_op_input("c");
+  input0->assert_is_op_input("matrix_multiply");
 
   // First path with scale
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_op("matrix_multiply");

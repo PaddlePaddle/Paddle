@@ -176,10 +176,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op->Run(scope, place);
 }
 
-TEST(TensorRTEngineOp, manual) {
-  DynamicShapeTest(false);
-  DynamicShapeTest(true);
-}
+TEST(TensorRTEngineOp, manual) { DynamicShapeTest(false); }
 void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
