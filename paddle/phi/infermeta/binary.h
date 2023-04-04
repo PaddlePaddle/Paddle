@@ -366,6 +366,10 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
+void NextafterInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* out);
+
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& data_format,

@@ -1381,6 +1381,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : nextafter
+  backward : nextafter_grad
+  inputs :
+    {x: X, y : Y}
+  outputs :
+    out: Out
+
 - op : nll_loss
   backward : nll_loss_grad
   inputs :

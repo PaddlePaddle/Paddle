@@ -1117,6 +1117,15 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : nextafter
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : nextafter
+  backward : nextafter_grad
+
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
   output : Tensor(out), Tensor(total_weight)

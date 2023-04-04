@@ -2282,6 +2282,26 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void NextafterInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  if (x_dims.size() > 0)
+    PADDLE_ENFORCE_GE(x_dims[0],
+                      y_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall "
+                          "greater than count (%d) of elements of Y.",
+                          x_dims[0],
+                          y_dims[0]));
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& data_format,
