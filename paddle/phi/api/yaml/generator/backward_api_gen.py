@@ -269,7 +269,7 @@ def header_include():
 """
 
 
-def source_include(header_file_path):
+def source_include(header_file_path, fw_header_file_path):
     return f"""
 #include "{header_file_path}"
 #include <memory>
@@ -282,7 +282,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/api/include/api.h"
+#include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -310,7 +310,10 @@ namespace experimental {
 
 
 def generate_backward_api(
-    backward_yaml_path, header_file_path, source_file_path
+    backward_yaml_path,
+    is_fused_backward_yaml,
+    header_file_path,
+    source_file_path,
 ):
 
     bw_apis = []
@@ -329,9 +332,29 @@ def generate_backward_api(
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/backward/backward_api.h"
-    source_file.write(source_include(include_header_file))
+    include_header_file = (
+        "paddle/phi/api/backward/fused_backward_api.h"
+        if is_fused_backward_yaml
+        else "paddle/phi/api/backward/backward_api.h"
+    )
+    include_fw_header_file = (
+        "paddle/phi/api/include/fused_api.h"
+        if is_fused_backward_yaml
+        else "paddle/phi/api/include/api.h"
+    )
+    source_file.write(
+        source_include(include_header_file, include_fw_header_file)
+    )
     source_file.write(namespace[0])
+    # not all fused ops supoort dygraph
+    if is_fused_backward_yaml is True:
+        new_bw_apis = [
+            bw_api
+            for bw_api in bw_apis
+            if "support_dygraph_mode" in bw_api
+            and bw_api["support_dygraph_mode"] is True
+        ]
+        bw_apis = new_bw_apis
 
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
@@ -355,6 +378,13 @@ def main():
         nargs='+',
         default=['paddle/phi/api/yaml/backward.yaml'],
     )
+
+    parser.add_argument(
+        '--is_fused_backward_yaml',
+        help='flag of fused backward yaml',
+        action='store_true',
+    )
+
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
@@ -370,11 +400,15 @@ def main():
     options = parser.parse_args()
 
     backward_yaml_path = options.backward_yaml_path
+    is_fused_backward_yaml = options.is_fused_backward_yaml
     header_file_path = options.backward_header_path
     source_file_path = options.backward_source_path
 
     generate_backward_api(
-        backward_yaml_path, header_file_path, source_file_path
+        backward_yaml_path,
+        is_fused_backward_yaml,
+        header_file_path,
+        source_file_path,
     )
 
 

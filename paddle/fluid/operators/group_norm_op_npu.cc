@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

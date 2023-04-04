@@ -21,7 +21,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def fake_ctr_reader():
@@ -92,7 +92,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif initializer == 2:
             init = paddle.nn.initializer.Normal()
         else:
-            raise ValueError("error initializer code: {}".format(initializer))
+            raise ValueError(f"error initializer code: {initializer}")
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]

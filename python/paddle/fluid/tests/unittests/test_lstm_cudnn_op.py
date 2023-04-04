@@ -17,10 +17,10 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -80,7 +80,7 @@ class LSTMCell(LayerMixin):
         self.hidden_size = hidden_size
         self.bias = bias
         self.dtype = np.float64
-        self.parameters = dict()
+        self.parameters = {}
         self.weight_ih = weight.weight_ih
         self.weight_hh = weight.weight_hh
         self.parameters['weight_ih'] = self.weight_ih
@@ -404,9 +404,9 @@ class TestCUDNNLstmOp(OpTest):
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
-            weight_names.append('weight{}'.format(i))
+            weight_names.append(f'weight{i}')
         for i in range(2 * self.num_layers):
-            weight_names.append('bias{}'.format(i))
+            weight_names.append(f'bias{i}')
         return weight_names
 
     def setUp(self):
@@ -474,7 +474,7 @@ class TestCUDNNLstmOp(OpTest):
         init_c = np.zeros((self.num_layers, batch_size, hidden_size)).astype(
             self.dtype
         )
-        state_out = np.ndarray((300)).astype("uint8")
+        state_out = np.ndarray(300).astype("uint8")
 
         if core.is_compiled_with_rocm():
             for i in range(len(flat_w)):
@@ -508,7 +508,7 @@ class TestCUDNNLstmOp(OpTest):
             'Out': output,
             "LastH": last_hidden,
             'LastC': last_cell,
-            'Reserve': np.ndarray((400)).astype("uint8"),
+            'Reserve': np.ndarray(400).astype("uint8"),
             'StateOut': state_out,
         }
 
@@ -524,7 +524,7 @@ class TestCUDNNLstmOp(OpTest):
         else:
             paddle.enable_static()
             self.check_output_with_place(
-                place, no_check_set=['Reserve', 'StateOut']
+                place, no_check_set=['Reserve', 'StateOut'], check_dygraph=False
             )
             paddle.disable_static()
 
@@ -534,8 +534,9 @@ class TestCUDNNLstmOp(OpTest):
         for var_name in var_name_list:
             self.check_grad_with_place(
                 place,
-                set(['Input', var_name, 'InitH', 'InitC']),
+                {'Input', var_name, 'InitH', 'InitC'},
                 ['Out', 'LastH', 'LastC'],
+                check_dygraph=False,
             )
 
 

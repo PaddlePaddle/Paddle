@@ -79,7 +79,7 @@ def get_tensor_bytes(tensor):
     elif tensor.dtype == paddle.int8:
         elem_size = 1
     else:
-        raise ValueError("unknown data type: {}".format(tensor.dtype))
+        raise ValueError(f"unknown data type: {tensor.dtype}")
     return tensor.numel() * elem_size
 
 

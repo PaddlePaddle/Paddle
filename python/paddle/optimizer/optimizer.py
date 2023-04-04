@@ -246,16 +246,16 @@ class Optimizer:
 
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
-        self._learning_rate_map = dict()
+        self._learning_rate_map = {}
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
-        self._accumulators = defaultdict(lambda: dict())
+        self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
-        self._param_device_map = dict()
+        self._param_device_map = {}
         self.clear_gradients = self.clear_grad
         self._default_dict = {
             'weight_decay': self.regularization,
@@ -374,7 +374,7 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 assert (
                     var_tmp.name in state_dict
-                ), "optimizer Tensor {} not found".format(var_tmp.name)
+                ), f"optimizer Tensor {var_tmp.name} not found"
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -382,9 +382,9 @@ class Optimizer:
                 load_para = state_dict[var_tmp.name]
 
                 if isinstance(load_para, Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = load_para.numpy()
+                    load_para_np = np.array(load_para)
+                elif isinstance(load_para, core.eager.Tensor):
+                    load_para_np = np.array(load_para)
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -444,7 +444,7 @@ class Optimizer:
                     dtype=_lr_dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
 
                 self._learning_rate_map[
@@ -1000,7 +1000,7 @@ class Optimizer:
                             if param_and_grad[1] is None:
                                 continue
                             if param_and_grad[0].stop_gradient is False:
-                                param_grad_dict = dict()
+                                param_grad_dict = {}
                                 param_grad_dict['params'] = param_and_grad
                                 param_grad_dict.update(
                                     {
@@ -1321,9 +1321,9 @@ class Optimizer:
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.stop_gradient is True]
-        )
+        param_no_trainable = {
+            param.name for param in parameters if param.stop_gradient is True
+        }
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
@@ -1486,7 +1486,7 @@ class Optimizer:
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
