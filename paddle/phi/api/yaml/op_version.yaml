@@ -61,6 +61,19 @@
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
 
+- op : gaussian_random
+  version :
+    - checkpoint : Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
+               and modify the attribute of [shape]
+      action :
+        - add_input : ShapeTensor
+          comment : The output shape supports Tensor type. ShapeTensor is dispensable.
+        - add_input : ShapeTensorList
+          comment : The output shape supports list filled with Tensor. ShapeTensorList is dispensable.
+        - modify_attr : shape
+          comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
+          default : std::vector<int64_t>{}
+
 - op : greater_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]

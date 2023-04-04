@@ -23,6 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+from op import Operator
 
 import paddle
 from paddle import fluid
@@ -35,7 +36,6 @@ from paddle.fluid.framework import (
     _current_expected_place,
     canonicalize_attrs,
 )
-from paddle.fluid.op import Operator
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
@@ -379,9 +379,6 @@ class OpTest(unittest.TestCase):
         def is_npu_op_test():
             return hasattr(cls, "use_npu") and cls.use_npu
 
-        def is_mlu_op_test():
-            return hasattr(cls, "use_mlu") and cls.use_mlu
-
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
@@ -415,7 +412,6 @@ class OpTest(unittest.TestCase):
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
                 and not is_npu_op_test()
-                and not is_mlu_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
             ):
@@ -1972,7 +1968,6 @@ class OpTest(unittest.TestCase):
         if (
             not paddle.is_compiled_with_xpu()
             and not paddle.is_compiled_with_npu()
-            and not paddle.is_compiled_with_mlu()
             and not isinstance(place, core.CustomPlace)
         ):
             self.check_inplace_output_with_place(

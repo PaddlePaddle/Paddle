@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -820,6 +826,18 @@
     {ids : Ids, parents : Parents}
   outputs :
     out : Out
+
+- op : gaussian (gaussian_random)
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [bool use_mkldnn = false]
+  manual_signature : [gaussian]
 
 - op : gelu
   backward : gelu_grad

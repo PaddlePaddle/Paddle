@@ -90,6 +90,17 @@
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
 
+- op : gaussian
+  args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : GaussianInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

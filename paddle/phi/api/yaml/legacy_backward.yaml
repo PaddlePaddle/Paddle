@@ -152,7 +152,7 @@
   infer_meta :
     func : BilinearTensorProductGradInferMeta
   kernel :
-    func : bilinear_tensor_product_grad
+    func : bilinear_grad
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)

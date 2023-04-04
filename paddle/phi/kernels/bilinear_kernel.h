@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/bilinear_tensor_product_grad_kernel.h"
+#pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/bilinear_tensor_product_grad_kernel_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
-PD_REGISTER_KERNEL(bilinear_tensor_product_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BilinearTensorProductGradKernel,
-                   float,
-                   double) {}
+namespace phi {
+
+template <typename T, typename Context>
+void BilinearKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& weight,
+                    const paddle::optional<DenseTensor>& bias,
+                    DenseTensor* out);
+
+}  // namespace phi
