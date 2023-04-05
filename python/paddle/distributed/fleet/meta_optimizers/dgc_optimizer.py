@@ -107,7 +107,9 @@ class DGCMomentumOptimizer(Optimizer):
             elif isinstance(regularization, L2Decay):
                 regular_type = 2
             else:
-                assert False, 'regularization must be None|L1Decay|L2Deacy'
+                raise AssertionError(
+                    "regularization must be None|L1Decay|L2Deacy"
+                )
         return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):

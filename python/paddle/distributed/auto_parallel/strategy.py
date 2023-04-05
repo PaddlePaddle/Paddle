@@ -62,7 +62,7 @@ class BaseConfig:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
-            string += "\"%s\":\"%s\"," % (k, v)
+            string += f"\"{k}\":\"{v}\","
         return string + "}"
 
     def __deepcopy__(self, memo):
@@ -166,7 +166,7 @@ class Strategy(BaseConfig):
             #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(config)
+                    f"Expected a dictionary. But received: {config}"
                 )
         else:
             self._config_dict = {}

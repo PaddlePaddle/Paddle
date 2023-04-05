@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle.framework import get_default_dtype, set_default_dtype
 
 
@@ -35,6 +36,9 @@ class TestDefaultType(unittest.TestCase):
         set_default_dtype("float16")
         self.assertEqual("float16", get_default_dtype())
 
+        set_default_dtype("bfloat16")
+        self.assertEqual("bfloat16", get_default_dtype())
+
         set_default_dtype(np.float64)
         self.assertEqual("float64", get_default_dtype())
 
@@ -43,6 +47,13 @@ class TestDefaultType(unittest.TestCase):
 
         set_default_dtype(np.float16)
         self.assertEqual("float16", get_default_dtype())
+
+
+class TestDefaultTypeInLayer(unittest.TestCase):
+    def test_bfloat16(self):
+        set_default_dtype("bfloat16")
+        linear = paddle.nn.Linear(10, 20)
+        self.assertEqual(linear.weight.dtype, paddle.bfloat16)
 
 
 class TestRaiseError(unittest.TestCase):

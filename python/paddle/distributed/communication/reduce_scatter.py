@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.communication.stream as stream
+from paddle.distributed.communication import stream
 from paddle.distributed.communication.reduce import ReduceOp
 from paddle.distributed.communication.stream.reduce_scatter import (
     _reduce_scatter_base as _reduce_scatter_base_stream,

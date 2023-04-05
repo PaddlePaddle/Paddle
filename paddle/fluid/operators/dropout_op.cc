@@ -17,6 +17,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
@@ -158,6 +160,26 @@ class DropoutGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class DropoutCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    auto mask = this->GetSingleForwardOutput("Mask");
+    auto out_grad = this->GetSingleOutputGrad("Out");
+    auto x_grad = this->GetSingleInputGrad("X");
+    auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto x_grad_name = this->GetOutputName(x_grad);
+    auto p = this->Attr<float>("dropout_prob");
+    auto is_test = this->Attr<bool>("is_test");
+    auto mode = this->Attr<std::string>("dropout_implementation");
+    prim::dropout_grad<prim::DescTensor>(
+        mask, out_grad, p, is_test, mode, x_grad_p);
+    VLOG(3) << "Runing dropout_grad composite func";
+    this->RecoverOutputName(x_grad, x_grad_name);
+  }
+};
+
 class DropoutNdOpMaker : public DropoutOpMaker {
  public:
   void Make() override {
@@ -195,6 +217,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(dropout,
 REGISTER_OPERATOR(dropout,
                   ops::DropoutOp,
                   ops::DropoutOpMaker,
+                  ops::DropoutCompositeGradOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);

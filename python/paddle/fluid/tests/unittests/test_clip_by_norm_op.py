@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.nn import clip
 
 
@@ -45,7 +45,7 @@ class TestClipByNormOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def initTestCase(self):
         self.shape = (100,)
@@ -81,9 +81,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place, atol=0.001, check_eager=True
-                )
+                self.check_output_with_place(place, atol=0.001)
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
@@ -121,7 +119,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         out_selected_rows = scope.var('Out').get_selected_rows()
 
         # run clip_by_norm_op
-        clip_by_norm_op = fluid.op.Operator(
+        clip_by_norm_op = Operator(
             "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
         )
         clip_by_norm_op.run(scope, place)

@@ -151,6 +151,15 @@ class Node {
     var_desc_->SetName(new_name);
   }
 
+  void RenameOp(const std::string& new_name) {
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kOperation && op_desc_,
+        true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
+    name_ = new_name;
+    op_desc_->SetType(new_name);
+  }
+
   int DescOrder() const { return desc_order_; }
 
   int GetVarNodeBlockId() const {

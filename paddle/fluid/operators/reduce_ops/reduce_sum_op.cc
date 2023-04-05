@@ -128,7 +128,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-class ReduceSumOpMaker : public ops::ReduceOpMaker {
+class ReduceSumOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_sum"; }
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
@@ -139,7 +139,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum,
                             PD_INFER_META(phi::SumRawInferMeta));
 
 REGISTER_OPERATOR(reduce_sum,
-                  ops::ReduceOp,
+                  ops::ReduceBaseOp,
                   ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,

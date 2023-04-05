@@ -154,9 +154,9 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    phi::DenseTensor beta1_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor beta2_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
@@ -460,9 +460,9 @@ class MergedAdamMLUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* beta2_tensor = nullptr;
     const phi::DenseTensor* epsilon_tensor = nullptr;
 
-    phi::DenseTensor beta1_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor beta2_tmp(experimental::DataType::FLOAT32);
-    phi::DenseTensor epsilon_tmp(experimental::DataType::FLOAT32);
+    phi::DenseTensor beta1_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor beta2_tmp(phi::DataType::FLOAT32);
+    phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));

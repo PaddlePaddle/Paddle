@@ -19,9 +19,9 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import TranslatedLayer
+from paddle.nn.layer import layers
 
 from . import logging_utils
 from .utils import (
@@ -286,7 +286,7 @@ def _replace_value_with_input_spec(args):
         if isinstance(input_var, np.ndarray):
             input_var = paddle.static.InputSpec.from_numpy(input_var)
             input_var.stop_gradient = True
-        elif isinstance(input_var, (core.VarBase, core.eager.Tensor)):
+        elif isinstance(input_var, core.eager.Tensor):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
@@ -341,7 +341,7 @@ def convert_to_input_spec(inputs, input_spec):
         # without specific InputSpec, raise warning.
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec) :]:
-                if isinstance(rest_input, (core.VarBase, np.ndarray)):
+                if isinstance(rest_input, (core.eager.Tensor, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(
@@ -373,7 +373,14 @@ def convert_to_input_spec(inputs, input_spec):
             )
         real_spec.name = input_spec.name
         if spec_greater(input_spec, real_spec):
-            return input_spec
+            # change shape but keep the others (stop_gradient / dtype) .
+            real_spec.shape = input_spec.shape
+        else:
+            logging_utils.warn(
+                "input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} ".format(
+                    input_spec=input_spec, real_spec=real_spec
+                )
+            )
         return real_spec
     else:
         # NOTE(Aurelius84): Support non-Tensor type as input spec info
@@ -426,7 +433,7 @@ def _replace_spec_name(name, input_spec):
     elif isinstance(input_spec, (list, tuple)):
         processed_specs = []
         for i, spec in enumerate(input_spec):
-            new_name = "{}_{}".format(name, i)
+            new_name = f"{name}_{i}"
             processed_specs.append(_replace_spec_name(new_name, spec))
         return processed_specs
     elif isinstance(input_spec, dict):
@@ -480,8 +487,4 @@ def spec_greater(first, other):
                 return False
         return True
 
-    return (
-        other.stop_gradient == first.stop_gradient
-        and other.dtype == first.dtype
-        and _shape_greater(first.shape, other.shape)
-    )
+    return _shape_greater(first.shape, other.shape)

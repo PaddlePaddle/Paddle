@@ -23,9 +23,8 @@ import numpy as np
 from feed_data_reader import FeedDataReader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 __all__ = ['TestParallelExecutorBase']
 DeviceType = core.DeviceType

@@ -11,16 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#ifndef PADDLE_FLUID_OPERATORS_COLLECTIVE_C_SYNC_COMM_STREAM_OP_H_
+#define PADDLE_FLUID_OPERATORS_COLLECTIVE_C_SYNC_COMM_STREAM_OP_H_
+
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_CNCL)
@@ -89,3 +88,4 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+#endif  // PADDLE_FLUID_OPERATORS_COLLECTIVE_C_SYNC_COMM_STREAM_OP_H_

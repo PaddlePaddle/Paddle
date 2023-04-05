@@ -47,7 +47,7 @@ class XPUTestUnStackOp(XPUOpTestWrapper):
         def get_y_names(self):
             y_names = []
             for i in range(self.input_dim[self.axis]):
-                y_names.append('y{}'.format(i))
+                y_names.append(f'y{i}')
             return y_names
 
         def setUp(self):

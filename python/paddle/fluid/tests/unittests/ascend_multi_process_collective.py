@@ -39,9 +39,7 @@ def train(prefix):
     )
 
     print(details)
-    with open(
-        "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
-    ) as f:
+    with open(f"multi_process_{prefix}.check_{trainer_id}.log", "w") as f:
         f.write(details)
 
 

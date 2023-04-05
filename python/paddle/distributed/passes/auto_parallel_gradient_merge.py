@@ -25,7 +25,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import layers
 from paddle.framework import core
 from paddle.static import device_guard
 
@@ -284,7 +283,7 @@ def _create_cond_block_and_update_optimizer(
 
         # clear gradient_merge_vars
         for param, new_grad in new_params_to_grads:
-            layers.fill_constant(
+            paddle.tensor.fill_constant(
                 shape=new_grad.shape,
                 dtype=new_grad.dtype,
                 value=0.0,

@@ -15,9 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 
 
 class TestStaticDeviceManage(unittest.TestCase):

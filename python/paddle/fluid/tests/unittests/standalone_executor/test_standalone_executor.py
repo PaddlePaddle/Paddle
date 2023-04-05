@@ -283,24 +283,6 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
             with framework._enable_standalone_executor():
                 self._run(feed[0], add_wrong_fetch=True)
 
-    def test_compiled_program(self):
-        data = np.ones([2, 2], dtype="float32")
-        feed = {"a": data}
-
-        res = self.run_new_executor(feed, use_compiled=True)
-        gt = self.run_raw_executor(feed, use_compiled=True)
-        for x, y in zip(gt, res):
-            np.testing.assert_array_equal(x, y)
-
-    def test_compiled_program_convert_graph_to_program(self):
-        data = np.ones([2, 2], dtype="float32")
-        feed = {"a": data}
-
-        res = self.run_new_executor(feed, use_compiled=True)
-        gt = self.run_raw_executor(feed, use_compiled=True)
-        for x, y in zip(gt, res):
-            np.testing.assert_array_equal(x, y)
-
     def test_empty_program(self):
         program = paddle.static.Program()
         exe = paddle.static.Executor(self.place)
@@ -396,11 +378,24 @@ class TestException(unittest.TestCase):
         )
 
 
+class TestFetchEmptyTensor(unittest.TestCase):
+    def test_fetch(self):
+        places = [paddle.CPUPlace()]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(paddle.static.Program()):
+                out = paddle.empty([3, 0])
+                exe = paddle.static.Executor(place)
+                res = exe.run(fetch_list=[out])
+            self.assertEqual(res[0].shape, (3, 0))
+
+
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             with paddle.fluid.device_guard("gpu:0"):
-                x = paddle.fluid.layers.fill_constant([1], "float32", 0)
+                x = paddle.tensor.fill_constant([1], "float32", 0)
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))

@@ -25,13 +25,11 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -394,34 +392,6 @@ TEST(BuddyAllocator, Release) {
   TestBuddyAllocator(&buddy_allocator, 50 << 20);
 
   buddy_allocator.Release();
-}
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-TEST(BuddyAllocator, NpuFraction) {
-  // In a 16 GB machine, the pool size will be about 160 MB
-  FLAGS_fraction_of_gpu_memory_to_use = 0.92;
-  FLAGS_initial_gpu_memory_in_mb = 0;
-  FLAGS_reallocate_gpu_memory_in_mb = 0;
-
-  BuddyAllocator buddy_allocator(
-      std::unique_ptr<SystemAllocator>(new NPUAllocator(0)),
-      platform::NPUMinChunkSize(),
-      platform::NPUMaxChunkSize());
-
-  // Less than pool size
-  TestBuddyAllocator(&buddy_allocator, 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 20);
-  buddy_allocator.Release();
-
-  // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator,
-                     300 << 20,
-                     /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator,
-                     1 * static_cast<size_t>(1 << 30),
-                     /* use_system_allocator = */ true);
 }
 #endif
 

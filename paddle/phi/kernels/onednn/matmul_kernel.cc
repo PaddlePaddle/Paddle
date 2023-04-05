@@ -435,9 +435,9 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const DenseTensor *input_y,
     const engine &onednn_engine) {
   std::string key = funcs::CreateKey(dev_ctx,
-                                     TransToProtoVarType(input_x->dtype()),
+                                     phi::TransToProtoVarType(input_x->dtype()),
                                      vectorize(input_x->dims()),
-                                     TransToProtoVarType(input_y->dtype()),
+                                     phi::TransToProtoVarType(input_y->dtype()),
                                      vectorize(input_y->dims()),
                                      dev_ctx.GetOutputsName("Out")[0]);
   key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
