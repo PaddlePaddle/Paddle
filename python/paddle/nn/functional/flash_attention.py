@@ -24,6 +24,7 @@ def flash_attention(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    training=True,
     name=None,
 ):
     r"""
@@ -85,8 +86,9 @@ def flash_attention(
             dropout,
             causal,
             return_softmax,
+            not training,
         )
-        return result_attention, result_softmax
+        return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn', **locals())
     dtype = helper.input_dtype(input_param_name='q')
@@ -113,9 +115,10 @@ def flash_attention(
             'dropout': dropout,
             'causal': causal,
             'return_softmax': return_softmax,
+            'is_test': not training,
         },
     )
-    return out, softmax
+    return out, softmax if return_softmax else None
 
 
 def flash_attn_unpadded(
@@ -204,7 +207,7 @@ def flash_attn_unpadded(
             causal,
             return_softmax,
         )
-        return result_attention, result_softmax
+        return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn_unpadded', **locals())
     dtype = helper.input_dtype(input_param_name='q')
@@ -238,4 +241,4 @@ def flash_attn_unpadded(
             'return_softmax': return_softmax,
         },
     )
-    return out, softmax
+    return out, softmax if return_softmax else None
