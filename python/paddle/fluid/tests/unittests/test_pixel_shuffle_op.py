@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -331,6 +331,47 @@ class TestPixelShuffleFP16OP(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
+            ['X'],
+            'Out',
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestPixelShuffleBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "pixel_shuffle"
+        self.python_api = paddle.nn.functional.pixel_shuffle
+        self.dtype = np.uint16
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+
+        up_factor = 3
+
+        x = np.random.random(shape).astype(np.float32)
+        npresult = pixel_shuffle_np(x, up_factor, self.format)
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(npresult)}
+        self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+    def init_data_format(self):
+        self.format = "NCHW"
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X'],
             'Out',
         )
