@@ -36,48 +36,53 @@ default_dtype = paddle.get_default_dtype()
 
 @place(DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'probs', 'probs_other', 'value'),
+    (TEST_CASE_NAME, 'params'),  # params: name, probs, probs_other, value
     [
-        # 1-D probs
         (
-            'probs_not_iterable',
-            0.3,
-            0.7,
-            1.0,
-        ),
-        (
-            'probs_not_iterable_and_broadcast_for_value',
-            0.3,
-            0.7,
-            np.array([[0.0, 1.0], [1.0, 0.0]], dtype=default_dtype),
-        ),
-        (
-            'probs_iterable',
-            [
-                0.3,
-            ],
-            [
-                0.7,
-            ],
-            1.0,
-        ),
-        # N-D probs
-        (
-            'probs_tuple_0305',
-            (0.3, 0.5),
-            [
-                0.7,
-            ],
-            1.0,
-        ),
-        (
-            'probs_tuple_03050104',
-            ((0.3, 0.5), (0.1, 0.4)),
-            [
-                0.7,
-            ],
-            1.0,
-        ),
+            'params',
+            (
+                # 1-D probs
+                (
+                    'probs_not_iterable',
+                    0.3,
+                    0.7,
+                    1.0,
+                ),
+                (
+                    'probs_not_iterable_and_broadcast_for_value',
+                    0.3,
+                    0.7,
+                    np.array([[0.0, 1.0], [1.0, 0.0]], dtype=default_dtype),
+                ),
+                (
+                    'probs_iterable',
+                    [
+                        0.3,
+                    ],
+                    [
+                        0.7,
+                    ],
+                    1.0,
+                ),
+                # N-D probs
+                (
+                    'probs_tuple_0305',
+                    (0.3, 0.5),
+                    [
+                        0.7,
+                    ],
+                    1.0,
+                ),
+                (
+                    'probs_tuple_03050104',
+                    ((0.3, 0.5), (0.1, 0.4)),
+                    [
+                        0.7,
+                    ],
+                    1.0,
+                ),
+            ),
+        )
     ],
 )
 class BernoulliTestFeature(unittest.TestCase):
@@ -85,127 +90,166 @@ class BernoulliTestFeature(unittest.TestCase):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
 
+        self.params_len = len(self.params)
+
         with paddle.static.program_guard(self.program):
-            self.init_numpy_data(self.probs, self.probs_other, self.value)
-            self.init_static_data(self.probs, self.probs_other, self.value)
+            self.init_numpy_data(self.params)
+            self.init_static_data(self.params)
 
-    def init_numpy_data(self, probs, probs_other, value):
-        self.rv_np = BernoulliNumpy(probs)
-        self.rv_np_other = BernoulliNumpy(probs_other)
+    def init_numpy_data(self, params):
+        self.mean_np = []
+        self.variance_np = []
+        self.log_prob_np = []
+        self.prob_np = []
+        self.cdf_np = []
+        self.entropy_np = []
+        self.kl_np = []
 
-        self.log_prob_np = self.rv_np.log_prob(value)
-        self.prob_np = self.rv_np.prob(value)
-        self.cdf_np = self.rv_np.cdf(value)
+        for _, probs, probs_other, value in params:
+            rv_np = BernoulliNumpy(probs)
+            rv_np_other = BernoulliNumpy(probs_other)
 
-    def init_static_data(self, probs, probs_other, value):
+            self.mean_np.append(rv_np.mean)
+            self.variance_np.append(rv_np.variance)
+            self.log_prob_np.append(rv_np.log_prob(value))
+            self.prob_np.append(rv_np.prob(value))
+            self.cdf_np.append(rv_np.cdf(value))
+            self.entropy_np.append(rv_np.entropy())
+            self.kl_np.append(rv_np.kl_divergence(rv_np_other))
+
+    def init_static_data(self, params):
         with paddle.static.program_guard(self.program):
-            if not isinstance(value, np.ndarray):
-                value = paddle.full([1], value, dtype=default_dtype)
-            else:
-                value = paddle.to_tensor(value, place=self.place)
+            rv_paddles = []
+            rv_paddles_other = []
+            values = []
+            for _, probs, probs_other, value in params:
+                if not isinstance(value, np.ndarray):
+                    value = paddle.full([1], value, dtype=default_dtype)
+                else:
+                    value = paddle.to_tensor(value, place=self.place)
 
-            self.rv_paddle = Bernoulli(probs=probs)
-            self.rv_paddle_other = Bernoulli(probs=probs_other)
+                rv_paddles.append(Bernoulli(probs=probs))
+                rv_paddles_other.append(Bernoulli(probs=probs_other))
+                values.append(value)
 
-            [
-                self.mean,
-                self.variance,
-                self.log_prob,
-                self.prob,
-                self.cdf,
-                self.entropy,
-                self.kl_divergence,
-            ] = self.executor.run(
+            results = self.executor.run(
                 self.program,
                 feed={},
                 fetch_list=[
-                    self.rv_paddle.mean,
-                    self.rv_paddle.variance,
-                    self.rv_paddle.log_prob(value),
-                    self.rv_paddle.prob(value),
-                    self.rv_paddle.cdf(value),
-                    self.rv_paddle.entropy(),
-                    self.rv_paddle.kl_divergence(self.rv_paddle_other),
+                    [
+                        rv_paddles[i].mean,
+                        rv_paddles[i].variance,
+                        rv_paddles[i].log_prob(values[i]),
+                        rv_paddles[i].prob(values[i]),
+                        rv_paddles[i].cdf(values[i]),
+                        rv_paddles[i].entropy(),
+                        rv_paddles[i].kl_divergence(rv_paddles_other[i]),
+                        kl_divergence(rv_paddles[i], rv_paddles_other[i]),
+                    ]
+                    for i in range(self.params_len)
                 ],
             )
 
-    def test_mean(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.mean,
-                self.rv_np.mean,
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+            self.mean_paddle = []
+            self.variance_paddle = []
+            self.log_prob_paddle = []
+            self.prob_paddle = []
+            self.cdf_paddle = []
+            self.entropy_paddle = []
+            self.kl_paddle = []
+            self.kl_func_paddle = []
+            for i in range(self.params_len):
+                (
+                    _mean,
+                    _variance,
+                    _log_prob,
+                    _prob,
+                    _cdf,
+                    _entropy,
+                    _kl,
+                    _kl_func,
+                ) = results[i * 8 : (i + 1) * 8]
+                self.mean_paddle.append(_mean)
+                self.variance_paddle.append(_variance)
+                self.log_prob_paddle.append(_log_prob)
+                self.prob_paddle.append(_prob)
+                self.cdf_paddle.append(_cdf)
+                self.entropy_paddle.append(_entropy)
+                self.kl_paddle.append(_kl)
+                self.kl_func_paddle.append(_kl_func)
 
-    def test_variance(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.variance,
-                self.rv_np.variance,
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def test_all(self):
+        for i in range(self.params_len):
+            self._test_mean(i)
+            self._test_variance(i)
+            self._test_log_prob(i)
+            self._test_prob(i)
+            self._test_cdf(i)
+            self._test_entropy(i)
+            self._test_kl_divergence(i)
 
-    def test_log_prob(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.log_prob,
-                self.log_prob_np,
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_mean(self, i):
+        np.testing.assert_allclose(
+            self.mean_np[i],
+            self.mean_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-    def test_prob(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.prob,
-                self.prob_np,
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_variance(self, i):
+        np.testing.assert_allclose(
+            self.variance_np[i],
+            self.variance_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-    def test_cdf(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.cdf,
-                self.cdf_np,
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_log_prob(self, i):
+        np.testing.assert_allclose(
+            self.log_prob_np[i],
+            self.log_prob_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-    def test_entropy(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.entropy,
-                self.rv_np.entropy(),
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_prob(self, i):
+        np.testing.assert_allclose(
+            self.prob_np[i],
+            self.prob_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-    def test_kl_divergence(self):
-        with paddle.static.program_guard(self.program):
-            np.testing.assert_allclose(
-                self.kl_divergence,
-                self.rv_np.kl_divergence(self.rv_np_other),
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_cdf(self, i):
+        np.testing.assert_allclose(
+            self.cdf_np[i],
+            self.cdf_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-            [kl] = self.executor.run(
-                self.program,
-                feed={},
-                fetch_list=[
-                    kl_divergence(self.rv_paddle, self.rv_paddle_other)
-                ],
-            )
+    def _test_entropy(self, i):
+        np.testing.assert_allclose(
+            self.entropy_np[i],
+            self.entropy_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
-            np.testing.assert_allclose(
-                kl,
-                self.rv_np.kl_divergence(self.rv_np_other),
-                rtol=RTOL.get(default_dtype),
-                atol=ATOL.get(default_dtype),
-            )
+    def _test_kl_divergence(self, i):
+        np.testing.assert_allclose(
+            self.kl_np[i],
+            self.kl_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
+
+        np.testing.assert_allclose(
+            self.kl_np[i],
+            self.kl_func_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
 
 @place(DEVICES)

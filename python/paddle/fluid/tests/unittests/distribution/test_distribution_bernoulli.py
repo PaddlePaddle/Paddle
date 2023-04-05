@@ -72,32 +72,32 @@ class BernoulliNumpy(DistributionNumpy):
         )
         self.logits = self._probs_to_logits(self.probs, is_binary=True)
 
-        self.rv = scipy.stats.bernoulli(self.probs)
+        self.rv = scipy.stats.bernoulli(self.probs.astype('float64'))
 
     @property
     def mean(self):
-        return self.rv.mean()
+        return self.rv.mean().astype(self.dtype)
 
     @property
     def variance(self):
-        return self.rv.var()
+        return self.rv.var().astype(self.dtype)
 
     def sample(self, shape):
         return self.rv.rvs(
             size=np.array(shape).tolist() + list(self.batch_shape)
-        )
+        ).astype(self.dtype)
 
     def log_prob(self, value):
-        return self.rv.logpmf(value)
+        return self.rv.logpmf(value).astype(self.dtype)
 
     def prob(self, value):
-        return self.rv.pmf(value)
+        return self.rv.pmf(value).astype(self.dtype)
 
     def cdf(self, value):
-        return self.rv.cdf(value)
+        return self.rv.cdf(value).astype(self.dtype)
 
     def entropy(self):
-        return self.rv.entropy()
+        return self.rv.entropy().astype(self.dtype)
 
     def kl_divergence(self, other):
         """
@@ -107,14 +107,14 @@ class BernoulliNumpy(DistributionNumpy):
         """
         p_a = self.probs
         p_b = other.probs
-        return p_a * np.log(p_a / p_b) + (1 - p_a) * np.log(
-            (1 - p_a) / (1 - p_b)
-        )
+        return (
+            p_a * np.log(p_a / p_b) + (1 - p_a) * np.log((1 - p_a) / (1 - p_b))
+        ).astype(self.dtype)
 
     def _probs_to_logits(self, probs, is_binary=False):
         return (
             (np.log(probs) - np.log1p(-probs)) if is_binary else np.log(probs)
-        )
+        ).astype(self.dtype)
 
 
 class BernoulliTest(unittest.TestCase):
