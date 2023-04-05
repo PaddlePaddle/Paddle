@@ -290,24 +290,23 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 'complex64',
                 'complex128',
             ],
-            'sum',
+            'sparse_sum',
         )
 
         check_type(
-            axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
+            axis, 'axis', (int, list, tuple, type(None), Variable), 'sparse_sum'
         )
 
-        helper = LayerHelper('sum', **locals())
+        op_type = 'sparse_sum'
+        helper = LayerHelper(op_type, **locals())
         if dtype_flag:
             out = helper.create_variable_for_type_inference(dtype=dtype)
         else:
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='reduce_sum',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs=attrs,
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs=attrs
         )
+        print(out)
         return out
 
 

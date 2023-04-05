@@ -19,8 +19,18 @@ import numpy as np
 import paddle
 
 
-class TestSum(unittest.TestCase):
-    # x: sparse, out: sparse
+class TestSparseSum(unittest.TestCase):
+    """
+    Test the API paddle.sparse.sum on some sparse tensors.
+    x: sparse tensor, out: sparse tensor
+    """
+
+    def to_sparse(self, x, format):
+        if format == 'coo':
+            return x.detach().to_sparse_coo(sparse_dim=x.ndim)
+        elif format == 'csr':
+            return x.detach().to_sparse_csr()
+
     def check_result(self, x_shape, dims, keepdim, format, dtype=None):
         mask = paddle.randint(0, 2, x_shape)
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
@@ -29,10 +39,7 @@ class TestSum(unittest.TestCase):
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
         dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
-        if format == "coo":
-            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
-        else:
-            sp_x = origin_x.detach().to_sparse_csr()
+        sp_x = self.to_sparse(origin_x, format)
         sp_x.stop_gradient = False
         sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
         np.testing.assert_allclose(
@@ -75,6 +82,35 @@ class TestSum(unittest.TestCase):
             self.check_result([8, 3, 4, 4, 5, 3], i, True, 'coo')
             # Randint now only supports access to dimension 0 to 9.
             self.check_result([2, 3, 4, 2, 3, 4, 2, 3, 4], i, False, 'coo')
+
+
+class TestSparseSumStatic(unittest.TestCase):
+    def test(self):
+        paddle.enable_static()
+
+        indices = paddle.static.data(
+            name='indices', shape=[2, 3], dtype='int32'
+        )
+        values = paddle.static.data(name='values', shape=[3], dtype='float32')
+
+        dense_shape = [3, 3]
+        sp_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        sp_y = paddle.sparse.sum(sp_x)
+        out = sp_y.to_dense()
+
+        exe = paddle.static.Executor()
+        indices_data = [[0, 1, 2], [1, 2, 0]]
+        values_data = np.array([1.0, 2.0, 3.0]).astype('float32')
+
+        fetch = exe.run(
+            feed={'indices': indices_data, 'values': values_data},
+            fetch_list=[out],
+            return_numpy=True,
+        )
+
+        correct_out = np.array([6]).astype('float32')
+        np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
