@@ -1809,6 +1809,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         identical when hybrid-dp is used, and the initialization of
         not distributed param between mp group to be identical.
         """
+
+        def _find_master_param(all_vars_name, param_name):
+            for var_name in all_vars_name:
+                if param_name in var_name and "fp32_master" in var_name:
+                    return var_name
+            return None
+
         if self.dp_degree <= 1 and self.mp_degree <= 1:
             return
 
@@ -1829,6 +1836,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             if op.type == 'c_broadcast':
                 broadcast_params.add(op.desc.output_arg_names()[0])
 
+        all_vars_name = startup_block.vars
         for param in params_name:
             if param in broadcast_params:
                 continue
@@ -1841,6 +1849,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 rings.append(self.dp_ring_id)
 
             for ring in rings:
+                logger.debug(f"-- Insert broadcast op of param {param}")
                 startup_block.append_op(
                     type='c_broadcast',
                     inputs={'X': param},
@@ -1852,6 +1861,23 @@ class ShardingOptimizer(MetaOptimizerBase):
                         OP_ROLE_KEY: OpRole.Forward,
                     },
                 )
+                # Broadcast the master weight at the same time for AMP-O2 training.
+                master_param = _find_master_param(all_vars_name, param)
+                if master_param is not None:
+                    logger.debug(
+                        f"-- Insert broadcast op of master_param {master_param}"
+                    )
+                    startup_block.append_op(
+                        type='c_broadcast',
+                        inputs={'X': master_param},
+                        outputs={'Out': master_param},
+                        attrs={
+                            'ring_id': ring,
+                            'root': 0,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Forward,
+                        },
+                    )
 
         startup_block._sync_with_cpp()
 
