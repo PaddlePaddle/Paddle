@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import sys
-import unittest
 
 import numpy as np
 
 import paddle
+import paddle.fluid.tests.unittest
 from paddle.device.cuda.graphs import CUDAGraph
 
 sys.path.append("..")
