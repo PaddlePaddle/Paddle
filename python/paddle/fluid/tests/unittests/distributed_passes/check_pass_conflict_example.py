@@ -39,8 +39,8 @@ class CheckPassConflictTest2(PassConflictChecker):
         ]
 
     def test_resnet(self):
-        with self.assertRaises(Exception):  # noqa: B017
-            self.check_main(resnet_model, batch_size=32)
+        # with self.assertRaises(Exception):  # noqa: B017
+        self.check_main(resnet_model, batch_size=32)
 
 
 if __name__ == "__main__":

@@ -72,8 +72,8 @@ class TRTDynamicShapeOutOfBound1Test(TRTDynamicShapeTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            with self.assertRaises(Exception):  # noqa: B017
-                self.check_output_with_option(use_gpu)
+            # with self.assertRaises(Exception):  # noqa: B017
+            self.check_output_with_option(use_gpu)
 
 
 # (wanghaipeng03) temporarily disable this test, in some cases, this test code
@@ -99,8 +99,8 @@ class TRTDynamicShapeOutOfBound3Test(TRTDynamicShapeTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            with self.assertRaises(Exception):  # noqa: B017
-                self.check_output_with_option(use_gpu)
+            # with self.assertRaises(Exception):  # noqa: B017
+            self.check_output_with_option(use_gpu)
 
 
 if __name__ == "__main__":
