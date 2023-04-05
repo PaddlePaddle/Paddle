@@ -34,7 +34,6 @@ using NPUPlace = phi::NPUPlace;
 using NPUPinnedPlace = phi::NPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using IPUPlace = phi::IPUPlace;
-using MLUPlace = phi::MLUPlace;
 using CustomPlace = phi::CustomPlace;
 
 using PlaceList = std::vector<Place>;

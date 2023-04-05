@@ -204,13 +204,6 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
 }
 
 template <>
-void set_constant_with_place<phi::MLUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
-}
-
-template <>
 void set_constant_with_place<phi::GPUPinnedPlace>(
     const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));

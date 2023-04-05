@@ -639,12 +639,6 @@ void TensorFromStream(std::istream& is,
       } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
-      } else if (platform::is_mlu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "MLUPlace is not supported when not compiled with MLU"));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "NPUPlace is not supported when not compiled with NPU"));
       }
 #endif
     } else {
@@ -721,9 +715,6 @@ void TensorFromStream(std::istream& is,
       } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
-      } else if (platform::is_mlu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "MLUPlace is not supported when not compiled with MLU"));
       } else if (platform::is_npu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "NPUPlace is not supported when not compiled with NPU"));

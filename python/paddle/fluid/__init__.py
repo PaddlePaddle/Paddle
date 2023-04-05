@@ -73,7 +73,6 @@ from .core import (
     CUDAPinnedPlace,
     NPUPlace,
     IPUPlace,
-    MLUPlace,
     CustomPlace,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -129,7 +128,6 @@ __all__ = (
         'CUDAPinnedPlace',
         'NPUPlace',
         'IPUPlace',
-        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',

@@ -251,10 +251,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self, paddle::platform::NPUPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::MLUPlace &place) {
-             self.mutable_data<float>(place);
-           })
       .def("_alloc_double",
            [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<double>(place);
@@ -273,10 +269,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_alloc_int",
            [](phi::DenseTensor &self, paddle::platform::CUDAPlace &place) {
-             self.mutable_data<int>(place);
-           })
-      .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::MLUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def(
@@ -324,13 +316,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
-      .def("_mutable_data",
-           [](phi::DenseTensor &self,
-              paddle::platform::MLUPlace &place,
-              paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
-           })
       .def("_clear", &phi::DenseTensor::clear)
       .def("_mutable_data",
            [](phi::DenseTensor &self,
@@ -366,11 +351,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("batch_size") = -1)
       .def("_copy_from",
            &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("batch_size") = -1)
-      .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::MLUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -411,11 +391,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("zero_copy") = false)
       .def("set",
            SetTensorFromPyArray<paddle::platform::IPUPlace>,
-           py::arg("array"),
-           py::arg("place"),
-           py::arg("zero_copy") = false)
-      .def("set",
-           SetTensorFromPyArray<paddle::platform::MLUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
