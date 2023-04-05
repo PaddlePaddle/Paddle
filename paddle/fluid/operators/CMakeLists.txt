@@ -100,7 +100,6 @@ register_operators(EXCLUDES py_func_op warpctc_op dgc_op generated_op1 generated
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
-op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc run_program_op_npu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
@@ -179,10 +178,7 @@ if (WITH_ASCEND)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ascend_wrapper)
 endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS generated_static_op)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
-endif()
+
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(unsqueeze_op DEPS reshape_op)
@@ -218,18 +214,13 @@ if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(range_op_npu_test SRCS range_op_npu_test.cc DEPS op_registry range_op scope device_context enforce executor)
-  cc_test(expand_op_npu_test SRCS expand_op_npu_test.cc DEPS op_registry expand_op eigen_function scope device_context enforce executor compare_op)
-endif()
+
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
 cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
-if (WITH_ASCEND_CL)
-    cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
-endif()
+
 
 
 if(WITH_MKLDNN)
