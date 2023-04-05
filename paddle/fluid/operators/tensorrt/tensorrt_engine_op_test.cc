@@ -72,41 +72,39 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
-  LOG(INFO) << "create matrix_multiply op";
-  auto* fc0 = block_desc.AppendOp();
-  fc0->SetType("matrix_multiply");
-  fc0->SetInput("X", std::vector<std::string>({"x"}));     // 2 x 4
-  fc0->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
-  fc0->SetOutput("Out", std::vector<std::string>({"z"}));  // 2 x 6
-  fc0->SetAttr("alpha", static_cast<float>(1));
-  fc0->SetAttr("transpose_x", static_cast<bool>(false));
-  fc0->SetAttr("transpose_y", static_cast<bool>(false));
-  fc0->SetAttr("x_num_col_dims", static_cast<int32_t>(1));
-  fc0->SetAttr("y_num_col_dims", static_cast<int32_t>(-1));
+  LOG(INFO) << "create elementwise_add op";
+  auto* elementwise_add0 = block_desc.AppendOp();
+  elementwise_add0->SetType("elementwise_add");
+  elementwise_add0->SetInput("X",
+                             std::vector<std::string>({"x"}));  // 2 x 4 x 4 x 4
+  elementwise_add0->SetInput("Y",
+                             std::vector<std::string>({"y"}));  // 1 x 4 x 1 x 1
+  elementwise_add0->SetOutput(
+      "Out", std::vector<std::string>({"z"}));  // 2 x 4 x 4 x 4
+  elementwise_add0->SetAttr("axis", static_cast<int32_t>(0));
 
-  LOG(INFO) << "create matrix_multiply op";
-  auto* fc1 = block_desc.AppendOp();
-  fc1->SetType("matrix_multiply");
-  fc1->SetInput("X", std::vector<std::string>({"z"}));      // 2 x 6
-  fc1->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
-  fc1->SetOutput("Out", std::vector<std::string>({"z0"}));  // 2 x 8
-  fc1->SetAttr("alpha", static_cast<float>(1));
-  fc1->SetAttr("transpose_x", static_cast<bool>(false));
-  fc1->SetAttr("transpose_y", static_cast<bool>(false));
-  fc1->SetAttr("x_num_col_dims", static_cast<int32_t>(1));
-  fc1->SetAttr("y_num_col_dims", static_cast<int32_t>(-1));
+  LOG(INFO) << "create elementwise_add op";
+  auto* elementwise_add1 = block_desc.AppendOp();
+  elementwise_add1->SetType("elementwise_add");
+  elementwise_add1->SetInput("X",
+                             std::vector<std::string>({"z"}));  // 2 x 4 x 4 x 4
+  elementwise_add1->SetInput(
+      "Y", std::vector<std::string>({"y0"}));  // 1 x 4 x 4 x 4
+  elementwise_add1->SetOutput(
+      "Out", std::vector<std::string>({"z0"}));  // 2 x 4 x 4 x 4
+  elementwise_add1->SetAttr("axis", static_cast<int32_t>(0));
 
   // Set inputs' variable shape in BlockDesc
   // the batch size is 2, so the dims of 'x' is {2, 4}
-  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}));
-  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({4, 6}));
-  AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({6, 8}));
-  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 6}));
-  AddTensorToBlockDesc(block_, "z0", std::vector<int64_t>({2, 8}));
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({1, 4, 1, 1}));
+  AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({1, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "z0", std::vector<int64_t>({2, 4, 4, 4}));
 
   // It is wired, need to copy manually.
-  *block_->add_ops() = *fc0->Proto();
-  *block_->add_ops() = *fc1->Proto();
+  *block_->add_ops() = *elementwise_add0->Proto();
+  *block_->add_ops() = *elementwise_add1->Proto();
 
   ASSERT_EQ(block_->ops_size(), 2);
 
@@ -141,10 +139,10 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   engine_op_desc.SetAttr("use_static_engine", true);
   engine_op_desc.SetAttr("dynamic_shape_names", std::vector<std::string>{"x"});
-  engine_op_desc.SetAttr("dynamic_shape_lens", std::vector<int>{2});
-  engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 4});
-  engine_op_desc.SetAttr("max_input_shape", std::vector<int>{2, 4});
-  engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4});
+  engine_op_desc.SetAttr("dynamic_shape_lens", std::vector<int>{4});
+  engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 1, 1, 1});
+  engine_op_desc.SetAttr("max_input_shape", std::vector<int>{16, 16, 16, 16});
+  engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 4, 4});
   engine_op_desc.SetAttr("model_precision",
                          static_cast<int>(phi::DataType::FLOAT32));
 
@@ -161,18 +159,18 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   ctx.PartialInitWithAllocator();
   // Prepare variables.
   if (allow_build_at_runtime)
-    CreateCUDATensor(&scope, "x", std::vector<int64_t>({3, 4}));
+    CreateCUDATensor(&scope, "x", std::vector<int64_t>({32, 4, 4, 4}));
   else
-    CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4}));
-  CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
+    CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 4, 4}));
+  CreateCUDATensor(&scope, "y", std::vector<int64_t>({1, 4, 1, 1}));
 
-  CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
-  CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));
+  CreateCUDATensor(&scope, "y0", std::vector<int64_t>({1, 4, 4, 4}));
+  CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 4, 4, 4}));
 
   // Execute them.
   LOG(INFO) << "engine_op run";
   inference::tensorrt::OpTeller::Global().SetOpConverterType(
-      "matrix_multiply", inference::tensorrt::OpConverterType::Default);
+      "elementwise_add", inference::tensorrt::OpConverterType::Default);
   engine_op->Run(scope, place);
 }
 
@@ -304,4 +302,4 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 }  // namespace operators
 }  // namespace paddle
 
-USE_TRT_CONVERTER(matrix_multiply)
+USE_TRT_CONVERTER(elementwise_add_weight)
