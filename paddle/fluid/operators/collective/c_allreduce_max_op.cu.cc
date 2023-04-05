@@ -29,7 +29,7 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_max,
                           ops::CAllReduceMaxCUDAKernel,
                           float,
 #if NCCL_VERSION_CODE >= 21000
-                          bfloat16,
+                          plat::bfloat16,
 #endif
                           double,
                           int,
