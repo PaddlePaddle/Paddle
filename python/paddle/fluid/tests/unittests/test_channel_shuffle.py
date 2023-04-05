@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -298,11 +298,11 @@ class TestChannelShuffleBF16OP(OpTest):
 
         groups = 3
 
-        x = np.random.random(shape).astype(self.dtype)
+        x = np.random.random(shape).astype('float32')
         out = channel_shuffle_np(x, groups, self.format)
-        self.inputs = {'X': x}
+        self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'groups': groups, "data_format": self.format}
-        self.outputs = {'Out': out}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def init_data_format(self):
         self.format = "NCHW"
