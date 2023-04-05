@@ -89,6 +89,7 @@ class TestFusedPassBaseList(unittest.TestCase):
                     [
                         "fuse_bn_act",
                         "fused_attention",
+                        "fused_feedforward",
                         "fuse_optimizer",
                         "fuse_gemm_epilogue",
                         "fuse_bn_add_act",

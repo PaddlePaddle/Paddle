@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/unsqueeze_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

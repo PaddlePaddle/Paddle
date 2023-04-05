@@ -162,13 +162,6 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
                           "R is the rank of Input(Logits)."));
 
     axis = phi::funcs::CanonicalAxis(axis, logits_rank);
-
-    PADDLE_ENFORCE_EQ(logits_dims.size(),
-                      labels_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Input(Logits) and Input(Label) should in "
-                          "same dimensions size."));
-
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {

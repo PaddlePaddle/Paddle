@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 
 DECLARE_int32(call_stack_level);
@@ -46,7 +47,9 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<double>,
                                   VarDesc*,
                                   std::vector<VarDesc*>,
-                                  double>;
+                                  double,
+                                  paddle::experimental::Scalar,
+                                  std::vector<paddle::experimental::Scalar>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

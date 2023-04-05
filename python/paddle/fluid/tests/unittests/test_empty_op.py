@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -160,7 +160,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -242,13 +242,13 @@ class TestEmptyAPI(unittest.TestCase):
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 3)
         positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 3)
 
-        shape_tensor_int32 = fluid.data(
+        shape_tensor_int32 = paddle.static.data(
             name="shape_tensor_int32", shape=[2], dtype="int32"
         )
-        shape_tensor_int64 = fluid.data(
+        shape_tensor_int64 = paddle.static.data(
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
-        shape_tensor_unknown = fluid.data(
+        shape_tensor_unknown = paddle.static.data(
             name="shape_tensor_unknown", shape=[-1], dtype="int64"
         )
 

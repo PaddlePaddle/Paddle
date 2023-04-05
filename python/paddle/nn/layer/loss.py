@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +15,7 @@
 import paddle
 
 # TODO: define loss functions of neural network
-import paddle.fluid as fluid
-from paddle import in_dynamic_mode
+from paddle import fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from .. import functional as F

@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -44,12 +44,10 @@ class TestSqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=['XShape'], check_eager=True, check_prim=True
-        )
+        self.check_output(no_check_set=['XShape'], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
+        self.check_grad(["X"], "Out", check_prim=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)

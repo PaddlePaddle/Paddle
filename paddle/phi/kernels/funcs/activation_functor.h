@@ -2472,6 +2472,58 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
+template <typename T>
+struct CudaLogitFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+  float eps;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+
+  // logit(x) = ln(x/(1-x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT y = min(x, (one - static_cast<MT>(eps)));
+    y = max(y, static_cast<MT>(eps));
+
+    if (!eps) {
+      y = x < zero || x > one ? static_cast<T>(NAN) : log(y / (one - y));
+    } else {
+      y = log(y / (one - y));
+    }
+    return static_cast<T>(y);
+  }
+};
+
+template <typename T>
+struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  float eps;
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+  // logit(x)' = 1/(x*(1-x))
+  __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+                ? zero
+                : (static_cast<MT>(dout) / (x * (one - x)));
+    return static_cast<T>(dx);
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);

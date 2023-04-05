@@ -17,7 +17,7 @@ import unittest
 import nets
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Program
 
 

@@ -11,7 +11,6 @@ exclude =
     # Exclude files that will be removed in the future, see more at
     # https://github.com/PaddlePaddle/Paddle/pull/46782#issuecomment-1273033731
     ./python/paddle/fluid/tests/unittests/npu/**,
-    ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
     # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
     E203,
@@ -35,11 +34,11 @@ ignore =
     W503
 per-file-ignores =
     # These files need tabs for testing.
-    python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
+    test/dygraph_to_static/test_error.py:E101,W191
     python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
     # Ignore unused imports in __init__.py
     __init__.py: F401
     # Ignore undefined variables in CMake config and some dygraph_to_static tests
     .cmake-format.py: F821
-    python/paddle/fluid/tests/unittests/dygraph_to_static/test_loop.py: F821
-    python/paddle/fluid/tests/unittests/dygraph_to_static/test_closure_analysis.py: F821
+    test/dygraph_to_static/test_loop.py: F821
+    test/dygraph_to_static/test_closure_analysis.py: F821

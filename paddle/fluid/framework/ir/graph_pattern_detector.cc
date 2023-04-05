@@ -113,7 +113,8 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
     if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
+        VLOG(4) << "Node " << node.Name() << "(" << node.id() << ")"
+                << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -231,7 +232,8 @@ GraphPatternDetector::DetectPatterns() {
     // source -> target
     for (Node *source : pdnodes2nodes_[edge.first]) {
       for (Node *target : pdnodes2nodes_[edge.second]) {
-        VLOG(8) << "check " << source->id() << " -- " << target->id();
+        VLOG(8) << "check " << source->Name() << "(" << source->id() << ")"
+                << " -- " << target->Name() << "(" << target->id() << ")";
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
           if (IsNodesLink(source, target)) {
@@ -251,7 +253,9 @@ GraphPatternDetector::DetectPatterns() {
     VLOG(3) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
-        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
+        VLOG(4) << "node " << item.second->Name() << "(" << item.second->id()
+                << ")"
+                << " as " << item.first->name();
       }
       VLOG(4) << "=========================================================";
     }
@@ -979,7 +983,8 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
-PDNode *patterns::QuantTranspose2::operator()() {
+PDNode *patterns::QuantTranspose::operator()(
+    const std::string &transpose_type) {
   auto *quant_in = pattern->NewNode(quant_in_repr())
                        ->AsInput()
                        ->assert_is_op_input("quantize", "Input");
@@ -989,19 +994,20 @@ PDNode *patterns::QuantTranspose2::operator()() {
                         ->AsIntermediate()
                         ->assert_has_n_outputs(1)
                         ->assert_is_op_output("quantize")
-                        ->assert_is_op_input("transpose2", "X");
-  auto *transpose2_op =
-      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+                        ->assert_is_op_input(transpose_type, "X");
+  auto *transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op(transpose_type);
 
   quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
-  transpose2_op->LinksFrom({quant_out});
+  transpose_op->LinksFrom({quant_out});
 
-  return transpose2_op;
+  return transpose_op;
 }
 
-PDNode *patterns::Transpose2Dequant::operator()() {
-  auto *transpose2_op =
-      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+PDNode *patterns::TransposeDequant::operator()(
+    const std::string &transpose_type) {
+  auto *transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op(transpose_type);
   auto dequant_in = pattern->NewNode(dequant_in_repr())
                         ->AsIntermediate()
                         ->assert_has_n_inputs(1)
@@ -1012,7 +1018,7 @@ PDNode *patterns::Transpose2Dequant::operator()() {
                          ->AsOutput()
                          ->assert_is_op_output("dequantize", "Output");
 
-  transpose2_op->LinksTo({dequant_in});
+  transpose_op->LinksTo({dequant_in});
   dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
   return dequant_out;
 }
@@ -4007,6 +4013,443 @@ PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
       {reshape2_30_out, layernorm_40_in_bias, layernorm_40_in_scale});
   layernorm_40_out->LinksFrom({layernorm_40_op});
   return layernorm_40_out;
+}
+
+PDNode *patterns::FusedFeedForwardFwd::operator()(
+    paddle::framework::ir::PDNode *x_var,
+    std::unordered_set<std::string> act_types,
+    bool use_mp,
+    bool pre_layer_norm,
+    bool add_residual,
+    bool use_dropout_1,
+    bool use_dropout_2) {
+  // Possible patterns
+  // 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
+  // -> residual_add (pre_layer_norm)
+  // 2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
+  // -> layer_norm (pOST_layer_norm)
+  // other cases: may delete residual_add, dropout1, dropout2 operators
+
+  // intermediate input, and final pattern output
+  PDNode *out_var = x_var;
+  // LayerNorm
+  auto *layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+  auto *layer_norm_bias_var = pattern->NewNode(layer_norm_bias_repr())
+                                  ->AsInput()
+                                  ->assert_is_op_input("layer_norm", "Bias");
+  auto *layer_norm_scale_var = pattern->NewNode(layer_norm_scale_repr())
+                                   ->AsInput()
+                                   ->assert_is_op_input("layer_norm", "Scale");
+  auto *layer_norm_out_var = pattern->NewNode(layer_norm_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output("layer_norm", "Y");
+  auto *layer_norm_mean_var = pattern->NewNode(layer_norm_mean_repr())
+                                  ->AsOutput()
+                                  ->assert_is_op_output("layer_norm", "Mean");
+  auto *layer_norm_variance_var =
+      pattern->NewNode(layer_norm_variance_repr())
+          ->AsOutput()
+          ->assert_is_op_output("layer_norm", "Variance");
+  if (pre_layer_norm) {
+    out_var->assert_is_op_input("layer_norm", "X");
+    layer_norm_op
+        ->LinksFrom({out_var, layer_norm_bias_var, layer_norm_scale_var})
+        .LinksTo(
+            {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+    out_var = layer_norm_out_var;
+  }
+
+  // Model parallel, do nothing in forward.
+  if (use_mp) {
+    out_var->assert_is_op_input("c_identity", "X");
+    auto *c_identity_op =
+        pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+    auto *c_identity_out_var = pattern->NewNode(c_identity_out_repr())
+                                   ->assert_is_op_output("c_identity", "Out");
+    c_identity_op->LinksFrom({out_var}).LinksTo({c_identity_out_var});
+    out_var = c_identity_out_var;
+  }
+
+  // Linear1
+  out_var->assert_is_op_input("matmul_v2", "X");
+  auto *matmul_op_1 =
+      pattern->NewNode(matmul_op_1_repr())->assert_is_op("matmul_v2");
+  auto *matmul_w_var_1 = pattern->NewNode(matmul_w_1_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("matmul_v2", "Y");
+  auto *matmul_out_var_1 = pattern->NewNode(matmul_out_1_repr())
+                               ->assert_is_op_output("matmul_v2", "Out");
+  matmul_op_1->LinksFrom({out_var, matmul_w_var_1}).LinksTo({matmul_out_var_1});
+  out_var = matmul_out_var_1;
+
+  out_var->assert_is_op_input("elementwise_add", "X");
+  auto *ele_add_op_1 =
+      pattern->NewNode(ele_add_op_1_repr())->assert_is_op("elementwise_add");
+  auto *ele_add_bias_var_1 = pattern->NewNode(ele_add_bias_1_repr())
+                                 ->AsInput()
+                                 ->assert_is_op_input("elementwise_add", "Y");
+  auto *ele_add_out_var_1 = pattern->NewNode(ele_add_out_1_repr())
+                                ->assert_is_op_output("elementwise_add", "Out");
+  ele_add_op_1->LinksFrom({out_var, ele_add_bias_var_1})
+      .LinksTo({ele_add_out_var_1});
+  out_var = ele_add_out_var_1;
+
+  // Activation
+  out_var->assert_is_ops_input(act_types);
+  auto *act_op = pattern->NewNode(act_op_repr())->assert_is_ops(act_types);
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+  act_op->LinksFrom({out_var}).LinksTo({act_out_var});
+  out_var = act_out_var;
+
+  // Dropout1
+  if (use_dropout_1) {
+    out_var->assert_is_op_input("dropout", "X");
+    auto *dropout_op_1 =
+        pattern->NewNode(dropout_op_1_repr())->assert_is_op("dropout");
+    auto *dropout_mask_var_1 = pattern->NewNode(dropout_mask_1_repr())
+                                   ->assert_is_op_output("dropout", "Mask");
+    auto *dropout_out_var_1 = pattern->NewNode(dropout_out_1_repr())
+                                  ->assert_is_op_output("dropout", "Out");
+    dropout_op_1->LinksFrom({out_var}).LinksTo(
+        {dropout_mask_var_1, dropout_out_var_1});
+    out_var = dropout_out_var_1;
+  }
+
+  // Linear2
+  out_var->assert_is_op_input("matmul_v2", "X");
+  auto *matmul_op_2 =
+      pattern->NewNode(matmul_op_2_repr())->assert_is_op("matmul_v2");
+  auto *matmul_w_var_2 =
+      pattern->NewNode(matmul_w_2_repr())->assert_is_op_input("matmul_v2", "Y");
+  auto *matmul_out_var_2 = pattern->NewNode(matmul_out_2_repr())
+                               ->assert_is_op_output("matmul_v2", "Out");
+  matmul_op_2->LinksFrom({out_var, matmul_w_var_2}).LinksTo({matmul_out_var_2});
+  out_var = matmul_out_var_2;
+
+  // Model parallel, do nothing in forward.
+  if (use_mp) {
+    out_var->assert_is_op_input("c_allreduce_sum", "X");
+    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
+                                   ->assert_is_op("c_allreduce_sum");
+    auto *c_allreduce_sum_out_var =
+        pattern->NewNode(c_allreduce_sum_out_repr())
+            ->assert_is_op_output("c_allreduce_sum", "Out");
+    c_allreduce_sum_op->LinksFrom({out_var}).LinksTo({c_allreduce_sum_out_var});
+    out_var = c_allreduce_sum_out_var;
+  }
+
+  out_var->assert_is_op_input("elementwise_add", "X");
+  auto *ele_add_op_2 =
+      pattern->NewNode(ele_add_op_2_repr())->assert_is_op("elementwise_add");
+  auto *ele_add_bias_var_2 = pattern->NewNode(ele_add_bias_2_repr())
+                                 ->assert_is_op_input("elementwise_add", "Y");
+  auto *ele_add_out_var_2 = pattern->NewNode(ele_add_out_2_repr())
+                                ->assert_is_op_output("elementwise_add", "Out");
+  ele_add_op_2->LinksFrom({out_var, ele_add_bias_var_2})
+      .LinksTo({ele_add_out_var_2});
+  out_var = ele_add_out_var_2;
+
+  // Dropout 2
+  if (use_dropout_2) {
+    out_var->assert_is_op_input("dropout", "X");
+    auto *dropout_op_2 =
+        pattern->NewNode(dropout_op_2_repr())->assert_is_op("dropout");
+    auto *dropout_mask_var_2 = pattern->NewNode(dropout_mask_2_repr())
+                                   ->assert_is_op_output("dropout", "Mask");
+    auto *dropout_out_var_2 = pattern->NewNode(dropout_out_2_repr())
+                                  ->assert_is_op_output("dropout", "Out");
+    dropout_op_2->LinksFrom({out_var}).LinksTo(
+        {dropout_mask_var_2, dropout_out_var_2});
+    out_var = dropout_out_var_2;
+  }
+
+  // Residual Add
+  if (add_residual) {
+    out_var->assert_is_op_input("elementwise_add", "X");
+    x_var->assert_is_op_input("elementwise_add", "Y");
+    auto *ele_add_op_3 =
+        pattern->NewNode(ele_add_op_3_repr())->assert_is_op("elementwise_add");
+    auto *ele_add_out_var_3 =
+        pattern->NewNode(ele_add_out_3_repr())
+            ->assert_is_op_output("elementwise_add", "Out");
+    ele_add_op_3->LinksFrom({out_var, x_var}).LinksTo({ele_add_out_var_3});
+    out_var = ele_add_out_var_3;
+  }
+
+  // Post LayerNorm
+  if (!pre_layer_norm) {
+    out_var->assert_is_op_input("layer_norm", "X");
+    layer_norm_op
+        ->LinksFrom({out_var, layer_norm_bias_var, layer_norm_scale_var})
+        .LinksTo(
+            {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+    out_var = layer_norm_out_var;
+  }
+  return out_var;
+}
+
+PDNode *patterns::FusedFeedForwardBwd::operator()(
+    paddle::framework::ir::PDNode *x_grad,
+    std::unordered_set<std::string> act_grad_types,
+    bool use_mp,
+    bool pre_layer_norm,
+    bool add_residual,
+    bool use_dropout_1,
+    bool use_dropout_2) {
+  // Possible patterns
+  // 1. residual_add_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
+  // activation_grad -> linear1_grad -> layer_norm_grad
+  // 2. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
+  // dropout1_grad -> activation_grad -> linear1_grad
+  // other cases: may delete residual_add_grad, dropout1_grad, dropout2_grad
+  // operators
+
+  // intermediate input_grad, and final pattern ouput_grad
+  PDNode *out_grad = x_grad;
+  // LayerNorm: in["Mean", "Variance", "Scale", "Bias", "Y@GRAD"],
+  // out["X@GRAD", "Scale@GRAD", "Bias@GRAD"]
+  auto *layer_norm_op_grad = pattern->NewNode(layer_norm_op_grad_repr())
+                                 ->assert_is_op("layer_norm_grad");
+  auto *layer_norm_in_var = pattern->NewNode(layer_norm_in_repr())
+                                ->assert_is_op_input("layer_norm_grad", "X");
+  auto *layer_norm_mean_var =
+      pattern->NewNode(layer_norm_mean_repr())
+          ->assert_is_op_input("layer_norm_grad", "Mean");
+  auto *layer_norm_variance_var =
+      pattern->NewNode(layer_norm_variance_repr())
+          ->assert_is_op_input("layer_norm_grad", "Variance");
+  auto *layer_norm_scale_var =
+      pattern->NewNode(layer_norm_scale_repr())
+          ->assert_is_op_input("layer_norm_grad", "Scale");
+  auto *layer_norm_bias_var =
+      pattern->NewNode(layer_norm_bias_repr())
+          ->assert_is_op_input("layer_norm_grad", "Bias");
+  auto *layer_norm_in_grad =
+      pattern->NewNode(layer_norm_in_grad_repr())
+          ->assert_is_op_output("layer_norm_grad", GradVarName("X"));
+  auto *layer_norm_scale_grad =
+      pattern->NewNode(layer_norm_scale_grad_repr())
+          ->assert_is_op_output("layer_norm_grad", GradVarName("Scale"));
+  auto *layer_norm_bias_grad =
+      pattern->NewNode(layer_norm_bias_grad_repr())
+          ->assert_is_op_output("layer_norm_grad", GradVarName("Bias"));
+  // post_layer_norm
+  if (!pre_layer_norm) {
+    out_grad->assert_is_op_input("layer_norm_grad", GradVarName("Y"));
+    layer_norm_op_grad
+        ->LinksFrom({out_grad,
+                     layer_norm_in_var,
+                     layer_norm_mean_var,
+                     layer_norm_variance_var,
+                     layer_norm_scale_var,
+                     layer_norm_bias_var})
+        .LinksTo(
+            {layer_norm_in_grad, layer_norm_scale_grad, layer_norm_bias_grad});
+    out_grad = layer_norm_in_grad;
+  }
+  // partial input_grad of residual_add
+  PDNode *tmp = nullptr;
+  auto *matmul_in_var_1 = pattern->NewNode(matmul_in_1_repr())
+                              ->assert_is_op_input("matmul_v2_grad", "X");
+  if (add_residual) {
+    // Residual Add: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
+    out_grad->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
+    auto *ele_add_op_grad_3 = pattern->NewNode(ele_add_op_grad_3_repr())
+                                  ->assert_is_op("elementwise_add_grad");
+    auto *ele_add_in_var_3 =
+        pattern->NewNode(ele_add_in_3_repr())
+            ->assert_is_op_input("elementwise_add_grad", "X");
+    auto *ele_add_in_grad_3 =
+        pattern->NewNode(ele_add_in_grad_3_repr())
+            ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
+    auto *ele_add_bias_grad_3 =
+        pattern->NewNode(ele_add_bias_grad_3_repr())
+            ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
+    tmp = ele_add_bias_grad_3;
+    if (pre_layer_norm) {
+      ele_add_op_grad_3
+          ->LinksFrom({out_grad, ele_add_in_var_3, layer_norm_in_var})
+          .LinksTo({ele_add_in_grad_3, ele_add_bias_grad_3});
+    } else {
+      ele_add_op_grad_3
+          ->LinksFrom({out_grad, ele_add_in_var_3, matmul_in_var_1})
+          .LinksTo({ele_add_in_grad_3, ele_add_bias_grad_3});
+    }
+    out_grad = ele_add_in_grad_3;
+  }
+
+  // Dropout 2: in["Out@GRAD", "Mask"], out["X@GRAD"]
+  if (use_dropout_2) {
+    out_grad->assert_is_op_input("dropout_grad", GradVarName("Out"));
+    auto *dropout_op_grad_2 = pattern->NewNode(dropout_op_grad_2_repr())
+                                  ->assert_is_op("dropout_grad");
+    auto *dropout_mask_grad_2 =
+        pattern->NewNode(dropout_mask_2_repr())
+            ->assert_is_op_input("dropout_grad", "Mask");
+    auto *dropout_in_grad_2 =
+        pattern->NewNode(dropout_in_grad_2_repr())
+            ->assert_is_op_output("dropout_grad", GradVarName("X"));
+    dropout_op_grad_2->LinksFrom({out_grad, dropout_mask_grad_2})
+        .LinksTo({dropout_in_grad_2});
+    out_grad = dropout_in_grad_2;
+  }
+
+  // Linear 2:
+  // elementwise_add: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
+  out_grad->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
+  auto *ele_add_op_grad_2 = pattern->NewNode(ele_add_op_grad_2_repr())
+                                ->assert_is_op("elementwise_add_grad");
+  auto *ele_add_in_var_2 =
+      pattern->NewNode(ele_add_in_2_repr())
+          ->assert_is_op_input("elementwise_add_grad", "X");
+  auto *ele_add_bias_var_2 =
+      pattern->NewNode(ele_add_bias_2_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y");
+  auto *ele_add_in_grad_2 =
+      pattern->NewNode(ele_add_in_grad_2_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
+  auto *ele_add_bias_grad_2 =
+      pattern->NewNode(ele_add_bias_grad_2_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
+  ele_add_op_grad_2->LinksFrom({out_grad, ele_add_in_var_2, ele_add_bias_var_2})
+      .LinksTo({ele_add_in_grad_2, ele_add_bias_grad_2});
+  out_grad = ele_add_in_grad_2;
+
+  // Model parallel, do nothing in backward.
+  if (use_mp) {
+    out_grad->assert_is_op_input("c_identity", "X");
+    auto *c_identity_op =
+        pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+    auto *c_identity_out_grad = pattern->NewNode(c_identity_out_repr())
+                                    ->assert_is_op_output("c_identity", "Out");
+    c_identity_op->LinksFrom({out_grad}).LinksTo({c_identity_out_grad});
+    out_grad = c_identity_out_grad;
+  }
+
+  // matmul_v2: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
+  out_grad->assert_is_op_input("matmul_v2_grad", GradVarName("Out"));
+  auto *matmul_op_grad_2 =
+      pattern->NewNode(matmul_op_grad_2_repr())->assert_is_op("matmul_v2_grad");
+  auto *matmul_in_var_2 = pattern->NewNode(matmul_in_2_repr())
+                              ->assert_is_op_input("matmul_v2_grad", "X");
+  auto *matmul_w_var_2 = pattern->NewNode(matmul_w_2_repr())
+                             ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *matmul_in_grad_2 =
+      pattern->NewNode(matmul_in_grad_2_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"));
+  auto *matmul_w_grad_2 =
+      pattern->NewNode(matmul_w_grad_2_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+  matmul_op_grad_2->LinksFrom({out_grad, matmul_in_var_2, matmul_w_var_2})
+      .LinksTo({matmul_in_grad_2, matmul_w_grad_2});
+  out_grad = matmul_in_grad_2;
+
+  // Dropout 1: in["Out@GRAD", "Mask"], out["X@GRAD"]
+  if (use_dropout_1) {
+    out_grad->assert_is_op_input("dropout_grad", GradVarName("Out"));
+    auto *dropout_op_grad_1 = pattern->NewNode(dropout_op_grad_1_repr())
+                                  ->assert_is_op("dropout_grad");
+    auto *dropout_mask_var_1 = pattern->NewNode(dropout_mask_1_repr())
+                                   ->assert_is_op_input("dropout_grad", "Mask");
+    auto *dropout_in_grad_1 =
+        pattern->NewNode(dropout_in_grad_1_repr())
+            ->assert_is_op_output("dropout_grad", GradVarName("X"));
+    dropout_op_grad_1->LinksFrom({out_grad, dropout_mask_var_1})
+        .LinksTo({dropout_in_grad_1});
+    out_grad = dropout_in_grad_1;
+  }
+
+  // Activation: in["Out", "Out@GRAD"], out["X@GRAD"]
+  out_grad->assert_is_ops_input(act_grad_types, GradVarName("Out"));
+  auto *act_op_grad =
+      pattern->NewNode(act_op_grad_repr())->assert_is_ops(act_grad_types);
+  auto *act_in_var =
+      pattern->NewNode(act_in_repr())->assert_is_ops_input(act_grad_types, "X");
+  auto *act_in_grad =
+      pattern->NewNode(act_in_grad_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"));
+  act_op_grad->LinksFrom({out_grad, act_in_var}).LinksTo({act_in_grad});
+  out_grad = act_in_grad;
+
+  // Linear 1:
+  // elementwise_add: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
+  out_grad->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
+  auto *ele_add_op_grad_1 = pattern->NewNode(ele_add_op_grad_1_repr())
+                                ->assert_is_op("elementwise_add_grad");
+  auto *ele_add_in_var_1 =
+      pattern->NewNode(ele_add_in_1_repr())
+          ->assert_is_op_input("elementwise_add_grad", "X");
+  auto *ele_add_bias_var_1 =
+      pattern->NewNode(ele_add_bias_1_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y");
+  auto *ele_add_in_grad_1 =
+      pattern->NewNode(ele_add_in_grad_1_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
+  auto *ele_add_bias_grad_1 =
+      pattern->NewNode(ele_add_bias_grad_1_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
+  ele_add_op_grad_1->LinksFrom({out_grad, ele_add_in_var_1, ele_add_bias_var_1})
+      .LinksTo({ele_add_in_grad_1, ele_add_bias_grad_1});
+  out_grad = ele_add_in_grad_1;
+  // matmul_v2: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
+  out_grad->assert_is_op_input("matmul_v2_grad", GradVarName("Out"));
+  auto *matmul_op_grad_1 =
+      pattern->NewNode(matmul_op_grad_1_repr())->assert_is_op("matmul_v2_grad");
+  // auto *matmul_in_var_1 = pattern->NewNode(matmul_in_1_repr())
+  //                                 ->assert_is_op_input("matmul_v2_grad",
+  //                                 "X");
+  auto *matmul_w_var_1 = pattern->NewNode(matmul_w_1_repr())
+                             ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *matmul_in_grad_1 =
+      pattern->NewNode(matmul_in_grad_1_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"));
+  auto *matmul_w_grad_1 =
+      pattern->NewNode(matmul_w_grad_1_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+  matmul_op_grad_1->LinksFrom({out_grad, matmul_in_var_1, matmul_w_var_1})
+      .LinksTo({matmul_in_grad_1, matmul_w_grad_1});
+  out_grad = matmul_in_grad_1;
+
+  // Model parallel, all_reduce in backward.
+  if (use_mp) {
+    out_grad->assert_is_op_input("c_allreduce_sum", "X");
+    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
+                                   ->assert_is_op("c_allreduce_sum");
+    auto *c_allreduce_sum_out_grad =
+        pattern->NewNode(c_allreduce_sum_out_repr())
+            ->assert_is_op_output("c_allreduce_sum", "Out");
+    c_allreduce_sum_op->LinksFrom({out_grad})
+        .LinksTo({c_allreduce_sum_out_grad});
+    out_grad = c_allreduce_sum_out_grad;
+  }
+
+  // pre LayerNorm
+  if (pre_layer_norm) {
+    out_grad->assert_is_op_input("layer_norm_grad", GradVarName("Y"));
+    layer_norm_op_grad
+        ->LinksFrom({out_grad,
+                     layer_norm_in_var,
+                     layer_norm_mean_var,
+                     layer_norm_variance_var,
+                     layer_norm_scale_var,
+                     layer_norm_bias_var})
+        .LinksTo(
+            {layer_norm_in_grad, layer_norm_scale_grad, layer_norm_bias_grad});
+    out_grad = layer_norm_in_grad;
+  }
+
+  // sum for final gradient
+  if (add_residual) {
+    auto *sum_op = pattern->NewNode(sum_op_repr())->assert_is_op("sum");
+    auto *sum_out =
+        pattern->NewNode(sum_out_repr())->assert_is_op_output("sum", "Out");
+    sum_op->LinksFrom({tmp, out_grad}).LinksTo({sum_out});
+    out_grad = sum_out;
+  }
+
+  return out_grad;
 }
 
 }  // namespace ir

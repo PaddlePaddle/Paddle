@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard, randomize_probability
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestCrossEntropyOp(OpTest):
@@ -388,7 +387,7 @@ def create_test_class(parent, cls_name):
                     place, ['X'], 'Y', max_relative_error=0.9
                 )
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = f"{cls_name}"
     TestCrossEntropyFP16Op.__name__ = cls_name
     globals()[cls_name] = TestCrossEntropyFP16Op
 

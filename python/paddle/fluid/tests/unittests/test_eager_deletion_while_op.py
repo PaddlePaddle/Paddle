@@ -21,9 +21,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core, layers
 from paddle.fluid.executor import Executor
 
 paddle.enable_static()

@@ -63,6 +63,7 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             self.shape = [2, 3, 4, 5]
             self.epsilon = 1e-05
             self.begin_norm_axis = 1
+            self.use_fp16_scale_bias = False
             self.set_attrs()
 
             self.atol = 1e-4
@@ -76,6 +77,9 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             x_np = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             scale_np = np.random.uniform(0.1, 1, [right]).astype('float32')
             bias_np = np.random.uniform(0.1, 1, [right]).astype('float32')
+            if self.dtype == np.float16 and self.use_fp16_scale_bias:
+                scale_np = scale_np.astype('float16')
+                bias_np = scale_np.astype('float16')
             ref_y_np, ref_mean_np, ref_variance_np = ref_layer_norm(
                 x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis
             )
@@ -118,6 +122,20 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
     class TestXPULayerNormOp3D(TestXPULayerNormOp):
         def set_attrs(self):
             self.shape = [4, 5, 6]
+
+    class TestXPULayerNormOpFP16(TestXPULayerNormOp):
+        def set_attrs(self):
+            self.use_fp16_scale_bias = True
+
+    class TestXPULayerNormOpFP16_2D(TestXPULayerNormOp):
+        def set_attrs(self):
+            self.shape = [10, 12]
+            self.use_fp16_scale_bias = True
+
+    class TestXPULayerNormOpFP16_3D(TestXPULayerNormOp):
+        def set_attrs(self):
+            self.shape = [4, 5, 6]
+            self.use_fp16_scale_bias = True
 
 
 support_types = get_xpu_op_support_types('layer_norm')

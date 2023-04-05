@@ -14,7 +14,24 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 
+#include "cinn/runtime/flags.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/generator.h"
+
+namespace paddle {
+namespace operators {
+
+namespace details {
+
+template <>
+void SetCinnRandomSeed<phi::GPUContext>() {
+  auto seed = phi::DefaultCUDAGenerator(0)->GetCurrentSeed();
+  ::cinn::runtime::RandomSeed::GetOrSet(seed);
+}
+
+}  // namespace details
+}  // namespace operators
+}  // namespace paddle
 
 /* see [Why use single type kernel] */
 REGISTER_OP_CUDA_KERNEL(

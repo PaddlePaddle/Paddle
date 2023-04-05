@@ -90,6 +90,7 @@ PD_REGISTER_KERNEL(nonzero,
                    int64_t,
                    int,
                    int16_t,
+                   phi::dtype::bfloat16,
                    bool,
                    float,
                    double) {

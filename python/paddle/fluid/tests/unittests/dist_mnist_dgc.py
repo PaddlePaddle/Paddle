@@ -18,7 +18,7 @@ import nets
 from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 

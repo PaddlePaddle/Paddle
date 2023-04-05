@@ -32,6 +32,8 @@ USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(transpose);
 PD_DECLARE_KERNEL(transpose, OneDNN, ONEDNN);
+USE_OP_ITSELF(fused_transpose);
+PD_DECLARE_KERNEL(fused_transpose, OneDNN, ONEDNN);
 USE_OP_ITSELF(shape);
 PD_DECLARE_KERNEL(shape, OneDNN, ONEDNN);
 USE_OP_ITSELF(crop);
@@ -49,7 +51,7 @@ struct InputVars {
   phi::DenseTensor *tensor;
 };
 
-TEST(test_pool2d_transpose_nhwc, cpu_place) {
+void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 7, 512, 3});  // NHWC expected shape
   phi::CPUPlace p;
@@ -89,7 +91,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   axis[2] = 3;
   axis[3] = 1;
   auto op_transpose = framework::OpRegistry::CreateOp(
-      "transpose",
+      transpose_type,
       {{"X", {"y"}}},
       {{"Out", {"z"}}},
       {{"axis", {axis}}, {"use_mkldnn", {true}}});
@@ -103,6 +105,11 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
                     expected_dims,
                     platform::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
+}
+
+TEST(test_pool2d_transpose_nhwc, cpu_place) {
+  Test_Pool2d_Transpose_NHWC({"transpose"});
+  Test_Pool2d_Transpose_NHWC({"fused_transpose"});
 }
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {

@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):

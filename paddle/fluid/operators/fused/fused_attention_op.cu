@@ -75,7 +75,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 #endif
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedAttentionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -402,7 +402,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -826,11 +826,18 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_attention,
-                        ops::FusedAttentionOpKernel<float>,
-                        ops::FusedAttentionOpKernel<double>,
-                        ops::FusedAttentionOpKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(fused_attention_grad,
-                        ops::FusedAttentionGradKernel<float>,
-                        ops::FusedAttentionGradKernel<double>,
-                        ops::FusedAttentionGradKernel<plat::float16>);
+
+PD_REGISTER_STRUCT_KERNEL(fused_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedAttentionOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedAttentionGradKernel,
+                          float,
+                          double,
+                          plat::float16) {}

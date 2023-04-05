@@ -17,7 +17,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def round_c_single_element(val):
@@ -65,7 +65,7 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_fake_quantize_abs_max(self):
         self._fake_quantize_abs_max(np.float32, (124, 240), np.random.random)
@@ -126,7 +126,7 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
         self.attrs['quant_axis'] = quant_axis
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_fake_channel_wise_quantize_abs_max(self):
         dtype_options = [np.float32, np.float16]
@@ -200,7 +200,7 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         }
         self.dtype = dtype
         self.attrs['is_test'] = is_test
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_fake_quantize_range_abs_max(self):
         dtype_options = [np.float16, np.float32]
@@ -248,7 +248,7 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
             'OutScale': out_scale,
         }
         self.dtype = dtype
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_moving_average_abs_max(self):
         self._moving_average_abs_max_scale(
@@ -313,7 +313,7 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
             'OutScale': out_scale,
         }
         self.dtype = dtype
-        self.check_output()
+        self.check_output(check_dygraph=False)
         if with_gradient:
             gradient = [
                 np.ones(input_data.shape) / np.product(input_data.shape)
@@ -369,7 +369,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
             'OutScale': np.array(scale).astype(dtype),
         }
         self.dtype = dtype
-        self.check_output()
+        self.check_output(check_dygraph=False)
         gradient = [np.ones(input_data.shape) / np.product(input_data.shape)]
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
@@ -426,7 +426,7 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
         self.attrs['quant_axis'] = quant_axis
-        self.check_output()
+        self.check_output(check_dygraph=False)
         gradient = [np.ones(input_data.shape) / np.product(input_data.shape)]
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
@@ -504,7 +504,7 @@ class TestChannelWiseQuantizeOp(OpTest):
         self.outputs = {'Y': yq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestChannelWiseQuantizeOp1(TestChannelWiseQuantizeOp):
@@ -540,7 +540,7 @@ class TestChannelWiseQuantizeOpTrain(OpTest):
         self.outputs = {'Y': yq, 'OutScale': scale}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestquantizeOp(OpTest):
@@ -566,7 +566,7 @@ class TestquantizeOp(OpTest):
         self.outputs = {'Y': yq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestquantizeOpTrain(TestquantizeOp):
@@ -618,7 +618,7 @@ class TestquantizeOpTrain(TestquantizeOp):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

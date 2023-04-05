@@ -36,7 +36,7 @@ class TestMedian(unittest.TestCase):
         startup_program = Program()
         exe = paddle.static.Executor()
         with program_guard(main_program, startup_program):
-            x_in = paddle.fluid.data(shape=x.shape, dtype=x.dtype, name='x')
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
             y = paddle.median(x_in, axis, keepdims)
             [res_pd] = exe.run(feed={'x': x}, fetch_list=[y])
             self.check_numpy_res(res_pd, res_np)

@@ -19,12 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import paddle.fluid.profiler as profiler
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
-import paddle.utils as utils
+from paddle import fluid, utils
+from paddle.fluid import core, layers, profiler
+from paddle.fluid.proto.profiler import profiler_pb2
 from paddle.utils.flops import flops
 
 

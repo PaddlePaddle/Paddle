@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gloo/math.h>
 #include <gloo/transport/tcp/device.h>
 #include <gloo/types.h>
 
@@ -23,6 +24,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/reduce_helper.h"
 
 namespace phi {
 namespace distributed {
@@ -97,6 +99,36 @@ void SetInput(P* opts, const phi::DenseTensor& tensor) {
   // gloo only support mutable data input
   opts->setInput(reinterpret_cast<T*>(const_cast<void*>(tensor.data())),
                  tensor.numel());
+}
+
+template <typename T, typename P>
+void SetReduceFunc(P* opts, int reduce_type) {
+  // gloo only support mutable data input
+  switch (reduce_type) {
+    case kRedSum:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::sum<T>));
+      break;
+    case kRedMax:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::max<T>));
+      break;
+    case kRedMin:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::min<T>));
+      break;
+    case kRedProd:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::product<T>));
+      break;
+    default:
+      PADDLE_THROW(
+          errors::InvalidArgument("Invalid reduce type: %d.", reduce_type));
+  }
 }
 
 // env preparation

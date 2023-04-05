@@ -21,7 +21,7 @@ import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'
@@ -193,8 +193,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     load(neg_pattern, INS, 1)
 
     def reader():
-        for doc, label in INS:
-            yield doc, label
+        yield from INS
 
     return reader
 

@@ -20,8 +20,8 @@ from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 from paddle.fluid.framework import Program, program_guard
 
 

@@ -17,8 +17,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 

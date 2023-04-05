@@ -501,8 +501,20 @@ void GroupNormInferMeta(const MetaTensor& x,
   y->set_dims(x_dim);
   y->set_dtype(x.dtype());
   y->share_lod(x);
-  mean->set_dims({batch_size, groups});
-  variance->set_dims({batch_size, groups});
+
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
+  if (mean) {
+    mean->set_dims({batch_size, groups});
+    mean->set_dtype(param_type);
+  }
+  if (variance) {
+    variance->set_dims({batch_size, groups});
+    variance->set_dtype(param_type);
+  }
 }
 
 void LayerNormInferMeta(const MetaTensor& x,

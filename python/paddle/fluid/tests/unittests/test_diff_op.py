@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestDiffOp(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestDiffOp(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
                 has_pend = False
@@ -92,14 +92,14 @@ class TestDiffOp(unittest.TestCase):
                 append = None
                 if self.prepend is not None:
                     has_pend = True
-                    prepend = paddle.fluid.data(
+                    prepend = paddle.static.data(
                         name="prepend",
                         shape=self.prepend.shape,
                         dtype=self.prepend.dtype,
                     )
                 if self.append is not None:
                     has_pend = True
-                    append = paddle.fluid.data(
+                    append = paddle.static.data(
                         name="append",
                         shape=self.append.shape,
                         dtype=self.append.dtype,

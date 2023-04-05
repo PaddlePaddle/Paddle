@@ -1,10 +1,3 @@
-if(WITH_ASCEND_CL)
-  cc_library(
-    beam_search_npu
-    SRCS beam_search_npu.cc
-    DEPS npu_op_runner)
-endif()
-
 if(WITH_XPU)
   cc_library(
     beam_search_xpu
@@ -13,9 +6,7 @@ if(WITH_XPU)
 endif()
 
 # please add new math_library in alphabetical order
-if(WITH_ASCEND_CL)
-  math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
-elseif(WITH_MLU)
+if(WITH_MLU)
   math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
 else()
   math_library(concat_and_split DEPS concat_and_split_functor)

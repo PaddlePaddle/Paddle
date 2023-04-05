@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
@@ -63,7 +63,7 @@ class TestRandpermOp(OpTest):
         self.dtype = "int64"
 
         self.inputs = {}
-        self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
+        self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
         self.init_attrs()
         self.attrs = {
             "n": self.n,

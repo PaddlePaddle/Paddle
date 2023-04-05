@@ -128,6 +128,11 @@ void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -366,11 +371,6 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
-}
-
-void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dtype(x.dtype());
-  out->set_dims(x.dims());
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
@@ -770,6 +770,16 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
                         alpha_dim.size()));
   out->set_dims(alpha_dim);
   out->set_dtype(alpha.dtype());
+}
+
+void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
+void DistBroadcastInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
 }
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {

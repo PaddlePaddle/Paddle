@@ -29,6 +29,8 @@ def apply_pass(use_amp=False, level=None):
     if use_amp:
         amp = strategy.amp
         amp.enable = True
+        amp.dtype = "float16"
+        amp.level = level
         amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
         amp.custom_black_list = [
             'c_softmax_with_cross_entropy',
@@ -37,8 +39,6 @@ def apply_pass(use_amp=False, level=None):
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
-        amp.level = level
-        amp.use_optimizer_fp16 = level == "o3"
         print("amp level: ", level)
     return strategy
 

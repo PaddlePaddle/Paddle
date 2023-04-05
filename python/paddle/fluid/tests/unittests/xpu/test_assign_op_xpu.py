@@ -67,10 +67,6 @@ class XPUTestAssignOP(XPUOpTestWrapper):
         def init_config(self):
             self.input_shape = [2, 768]
 
-    class XPUTestAssign2(TestAssignOPBase):
-        def init_config(self):
-            self.input_shape = [3, 8, 4096]
-
     class XPUTestAssign3(TestAssignOPBase):
         def init_config(self):
             self.input_shape = [1024]

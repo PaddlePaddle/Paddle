@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import Variable, in_dygraph_mode
 
@@ -154,7 +156,7 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError("Invalid padding: {}".format(padding))
+            raise ValueError(f"Invalid padding: {padding}")
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
@@ -520,7 +522,7 @@ def avg_pool3d(
         op_type = "pool3d"
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool3d'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'avg_pool3d'
         )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -706,7 +708,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
         else:
             for i, var in enumerate(output_size):
                 if isinstance(var, Variable):
-                    output_size[i] = var.numpy().item()
+                    output_size[i] = np.array(var).item()
 
     if len(output_size) == len(kernel_size) + 2:
         output_size = output_size[2:]
@@ -1609,7 +1611,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     if in_dygraph_mode():
         output_size = [
-            item.numpy().item(0) if isinstance(item, Variable) else item
+            np.array(item).item(0) if isinstance(item, Variable) else item
             for item in output_size
         ]
     # output_size support Variable in static graph mode
