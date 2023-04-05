@@ -20,9 +20,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NextafterRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        DenseTensor* out);
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out);
 
 }  // namespace phi
