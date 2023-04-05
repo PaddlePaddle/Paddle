@@ -270,7 +270,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+        attrs = {'axis': axis, 'dtype': dtype, 'keep_dim': keepdim}
 
         if dtype_flag:
             attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
@@ -280,15 +280,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             'x',
             [
                 'bool',
-                'uint16',
-                'float16',
                 'float32',
                 'float64',
                 'int16',
                 'int32',
                 'int64',
-                'complex64',
-                'complex128',
             ],
             'sparse_sum',
         )
@@ -298,15 +294,16 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         )
 
         op_type = 'sparse_sum'
-        helper = LayerHelper(op_type, **locals())
+        helper = LayerHelper(op_type)
         if dtype_flag:
-            out = helper.create_variable_for_type_inference(dtype=dtype)
+            out = helper.create_sparse_variable_for_type_inference(dtype=dtype)
         else:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            out = helper.create_sparse_variable_for_type_inference(
+                dtype=x.dtype
+            )
         helper.append_op(
             type=op_type, inputs={'x': x}, outputs={'out': out}, attrs=attrs
         )
-        print(out)
         return out
 
 

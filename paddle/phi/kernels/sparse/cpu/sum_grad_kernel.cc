@@ -99,8 +99,6 @@ void SumCsrGradKernel(const Context& dev_ctx,
   *dx_crows = x_crows;
   *dx_cols = x_cols;
 
-  LOG(INFO) << dx_values->dtype();
-  LOG(INFO) << dx->dtype();
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
     for (int i = 0; i < dx->nnz(); ++i) {

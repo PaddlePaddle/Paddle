@@ -89,18 +89,22 @@ class TestSparseSumStatic(unittest.TestCase):
         paddle.enable_static()
 
         indices = paddle.static.data(
-            name='indices', shape=[2, 3], dtype='int32'
+            name='indices', shape=[3, 5], dtype='int64'
         )
-        values = paddle.static.data(name='values', shape=[3], dtype='float32')
+        values = paddle.static.data(name='values', shape=[5], dtype='float32')
 
-        dense_shape = [3, 3]
-        sp_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        sp_y = paddle.sparse.sum(sp_x)
+        dense_shape = [10, 10, 10]
+        sp_x = paddle.sparse.sparse_coo_tensor(
+            indices, values, shape=dense_shape, dtype='float32'
+        )
+        sp_y = paddle.sparse.sum(sp_x, dtype='float32')
         out = sp_y.to_dense()
 
         exe = paddle.static.Executor()
-        indices_data = [[0, 1, 2], [1, 2, 0]]
-        values_data = np.array([1.0, 2.0, 3.0]).astype('float32')
+        indices_data = np.array(
+            [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4]]
+        ).astype("int64")
+        values_data = np.array([1.0, 2.0, 3.0, 2.0, 3.0]).astype('float32')
 
         fetch = exe.run(
             feed={'indices': indices_data, 'values': values_data},
@@ -108,7 +112,7 @@ class TestSparseSumStatic(unittest.TestCase):
             return_numpy=True,
         )
 
-        correct_out = np.array([6]).astype('float32')
+        correct_out = sum(values_data).astype('float32')
         np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
         paddle.disable_static()
 
