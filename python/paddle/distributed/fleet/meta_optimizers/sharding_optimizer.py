@@ -609,6 +609,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank
         )
 
+    def _adapt_amp_clip_with_grad_merge(self):
+        main_block = self._main_program.global_block()
+        gradientclip_helper = GradientClipHelper(None)
+        op_idx_to_remove = gradientclip_helper.merge_squared_l2_norm(main_block)
+        for i in op_idx_to_remove:
+            main_block._remove_op(i, sync=False)
+
+
     def _insert_loss_grad_scale_op(self):
         main_block = self._main_program.global_block()
 
@@ -696,6 +704,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._apply_opt_sharding_pass(params_grads)
 
         self._insert_allreduce_for_pp(params_grads)
+
+        self._adapt_amp_clip_with_grad_merge()
 
         self._adapt_amp_clip_without_sharding()
 

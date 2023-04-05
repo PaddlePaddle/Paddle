@@ -75,9 +75,6 @@ def collect_operator_stats(program=default_main_program()):
 
             out_name = out_names[0]
 
-            if op.type == 'elementwise_mul':
-                print(f"outvar={global_block.var(out_name)}, op={op}")
-
             is_in_list = False
             for each_checker in op_checker_list:
                 if op_name == each_checker.op_name:

@@ -5368,8 +5368,6 @@ class PipelineOptimizer(object):
                     is_fp16_grad = (grad_var.dtype == paddle.bfloat16) or (grad_var.dtype == paddle.float16)  #'cast_fp16' in grad_name
                     need_cast = (is_fp16_grad is not fp16_allreduce)
 
-                    #print(f"dtype={dtype}, grad_name={grad_name}, fp16_allreduce={fp16_allreduce}, need_cast={need_cast}, param_grad_name={param_grad_name}")
-
                     if need_cast:
                         # if fp16_allreduce:
                         #     cast grad to fp16 to accumulate to merged gradient

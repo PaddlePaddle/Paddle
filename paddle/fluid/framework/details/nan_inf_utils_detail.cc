@@ -648,6 +648,11 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
       if (var == nullptr) continue;
       CheckVarHasNanOrInf(op.Type(), exec_scope, vname, place);
     }
+    // for (auto& vname : op.InputVars()) {
+    //   auto* var = exec_scope.FindVar(vname);
+    //   if (var == nullptr) continue;
+    //   CheckVarHasNanOrInf(op.Type(), exec_scope, vname, place);
+    // }
   } else {
     for (auto& vname : op.OutputVars(true)) {
       bool need_check = true;

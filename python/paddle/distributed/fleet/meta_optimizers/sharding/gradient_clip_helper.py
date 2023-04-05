@@ -233,6 +233,66 @@ class GradientClipHelper(object):
                     already_inserted = True
                 #break
 
+    def merge_squared_l2_norm(self, block):
+        dict_sln_sum = {}
+        list_sln_out_var = []
+        need_merge = False
+        op_idx_to_remove=[]
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+
+            if op.type == 'squared_l2_norm':
+                sln_out_var = block.var(op.output_arg_names[0])
+                sln_in_var = block.var(op.input_arg_names[0])
+
+                if sln_out_var.dtype != sln_in_var.dtype:
+                    need_merge = True
+
+                sln_out_var.desc.set_dtype(sln_in_var.dtype)
+                dict_sln_sum[sln_out_var.name] = []
+                list_sln_out_var.append(sln_out_var)
+
+            if op.type == 'sum' or op.type == 'cast':
+                sum_out_var = block.var(op.output_arg_names[0])
+                sum_out_var.desc.set_dtype(block.var(op.input_arg_names[0]).dtype)
+
+                for in_name in op.input_arg_names:
+                    sum_in_var = block.var(in_name)
+                    for dict_key in dict_sln_sum.keys():
+                        if in_name == dict_key:
+                            if sum_out_var.name not in dict_sln_sum[dict_key]:
+                                dict_sln_sum[dict_key].append(sum_out_var.name)
+                        else:
+                            if sum_in_var.name in dict_sln_sum[dict_key]:
+                                dict_sln_sum[dict_key].append(sum_out_var.name)
+
+        reserved_sum = True
+        if not need_merge:
+            return op_idx_to_remove
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_gradient_clip_op(op):
+                continue
+
+            if op.type == 'sum':
+                if reserved_sum:
+                    op.desc.set_input('X', list(dict_sln_sum.keys()))
+                    reserved_sum = False
+                else:
+                    for i in dict_sln_sum.values():
+                        if op.output_arg_names[0] in list(i):
+                            op_idx_to_remove.append(idx)
+                            break
+
+            if op.type == 'cast':
+                for i in dict_sln_sum.values():
+                    if op.output_arg_names[0] in list(i):
+                        op_idx_to_remove.append(idx)
+                        break
+
+        return op_idx_to_remove
+
     @staticmethod
     def _insert_allreduce(block, ring_ids, idx, var):
         for ring_id in ring_ids:

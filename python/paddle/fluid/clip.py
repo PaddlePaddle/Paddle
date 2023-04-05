@@ -41,6 +41,20 @@ __all__ = [
 
 _clip_by_global_norm_using_mp_type_flag = False
 
+_merged_grad_in_mp_type_flag = False
+
+def _merged_grad_in_mp_type(*args):
+    global _merged_grad_in_mp_type_flag
+    assert len(args) <= 1
+    if len(args) == 1:
+        assert isinstance(args[0], bool)
+        old_value = _merged_grad_in_mp_type_flag
+        _merged_grad_in_mp_type_flag = args[0]
+        return old_value
+
+    else:
+        return _merged_grad_in_mp_type_flag
+
 
 def _clip_by_global_norm_using_mp_type(*args):
     global _clip_by_global_norm_using_mp_type_flag
@@ -602,11 +616,16 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad
                         )
+
                     sum_square = _squared_l2_norm(merge_grad)
                     if sum_square.dtype == core.VarDesc.VarType.FP16:
                         sum_square_list_fp16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.BF16:
-                        sum_square_list_bf16.append(sum_square)
+                        if _merged_grad_in_mp_type():
+                            sum_square_list_fp32.append(sum_square.astype(core.VarDesc.VarType.FP32))
+                        else:
+                            sum_square_list_bf16.append(sum_square)
+                        #sum_square_list_bf16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
@@ -670,7 +689,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     paddle.add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
-                )
+                ) 
+                
                 global_norm_var = paddle.sqrt(x=global_norm_var)
                 max_global_norm = paddle.full(
                     shape=[1],
