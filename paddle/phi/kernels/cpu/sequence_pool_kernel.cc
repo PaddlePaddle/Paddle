@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void SequencePoolKernel(const Context& ctx,
                         const DenseTensor& x,
                         bool is_test,
-                        const std::string pooltype,
+                        const std::string& pooltype,
                         float pad_value,
                         DenseTensor* out,
                         DenseTensor* max_index) {
