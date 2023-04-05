@@ -55,8 +55,9 @@ def flash_attention(
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float61 or bfloat16.
         dropout(float): The dropout ratio.
-        causal(bool): Wether enable causal mode.
-        return_softmax(bool): Wether to return softmax.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        training(bool): Whether it is in the training phase.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -133,6 +134,7 @@ def flash_attn_unpadded(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    training=True,
     name=None,
 ):
     r"""
@@ -170,8 +172,9 @@ def flash_attn_unpadded(
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
         dropout(float): The dropout ratio.
-        causal(bool): Wether enable causal mode.
-        return_softmax(bool): Wether to return softmax.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        training(bool): Whether it is in the training phase.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -206,6 +209,7 @@ def flash_attn_unpadded(
             dropout,
             causal,
             return_softmax,
+            not training,
         )
         return result_attention, result_softmax if return_softmax else None
 
@@ -239,6 +243,7 @@ def flash_attn_unpadded(
             'dropout': dropout,
             'causal': causal,
             'return_softmax': return_softmax,
+            'is_test': not training,
         },
     )
     return out, softmax if return_softmax else None
