@@ -51,9 +51,9 @@ class WriteToArrayOp : public ArrayOp {
     auto *out_tensor = &out->at(offset);
     out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
+      platform::MultiDeviceContextPool &pool =
+          platform::MultiDeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place, device_context_id_);
 
       paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
     } else {
@@ -159,9 +159,9 @@ class ReadFromArrayOp : public ArrayOp {
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
+      platform::MultiDeviceContextPool &pool =
+          platform::MultiDeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place, device_context_id_);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {

@@ -109,13 +109,14 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
-    this->process(place, x, rank_table, &out);
+    this->process(place, x, rank_table, device_context_id_, &out);
   }
 
  protected:
   virtual void process(const platform::Place &place,
                        const framework::LoDTensor &x,
                        const framework::LoDRankTable &rank_table,
+                       int device_context_id,
                        framework::LoDTensor *out) const = 0;
 
   struct AbsoluteRankTableItem {
@@ -160,6 +161,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   size_t CopyTensorAndLod(const platform::Place &place,
                           const AbsoluteRankTableItem &item,
                           const framework::LoDTensor &x,
+                          int device_context_id,
                           framework::LoDTensor *out,
                           size_t out_offset) const {
     auto &out_lod = *out->mutable_lod();
@@ -184,8 +186,9 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
     auto x_sliced = x.Slice(x_offset, x_offset + len);
     auto out_sliced = out->Slice(out_offset, out_offset + len);
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place, device_context_id);
     framework::TensorCopy(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
     out_offset += len;
     return out_offset;
@@ -204,6 +207,7 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
   void process(const platform::Place &place,
                const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
+               int device_context_id,
                framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
     size_t out_offset = 0;
@@ -213,8 +217,12 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
                         absolute_table.size(),
                         platform::errors::OutOfRange(
                             "The value of rank_table is out of range."));
-      out_offset = CopyTensorAndLod(
-          place, absolute_table[item.index], x, out, out_offset);
+      out_offset = CopyTensorAndLod(place,
+                                    absolute_table[item.index],
+                                    x,
+                                    device_context_id,
+                                    out,
+                                    out_offset);
     }
   }
 };
@@ -259,6 +267,7 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
   void process(const platform::Place &place,
                const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
+               int device_context_id,
                framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
 
@@ -279,8 +288,12 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
     // Copy TensorAndLod
     size_t out_offset = 0;
     for (auto &offset : offsets) {
-      out_offset = this->CopyTensorAndLod(
-          place, absolute_table[offset.first], x, out, out_offset);
+      out_offset = this->CopyTensorAndLod(place,
+                                          absolute_table[offset.first],
+                                          x,
+                                          device_context_id,
+                                          out,
+                                          out_offset);
     }
   }
 };

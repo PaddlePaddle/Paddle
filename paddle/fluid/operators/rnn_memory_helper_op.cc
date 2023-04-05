@@ -52,8 +52,9 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                             platform::errors::NotFound(
                                 "Cannot find out_var: %s in scope.", out_name));
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place, device_context_id_);
 
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
@@ -107,8 +108,9 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
         platform::errors::NotFound("Cannot find in_grad_var: %s in scope.",
                                    in_grad_var_name));
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place, device_context_id_);
 
     // NOTE(xiongkun03): In standalone executor, after each run, the
     // var.tensor.holder will be delete instead of variable. So we need exam the

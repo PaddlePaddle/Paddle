@@ -47,8 +47,9 @@ class MergeLoDTensorOp : public framework::OperatorBase {
   void RunBase(const framework::Scope &scope,
                const platform::Place &dev_place) const {
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place, device_context_id_);
 
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();

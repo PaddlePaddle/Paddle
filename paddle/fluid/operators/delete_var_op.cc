@@ -37,8 +37,9 @@ class DeleteVarOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place, device_context_id_);
     dev_ctx.Wait();
 
     auto delete_var_names = Inputs("X");

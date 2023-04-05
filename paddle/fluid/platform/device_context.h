@@ -389,5 +389,44 @@ class DeviceContextPool {
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 
+// To support multi context for one place
+class MultiDeviceContextPool {
+ public:
+  using DeviceContextMap =
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>;
+
+  static MultiDeviceContextPool& Instance() {
+    static MultiDeviceContextPool* ctx_manager = new MultiDeviceContextPool;
+    return *ctx_manager;
+  }
+
+  platform::DeviceContext* Get(const platform::Place& place,
+                               int device_context_id) {
+    if (device_context_id == -1) {
+      return DeviceContextPool::Instance().Get(place);
+    }
+
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+    VLOG(6) << "Get dev_ctx for " << place
+            << " with device context id: " << device_context_id;
+
+    DeviceContextMap& ctxs = ctx_pool_[device_context_id];
+    if (ctxs.find(place) == ctxs.end()) {
+      platform::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true);
+    }
+    return ctxs[place].get().get();
+  }
+
+ private:
+  MultiDeviceContextPool() {}
+  DISABLE_COPY_AND_ASSIGN(MultiDeviceContextPool);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<int, DeviceContextMap> ctx_pool_;
+};
+
 }  // namespace platform
 }  // namespace paddle

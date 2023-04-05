@@ -219,7 +219,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
         continue;
       }
       platform::DeviceContext *dev_ctx =
-          platform::DeviceContextPool::Instance().Get(place);
+          platform::MultiDeviceContextPool::Instance().Get(place,
+                                                           device_context_id_);
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
@@ -306,7 +307,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     outside_tensor->Resize(input_tensor.dims());
     outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
+        platform::MultiDeviceContextPool::Instance().Get(place,
+                                                         device_context_id_);
     phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
     outside_tensor->set_lod(input_tensor.lod());
   }

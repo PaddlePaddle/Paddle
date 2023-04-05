@@ -49,9 +49,11 @@ struct LoDTensorToArrayFunctor
   std::vector<const framework::Tensor *> ref_inputs_;
   mutable std::vector<framework::Tensor *> outputs_;
   const framework::Tensor &input_;
+  int device_context_id_;
 
-  explicit LoDTensorToArrayFunctor(const framework::Tensor &input)
-      : input_(input) {}
+  explicit LoDTensorToArrayFunctor(const framework::Tensor &input,
+                                   int device_context_id)
+      : input_(input), device_context_id_(device_context_id) {}
 
   void AddOutput(framework::Tensor *t) {
     outputs_.emplace_back(t);
@@ -60,8 +62,8 @@ struct LoDTensorToArrayFunctor
 
   template <typename Place>
   void operator()(Place place) const {
-    auto &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx = pool.Get(place);
+    auto &pool = platform::MultiDeviceContextPool::Instance();
+    auto *dev_ctx = pool.Get(place, device_context_id_);
     if (std::is_same<Place, platform::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
@@ -178,7 +180,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    LoDTensorToArrayFunctor functor(x);
+    LoDTensorToArrayFunctor functor(x, device_context_id_);
     for (auto &out_pair : outputs) {
       functor.AddOutput(&out_pair.second);
     }

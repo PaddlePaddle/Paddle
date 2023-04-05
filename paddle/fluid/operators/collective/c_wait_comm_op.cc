@@ -46,10 +46,10 @@ class CWaitCommOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
-    auto compute_stream =
-        static_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place))
-            ->stream();
+    auto compute_stream = static_cast<phi::GPUContext*>(
+                              platform::MultiDeviceContextPool::Instance().Get(
+                                  place, device_context_id_))
+                              ->stream();
     auto comm_stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 

@@ -161,7 +161,9 @@ class OperatorBase {
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
-  void Run(const Scope& scope, const platform::Place& place);
+  void Run(const Scope& scope,
+           const platform::Place& place,
+           int device_context_id = -1);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -251,6 +253,9 @@ class OperatorBase {
   }
 
  protected:
+  // Temporary member for different device context in the same place
+  int device_context_id_{-1};
+
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)

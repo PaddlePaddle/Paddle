@@ -62,8 +62,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place, device_context_id_);
 
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {

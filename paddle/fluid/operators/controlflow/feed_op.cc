@@ -33,8 +33,11 @@ namespace operators {
 class FeedVariableVisitor {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
-                               const platform::Place &place)
-      : out_var_(out_var), place_(place) {}
+                               const platform::Place &place,
+                               int device_context_id)
+      : out_var_(out_var),
+        place_(place),
+        device_context_id_(device_context_id) {}
 
   void operator()(const framework::LoDTensor &in_tensor) const {
     framework::LoDTensor *out_tensor =
@@ -50,7 +53,8 @@ class FeedVariableVisitor {
 #endif
     } else {
       platform::DeviceContext *context =
-          platform::DeviceContextPool::Instance().Get(place_);
+          platform::MultiDeviceContextPool::Instance().Get(place_,
+                                                           device_context_id_);
       framework::TensorCopy(in_tensor, place_, *context, out_tensor);
     }
     out_tensor->set_lod(in_tensor.lod());
@@ -69,7 +73,8 @@ class FeedVariableVisitor {
       *out_tensor = in_tensor;
     } else {
       platform::DeviceContext *context =
-          platform::DeviceContextPool::Instance().Get(place_);
+          platform::MultiDeviceContextPool::Instance().Get(place_,
+                                                           device_context_id_);
 
       phi::DenseTensor indices, values;
       framework::TensorCopy(in_tensor.indices(), place_, *context, &indices);
@@ -81,6 +86,7 @@ class FeedVariableVisitor {
  private:
   framework::Variable *out_var_;
   const platform::Place &place_;
+  int device_context_id_;
 };
 
 class FeedOp : public framework::OperatorBase {
@@ -138,7 +144,7 @@ class FeedOp : public framework::OperatorBase {
 
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
 
-    FeedVariableVisitor visitor(out_var, place);
+    FeedVariableVisitor visitor(out_var, place, device_context_id_);
     paddle::visit(visitor, feed_item);
   }
 };

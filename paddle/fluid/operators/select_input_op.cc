@@ -33,8 +33,9 @@ class SelectInputOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place, device_context_id_);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));

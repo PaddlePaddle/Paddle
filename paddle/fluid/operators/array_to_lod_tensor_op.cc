@@ -44,17 +44,20 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
+  int device_context_id_;
   std::vector<framework::Tensor> in;
   mutable framework::Tensor *out;
 
   template <typename Place>
   void operator()(Place place) const {
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = platform::MultiDeviceContextPool::Instance();
     if (std::is_same<Place, platform::CPUPlace>::value) {
-      Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
+      Apply(
+          static_cast<phi::CPUContext *>(pool.Get(place, device_context_id_)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      Apply(static_cast<phi::GPUContext *>(pool.Get(place)));
+      Apply(
+          static_cast<phi::GPUContext *>(pool.Get(place, device_context_id_)));
 #else
       PADDLE_THROW(
           platform::errors::Unavailable("Paddle is not compiled with CUDA."));
@@ -166,6 +169,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto &cur_level_lod = prefix_lod.back();
     cur_level_lod.push_back(0);
     ArrayToLoDFunctor functor;
+    functor.device_context_id_ = device_context_id_;
     for (size_t idx : table_item_idx) {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
       PADDLE_ENFORCE_LE(table_items[idx].length,

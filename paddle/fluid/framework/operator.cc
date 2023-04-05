@@ -205,9 +205,14 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
-void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+void OperatorBase::Run(const Scope& scope,
+                       const platform::Place& place,
+                       int device_context_id) {
   try {
-    VLOG(4) << place << " " << DebugStringEx(&scope);
+    VLOG(4) << place << " " << DebugStringEx(&scope)
+            << "device_context: " << device_context_id;
+    device_context_id_ = device_context_id;
+
     if (platform::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
@@ -1448,9 +1453,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MultiDeviceContextPool& pool =
+      platform::MultiDeviceContextPool::Instance();
   bool fallback_to_cpu = false;
-  auto* dev_ctx = pool.Get(place);
+  auto* dev_ctx = pool.Get(place, device_context_id_);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -1465,7 +1471,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
-    dev_ctx = pool.Get(kernel_type_->place_);
+    dev_ctx = pool.Get(kernel_type_->place_, device_context_id_);
   }
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
@@ -1489,7 +1495,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
-      dev_ctx = pool.Get(kernel_type_->place_);
+      dev_ctx = pool.Get(kernel_type_->place_, device_context_id_);
 
       phi_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
@@ -1647,7 +1653,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));
 
-        dev_ctx = pool.Get(platform::CPUPlace());
+        dev_ctx = pool.Get(platform::CPUPlace(), device_context_id_);
         if (phi_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
@@ -1660,7 +1666,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!run_phi_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
-      dev_ctx = pool.Get(kernel_type_->place_);
+      dev_ctx = pool.Get(kernel_type_->place_, device_context_id_);
     }
   }
 
