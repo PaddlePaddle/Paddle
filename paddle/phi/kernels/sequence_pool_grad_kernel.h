@@ -23,7 +23,7 @@ void SequencePoolGradKernel(const Context& dev_ctx,
                             const DenseTensor& max_index,
                             const DenseTensor& out_grad,
                             bool is_test,
-                            std::string pooltype,
+                            const std::string pooltype,
                             float pad_value,
                             DenseTensor* x_grad);
 

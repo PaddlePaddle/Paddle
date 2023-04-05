@@ -16,7 +16,29 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/sequence_pool_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void SequencePoolGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& max_index,
+                            const DenseTensor& out_grad,
+                            bool is_test,
+                            const std::string pooltype,
+                            float pad_value,
+                            DenseTensor* x_grad) {
+  const phi::DenseTensor* index = nullptr;
+  if (pooltype == "MAX") {
+    index = &max_index;
+  }
+  dev_ctx.template Alloc<T>(x_grad);
+  phi::funcs::SequencePoolGradFunctor<Context, T> pool;
+  pool(dev_ctx, pooltype, out_grad, x_grad, index);
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(sequence_pool_grad,
                    CPU,
