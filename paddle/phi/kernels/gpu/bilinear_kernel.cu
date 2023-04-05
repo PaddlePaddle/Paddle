@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/bilinear_kernel.h"
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/bilinear_kernel_impl.h"
 
-namespace py = pybind11;
-
-namespace paddle {
-namespace pybind {
-
-void BindAscendGraph(py::module* m);
-void BindAscendWrapper(py::module* m);
-void BindAscendDevice(py::module* m);
-
-}  // namespace pybind
-}  // namespace paddle
-#endif
+PD_REGISTER_KERNEL(
+    bilinear, GPU, ALL_LAYOUT, phi::BilinearKernel, float, double) {}

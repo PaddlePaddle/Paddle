@@ -306,11 +306,7 @@ def monkey_patch_varbase():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if (
-                paddle.is_compiled_with_xpu()
-                or paddle.is_compiled_with_npu()
-                or paddle.is_compiled_with_mlu()
-            ):
+            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 if framework.global_var._in_eager_mode_:
@@ -722,11 +718,11 @@ def monkey_patch_varbase():
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
         if framework.global_var._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
-            return bool(self.item() > 0)
+            return bool(np.array(self) > 0)
         else:
             tensor = self.value().get_tensor()
             assert tensor._is_initialized(), "tensor not initialized"
-            return bool(self.item() > 0)
+            return bool(np.array(tensor) > 0)
 
     def __bool__(self):
         return self.__nonzero__()

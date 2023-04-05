@@ -66,11 +66,6 @@ if(WITH_ROCM)
     phi_dynload_warprnnt
     SRCS warprnnt.cc
     DEPS phi_dynamic_loader warprnnt)
-elseif(WITH_ASCEND_CL)
-  cc_library(
-    phi_dynload_warpctc
-    SRCS warpctc.cc
-    DEPS phi_dynamic_loader warpctc npu_hccl)
 else()
   nv_library(
     phi_dynload_cuda

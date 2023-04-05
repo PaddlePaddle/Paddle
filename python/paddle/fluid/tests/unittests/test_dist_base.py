@@ -687,9 +687,6 @@ class TestParallelDyGraphRunnerBase:
         elif fluid.core.is_compiled_with_npu():
             device_id = int(os.getenv("FLAGS_selected_npus", "0"))
             place = fluid.NPUPlace(device_id)
-        elif fluid.core.is_compiled_with_mlu():
-            device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
-            place = fluid.MLUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
@@ -892,7 +889,6 @@ def runtime_main(test_class):
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_npu', action='store_true')
-    parser.add_argument('--use_mlu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -950,30 +946,20 @@ class TestDistBase(unittest.TestCase):
             self.__use_xpu = False
             self._use_dgc = False
             self.__use_npu = False
-            self._use_mlu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
             self.__use_npu = False
-            self._use_mlu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
             self.__use_npu = False
-            self._use_mlu = False
         elif self._enforce_place == "NPU":
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
             self.__use_npu = True
-            self._use_mlu = False
-        elif self._enforce_place == "MLU":
-            self.__use_cuda = False
-            self.__use_xpu = False
-            self._use_dgc = False
-            self.__use_npu = False
-            self._use_mlu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -1473,18 +1459,6 @@ class TestDistBase(unittest.TestCase):
                     "GLOG_v": "2",
                 }
             )
-        elif self._use_mlu:
-            tr_cmd += " --use_mlu"
-            env.update(
-                {
-                    "FLAGS_selected_mlus": f"{trainer_id}",
-                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
-                    "PADDLE_TRAINER_ID": f"{trainer_id}",
-                    "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                    "PADDLE_CURRENT_ENDPOINT": ep,
-                    "GLOG_v": "4",
-                }
-            )
         else:
             env.update({'CPU_NUM': '1'})
 
@@ -1731,6 +1705,7 @@ class TestDistBase(unittest.TestCase):
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
+            "FLAGS_new_executor_static_build": "1",
         }
 
         if check_error_log:

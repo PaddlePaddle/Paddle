@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
-KernelSignature BCELossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "bce_loss_grad", {"X", "Label", "Out@GRAD"}, {}, {"X@GRAD"});
-}
+template <typename T, typename Context>
+void BilinearKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& weight,
+                    const paddle::optional<DenseTensor>& bias,
+                    DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(bce_loss_grad, phi::BCELossGradOpArgumentMapping);

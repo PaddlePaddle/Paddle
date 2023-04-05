@@ -21,15 +21,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BilinearTensorProductGradKernel(const Context& ctx,
-                                     const DenseTensor& x,
-                                     const DenseTensor& y,
-                                     const DenseTensor& weight,
-                                     const DenseTensor& dout,
-                                     DenseTensor* dx,
-                                     DenseTensor* dy,
-                                     DenseTensor* dweight,
-                                     DenseTensor* dbias) {
+void BilinearGradKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& weight,
+                        const DenseTensor& dout,
+                        DenseTensor* dx,
+                        DenseTensor* dy,
+                        DenseTensor* dweight,
+                        DenseTensor* dbias) {
   auto batch_size = x.dims()[0];
   auto weight_dims = weight.dims();
   int out_dim = weight_dims[0];
