@@ -59,7 +59,7 @@ class TestInfBF16(OpTest):
 
         out = np.isinf(x).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': out}
 
     def test_output(self):
         self.check_output()
@@ -104,7 +104,7 @@ class TestNANBF16(OpTest):
 
         out = np.isnan(x).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': out}
 
     def test_output(self):
         self.check_output()
@@ -150,7 +150,7 @@ class TestIsfiniteBF16(OpTest):
 
         out = np.isfinite(x).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': out}
 
     def test_output(self):
         self.check_output()
