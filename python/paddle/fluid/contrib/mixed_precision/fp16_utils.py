@@ -234,7 +234,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 if out_var.type not in _valid_types:
                     continue
                 if out_var.dtype == core.VarDesc.VarType.FP32:
-                    out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
+                    out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
 
