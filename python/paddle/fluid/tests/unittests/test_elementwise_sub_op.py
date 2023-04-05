@@ -30,13 +30,17 @@ class TestElementwiseOp(OpTest):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
         self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -70,14 +74,26 @@ class TestElementwiseOp(OpTest):
 
 
 class TestElementwiseFP16OP(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
-        self.dtype = np.float16
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -95,9 +111,10 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+            'X': np.random.uniform(0.1, 1, []).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, []).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
@@ -108,6 +125,47 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+
+class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype('float32'),
+            'Y': np.random.uniform(0.1, 1, []).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
@@ -116,9 +174,10 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, []).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
@@ -129,6 +188,47 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+
+class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
+            'Y': np.random.uniform(0.1, 1, []).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
@@ -137,9 +237,10 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'X': np.random.uniform(0.1, 1, []).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
@@ -150,6 +251,47 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+
+class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype('float32'),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestBF16ElementwiseOp(OpTest):
@@ -203,12 +345,50 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 3, 4).astype(np.float64),
-            'Y': np.random.rand(1).astype(np.float64),
+            'X': np.random.rand(10, 3, 4).astype(self.dtype),
+            'Y': np.random.rand(1).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+
+
+class TestElementwiseSubFP16OP_scalar(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_scalar(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.rand(10, 3, 4).astype('float32'),
+            'Y': np.random.rand(1).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
@@ -217,21 +397,60 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.random((100,)).astype("float64"),
-            'Y': np.random.random((100,)).astype("float64"),
+            'X': np.random.random((100,)).astype(self.dtype),
+            'Y': np.random.random((100,)).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+
+
+class TestElementwiseSubFP16OP_Vectorr(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_Vector(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.random((100,)).astype('float32'),
+            'Y': np.random.random((100,)).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_broadcast_O(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(100, 3, 2).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64),
+            'X': np.random.rand(100, 3, 2).astype(self.dtype),
+            'Y': np.random.rand(100).astype(self.dtype),
         }
 
         self.attrs = {'axis': 0}
@@ -264,13 +483,53 @@ class TestElementwiseSubOp_broadcast_O(TestElementwiseOp):
         )
 
 
+class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_broadcast_0(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.inputs = {
+            'X': np.random.rand(100, 3, 2).astype('float32'),
+            'Y': np.random.rand(100).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                self.outputs['Out'].reshape(100, 1, 1)
+            )
+        }
+        self.attrs = {'axis': 0}
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
+
+
 class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_O):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 100, 3).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64),
+            'X': np.random.rand(2, 100, 3).astype(self.dtype),
+            'Y': np.random.rand(100).astype(self.dtype),
         }
 
         self.attrs = {'axis': 1}
@@ -279,15 +538,55 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_O):
         }
 
 
+class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.inputs = {
+            'X': np.random.rand(2, 100, 3).astype('float32'),
+            'Y': np.random.rand(100).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                self.outputs['Out'].reshape(1, 100, 1)
+            )
+        }
+        self.attrs = {'axis': 1}
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
+
+
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64),
+            'X': np.random.rand(2, 3, 100).astype(self.dtype),
+            'Y': np.random.rand(100).astype(self.dtype),
         }
 
         self.outputs = {
@@ -299,13 +598,41 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
         self.check_prim = True
 
 
+class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.inputs = {
+            'X': np.random.rand(2, 10, 12, 3).astype('float32'),
+            'Y': np.random.rand(10, 12).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                self.outputs['Out'].reshape(1, 10, 12, 1)
+            )
+        }
+        self.attrs = {'axis': 1}
+
+
 class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_O):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
-            'Y': np.random.rand(10, 12).astype(np.float64),
+            'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
+            'Y': np.random.rand(10, 12).astype(self.dtype),
         }
 
         self.attrs = {'axis': 1}
@@ -314,15 +641,21 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_O):
         }
 
 
+class TestElementwiseSubFP16OP_broadcast_3(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
-            'Y': np.random.rand(2, 5, 1, 12).astype(np.float64),
+            'X': np.random.rand(2, 5, 3, 12).astype(self.dtype),
+            'Y': np.random.rand(2, 5, 1, 12).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
@@ -331,17 +664,69 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
         self.check_prim = True
 
 
+class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.inputs = {
+            'X': np.random.rand(2, 5, 3, 12).astype('float32'),
+            'Y': np.random.rand(2, 5, 1, 12).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.attrs = {'axis': 1}
+
+
+class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype(np.float64),
-            'Y': np.random.rand(1, 1, 100).astype(np.float64),
+            'X': np.random.rand(2, 3, 100).astype(self.dtype),
+            'Y': np.random.rand(1, 1, 100).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+
+class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_commonuse_1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 100).astype('float32'),
+            'Y': np.random.rand(1, 1, 100).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
     def if_check_prim(self):
@@ -354,11 +739,40 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
-            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64),
+            'X': np.random.rand(10, 3, 1, 4).astype(self.dtype),
+            'Y': np.random.rand(10, 1, 12, 1).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+
+class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_commonuse_2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.rand(10, 3, 1, 4).astype('float32'),
+            'Y': np.random.rand(10, 1, 12, 1).astype('float32'),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
     def if_check_prim(self):
@@ -371,15 +785,45 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
+        self.init_dtype()
         self.inputs = {
-            'X': np.random.rand(10, 12).astype(np.float64),
-            'Y': np.random.rand(2, 3, 10, 12).astype(np.float64),
+            'X': np.random.rand(10, 12).astype(self.dtype),
+            'Y': np.random.rand(2, 3, 10, 12).astype(self.dtype),
         }
         self.attrs = {'axis': 2}
 
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+
+class TestElementwiseSubFP16OP_xsize_lessthan_ysize(TestElementwiseOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.prim_op_type = "prim"
+        self.inputs = {
+            'X': np.random.rand(10, 12).astype('float32'),
+            'Y': np.random.rand(2, 3, 10, 12).astype('float32'),
+        }
+        self.attrs = {'axis': 2}
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
     def if_check_prim(self):
