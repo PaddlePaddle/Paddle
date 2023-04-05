@@ -22,6 +22,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
 from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
     _non_static_mode,
     default_startup_program,
@@ -1428,7 +1429,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8
+                dtype=core.VarDesc.VarType.UINT8,
+                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
