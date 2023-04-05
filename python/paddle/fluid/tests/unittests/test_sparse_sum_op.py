@@ -85,36 +85,79 @@ class TestSparseSum(unittest.TestCase):
 
 
 class TestSparseSumStatic(unittest.TestCase):
-    def test(self):
+    def check_result_coo(self, x_shape, dims, keepdim, dtype=None):
+        mask = paddle.randint(0, 2, x_shape)
+        origin_data = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+        sparse_data = origin_data.detach().to_sparse_coo(
+            sparse_dim=len(x_shape)
+        )
+        indices_data = sparse_data.indices()
+        values_data = sparse_data.values()
+
+        dense_x = origin_data
+        dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
+
         paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            indices = paddle.static.data(
+                name='indices',
+                shape=indices_data.shape,
+                dtype=indices_data.dtype,
+            )
+            values = paddle.static.data(
+                name='values', shape=values_data.shape, dtype=values_data.dtype
+            )
+            sp_x = paddle.sparse.sparse_coo_tensor(
+                indices,
+                values,
+                shape=origin_data.shape,
+                dtype=origin_data.dtype,
+            )
+            sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
+            sp_dense_out = sp_out.to_dense()
 
-        indices = paddle.static.data(
-            name='indices', shape=[3, 5], dtype='int64'
-        )
-        values = paddle.static.data(name='values', shape=[5], dtype='float32')
+            sparse_exe = paddle.static.Executor()
+            sparse_fetch = sparse_exe.run(
+                feed={
+                    'indices': indices_data.numpy(),
+                    "values": values_data.numpy(),
+                },
+                fetch_list=[sp_dense_out],
+                return_numpy=True,
+            )
 
-        dense_shape = [10, 10, 10]
-        sp_x = paddle.sparse.sparse_coo_tensor(
-            indices, values, shape=dense_shape, dtype='float32'
-        )
-        sp_y = paddle.sparse.sum(sp_x, dtype='float32')
-        out = sp_y.to_dense()
-
-        exe = paddle.static.Executor()
-        indices_data = np.array(
-            [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4]]
-        ).astype("int64")
-        values_data = np.array([1.0, 2.0, 3.0, 2.0, 3.0]).astype('float32')
-
-        fetch = exe.run(
-            feed={'indices': indices_data, 'values': values_data},
-            fetch_list=[out],
-            return_numpy=True,
-        )
-
-        correct_out = sum(values_data).astype('float32')
-        np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
+            np.testing.assert_allclose(
+                dense_out.numpy(), sparse_fetch[0], rtol=1e-5
+            )
         paddle.disable_static()
+
+    def test_sum_1d(self):
+        self.check_result_coo([5], None, False)
+        self.check_result_coo([5], None, True)
+        self.check_result_coo([5], 0, True)
+        self.check_result_coo([5], 0, False)
+
+    def test_sum_2d(self):
+        self.check_result_coo([2, 5], None, False, dtype="float32")
+        self.check_result_coo([2, 5], None, True)
+        self.check_result_coo([2, 5], 0, True, dtype="float32")
+        self.check_result_coo([2, 5], 0, False)
+        self.check_result_coo([2, 5], 1, False)
+        self.check_result_coo([2, 5], 0, False)
+
+    def test_sum_3d(self):
+        for i in [0, 1, -2, None]:
+            self.check_result_coo([6, 2, 3], i, False)
+            self.check_result_coo([6, 2, 3], i, True)
+
+    def test_sum_nd(self):
+        for i in range(6):
+            self.check_result_coo([8, 3, 4, 4, 5, 3], i, False)
+            self.check_result_coo([8, 3, 4, 4, 5, 3], i, True)
+            # Randint now only supports access to dimension 0 to 9.
+            self.check_result_coo([2, 3, 4, 2, 3, 4, 2, 3, 4], i, False)
 
 
 if __name__ == "__main__":
