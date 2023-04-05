@@ -1042,3 +1042,17 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
+
+/**
+ * Executor debug FLAG
+ * Name: FLAGS_fleetexecutor_debug_mode
+ * Since Version: 2.5
+ * Value Range: bool
+ * default=False
+ * Example:
+ * Note:
+ * FLAGS_fleetexecutor_debug_mode == 1, enter in debug mode
+ */
+PADDLE_DEFINE_EXPORTED_bool(fleetexecutor_debug_mode,
+                            false,
+                            "Enter in FleetExecutor debug mode.");

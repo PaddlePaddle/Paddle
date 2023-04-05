@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -27,6 +28,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
+
+DECLARE_bool(fleetexecutor_debug_mode);
 
 namespace paddle {
 namespace distributed {
@@ -48,6 +51,72 @@ void Carrier::Init(
   thread_num_ = 1;
   thread_pool_.SetThreadNum(thread_num_);
   thread_pool_.Start();
+
+  if (FLAGS_fleetexecutor_debug_mode) {
+    test_thread_ = std::thread([this]() { loop_to_send_msg(); });
+    cache_begin_ == std::chrono::steady_clock::now();
+  }
+}
+
+void Carrier::loop_to_send_msg() {
+  // VLOG(3) << "loop_send_msg loop now";
+  while (1) {
+    while (1) {
+      int q_size = 0;
+      std::chrono::time_point<std::chrono::steady_clock> c_begin;
+      {
+        std::lock_guard<std::mutex> lock(running_mutex_);
+        q_size = messages_for_test_.size();
+        c_begin = cache_begin_;
+      }
+
+      auto now = std::chrono::steady_clock::now();
+      auto delta =
+          std::chrono::duration_cast<std::chrono::milliseconds>(now - c_begin)
+              .count();
+
+      if (q_size < 2 && delta < 5000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        continue;
+      } else {
+        VLOG(3) << "messages_for_test_ q_size:" << q_size << ", delta:" << delta
+                << ", will send all msg";
+        break;
+      }
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(running_mutex_);
+      while (!messages_for_test_.empty()) {
+        auto msg = messages_for_test_.back();
+        messages_for_test_.pop_back();
+
+        int64_t src_id = msg.src_id();
+        // TODO(liyurui): compatible solution, will be removed completely in the
+        // future
+        if (interceptor_id_to_rank_.find(src_id) ==
+                interceptor_id_to_rank_.end() &&
+            src_id == SOURCE_ID) {
+          src_id = msg.dst_id();
+        }
+        int64_t dst_id = msg.dst_id();
+        int64_t dst_rank = GetRank(dst_id);
+
+        VLOG(3) << "Send a cached message from interceptor " << src_id
+                << " to interceptor " << dst_id
+                << ", which are in different ranks, scope_idx:"
+                << msg.scope_idx();
+
+        if (!GlobalVal<MessageBus>::Get()->Send(dst_rank, msg)) {
+          LOG(FATAL) << "send msg error";
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      }
+
+      cache_begin_ = std::chrono::steady_clock::now();
+    }
+  }
+  VLOG(3) << "reset cache_begin_";
 }
 
 void Carrier::Init(
@@ -94,6 +163,11 @@ void Carrier::Init(
   thread_num_ = 1;
   thread_pool_.SetThreadNum(thread_num_);
   thread_pool_.Start();
+
+  if (FLAGS_fleetexecutor_debug_mode) {
+    test_thread_ = std::thread([this]() { loop_to_send_msg(); });
+    cache_begin_ == std::chrono::steady_clock::now();
+  }
 
   CreateInterceptors();
   is_init_ = true;
@@ -230,12 +304,39 @@ bool Carrier::Send(const InterceptorMessage& msg) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
     return EnqueueInterceptorMessage(msg);
-  } else {
+  }
+  if (!FLAGS_fleetexecutor_debug_mode) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id
             << ", which are in different ranks.";
     return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
   }
+
+  if (msg.message_type() != DATA_IS_READY) {
+    VLOG(3) << "Send a message from interceptor " << src_id
+            << " to interceptor " << dst_id
+            << ", which are in different ranks.";
+    return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
+  }
+
+  {
+    VLOG(3) << "prepare executor debug";
+
+    std::unique_lock<std::mutex> lock(running_mutex_);
+    if (messages_for_test_.empty()) {
+      cache_begin_ = std::chrono::steady_clock::now();
+      // std::time_t now_c =
+      // std::chrono::system_clock::to_time_t(cache_begin_));
+      VLOG(3) << "messages_for_test_ empty, reset cache_begin_";
+    }
+
+    VLOG(3) << "Cache message from interceptor " << src_id << " to interceptor "
+            << dst_id
+            << ", which are in different ranks, scope_idx:" << msg.scope_idx();
+    messages_for_test_.emplace_back(msg);
+  }
+
+  return true;
 }
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
