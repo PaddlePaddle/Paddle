@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(1)
@@ -57,10 +57,10 @@ class TestMaxOutOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
@@ -97,7 +97,7 @@ class TestMaxoutAPI(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.maxout(x, self.groups, self.axis)
             m = paddle.nn.Maxout(self.groups, self.axis)
             out2 = m(x)
@@ -127,12 +127,12 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[2, 4, 6, 8], dtype='int32'
             )
             self.assertRaises(TypeError, F.maxout, x_int32)
 
-            x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])
+            x_float32 = paddle.static.data(name='x_float32', shape=[2, 4, 6, 8])
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
 

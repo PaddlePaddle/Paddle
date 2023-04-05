@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def reference_unique_consecutive(
@@ -99,7 +99,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -206,7 +206,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,
@@ -243,7 +243,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,
@@ -284,7 +284,7 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(
+            input_x = paddle.static.data(
                 name="input_x",
                 shape=[
                     100,
@@ -347,7 +347,7 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 if __name__ == "__main__":

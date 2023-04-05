@@ -227,19 +227,23 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   platform::CPUPlace cpu_place;
   platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
-  framework::ir::Graph &graph = argument->main_graph();
+  framework::ir::Graph &main_graph = argument->main_graph();
 
-  for (auto *node : graph.Nodes()) {
-    if (!node->IsVar() || !node->Var()->Persistable()) continue;
-    auto *var = scope->FindVar(node->Name());
-    if (!var->IsType<phi::DenseTensor>()) continue;
-    auto *tensor = var->GetMutable<phi::DenseTensor>();
+  for (size_t i = 0; i < main_graph.SubGraphsSize(); i++) {
+    auto *graph = main_graph.GetSubGraph(i);
+    for (auto *node : graph->Nodes()) {
+      if (!node->IsVar() || !node->Var()->Persistable()) continue;
+      auto *var = scope->FindVar(node->Name());
+      if (!var->IsType<phi::DenseTensor>()) continue;
+      auto *tensor = var->GetMutable<phi::DenseTensor>();
+      if (tensor->place().GetType() == phi::AllocationType::XPU) continue;
 
-    phi::DenseTensor temp_tensor;
-    temp_tensor.Resize(tensor->dims());
-    paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
-    tensor->clear();
-    paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+      phi::DenseTensor temp_tensor;
+      temp_tensor.Resize(tensor->dims());
+      paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
+      tensor->clear();
+      paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+    }
   }
 }
 #endif

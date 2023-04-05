@@ -375,7 +375,7 @@ class PassAutoScanTest(AutoScanTest):
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
-        after_op_list = list()
+        after_op_list = []
         for i in range(main_block.op_size()):
             if main_block.op(i).type() in ["feed", "fetch"]:
                 continue
@@ -462,7 +462,7 @@ class PassAutoScanTest(AutoScanTest):
                     min_success_num, successful_ran_programs
                 )
             )
-            assert False
+            raise AssertionError()
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
@@ -470,7 +470,7 @@ class PassAutoScanTest(AutoScanTest):
                     max_duration
                 )
             )
-            assert False
+            raise AssertionError()
 
     def run_test(self, quant=False, prog_configs=None):
         status = True
@@ -795,9 +795,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if isinstance(threshold, float):
                     atol = threshold
                     rtol = 1e-8
-                elif isinstance(threshold, list) or isinstance(
-                    threshold, tuple
-                ):
+                elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:

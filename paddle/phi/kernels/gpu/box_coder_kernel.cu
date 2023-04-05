@@ -17,7 +17,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -207,7 +206,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
   auto cplace = phi::CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
-  paddle::memory::Copy(
+  memory_utils::Copy(
       gplace, dev_var_data, cplace, &variance[0], bytes, dev_ctx.stream());
 
   output_box->Resize({row, col, len});

@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
@@ -38,7 +38,6 @@ class TestGatherOp(OpTest):
         self.op_type = "gather"
         self.place = paddle.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.gather
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
@@ -129,10 +128,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 
@@ -160,9 +159,9 @@ class TestGathertError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             shape = [8, 9, 6]
-            x = fluid.data(shape=shape, dtype='int8', name='x')
-            index = fluid.data(shape=shape, dtype='int32', name='mask')
-            index_float = fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            index = paddle.static.data(shape=shape, dtype='int32', name='mask')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 

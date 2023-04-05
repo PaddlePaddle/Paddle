@@ -21,13 +21,13 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
-class DMF(fluid.Layer):
+class DMF(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -78,7 +78,7 @@ class DMF(fluid.Layer):
         return paddle.multiply(users, items)
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -111,7 +111,7 @@ class MLP(fluid.Layer):
         return match_vec
 
 
-class DeepCF(fluid.Layer):
+class DeepCF(paddle.nn.Layer):
     def __init__(self, num_users, num_items, matrix):
         super().__init__()
         self._num_users = num_users
@@ -190,12 +190,12 @@ class TestDygraphDeepCF(unittest.TestCase):
 
     def load_data(self):
         sys.stderr.write('loading from %s\n' % self.data_path)
-        likes = dict()
+        likes = {}
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:
             for l in f.readlines():
-                uid, iid, rating = [int(v) for v in l.split('\t')]
+                uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
                 if float(rating) > 0.0:

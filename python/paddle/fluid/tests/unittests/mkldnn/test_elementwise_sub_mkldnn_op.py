@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid import core
 from paddle.fluid.framework import _current_expected_place
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -131,6 +131,54 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
 
     def init_axis(self):
         self.axis = 2
+
+
+class TestMKLDNNElementwiseSubOpZeroDim(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestMKLDNNElementwiseSubOpZeroDim2(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestMKLDNNElementwiseSubOpZeroDim3(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

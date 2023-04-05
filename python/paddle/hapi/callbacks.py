@@ -1062,14 +1062,14 @@ class WandbCallback(Callback):
             "You want to use `wandb` which is not installed yet install it with `pip install wandb`",
         )
 
-        self.wandb_args = dict(
-            project=project,
-            name=name,
-            entity=entity,
-            dir=dir,
-            mode=mode,
-            job_type=job_type,
-        )
+        self.wandb_args = {
+            'project': project,
+            'name': name,
+            'entity': entity,
+            'dir': dir,
+            'mode': mode,
+            'job_type': job_type,
+        }
 
         self._run = None
         self.wandb_args.update(**kwargs)
@@ -1121,7 +1121,7 @@ class WandbCallback(Callback):
         metrics = getattr(self, '%s_metrics' % (mode))
         current_step = getattr(self, '%s_step' % (mode))
 
-        _metrics = dict()
+        _metrics = {}
 
         if mode == 'train':
             total_step = current_step

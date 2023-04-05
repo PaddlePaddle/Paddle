@@ -14,7 +14,8 @@
 
 # TODO: define specitial functions used in computer vision task
 
-from .. import Layer, functional
+from .. import functional
+from .layers import Layer
 
 __all__ = []
 

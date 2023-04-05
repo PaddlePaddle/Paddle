@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import Layer
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
@@ -261,7 +261,7 @@ class AvgPool3D(Layer):
 
     Shape:
         - x(Tensor): The input tensor of avg pool3d operator, which is a 5-D tensor.
-          The data type can be float32, float64.
+          The data type can be float16, float32, float64.
         - output(Tensor): The output tensor of avg pool3d  operator, which is a 5-D tensor.
           The data type is same as input x.
 

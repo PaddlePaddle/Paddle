@@ -34,7 +34,6 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -233,7 +232,7 @@ def monkey_patch_varbase():
         """
         Run backward of current Graph which starts from current Tensor.
 
-        The new gradient will accumulat on previous gradient.
+        The new gradient will accumulate on previous gradient.
 
         You can clear gradient by ``Tensor.clear_grad()`` .
 
@@ -241,11 +240,11 @@ def monkey_patch_varbase():
             grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
             the initial gradient values of the current Tensor would be Tensor filled with 1.0;
             if `grad_tensor` is not None, it must have the same length as the current Tensor.
-            Teh default value is None.
+            The default value is None.
 
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
         Returns:
             NoneType: None
@@ -281,6 +280,8 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
+        from paddle.distributed.parallel import scale_loss
+
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -378,8 +379,8 @@ def monkey_patch_varbase():
             if self.grad is None:
                 return None
             if self.grad.is_selected_rows():
-                return (np.array(self.grad.numpy()), np.array(self.grad.rows()))
-            return self.grad.numpy()
+                return (np.array(self.grad), np.array(self.grad.rows()))
+            return np.array(self.grad)
         else:
             if self._grad_ivar() is None:
                 return None
@@ -727,17 +728,18 @@ def monkey_patch_varbase():
         return framework.default_main_program().global_block()
 
     def __nonzero__(self):
-        numel = np.prod(self.shape)
+        # np.prod([]) -> np.float64, so use int
+        numel = int(np.prod(self.shape))
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
         if framework.global_var._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
-            return bool(np.all(self.numpy() > 0))
+            return bool(self.item() > 0)
         else:
             tensor = self.value().get_tensor()
             assert tensor._is_initialized(), "tensor not initialized"
-            return bool(np.all(tensor.__array__() > 0))
+            return bool(self.item() > 0)
 
     def __bool__(self):
         return self.__nonzero__()
@@ -763,7 +765,7 @@ def monkey_patch_varbase():
                 print(type(x_array))      #<class 'numpy.ndarray'>
                 print(x_array.shape)      #(2, 2)
         """
-        array = self.numpy()
+        array = self.numpy(False)
         if dtype:
             array = array.astype(dtype)
         return array

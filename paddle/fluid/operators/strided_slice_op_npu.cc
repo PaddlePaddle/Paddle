@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
@@ -99,21 +100,21 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
       auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
-      starts = GetDataFromTensor<int64_t>(starts_tensor);
+      starts = phi::GetVectorFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
       auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
-      ends = GetDataFromTensor<int64_t>(ends_tensor);
+      ends = phi::GetVectorFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
       auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
-      strides = GetDataFromTensor<int64_t>(strides_tensor);
+      strides = phi::GetVectorFromTensor<int64_t>(strides_tensor);
     }
 
     // out dims calculation
@@ -325,21 +326,21 @@ class StridedSliceGradNPUKernel : public framework::OpKernel<T> {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
       auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
-      starts = GetDataFromTensor<int64_t>(starts_tensor);
+      starts = phi::GetVectorFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
       auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
-      ends = GetDataFromTensor<int64_t>(ends_tensor);
+      ends = phi::GetVectorFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
       auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
-      strides = GetDataFromTensor<int64_t>(strides_tensor);
+      strides = phi::GetVectorFromTensor<int64_t>(strides_tensor);
     }
 
     std::vector<int64_t> out_dims_vector(input_dims.size(), -1);

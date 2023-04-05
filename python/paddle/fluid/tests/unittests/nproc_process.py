@@ -15,7 +15,7 @@
 import os
 import sys
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def train(prefix):

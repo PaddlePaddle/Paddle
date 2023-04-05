@@ -29,7 +29,7 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -369,16 +369,13 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
       // use global calculate stream
       const auto calcu_stream =
           static_cast<GPUContext*>(
-              paddle::platform::DeviceContextPool::Instance().Get(
-                  dev_ctx.GetPlace()))
+              phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()))
               ->stream();
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           num_classes_per_device_ptr,
           num_classes_per_device_ptr,
           num_classes_per_device.numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(
-                  num_classes_per_device.dtype())),
+          phi::ToNCCLDataType(num_classes_per_device.dtype()),
           ncclSum,
           comm->comm(),
           calcu_stream));
@@ -581,12 +578,12 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       sampled_local_class_center_ptr,
-                       dev_ctx.GetPlace(),
-                       cub_sort_values_out_ptr,
-                       actual_num_samples * sizeof(T),
-                       nullptr);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     sampled_local_class_center_ptr,
+                     dev_ctx.GetPlace(),
+                     cub_sort_values_out_ptr,
+                     actual_num_samples * sizeof(T),
+                     nullptr);
 }
 }  // namespace phi
 

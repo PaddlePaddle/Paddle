@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+from paddle.fluid.tests.unittests.eager_op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_add_op import (
     TestElementwiseAddOp,
 )
@@ -101,6 +101,27 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
 
     def test_check_grad_ingore_x(self):
         pass
+
+
+class TestMKLDNNElementwiseAddOpZeroDim(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOpZeroDim2(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOpZeroDim3(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
 
 
 ''' INT8 Tests '''

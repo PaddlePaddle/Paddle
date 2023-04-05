@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
@@ -105,12 +107,12 @@ struct PointerToPointer {
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_ins_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         in_num * sizeof(T*),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_ins_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       in_num * sizeof(T*),
+                       ctx.stream());
     ins_addr = reinterpret_cast<void**>((*dev_ins_ptr)->ptr());
   }
 };
@@ -155,12 +157,12 @@ struct PointerToPointerAndCol {
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_col_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         inputs_col_num * sizeof(IndexT),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_col_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       inputs_col_num * sizeof(IndexT),
+                       ctx.stream());
     col_length = static_cast<IndexT*>((*dev_col_ptr)->ptr());
     ins_ptr_wrapper =
         PointerToPointer<T>(ctx, ins, pre_alloced_host_ptr, dev_ins_ptr);
@@ -570,11 +572,11 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   IndexT* inputs_col = inputs_col_vec.data();
 #ifdef PADDLE_WITH_HIP
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  phi::Allocator::AllocationPtr data_alloc = phi::memory_utils::Alloc(
-      paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
+  phi::Allocator::AllocationPtr data_alloc =
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
   phi::Allocator::AllocationPtr col_alloc = phi::memory_utils::Alloc(
-      paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
+      phi::GPUPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
 
@@ -786,11 +788,11 @@ void SplitFunctorDispatchWithIndexType(
 #ifdef PADDLE_WITH_HIP
   phi::Allocator::AllocationPtr data_alloc, cols_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  data_alloc = phi::memory_utils::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                        out_num * sizeof(T*));
+  data_alloc =
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), out_num * sizeof(T*));
   outs_data = reinterpret_cast<T**>(data_alloc->ptr());
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = phi::memory_utils::Alloc(paddle::platform::CUDAPinnedPlace(),
+  cols_alloc = phi::memory_utils::Alloc(phi::GPUPinnedPlace(),
                                         (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif

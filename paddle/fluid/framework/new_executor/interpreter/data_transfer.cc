@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -129,7 +130,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   RuntimeContext runtime_context({}, {});
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
-  InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+  RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
   op.get()->Info().infer_shape_(&infer_shape_ctx);
 
   // 2. choose kernel
@@ -176,33 +177,10 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
 
-  if (!run_phi_kernel) {
-    op_with_kernel->ChooseKernel(exec_ctx);
-    new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
-    new_op_func_node.kernel_func_(exec_ctx);
-  } else {
-    new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
-    phi::KernelContext phi_kernel_context;
-    op_with_kernel->BuildPhiKernelContext(
-        runtime_context, dev_ctx, &phi_kernel_context);
-    if (!skip_run) {
-      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
-    } else {
-      FakeInitializeOutputs(new_op_func_node.phi_kernel_,
-                            op_with_kernel->PhiKernelSignature(),
-                            &phi_kernel_context);
-    }
-  }
+  new_op_func_node.dev_ctx_ = dev_ctx;
+  new_op_func_node.operator_base_ = op;
 
   const phi::Place& place = dev_ctx->GetPlace();
-
-  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
-  // need to explicit synchronization.
-  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
-      op_type == kMemcpyD2H) {
-    dev_ctx->Wait();
-  }
-
   if (platform::is_cpu_place(place)) {
     new_op_func_node.type_ = OpFuncType::kCpuSync;
   } else if (platform::is_gpu_place(place)) {
@@ -213,13 +191,42 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {
     // Memcpy in xpu is synchronous
-    new_op_func_node.type_ = OpFuncType::kGpuSync;
+    new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
+                                 ? OpFuncType::kGpuSync
+                                 : OpFuncType::kGpuAsync;
   } else {
     // Memcpy in npu and custom devices is asynchronous
     new_op_func_node.type_ = OpFuncType::kGpuAsync;
   }
-  new_op_func_node.dev_ctx_ = dev_ctx;
-  new_op_func_node.operator_base_ = op;
+
+  if (!run_phi_kernel) {
+    op_with_kernel->ChooseKernel(exec_ctx);
+    new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
+    new_op_func_node.kernel_func_(exec_ctx);
+  } else {
+    new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
+
+    if (skip_run) {
+      FakeInitializeOutputsForFunctionKernel(
+          *(new_op_func_node.phi_kernel_),
+          *(op_with_kernel->PhiKernelSignature()),
+          runtime_context,
+          *dev_ctx);
+    } else {
+      phi::KernelContext phi_kernel_context;
+      op_with_kernel->BuildPhiKernelContext(
+          runtime_context, dev_ctx, &phi_kernel_context);
+      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    }
+  }
+
+  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
+  // need to explicit synchronization.
+  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
+      op_type == kMemcpyD2H) {
+    dev_ctx->Wait();
+  }
+
   VLOG(3) << "Run " << op_type << " done.";
 
   new_op_func_nodes->emplace_back(std::move(new_op_func_node));
@@ -470,7 +477,17 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
-
+  phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
+  auto has_infer_varkernel_fn =
+      (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
+  phi::AttributeMap infer_attrs{};
+  auto fluid_attrs =
+      static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
+  auto phi_kernelkey =
+      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(
+          phi_kernelkey, fluid_attrs, &infer_attrs, has_infer_varkernel_fn);
   auto apply_data_transform_for_one_parameter =
       [&](const std::string& parameter_name,
           const std::vector<std::string>& argument_names,
@@ -547,11 +564,15 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             auto kernel_key_for_var =
                 static_cast<const framework::OperatorWithKernel*>(op_base)
                     ->GetKernelTypeForVar(
-                        parameter_name,
-                        *tensor_in,
-                        framework::TransOpKernelTypeToPhiKernelKey(
-                            expected_kernel_key));
-
+                        parameter_name, *tensor_in, phi_kernelkey);
+            if (has_infer_varkernel_fn) {
+              infer_varkernel_context.SetVarName(
+                  const_cast<std::string*>(&parameter_name));
+              infer_varkernel_context.SetDenseTensor(
+                  const_cast<phi::DenseTensor*>(tensor_in));
+              kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
+                  &infer_varkernel_context);
+            }
             std::unique_ptr<phi::KernelKey>
                 expected_kernel_key_for_argument_def = nullptr;
             if (argument_def &&
@@ -566,7 +587,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                      tensor_backend == phi::Backend::XPU) &&
                    !(def_backend == phi::Backend::ONEDNN &&
                      tensor_backend == phi::Backend::CPU)) ||
-                  tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+                  tensor_in->place().GetType() == AllocationType::GPUPINNED ||
+                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                   def_backend == tensor_backend)) {
                 expected_kernel_key_for_argument_def =
                     std::make_unique<phi::KernelKey>(
                         def_backend,
@@ -630,7 +653,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         }
       };
 
-  phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   if (phi_kernel && phi_kernel->IsValid() &&
       phi_kernel->GetKernelRegisteredType() ==
           phi::KernelRegisteredType::FUNCTION) {
@@ -661,9 +683,17 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(parameter_name) > 0;
 
+      phi::TensorArgDef in_def = input_defs.at(i);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      // When the backend of input tensor arg_def is CUSTOM, we need to set it
+      // to the actual backend by expected_kernel_key.
+      if (in_def.backend == phi::Backend::CUSTOM) {
+        in_def.SetBackend(phi::TransToPhiBackend(expected_kernel_key.place_));
+      }
+#endif
       apply_data_transform_for_one_parameter(parameter_name,
                                              new_ins[parameter_name],
-                                             &input_defs.at(i),
+                                             &in_def,
                                              should_skip_input,
                                              &arguments);
     }

@@ -14,12 +14,12 @@
 
 import numpy as np
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
-    kwargs = dict()
+    kwargs = {}
 
     op_maker = core.op_proto_and_checker_maker
     op_role_attr_name = op_maker.kOpRoleAttrName()
@@ -71,7 +71,7 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
 
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
-        if isinstance(var, tuple) or isinstance(var, np.ndarray):
+        if isinstance(var, (tuple, np.ndarray)):
             tensor = scope.find_var(var_name).get_tensor()
             if isinstance(var, tuple):
                 tensor.set_recursive_sequence_lengths(var[1])

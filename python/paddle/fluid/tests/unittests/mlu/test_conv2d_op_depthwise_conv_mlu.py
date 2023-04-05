@@ -23,7 +23,7 @@ import paddle
 paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 from test_conv2d_op_mlu import (
     TestConv2DOp,

@@ -48,8 +48,8 @@ def getFNDAFile(rootPath, test):
         os.system('echo %s >> %s' % (message_list[1], fn_filename))
         if 'FNH:0' not in gcov_data:
             for message in message_list:
-                if message.startswith(('FNDA:')) and (
-                    not message.startswith(('FNDA:0,'))
+                if message.startswith('FNDA:') and (
+                    not message.startswith('FNDA:0,')
                 ):
                     tmp_data = message.split('FNDA:')[1].split(',')
                     hit = int(tmp_data[0])
@@ -159,8 +159,8 @@ def getBaseFnda(rootPath, test):
         # only for cc file
         if ".cc" in message_list[1]:
             for message in message_list:
-                if message.startswith(('FNDA:')) and (
-                    not message.startswith(('FNDA:0,'))
+                if message.startswith('FNDA:') and (
+                    not message.startswith('FNDA:0,')
                 ):
                     tmp_data = message.split('FNDA:')[1].split(',')
                     symbol_fnda[tmp_data[1]] = int(tmp_data[0])

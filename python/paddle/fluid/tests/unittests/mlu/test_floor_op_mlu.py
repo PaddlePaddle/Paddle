@@ -18,7 +18,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 
 paddle.enable_static()
@@ -31,7 +31,6 @@ class TestFloor(OpTest):
         self.__class__.use_mlu = True
         self.init_dtype()
         self.__class__.no_need_check_grad = True
-        self.python_api = paddle.floor
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -41,7 +40,7 @@ class TestFloor(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
     def init_dtype(self):
         self.dtype = np.float32

@@ -17,7 +17,7 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.jit.dy2static.program_translator import unwrap_decorators
 
 from .static_flops import Table, static_flops
@@ -271,7 +271,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             'total_params',
             'input_shape',
             'output_shape',
-        }.issubset(set(list(m._buffers.keys()))):
+        }.issubset(set(m._buffers.keys())):
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -292,7 +292,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             'total_params',
             'input_shape',
             'output_shape',
-        }.issubset(set(list(m._buffers.keys()))):
+        }.issubset(set(m._buffers.keys())):
             table.add_row(
                 [
                     m.full_name(),

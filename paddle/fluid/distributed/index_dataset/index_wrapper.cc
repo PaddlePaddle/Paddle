@@ -52,7 +52,7 @@ int TreeIndex::Load(const std::string filename) {
         platform::errors::InvalidArgument(
             "Read from file: %s failed. Valid Format is "
             "an integer representing the length of the following string, "
-            "and the string itself.We got an iteger[% d], "
+            "and the string itself.We got an integer[% d], "
             "but the following string's length is [%d].",
             filename,
             num,
@@ -75,7 +75,7 @@ int TreeIndex::Load(const std::string filename) {
 
       // PADDLE_ENFORCE_NE(node.id(), 0,
       //                  platform::errors::InvalidArgument(
-      //                      "Node'id should not be equel to zero."));
+      //                      "Node'id should not be equal to zero."));
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
       }

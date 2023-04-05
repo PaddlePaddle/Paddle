@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
@@ -191,7 +191,7 @@ class TestSubsetDataset(unittest.TestCase):
                 label, (fluid.core.VarBase, fluid.core.eager.Tensor)
             )
 
-        elements_list = list()
+        elements_list = []
         for _, (input, label) in enumerate(dataloader()):
             assert_basic(input, label)
             elements_list.append(label)
@@ -200,7 +200,7 @@ class TestSubsetDataset(unittest.TestCase):
             assert_basic(input, label)
             elements_list.remove(label)
 
-        odd_list = list()
+        odd_list = []
         for _, (input, label) in enumerate(dataloader_odd()):
             assert_basic(input, label)
             odd_list.append(label)

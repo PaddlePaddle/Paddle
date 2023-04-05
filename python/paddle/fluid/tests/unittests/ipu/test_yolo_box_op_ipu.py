@@ -64,7 +64,7 @@ class TestBase(IPUOpTest):
             'dtype': 'int32',
             'value': 6,
         }
-        img_size = paddle.fluid.layers.fill_constant(**attrs)
+        img_size = paddle.tensor.fill_constant(**attrs)
         out = paddle.vision.ops.yolo_box(x=x, img_size=img_size, **self.attrs)
         self.fetch_list = [x.name for x in out]
 

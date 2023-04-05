@@ -19,7 +19,7 @@ import os
 import numpy as np
 
 import paddle
-import paddle.nn.quant.quant_layers as quant_layers
+from paddle.nn.quant import quant_layers
 
 from ...static.log_helper import get_logger
 from ...static.quantization.utils import (

@@ -16,7 +16,7 @@ import collections
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestSampleLogitsOp(OpTest):
@@ -67,9 +67,9 @@ class TestSampleLogitsOp(OpTest):
     def test_check_output(self):
         places = self._get_places()
         for p in places:
-            (Samples, Probabilities, SampledLogits, SampledLabels) = [
+            (Samples, Probabilities, SampledLogits, SampledLabels) = (
                 np.array(o) for o in self.calc_output(p)
-            ]
+            )
 
             assert (
                 Samples.dtype == np.int64

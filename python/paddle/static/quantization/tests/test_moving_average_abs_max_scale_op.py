@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn.quant.quant_layers as quant_layers
 from paddle.framework import core
+from paddle.nn.quant import quant_layers
 
 paddle.enable_static()
 

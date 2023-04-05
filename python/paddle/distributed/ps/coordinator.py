@@ -110,7 +110,7 @@ class FLClientBase(abc.ABC):
         self.role_maker = role_maker
         self.config = config
         self.total_train_epoch = int(self.config.get("runner.epochs"))
-        self.train_statical_info = dict()
+        self.train_statical_info = {}
         self.train_statical_info['speed'] = []
         self.epoch_idx = 0
         self.worker_index = fleet.worker_index()
@@ -121,7 +121,7 @@ class FLClientBase(abc.ABC):
         logger.info(
             "fl-ps > coordinator enpoints: {}".format(self._coordinators)
         )
-        self.strategy_handlers = dict()
+        self.strategy_handlers = {}
         self.exe = None
         self.use_cuda = int(self.config.get("runner.use_gpu"))
         self.place = paddle.CUDAPlace(0) if self.use_cuda else paddle.CPUPlace()

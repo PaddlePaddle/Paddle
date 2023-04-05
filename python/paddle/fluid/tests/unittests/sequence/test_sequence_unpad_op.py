@@ -98,7 +98,7 @@ class TestSequenceUnpadOpError(unittest.TestCase):
 
         def test_length_variable():
             x1 = paddle.static.data(name='x1', shape=[10, 5], dtype='float32')
-            len1 = np.random.random((10)).astype("int64")
+            len1 = np.random.random(10).astype("int64")
             paddle.static.nn.sequence_lod.sequence_pad(x=x1, length=len1)
 
         self.assertRaises(TypeError, test_length_variable)

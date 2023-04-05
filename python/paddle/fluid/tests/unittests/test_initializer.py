@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 
@@ -38,7 +38,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-1, 1))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -632,7 +632,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
 
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random((10000)).astype(dtype)
+        np_array = numpy.random.random(10000).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,
@@ -668,7 +668,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
             paddle.nn.initializer.Uniform(low=-0.5, high=0.5)
         )
         with fluid.program_guard(main_prog, startup_prog):
-            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 
@@ -696,7 +696,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
             bias_init=paddle.nn.initializer.Normal(0.0, 2.0),
         )
         with fluid.program_guard(main_prog, startup_prog):
-            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 

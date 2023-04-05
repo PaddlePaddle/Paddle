@@ -23,6 +23,7 @@
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -40,16 +41,17 @@ typedef enum {
   CONV2D_BIAS_RELU,
   CONV2D_BIAS_ADD_RELU,
   CONV2D_BIAS_SILU,
-  CONV2D_BIAS_LEAKY_RELU
+  CONV2D_BIAS_LEAKY_RELU,
+  CONV2D_BIAS_SILU_ADD
 } OpType;
 
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline.
-float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
+float conv2d_diff_gpu(const ConvAllParams& params, OpType op_type);
 
 int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>>& all_func,
-    ConvAllParams params,
+    const ConvAllParams& params,
     OpType op_type);
 
 }  // namespace cutlass_internal

@@ -14,8 +14,8 @@
 
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):

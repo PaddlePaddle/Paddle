@@ -174,7 +174,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             varname
                         )
                         mesh_shape = process_mesh.shape
-                        batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
                         var_names = [varname + "@GRAD"]

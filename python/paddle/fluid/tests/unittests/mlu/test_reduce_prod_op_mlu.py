@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
@@ -33,7 +33,6 @@ class TestProdOp(OpTest):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -42,7 +41,7 @@ class TestProdOp(OpTest):
         self.data_type = "float32"
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
 
 class TestProd6DOp(OpTest):
@@ -50,7 +49,6 @@ class TestProd6DOp(OpTest):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -64,7 +62,7 @@ class TestProd6DOp(OpTest):
         self.data_type = "float32"
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
 
 class TestProd8DOp(OpTest):
@@ -72,7 +70,6 @@ class TestProd8DOp(OpTest):
         self.op_type = "reduce_prod"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
@@ -88,7 +85,7 @@ class TestProd8DOp(OpTest):
         self.data_type = "float32"
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=False)
+        self.check_output_with_place(self.place)
 
 
 if __name__ == '__main__':

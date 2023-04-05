@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
-import paddle.framework as framework
+from paddle import framework
 
 
 class Group:

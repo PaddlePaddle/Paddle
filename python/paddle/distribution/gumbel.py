@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 
 
 class Gumbel(TransformedDistribution):

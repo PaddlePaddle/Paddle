@@ -57,7 +57,7 @@ class TestTopKOp(IPUOpTest):
             topk_values, topk_indices = self.op(x, **self.attrs)
         else:
             # !important, popart cannot accept non const tensor
-            K_t = paddle.fluid.layers.fill_constant(
+            K_t = paddle.tensor.fill_constant(
                 shape=[1], dtype='int32', value=self.k, name="in_2"
             )
             topk_values, topk_indices = self.op(x, K_t, **self.attrs)

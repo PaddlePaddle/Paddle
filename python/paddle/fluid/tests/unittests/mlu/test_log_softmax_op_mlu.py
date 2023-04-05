@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
@@ -45,7 +45,6 @@ class TestLogSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
-        self.python_api = F.log_softmax
         self.dtype = 'float32'
         self.shape = [2, 3, 4, 5]
         self.axis = -1
@@ -89,7 +88,6 @@ class TestLogSoftmaxOpFp16(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
-        self.python_api = F.log_softmax
         self.dtype = 'float16'
         self.shape = [2, 3, 4, 5]
         self.axis = -1
@@ -140,7 +138,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = logsoftmax(x)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -174,7 +172,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             x = x.astype(dtype)
         ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = F.log_softmax(x, axis, dtype)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
@@ -194,10 +192,10 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data(name='X1', shape=[100], dtype='int32')
+            x = paddle.static.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, F.log_softmax, x)
 
-            x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
+            x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
         paddle.disable_static()
 

@@ -19,9 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
@@ -134,7 +133,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(self.temp_dir.name, "test_1")
-            fluid.save(main_program, save_dir)
+            paddle.static.save(main_program, save_dir)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -148,7 +147,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(self.temp_dir.name, "test_1.pdparams"),
                 exe,

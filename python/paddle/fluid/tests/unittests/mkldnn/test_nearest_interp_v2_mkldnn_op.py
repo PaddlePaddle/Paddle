@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import (
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
@@ -104,7 +104,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         scale_w = 0
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 scale_h = float(self.scale)
                 scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:

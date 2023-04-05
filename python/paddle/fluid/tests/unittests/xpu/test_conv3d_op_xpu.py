@@ -275,7 +275,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
         def test_check_grad_no_input(self):
@@ -286,7 +286,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
 
         def init_test_case(self):
@@ -445,7 +445,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 ['Input'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
         def test_check_grad_no_input(self):
@@ -455,7 +455,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 ['Filter'],
                 'Output',
                 max_relative_error=0.03,
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
             )
 
         def init_test_case(self):

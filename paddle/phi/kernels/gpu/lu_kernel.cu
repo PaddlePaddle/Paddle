@@ -183,6 +183,9 @@ PD_REGISTER_KERNEL(lu,  // cuda_only
                    ALL_LAYOUT,
                    phi::LUKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
 
 #endif  // not PADDLE_WITH_HIP

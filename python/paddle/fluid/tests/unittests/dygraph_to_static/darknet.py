@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 from paddle.nn import BatchNorm
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         ch_in,
@@ -68,7 +67,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return out
 
 
-class DownSample(fluid.dygraph.Layer):
+class DownSample(paddle.nn.Layer):
     def __init__(
         self, ch_in, ch_out, filter_size=3, stride=2, padding=1, is_test=True
     ):
@@ -90,7 +89,7 @@ class DownSample(fluid.dygraph.Layer):
         return out
 
 
-class BasicBlock(fluid.dygraph.Layer):
+class BasicBlock(paddle.nn.Layer):
     def __init__(self, ch_in, ch_out, is_test=True):
         super().__init__()
 
@@ -118,7 +117,7 @@ class BasicBlock(fluid.dygraph.Layer):
         return out
 
 
-class LayerWarp(fluid.dygraph.Layer):
+class LayerWarp(paddle.nn.Layer):
     def __init__(self, ch_in, ch_out, count, is_test=True):
         super().__init__()
 
@@ -142,7 +141,7 @@ class LayerWarp(fluid.dygraph.Layer):
 DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 
-class DarkNet53_conv_body(fluid.dygraph.Layer):
+class DarkNet53_conv_body(paddle.nn.Layer):
     def __init__(self, ch_in=3, is_test=True):
         super().__init__()
         self.stages = DarkNet_cfg[53]

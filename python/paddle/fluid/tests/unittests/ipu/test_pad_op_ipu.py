@@ -73,7 +73,7 @@ class TestCase1(TestBase):
             'dtype': 'int32',
             'value': 2,
         }
-        y = paddle.fluid.layers.fill_constant(**const_attrs)
+        y = paddle.tensor.fill_constant(**const_attrs)
         pad = paddle.nn.functional.pad(x, pad=y)
         self.fetch_list = [pad.name]
 

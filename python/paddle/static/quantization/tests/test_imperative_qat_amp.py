@@ -22,7 +22,7 @@ import numpy as np
 from imperative_test_utils import ImperativeLenet
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.dataset.common import download
 from paddle.framework import set_flags
 from paddle.quantization import ImperativeQuantAware

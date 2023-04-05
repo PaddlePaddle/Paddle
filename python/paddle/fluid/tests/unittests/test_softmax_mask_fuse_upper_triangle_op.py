@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.incubate as incubate
+from paddle import fluid, incubate
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -92,7 +91,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     def test_static(self):
         for dtype in self.dtypes:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                input_x = fluid.data(
+                input_x = paddle.static.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)

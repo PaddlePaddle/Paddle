@@ -24,16 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -46,13 +36,13 @@ class UnaryOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert a fluid unary op to tensorrt unary layer whose "
+    VLOG(3) << "convert a unary op to tensorrt unary layer whose "
                "type is "
             << op_type_;
     nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
     auto op_pair = ops.find(op_type_);
-    nvinfer1::ILayer* layer;
+    nvinfer1::ILayer* layer = nullptr;
 #if !IS_TRT_VERSION_GE(8500)
     nvinfer1::DataType org_type = input_tensor->getType();
     bool cast = org_type == nvinfer1::DataType::kINT8 ||

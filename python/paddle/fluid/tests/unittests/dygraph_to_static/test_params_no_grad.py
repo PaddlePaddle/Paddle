@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn as nn
+from paddle import nn
 
 
 class Net(nn.Layer):

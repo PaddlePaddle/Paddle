@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
@@ -31,7 +31,6 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
-        self.python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -59,7 +58,6 @@ class TestLog(TestActivation):
     def setUp(self):
         self.set_mlu()
         self.op_type = "log"
-        self.python_api = paddle.log
         self.init_dtype()
 
         np.random.seed(1024)
@@ -85,7 +83,6 @@ class TestLog2(TestActivation):
     def setUp(self):
         self.set_mlu()
         self.op_type = "log2"
-        self.python_api = paddle.log2
         self.init_dtype()
 
         x = np.random.uniform(1, 10, [11, 17]).astype(self.dtype)
@@ -137,7 +134,6 @@ class TestLog10(TestActivation):
     def setUp(self):
         self.set_mlu()
         self.op_type = "log10"
-        self.python_api = paddle.log10
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)

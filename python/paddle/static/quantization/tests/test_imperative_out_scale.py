@@ -20,7 +20,7 @@ import numpy as np
 from imperative_test_utils import fix_model_dict, train_lenet
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.framework import core, set_flags
 from paddle.nn import (
     BatchNorm2D,

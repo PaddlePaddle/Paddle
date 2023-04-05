@@ -23,8 +23,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit.api import to_static
@@ -40,7 +39,7 @@ input_specs = [
 ]
 
 
-class DynamicGRU(fluid.dygraph.Layer):
+class DynamicGRU(paddle.nn.Layer):
     def __init__(
         self,
         size,
@@ -90,7 +89,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         return res
 
 
-class BiGRU(fluid.dygraph.Layer):
+class BiGRU(paddle.nn.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super().__init__()
 
@@ -158,7 +157,7 @@ class BiGRU(fluid.dygraph.Layer):
         return bi_merge
 
 
-class LinearChainCRF(fluid.dygraph.Layer):
+class LinearChainCRF(paddle.nn.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
         super().__init__()
 
@@ -222,7 +221,7 @@ class LinearChainCRF(fluid.dygraph.Layer):
         return log_likelihood
 
 
-class CRFDecoding(fluid.dygraph.Layer):
+class CRFDecoding(paddle.nn.Layer):
     def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
         super().__init__()
 
@@ -271,7 +270,7 @@ class CRFDecoding(fluid.dygraph.Layer):
         return viterbi_path
 
 
-class ChunkEval(fluid.dygraph.Layer):
+class ChunkEval(paddle.nn.Layer):
     def __init__(
         self, num_chunk_types, chunk_scheme, excluded_chunk_types=None
     ):
@@ -344,7 +343,7 @@ class ChunkEval(fluid.dygraph.Layer):
         )
 
 
-class LexNet(fluid.dygraph.Layer):
+class LexNet(paddle.nn.Layer):
     def __init__(self, args, length=None):
         super().__init__()
         """
@@ -594,9 +593,9 @@ class TestLACModel(unittest.TestCase):
                             input=crf_decode, label=targets, seq_length=length
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
-                        avg_cost, precision, recall, f1_score = [
+                        avg_cost, precision, recall, f1_score = (
                             np.mean(x.numpy()) for x in outputs
-                        ]
+                        )
 
                         print(
                             "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"

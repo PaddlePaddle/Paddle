@@ -64,7 +64,9 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int64_t,                               \
                      int,                                   \
                      int8_t,                                \
-                     int16_t) {}
+                     int16_t) {                             \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
+  }
 
 REGISTER_LOGICAL_CPU_KERNEL(logical_and, And)
 REGISTER_LOGICAL_CPU_KERNEL(logical_or, Or)

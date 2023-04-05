@@ -15,7 +15,7 @@ from functools import reduce
 
 import numpy as np
 
-import paddle.framework.core as core
+from paddle.framework import core
 
 __all__ = []
 
@@ -219,7 +219,7 @@ class AscendParserBase:
         tensor = core.GETensor(tensor_desc)
 
         data = (
-            (value * np.ones((shape)))
+            (value * np.ones(shape))
             .reshape(shape)
             .astype(self.ascend_helper.dtype2np(dtype))
         )
@@ -282,7 +282,7 @@ class AscendParserBase:
         )
         tensor = core.GETensor(tensor_desc)
 
-        data = np.ones((2)).astype("int32").reshape([2])
+        data = np.ones(2).astype("int32").reshape([2])
         data[0] = 64
         buf = data.tobytes()
         data_8 = np.frombuffer(buf, dtype=np.uint8)
@@ -515,7 +515,7 @@ class SumParser(AscendParserBase):
     def _apply(self):
         len_list = len(self.op.input_arg_names)
         if len_list < 2:
-            assert False, "the size of input list must large or equal 2"
+            raise AssertionError("the size of input list must large or equal 2")
         x = self._get_ge_input(self.op.input_arg_names[0])
         y = self._get_ge_input(self.op.input_arg_names[1])
         sum = (
@@ -643,7 +643,7 @@ class MatMulParser(AscendParserBase):
                 .set_attr_bool("transpose_x2", transpose_y)
             )
         else:
-            assert False, "not support"
+            raise AssertionError("not support")
         return [matmul], [[0]]
 
 
@@ -681,7 +681,7 @@ class MulParser(AscendParserBase):
                     .set_input("x2", y, 0)
                 )
             else:
-                assert False, "not support"
+                raise AssertionError("not support")
         else:
             if len(shape_x1) == 3 and len(shape_x2) == 2:
                 assert x_num_col_dims == 2, "only support 2"
@@ -729,7 +729,7 @@ class MulParser(AscendParserBase):
                     .set_attr_vec_int32("perm", [1, 2, 0])
                 )
             else:
-                assert False, "not support"
+                raise AssertionError("not support")
 
         return [matmul], [[0]]
 

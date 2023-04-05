@@ -163,7 +163,7 @@ class TestFFTC2COp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -171,7 +171,6 @@ class TestFFTC2COp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -260,7 +259,7 @@ class TestFFTC2ROp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -268,7 +267,6 @@ class TestFFTC2ROp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )
 
 
@@ -345,7 +343,7 @@ class TestFFTR2COp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -353,5 +351,4 @@ class TestFFTR2COp(OpTest):
             "Out",
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad],
-            check_eager=True,
         )

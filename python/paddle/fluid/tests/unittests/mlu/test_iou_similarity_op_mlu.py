@@ -20,7 +20,7 @@ import sys
 sys.path.append("..")
 import math
 import paddle
-from op_test import OpTest
+from eager_op_test import OpTest
 
 paddle.enable_static()
 

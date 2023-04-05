@@ -53,5 +53,47 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   stream));
 }
 
+void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllGather(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  nccl_comm_,
+                                  stream));
+}
+
+void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                ncclRedOp_t reduce_type,
+                                gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllReduce(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  reduce_type,
+                                  nccl_comm_,
+                                  stream));
+}
+
+void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor,
+                             ncclRedOp_t reduce_type,
+                             int root,
+                             gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclReduce(in_tensor.data(),
+                               out_tensor->data(),
+                               in_tensor.numel(),
+                               ToNCCLDataType(in_tensor.type()),
+                               reduce_type,
+                               root,
+                               nccl_comm_,
+                               stream));
+}
+
 }  // namespace distributed
 }  // namespace phi

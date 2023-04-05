@@ -37,8 +37,7 @@ PD_REGISTER_KERNEL(max_pool2d_with_index_grad,
                    phi::MaxPool2dWithIndexGradKernel,
                    float,
                    double) {
-  kernel->InputAt(1).SetDataType(
-      paddle::experimental::CppTypeToDataType<int>::Type());
+  kernel->InputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
 }
 
 PD_REGISTER_KERNEL(pool3d_grad,
@@ -54,6 +53,5 @@ PD_REGISTER_KERNEL(max_pool3d_with_index_grad,
                    phi::MaxPool3dWithIndexGradKernel,
                    float,
                    double) {
-  kernel->InputAt(1).SetDataType(
-      paddle::experimental::CppTypeToDataType<int>::Type());
+  kernel->InputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
 }

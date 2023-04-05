@@ -53,9 +53,9 @@ class Event:
         self.total_samples = 0
         self.total_iters = 0
         self.skip_iter = 10
-        self.reader_records = dict(max=0, min=float('inf'), total=0)
-        self.batch_records = dict(max=0, min=float('inf'), total=0)
-        self.speed_records = dict(max=0, min=float('inf'))
+        self.reader_records = {'max': 0, 'min': float('inf'), 'total': 0}
+        self.batch_records = {'max': 0, 'min': float('inf'), 'total': 0}
+        self.speed_records = {'max': 0, 'min': float('inf')}
         self.reader = None
         self.need_record = True
         # The speed mode depends on the setting of num_samples, there
@@ -126,28 +126,28 @@ class Event:
         else:
             speed_avg = float(self.total_iters) / self.batch_records['total']
 
-        reader_summary = dict(
-            max=self.reader_records['max'],
-            min=self.reader_records['min'],
-            avg=reader_avg,
-        )
-        batch_summary = dict(
-            max=self.batch_records['max'],
-            min=self.batch_records['min'],
-            avg=batch_avg,
-        )
-        ips_summary = dict(
-            max=self.speed_records['max'],
-            min=self.speed_records['min'],
-            avg=speed_avg,
-        )
+        reader_summary = {
+            'max': self.reader_records['max'],
+            'min': self.reader_records['min'],
+            'avg': reader_avg,
+        }
+        batch_summary = {
+            'max': self.batch_records['max'],
+            'min': self.batch_records['min'],
+            'avg': batch_avg,
+        }
+        ips_summary = {
+            'max': self.speed_records['max'],
+            'min': self.speed_records['min'],
+            'avg': speed_avg,
+        }
         reader_ratio = (reader_avg / batch_avg) * 100
-        summary = dict(
-            reader_summary=reader_summary,
-            batch_summary=batch_summary,
-            ips_summary=ips_summary,
-            reader_ratio=reader_ratio,
-        )
+        summary = {
+            'reader_summary': reader_summary,
+            'batch_summary': batch_summary,
+            'ips_summary': ips_summary,
+            'reader_ratio': reader_ratio,
+        }
 
         return summary
 

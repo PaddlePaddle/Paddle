@@ -19,6 +19,7 @@ import platform
 import re
 import ssl
 import subprocess
+import sys
 import time
 import urllib.request
 
@@ -52,7 +53,7 @@ class PRChecker:
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('PREC No PR ID')
-            exit(0)
+            sys.exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
             self.suffix = suffix
@@ -161,7 +162,7 @@ class PRChecker:
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith((not_white_files)):
+        elif filename.startswith(not_white_files):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -311,7 +312,7 @@ class PRChecker:
         )
         if not ret:
             print('PREC download file_ut.json failed')
-            exit(1)
+            sys.exit(1)
 
         with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -329,7 +330,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
+                if filename.startswith(PADDLE_ROOT + 'paddle/infrt'):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
@@ -371,7 +372,7 @@ class PRChecker:
                         ut_list.append(ut.rstrip('\r\n'))
             else:
                 print('PREC download prec_delta failed')
-                exit(1)
+                sys.exit(1)
             PRECISION_TEST_Cases_ratio = format(
                 float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
@@ -484,7 +485,7 @@ class PRChecker:
                                     ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
-                        exit(1)
+                        sys.exit(1)
                     print("hitMapFiles: %s" % hitMapFiles)
                     print("ipipe_log_param_PRECISION_TEST: true")
                     print(

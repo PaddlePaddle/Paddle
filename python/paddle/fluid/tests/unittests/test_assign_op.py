@@ -14,53 +14,58 @@
 
 import unittest
 
+import eager_op_test
 import gradient_checker
 import numpy as np
-import op_test
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.backward import append_backward
 
 
-class TestAssignOp(op_test.OpTest):
+class TestAssignOp(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
+        self.public_python_api = paddle.assign
         self.op_type = "assign"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random(size=(100, 10)).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
-class TestAssignFP16Op(op_test.OpTest):
+class TestAssignFP16Op(eager_op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
+        self.public_python_api = paddle.assign
         self.op_type = "assign"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random(size=(100, 10)).astype('float16')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
@@ -70,13 +75,13 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
+            y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
             z = paddle.add(x=x, y=y)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
@@ -123,13 +128,13 @@ class TestAssignOApi(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
+            y = paddle.tensor.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
             z = paddle.add(x=x, y=y)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)

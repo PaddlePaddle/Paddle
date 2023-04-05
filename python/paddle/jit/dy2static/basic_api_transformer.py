@@ -197,11 +197,9 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set(
-            [
-                'size',
-            ]
-        )
+        self.interested_name = {
+            'size',
+        }
         self.root = node
 
     def transform(self):

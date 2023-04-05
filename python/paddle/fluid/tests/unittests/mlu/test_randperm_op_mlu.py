@@ -17,7 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
@@ -64,7 +64,6 @@ class TestRandpermOp(OpTest):
         self.op_type = "randperm"
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
-        self.python_api = paddle.randperm
         self.n = 200
         self.dtype = "int64"
 

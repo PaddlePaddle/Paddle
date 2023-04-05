@@ -19,7 +19,7 @@ import time
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,

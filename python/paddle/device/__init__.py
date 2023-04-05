@@ -523,7 +523,7 @@ def get_available_custom_device():
     return core.get_available_custom_device()
 
 
-class Event(object):
+class Event:
     '''
     A device event wrapper around StreamBase.
     Parameters:
@@ -668,7 +668,7 @@ class Event(object):
         return self.event_base
 
 
-class Stream(object):
+class Stream:
     '''
     A device stream wrapper around StreamBase.
     Parameters:
@@ -840,7 +840,7 @@ class Stream(object):
 
     def __eq__(self, o):
         if isinstance(o, Stream):
-            return super(Stream, self).__eq__(o)
+            return super().__eq__(o)
         return False
 
     def __hash__(self):
@@ -936,7 +936,7 @@ def set_stream(stream):
     return prev_stream
 
 
-class stream_guard(object):
+class stream_guard:
     '''
     Notes:
         This API only supports dynamic graph mode currently.

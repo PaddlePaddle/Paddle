@@ -303,7 +303,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             vars_metatools,
         )
 
-        processed_var_names = set(["@EMPTY@"])
+        processed_var_names = {"@EMPTY@"}
         param_memory_size = 0
         for varname in program.global_block().vars:
             var = program.global_block().vars[varname]
@@ -318,7 +318,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         upper_mem_use = param_memory_size * 5.0
 
-        program_tmp_vars = dict()
+        program_tmp_vars = {}
         eval_batch_size = 1024
         for op in program.global_block().ops:
             for var_name in op.output_arg_names:
@@ -371,9 +371,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
-        from paddle.incubate.distributed.fleet.parameter_server.ir import (
-            public as public,
-        )
+        from paddle.incubate.distributed.fleet.parameter_server.ir import public
 
         compiled_config = public.CompileTimeStrategy(
             _origin_main_program,

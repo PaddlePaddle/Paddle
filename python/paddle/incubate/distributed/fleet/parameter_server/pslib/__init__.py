@@ -10,19 +10,20 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-"""Defination of PSLib."""
+"""Definition of PSLib."""
 
 import os
 import sys
-from .optimizer_factory import *  # noqa: F403
+from .optimizer_factory import FLEET_GLOBAL_DICT  # noqa: F403
+from .optimizer_factory import DistributedAdam  # noqa: F403
 from google.protobuf import text_format
 from paddle.framework import core
-
 from paddle.incubate.distributed.fleet.base import Fleet
 from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.base import DistributedOptimizer
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
+import paddle
 
 
 class PSLib(Fleet):
@@ -534,7 +535,7 @@ class PSLib(Fleet):
             >>> fleet.shrink_dense_table(0.98, 11, myscope2, 3)
         """
         if scope is None:
-            scope = fluid.global_scope()
+            scope = paddle.static.global_scope()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             for tp in self._opt_info["fleet_desc"].trainer_param:
@@ -971,7 +972,7 @@ def _fleet_embedding(
     if padding_idx is None:
         padding_idx = 0
     global FLEET_GLOBAL_DICT
-    return fluid.layers.nn._pull_sparse(
+    return paddle.static.nn._pull_sparse(
         input=input,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
@@ -1013,7 +1014,7 @@ def _fleet_embedding_v2(
     if padding_idx is None:
         padding_idx = 0
 
-    return fluid.layers.nn._pull_sparse_v2(
+    return paddle.static.nn._pull_sparse_v2(
         input=input,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
@@ -1042,8 +1043,8 @@ class fleet_embedding:
 
     def __init__(self, click_name, scale_sparse_grad=True):
         """Init."""
-        self.origin_emb = fluid.layers.embedding
-        self.origin_emb_v2 = fluid.embedding
+        # self.origin_emb = fluid.layers.embedding
+        self.origin_emb_v2 = paddle.static.nn.embedding
         # if user uses cvm layer after embedding, click_name can be None
         self.click_name = "" if click_name is None else click_name
         self.scale_sparse_grad = scale_sparse_grad
@@ -1052,16 +1053,16 @@ class fleet_embedding:
 
     def __enter__(self):
         """Enter."""
-        fluid.layers.embedding = _fleet_embedding
-        fluid.embedding = _fleet_embedding_v2
+        # fluid.layers.embedding = _fleet_embedding
+        paddle.static.nn.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
         FLEET_GLOBAL_DICT["click_name"] = self.click_name
         FLEET_GLOBAL_DICT["scale_sparse_grad"] = self.scale_sparse_grad
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit."""
-        fluid.layers.embedding = self.origin_emb
-        fluid.embedding = self.origin_emb_v2
+        # fluid.layers.embedding = self.origin_emb
+        paddle.static.nn.embedding = self.origin_emb_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = ""
         FLEET_GLOBAL_DICT["click_name"] = ""
         FLEET_GLOBAL_DICT["scale_sparse_grad"] = None
@@ -1220,7 +1221,7 @@ class DownpourOptimizer(DistributedOptimizer):
         programs = [loss.block.program for loss in losses]
 
         if scopes is None:
-            scopes = [fluid.global_scope()] * len(programs)
+            scopes = [paddle.static.global_scope()] * len(programs)
 
         if len(scopes) != len(programs):
             raise ValueError(

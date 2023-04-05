@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
 from paddle.utils import gast
 
@@ -108,7 +108,7 @@ def func_to_test5():
     a = inner_int_func()
     b = inner_bool_float_func(3)
     c = inner_unknown_func(None)
-    d = paddle.fluid.data('x', [1, 2])
+    d = paddle.static.data('x', [1, 2])
 
 
 result_var_type5 = {

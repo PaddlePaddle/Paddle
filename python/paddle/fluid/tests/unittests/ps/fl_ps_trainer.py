@@ -16,8 +16,8 @@ import os
 import time
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 
 def get_dataset(inputs, config, pipe_cmd, role="worker"):
@@ -44,7 +44,7 @@ def get_dataset(inputs, config, pipe_cmd, role="worker"):
 
 def fl_ps_train():
     # 0. get role
-    import paddle.distributed.fleet.base.role_maker as role_maker
+    from paddle.distributed.fleet.base import role_maker
 
     role_maker = role_maker.PaddleCloudRoleMaker()
     role_maker._generate_role()

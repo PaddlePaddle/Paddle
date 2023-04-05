@@ -107,7 +107,7 @@ while True:
 
     if not commits:
         sys.stdout.write('no commits to bisect\n')
-        exit()
+        sys.exit()
     # checkout the picked branch.
     pick_idx = len(commits) / 2
     pick = commits[pick_idx]
@@ -129,7 +129,7 @@ while True:
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
         sys.stderr.write('failed to build commit: %s\n%s\n' % (pick, e))
-        exit()
+        sys.exit()
     # test the selected branch.
     passed = True
     try:

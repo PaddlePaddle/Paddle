@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -32,7 +32,7 @@ def check():
     )
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
-    helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
+    helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
     func = helper.append_activation
     with fluid.dygraph.guard(fluid.core.CPUPlace()):
         a = fluid.dygraph.to_variable(a_np)

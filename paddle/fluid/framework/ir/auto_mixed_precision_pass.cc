@@ -47,6 +47,23 @@ bool PhiKernelSupportPrecision(
   return phi::KernelFactory::Instance().HasKernel(op_type, kernel_key);
 }
 
+static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
+  switch (place.GetType()) {
+    case phi::AllocationType::CPU:
+      return phi::Backend::CPU;
+    case phi::AllocationType::GPU:
+      return phi::Backend::GPU;
+    case phi::AllocationType::XPU:
+      return phi::Backend::XPU;
+    case phi::AllocationType::NPU:
+      return phi::Backend::NPU;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot convert place(%d).", static_cast<int>(place.GetType())));
+  }
+  return phi::Backend::UNDEFINED;
+}
+
 bool KernelSupportPrecision(
     const std::string& op_type,
     phi::Backend backend,
@@ -65,7 +82,7 @@ bool KernelSupportPrecision(
     auto it = all_kernels.find(op_type);
     if (it != all_kernels.end()) {
       for (const auto& kern_pair : it->second) {
-        if (platform::is_gpu_place(kern_pair.first.place_) &&
+        if (ConvertPlaceToBackend(kern_pair.first.place_) == backend &&
             kern_pair.first.data_type_ ==
                 framework::TransToProtoVarType(precision)) {
           support = true;
@@ -150,20 +167,8 @@ bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
                         const std::unordered_set<std::string>& black_list) {
-  bool support = false;
-  if (black_list.count(op_type) == 0) {
-    // Actual custom backend will be added after the NUM_BACKENDS.
-    // We use this feature to determine whether backend is custom device.
-    if (backend == phi::Backend::GPU ||
-        static_cast<size_t>(backend) >
-            static_cast<size_t>(phi::Backend::NUM_BACKENDS)) {
-      support = KernelSupportPrecision(op_type, backend, precision);
-    } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Now, only support backend of GPU and Custom Device ."));
-    }
-  }
-  return support;
+  return black_list.count(op_type) == 0 &&
+         KernelSupportPrecision(op_type, backend, precision);
 }
 
 // The set of ops that support fp16 calculation and are considered
@@ -192,15 +197,13 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
 }
 
 void AutoMixedPrecisionPass::Init(Graph* graph) const {
-  bool enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
-  bool enable_custom_device_mixed = false;
-  if (Has("enable_custom_device_mixed")) {
-    enable_custom_device_mixed = Get<bool>("enable_custom_device_mixed");
-  }
-  if (enable_gpu_mixed) {
+  if (Has("enable_gpu_mixed") && Get<bool>("enable_gpu_mixed")) {
     backend_ = phi::Backend::GPU;
-  } else if (enable_custom_device_mixed) {
-// transform Backend::CUSTOM to actual backend.
+  } else if (Has("enable_xpu_mixed") && Get<bool>("enable_xpu_mixed")) {
+    backend_ = phi::Backend::XPU;
+  } else if (Has("enable_custom_device_mixed") &&
+             Get<bool>("enable_custom_device_mixed")) {
+    // transform Backend::CUSTOM to actual backend.
 // Here, we only consider one custom backend.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
@@ -214,7 +217,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
         "Cannot enable custom_device_mixed."));
 #endif
   }
-  skip_pass_ = !enable_gpu_mixed && !enable_custom_device_mixed;
+  skip_pass_ = backend_ == phi::Backend::UNDEFINED;
 
   low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
 
@@ -225,7 +228,6 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
     VLOG(4) << " - " << name;
   }
 
-  keep_io_types_ = true;
   if (Has("keep_io_types")) {
     keep_io_types_ = Get<bool>("keep_io_types");
   }
@@ -607,6 +609,20 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
       return true;
     }
   }
+
+  if (backend_ == phi::Backend::XPU) {
+    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+      auto vecs = op_desc->Input("Bias");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
@@ -632,6 +648,20 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
       return true;
     }
   }
+
+  if (backend_ == phi::Backend::XPU) {
+    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+      auto vecs = op_desc->Output("Mean");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Output("Variance");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 

@@ -33,44 +33,53 @@ void FcXPUKernel(const Context& ctx,
                  float act_alpha,
                  DenseTensor* out,
                  DenseTensor* out_max) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_mat_dims = flatten_to_2d(x.dims(), in_num_col_dims);
   int m = in_mat_dims[0];
   int k = in_mat_dims[1];
   int n = w.dims()[0];
+  auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const float* x_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
+  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == 5) {
     act.leaky_alpha = act_alpha;
   } else if (act_type == 15) {
     act.hard_sigmoid_slope = act_alpha;
   }
-  int r = xpu::fc_fusion<T, int16_t, T, int16_t>(  // TX, TW. TY, TGEMM
-      ctx.x_context(),                             // ctx
-      x.data<T>(),                                 // x
-      w.data<int16_t>(),                           // w
-      ctx.template Alloc<T>(out),                  // y
-      m,                                           // m
-      n,                                           // n
-      k,                                           // k
-      transpose_x,                                 // x_trans
-      true,                                        // w_trans
-      x_max_data,                                  // x_maxptr
-      w_max.data<float>(),                         // w_maxptr
-      ctx.template Alloc<float>(out_max),          // y_maxptr
-      transpose_x ? m : k,                         // ldx
-      k,                                           // ldw
-      n,                                           // ldy
-      alpha,                                       // alpha
-      beta,                                        // beta
-      bias_data,                                   // bias
-      act);
+  int r =
+      xpu::fc_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX, TW. TY, TGEMM
+          ctx.x_context(),                                 // ctx
+          x_data,                                          // x
+          w.data<int16_t>(),                               // w
+          out_data,                                        // y
+          m,                                               // m
+          n,                                               // n
+          k,                                               // k
+          transpose_x,                                     // x_trans
+          true,                                            // w_trans
+          x_max_data,                                      // x_maxptr
+          w_max.data<float>(),                             // w_maxptr
+          ctx.template Alloc<float>(out_max),              // y_maxptr
+          transpose_x ? m : k,                             // ldx
+          k,                                               // ldw
+          n,                                               // ldy
+          alpha,                                           // alpha
+          beta,                                            // beta
+          bias_data,                                       // bias
+          act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
 }
 
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fc_xpu, XPU, ALL_LAYOUT, phi::fusion::FcXPUKernel, float) {}
+PD_REGISTER_KERNEL(fc_xpu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FcXPUKernel,
+                   float,
+                   phi::dtype::float16) {}

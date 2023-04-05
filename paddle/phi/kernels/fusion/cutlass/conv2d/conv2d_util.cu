@@ -62,12 +62,14 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     int dilation_w,
                                     int oh,
                                     int ow,
+                                    int groups,
                                     const half *residual,
                                     float alpha,  // for leaky_relu
                                     OpType op_type) {
   int M = batch * oh * ow;
   int N = oc;
-  int K = ic * kh * kw;
+  int kc = ic / groups;
+  int K = kc * kh * kw;
   int m_i = threadIdx.x + blockIdx.x * blockDim.x;
   int n_i = threadIdx.y + blockIdx.y * blockDim.y;
   if (m_i >= M || n_i >= N) return;
@@ -76,19 +78,20 @@ __global__ void naive_conv2d_kernel(const half *input,
   int oh_i = (m_i % (oh * ow)) / ow;
   int ow_i = (m_i % (oh * ow)) % ow;
   int oc_i = n_i;
+  int groups_i = (oc_i / (oc / groups));
 
-  struct logical_coord weight_shape = {oc, ic, kh, kw};
+  struct logical_coord weight_shape = {oc, kc, kh, kw};
   struct logical_coord input_shape = {batch, ic, ih, iw};
   int out_offset = m_i * N + n_i;
   float *out_ptr = output + out_offset;
   float sum = 0.f;
 
   for (int k_i = 0; k_i < K; k_i++) {
-    int ic_i = k_i / (kh * kw);
+    int ic_i = k_i / (kh * kw) + groups_i * kc;
     int kh_i = (k_i % (kh * kw)) / kw;
     int kw_i = (k_i % (kh * kw)) % kw;
 
-    struct logical_coord weight_index = {oc_i, ic_i, kh_i, kw_i};
+    struct logical_coord weight_index = {oc_i, k_i / (kh * kw), kh_i, kw_i};
 
     int ih_i = oh_i * stride_h - pad_h + kh_i * dilation_h;
     int iw_i = ow_i * stride_w - pad_w + kw_i * dilation_w;
@@ -127,7 +130,7 @@ __global__ void naive_conv2d_kernel(const half *input,
   }
 }
 
-float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
+float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type) {
   const half *input = params.input;
   const half *weight = params.weight;
   const half *bias = params.bias;
@@ -146,6 +149,7 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
   int dilation_h = params.dilation_h;
   int dilation_w = params.dilation_w;
   const half *residual = params.residual;
+  int groups = params.groups;
 
   int oh = params.oh;
   int ow = params.ow;
@@ -186,6 +190,7 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
                                        dilation_w,
                                        oh,
                                        ow,
+                                       groups,
                                        residual,
                                        params.alpha,
                                        op_type);
@@ -212,7 +217,7 @@ std::string OpType2String(OpType op_type) {
       return "conv2d_bias_relu";
       break;
     case CONV2D_BIAS_SILU:
-      return "conv2d_bias_add_silu";
+      return "conv2d_bias_silu";
       break;
     case CONV2D_BIAS_ADD_RELU:
       return "conv2d_bias_add_relu";
@@ -227,7 +232,7 @@ std::string OpType2String(OpType op_type) {
 
 int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>> &all_func,
-    ConvAllParams params,
+    const ConvAllParams &params,
     OpType op_type) {
   constexpr int WARMUP = 10;
   constexpr int REPEAT = 100;
@@ -258,10 +263,11 @@ int ProfileToGetBestConfig(
     if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
       min_time = elapsed_time;
       min_time_index = i;
+      // debug code
+      VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
+              << conv2d_diff_gpu(params, op_type) << " compared with baseline,"
+              << "cost_time: " << elapsed_time << "ms.";
     }
-    // debug code
-    VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
-            << conv2d_diff_gpu(params, op_type) << " compared with baseline.";
   }
 
   if (min_time_index < 0) {

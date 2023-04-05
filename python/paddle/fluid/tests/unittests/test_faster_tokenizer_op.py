@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, nn
 from paddle.fluid.framework import _non_static_mode, core
 from paddle.fluid.layer_helper import LayerHelper
 

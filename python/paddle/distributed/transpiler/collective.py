@@ -510,7 +510,7 @@ class SingleProcessMultiThread(GradAllReduce):
     def _transpile_startup_program(self):
         nodes_num = 0
         if len(self.endpoints) > 1:
-            nodes_num = len(set([x.split(':')[0] for x in self.endpoints]))
+            nodes_num = len({x.split(':')[0] for x in self.endpoints})
         # diffent ip num is multi node
         if nodes_num > 1:
             self.nranks = nodes_num

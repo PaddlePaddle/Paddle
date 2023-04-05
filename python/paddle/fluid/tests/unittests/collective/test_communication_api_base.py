@@ -73,7 +73,7 @@ class CommunicationTestDistBase(unittest.TestCase):
 
 
 def gen_product_envs_list(default_envs, changeable_envs):
-    envs_list = list()
+    envs_list = []
     for values in itertools.product(*changeable_envs.values()):
         envs = dict(zip(changeable_envs.keys(), values))
         envs.update(default_envs)

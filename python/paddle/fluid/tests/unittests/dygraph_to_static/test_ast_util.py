@@ -24,8 +24,8 @@ from ifelse_simple_func import (
 )
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 

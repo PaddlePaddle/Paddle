@@ -23,7 +23,8 @@ import time
 
 import numpy as np
 
-import paddle.fluid as fluid
+import paddle
+from paddle import fluid
 from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.log_helper import get_logger
 
@@ -1087,11 +1088,13 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
+                    paddle.static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
                 else:
-                    fluid.io.save_vars(executor, model_name, program, vars=vars)
+                    paddle.static.io.save_vars(
+                        executor, model_name, program, vars=vars
+                    )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -1292,7 +1295,9 @@ class FleetUtil:
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
-        splits_per_day = 24 * 60 // split_interval
+        splits_per_day = (
+            (int(hours[-1]) - int(hours[0]) + 1) * 60 // split_interval
+        )
         pass_per_day = splits_per_day // split_per_pass
         left_train_hour = int(hours[0])
         right_train_hour = int(hours[-1])

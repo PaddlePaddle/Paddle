@@ -67,8 +67,8 @@ class TestConvNet(IPUOpTest):
 
         result = []
         for _ in range(100):
-            if hasattr(program, "lr_sheduler"):
-                program.lr_sheduler.step()
+            if hasattr(program, "lr_scheduler"):
+                program.lr_scheduler.step()
             loss_res = exe.run(
                 program, feed=self.feed, fetch_list=self.fetch_list
             )

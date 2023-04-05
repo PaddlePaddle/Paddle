@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
+#include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -47,7 +48,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class InferShapeContext;
 class OpInfo;
 class Scope;
 class Variable;
@@ -144,6 +144,114 @@ class RuntimeContext {
 
   VariableValueMap inputs;
   VariableValueMap outputs;
+};
+
+class RuntimeInferShapeContext : public InferShapeContext {
+ public:
+  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx);
+
+  bool HasInput(const std::string& name) const override;
+
+  bool HasOutput(const std::string& name) const override;
+
+  bool HasAttr(const std::string& name) const override;
+
+  bool HasInputs(const std::string& name) const override;
+
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override;
+
+  AttrReader Attrs() const override;
+
+  std::vector<std::string> Inputs(const std::string& name) const override;
+
+  std::vector<std::string> Outputs(const std::string& name) const override;
+
+  std::string GetInputNameByIdx(size_t idx) const override;
+
+  std::string GetOutputNameByIdx(size_t idx) const override;
+
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
+                size_t j = 0) override;
+
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override;
+
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
+                size_t j = 0) const override;
+
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
+
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
+                   size_t j = 0) const override;
+
+  bool IsRuntime() const override;
+
+  bool IsRunMKLDNNKernel() const override;
+
+  // TODO(paddle-dev): Can this be template?
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override;
+
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override;
+
+  DDim GetInputDim(const std::string& name) const override;
+
+  std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
+
+  std::vector<proto::VarType::Type> GetInputsVarType(
+      const std::string& name) const override;
+
+  std::vector<proto::VarType::Type> GetOutputsVarType(
+      const std::string& name) const override;
+
+  void SetOutputDim(const std::string& name, const DDim& dim) override;
+
+  void SetOutputsDim(const std::string& name,
+                     const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
+
+  void SetSkipLoD(bool skip);
+
+ protected:
+  DDim GetDim(Variable* var) const;
+
+  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const;
+
+  std::vector<DDim> GetRepeatedDims(const std::string& name) const override;
+
+  void SetDim(Variable* var, const DDim& dim);
+
+  void SetDims(const std::vector<Variable*>& vars,
+               const std::vector<DDim>& dims);
+
+  void SetRepeatedDims(const std::string& name,
+                       const std::vector<DDim>& dims) override;
+
+  std::vector<proto::VarType::Type> GetVarTypes(
+      const std::vector<Variable*>& vars) const;
+
+  proto::VarType::Type GetVarType(Variable* var) const;
+
+ private:
+  const std::vector<Variable*>& InputVars(const std::string& name) const;
+
+  const std::vector<Variable*>& OutputVars(const std::string& name) const;
+
+  const OperatorBase& op_;
+  const RuntimeContext& ctx_;
+  bool can_skip_lod_{false};
 };
 
 /**
@@ -781,19 +889,18 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                              const std::string& name) const;
-  bool NeedResetRuntimeContext(const Scope& scope) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
+  mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
   mutable bool need_prepare_phi_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
-  mutable Scope* cache_transfer_scope_ = nullptr;
   // NOTE(jiahongyu): Whether fallback to plain kernel after calling
   // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
   // code

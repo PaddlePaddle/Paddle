@@ -693,6 +693,56 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* dOut,
+                  const DenseTensor* ddX,
+                  DenseTensor* dX,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "SoftplusDoubleGrad"));
+    auto x_beta = static_cast<T>(beta) * x;
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SoftplusDoubleGrad"));
+
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SoftplusDoubleGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SoftplusDoubleGrad"));
+      // ddx * dout * beta * exp(x_beta) / (exp(x_beta) + 1) ^ 2, if x_beta
+      // <= threshold
+      // 0, if x_beta > threshold
+      dx.device(*d) =
+          (x_beta > static_cast<T>(threshold))
+              .select(x.constant(static_cast<T>(0)),
+                      ddx * dout * static_cast<T>(beta) * x_beta.exp() /
+                          (x_beta.exp() + static_cast<T>(1))
+                              .pow(static_cast<T>(2)));
+    }
+
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SoftplusDoubleGrad"));
+      // ddx / (1 + exp(-x_beta)), if x_beta <= threshold
+      // ddx, if x_beta > threshold
+      ddout.device(*d) =
+          (x_beta > static_cast<T>(threshold))
+              .select(ddx, ddx / (static_cast<T>(1) + (-x_beta).exp()));
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // Tangent(x) = tan(x)
 template <typename T>
 struct TanFunctor : public BaseActivationFunctor<T> {
@@ -2422,6 +2472,58 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
+template <typename T>
+struct CudaLogitFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+  float eps;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+
+  // logit(x) = ln(x/(1-x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT y = min(x, (one - static_cast<MT>(eps)));
+    y = max(y, static_cast<MT>(eps));
+
+    if (!eps) {
+      y = x < zero || x > one ? static_cast<T>(NAN) : log(y / (one - y));
+    } else {
+      y = log(y / (one - y));
+    }
+    return static_cast<T>(y);
+  }
+};
+
+template <typename T>
+struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  float eps;
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+  // logit(x)' = 1/(x*(1-x))
+  __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+                ? zero
+                : (static_cast<MT>(dout) / (x * (one - x)));
+    return static_cast<T>(dx);
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);

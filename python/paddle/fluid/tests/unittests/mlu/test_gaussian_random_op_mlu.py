@@ -22,7 +22,7 @@ from paddle.fluid.executor import Executor
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 
 paddle.enable_static()

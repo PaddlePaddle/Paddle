@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CostEstimator

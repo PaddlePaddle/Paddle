@@ -24,9 +24,9 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 protobuf_version = google.protobuf.__version__
 if protobuf_version >= "4.21.0":
-    import google._upb._message as _message
+    from google._upb import _message
 else:
-    import google.protobuf.pyext._message as _message
+    from google.protobuf.pyext import _message
 
 __all__ = []
 
@@ -62,7 +62,8 @@ def assign_configs_value(msg, config):
                 # LABEL_REPEATED = 3
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
-                    getattr(msg, f.name).extend(config[f.name])
+                    if config[f.name] is not None:
+                        getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 
@@ -542,7 +543,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
@@ -1672,6 +1673,8 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+
         Examples:
             .. code-block:: python
 
@@ -1680,7 +1683,8 @@ class DistributedStrategy:
                 strategy.hybrid_configs = {
                     "dp_degree": 1,
                     "mp_degree": 2,
-                    "pp_degree": 1}
+                    "pp_degree": 1,
+                    "order":['dp','pp','sharding','mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)

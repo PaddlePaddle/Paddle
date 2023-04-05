@@ -25,7 +25,7 @@ class TestIgnoreModule(unittest.TestCase):
     def test_ignore_module(self):
         modules = [scipy, astor]
         ignore_module(modules)
-        self.assertEquals(
+        self.assertEqual(
             [scipy, astor],
             BUILTIN_LIKELY_MODULES[-2:],
             'Failed to add modules that ignore transcription',

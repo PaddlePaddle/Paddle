@@ -19,7 +19,7 @@ from paddle.fluid.op import Operator
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import numpy

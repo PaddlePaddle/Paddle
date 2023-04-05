@@ -532,6 +532,11 @@ if(WITH_GPU
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
   endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.2)
+    include(external/flashattn)
+    list(APPEND third_party_deps extern_flashattn)
+    set(WITH_FLASHATTN ON)
+  endif()
 endif()
 
 if(WITH_CUDNN_FRONTEND)

@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 

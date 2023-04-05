@@ -52,6 +52,7 @@ option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
+option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_MLU "Compile PaddlePaddle with CAMBRICON MLU" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
@@ -63,6 +64,7 @@ option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
+option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -73,6 +75,9 @@ if(WITH_GPU AND WITH_XPU)
 endif()
 if(WITH_GPU AND WITH_XPU_KP)
   message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
+endif()
+if(WITH_GPU AND WITH_XPU_XFT)
+  message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
 if(WITH_GPU AND WITH_ASCEND)
   message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
@@ -293,6 +298,7 @@ option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
+option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
 option(WITH_MUSL "Compile with musl libc instead of gblic" OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode" OFF)
 option(WITH_STRIP "Strip so files of Whl packages" OFF)
@@ -417,6 +423,15 @@ if(WITH_XPU_KP AND NOT WITH_XPU)
   set(WITH_XPU
       ON
       CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPU_XFT)
+  message(
+    WARNING
+      "Enable WITH_XPU when compiling with WITH_XPU_XFT. Force WITH_XPU=ON.")
+  set(WITH_XPU
+      ON
+      CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_XFT" FORCE)
 endif()
 
 if(NOT WITH_XPU AND WITH_XPU_BKCL)
@@ -645,6 +660,16 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_LOONGARCH)
+  set(WITH_XBYAK
+      OFF
+      CACHE STRING "Disable XBYAK when compiling WITH_LOONGARCH=ON" FORCE)
+  set(WITH_MKL
+      OFF
+      CACHE STRING "Disable MKL when compiling WITH_LOONGARCH=ON." FORCE)
+  add_definitions(-DPADDLE_WITH_LOONGARCH)
+endif()
+
 if(WITH_ONEMKL)
   add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
@@ -689,6 +714,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
+add_subdirectory(test)
 
 get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
 list(JOIN all_inc_dirs "\r\n" all_inc_dirs)

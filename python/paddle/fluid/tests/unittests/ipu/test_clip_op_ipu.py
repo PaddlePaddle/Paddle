@@ -89,10 +89,10 @@ class TestMinMaxTensor(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
 
-        min = paddle.fluid.layers.fill_constant(
+        min = paddle.tensor.fill_constant(
             name="min", shape=[1], dtype='float32', value=0.1
         )
-        max = paddle.fluid.layers.fill_constant(
+        max = paddle.tensor.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
         x = paddle.clip(x, min=min, max=max)
@@ -106,7 +106,7 @@ class TestMinTensor(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
 
-        min = paddle.fluid.layers.fill_constant(
+        min = paddle.tensor.fill_constant(
             name="min", shape=[1], dtype='float32', value=0.1
         )
         x = paddle.clip(x, min=min)
@@ -120,7 +120,7 @@ class TestMaxTensor(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
 
-        max = paddle.fluid.layers.fill_constant(
+        max = paddle.tensor.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
         x = paddle.clip(x, max=max)
@@ -134,7 +134,7 @@ class TestCombine1(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
 
-        min = paddle.fluid.layers.fill_constant(
+        min = paddle.tensor.fill_constant(
             name="min", shape=[1], dtype='float32', value=0.1
         )
         x = paddle.clip(x, min=min, max=3.4)
@@ -148,7 +148,7 @@ class TestCombine2(TestBase):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
 
-        max = paddle.fluid.layers.fill_constant(
+        max = paddle.tensor.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
         x = paddle.clip(x, min=0.1, max=max)
@@ -186,10 +186,10 @@ class TestIntMinMax(TestBase):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int32'
         )
-        min = paddle.fluid.layers.fill_constant(
+        min = paddle.tensor.fill_constant(
             name="min", shape=[1], dtype='int32', value=1
         )
-        max = paddle.fluid.layers.fill_constant(
+        max = paddle.tensor.fill_constant(
             name="max", shape=[1], dtype='int32', value=3
         )
         x = paddle.clip(x, min=min, max=max)

@@ -76,14 +76,14 @@ void SyncBatchNormKernel(const Context &ctx,
   const int block = 512;
   int max_threads = ctx.GetMaxPhysicalThreadCount();
 
-  paddle::memory::AllocationPtr alloc_ptr{nullptr};
+  phi::Allocator::AllocationPtr alloc_ptr{nullptr};
 
   if (test_mode) {
     mean_data = mean.template data<BatchNormParamType<T>>();
     var_data = variance.template data<BatchNormParamType<T>>();
   } else {
     // x, x^2, 1, here 1 is used to calc device num
-    // device num also can be got from platform::DeviceContextPool
+    // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
     alloc_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
@@ -108,17 +108,16 @@ void SyncBatchNormKernel(const Context &ctx,
     }
 
     if (comm) {
-      int dtype = paddle::platform::ToNCCLDataType(
-          paddle::framework::TransToProtoVarType(mean_out->dtype()));
+      int dtype = phi::ToNCCLDataType(mean_out->dtype());
       // In-place operation
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
-          stats,
-          stats,
-          2 * C + 1,
-          static_cast<ncclDataType_t>(dtype),
-          ncclSum,
-          comm,
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(stats,
+                                      stats,
+                                      2 * C + 1,
+                                      static_cast<ncclDataType_t>(dtype),
+                                      ncclSum,
+                                      comm,
+                                      stream));
       VLOG(3) << "Sync result using all reduce";
     }
 #endif

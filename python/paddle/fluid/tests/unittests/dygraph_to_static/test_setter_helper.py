@@ -43,8 +43,8 @@ class TestGetterSetterHelper(unittest.TestCase):
         assert vars == [1, 1, 3, 10, 12]
         helper.set(None, None)
         assert vars == [1, 1, 3, 10, 12]
-        assert helper.get(None) == tuple()
-        assert helper.get([]) == tuple()
+        assert helper.get(None) == ()
+        assert helper.get([]) == ()
 
 
 if __name__ == '__main__':

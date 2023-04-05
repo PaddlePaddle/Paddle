@@ -25,11 +25,14 @@ void AdadeltaKernel(const Context& dev_ctx,
                     const DenseTensor& grad,
                     const DenseTensor& avg_squared_grad,
                     const DenseTensor& avg_squared_update,
+                    const paddle::optional<DenseTensor>& master_param,
                     float rho,
                     float epsilon,
+                    bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* avg_squared_grad_out,
-                    DenseTensor* avg_squared_update_out) {
+                    DenseTensor* avg_squared_update_out,
+                    DenseTensor* master_param_outs) {
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<T>(avg_squared_grad_out);
   dev_ctx.template Alloc<T>(avg_squared_update_out);

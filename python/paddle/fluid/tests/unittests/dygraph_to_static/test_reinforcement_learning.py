@@ -20,10 +20,11 @@ import gym
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Layer, to_variable
+from paddle import fluid
+from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
+from paddle.nn import Layer
 
 SEED = 2020
 

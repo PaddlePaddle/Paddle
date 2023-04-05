@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 

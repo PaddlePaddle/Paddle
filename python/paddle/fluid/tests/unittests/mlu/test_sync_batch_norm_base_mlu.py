@@ -30,7 +30,7 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 import paddle
 
-from op_test import OpTest, _set_use_system_allocator
+from eager_op_test import OpTest, _set_use_system_allocator
 
 from test_sync_batch_norm_op import create_or_get_tensor
 

@@ -16,9 +16,12 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
 
 
 @unittest.skipIf(
@@ -55,7 +58,9 @@ class TestReshapeBf16Op(OpTest):
         self.input_data = convert_float_to_uint16(self.input_data_fp32)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
+        self.check_output_with_place(
+            core.CPUPlace(), no_check_set=['XShape'], check_dygraph=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(

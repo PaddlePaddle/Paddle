@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.distributed.passes.pass_utils import split_program
 from paddle.vision.models import resnet18 as resnet
 

@@ -78,6 +78,15 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : lamb
+  version :
+    - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
+      action :
+        - add_output : Beta1PowOut
+          comment : The Output beta1 power accumulator. 'Beta1PowOut' is dispensable.
+        - add_output : Beta2PowOut
+          comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
+
 - op : less_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
@@ -100,6 +109,14 @@
       action :
         - modify_attr : force_cpu
           comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : p_norm
+  version :
+    - checkpoint : Upgrade p_norm, add 1 attribute [asvector].
+      action :
+        - add_attr : asvector
+          comment : Compute as vector when axis is None and input is matrix.
           default : "false"
 
 - op : pixel_shuffle

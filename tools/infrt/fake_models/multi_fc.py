@@ -15,7 +15,7 @@
 A fake model with multiple FC layers to test CINN on a more complex model.
 """
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 size = 2
 num_layers = 4

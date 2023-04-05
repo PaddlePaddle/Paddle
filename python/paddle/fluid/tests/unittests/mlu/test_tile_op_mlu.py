@@ -17,7 +17,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -234,7 +234,7 @@ class TestTileAPIStatic(unittest.TestCase):
             repeat_times = [2, 2]
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
             out = paddle.tile(x1, repeat_times)
-            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            positive_2 = paddle.tensor.fill_constant([1], dtype="int32", value=2)
             out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
 
 

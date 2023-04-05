@@ -14,6 +14,7 @@
 
 import json
 import os
+import re
 from enum import IntEnum, unique
 
 import paddle
@@ -449,7 +450,6 @@ class Cluster:
         npu_models = ["NPU"]
         dcu_models = ["DCU"]
         all_gpu_models = gpu_models + xpu_models + npu_models + dcu_models
-        assert gpu_model in all_gpu_models
         self._num_devices_per_machine = device_count
 
         def _convert_to_type(gpu_model):
@@ -462,6 +462,8 @@ class Cluster:
                 type = "NPU"
             elif gpu_model in dcu_models:
                 type = "DCU"
+            else:
+                type = "GPU"
             assert type is not None
 
             return type
@@ -470,6 +472,12 @@ class Cluster:
             model = None
             if gpu_model == "V100":
                 model = "Tesla V100-SXM2-" + str(gpu_memory) + "GB"
+            elif gpu_model == "A100":
+                model = "Tesla A100-SXM-" + str(gpu_memory) + "GB"
+            elif gpu_model == "A30":
+                model = "Tesla A30-SXM-" + str(gpu_memory) + "GB"
+            else:
+                model = gpu_model + str(gpu_memory) + "GB"
             assert model is not None
 
             return model
@@ -527,6 +535,8 @@ class Cluster:
                 device["memory"] = memory
                 device["sp_gflops"] = sp_gflops
                 device["dp_gflops"] = dp_gflops
+                # hard code
+                device["type"] = "GPU"
                 global_id_to_device_type[global_id] = type
                 global_id_to_node[global_id] = i
                 devices.append(device)
@@ -820,30 +830,82 @@ class Cluster:
         return self.__str__()
 
 
-def get_default_cluster():
+def get_default_cluster(json_config=None):
+    def is_by_json_config(json_config):
+        if not json_config:
+            return False
+        if "cluster" not in json_config:
+            return False
+        else:
+            if "path" not in json_config["cluster"]:
+                if "num_nodes" not in json_config["cluster"]:
+                    return False
+                if "num_gpus" not in json_config["cluster"]:
+                    return False
+                if "gpu_model" not in json_config["cluster"]:
+                    return False
+                if "gpu_memory" not in json_config["cluster"]:
+                    return False
+                return True
+            else:
+                return True
+
     cluster = Cluster()
-    local_device_count = os.getenv("PADDLE_LOCAL_SIZE")
-    if local_device_count is None:
-        local_device_count = 1
+    if json_config and is_by_json_config(json_config):
+        # Get GPU info by json config
+        if "path" in json_config["cluster"]:
+            cluster.build_from_file(json_config["cluster"]["path"])
+            return cluster
+        else:
+            node_count = json_config["cluster"]["num_nodes"]
+            local_device_count = json_config["cluster"]["num_gpus"]
+            gpu_model = json_config["cluster"]["gpu_model"]
+            memory = json_config["cluster"]["gpu_memory"]
     else:
-        local_device_count = int(local_device_count)
-    global_device_count = os.getenv("PADDLE_GLOBAL_SIZE")
-    if global_device_count is None:
-        node_count = 1
-    else:
-        global_device_count = int(global_device_count)
-        assert global_device_count % local_device_count == 0
-        node_count = int(global_device_count) // local_device_count
+        # Get GPU info by get_device_properties
+        local_device_count = os.getenv("PADDLE_LOCAL_SIZE")
+        if local_device_count is None:
+            local_device_count = 1
+        else:
+            local_device_count = int(local_device_count)
+
+        global_device_count = os.getenv("PADDLE_GLOBAL_SIZE")
+        if global_device_count is None:
+            node_count = 1
+        else:
+            global_device_count = int(global_device_count)
+            assert global_device_count % local_device_count == 0
+            node_count = int(global_device_count) // local_device_count
+
+        gpu_info = paddle.device.cuda.get_device_properties()
+        assert gpu_info, "Auto parallel just runs on gpu now."
+
+        gpu_name = gpu_info.name
+        try:
+            re_result = re.split(r'[ , -]', gpu_name)
+            gpu_model = re_result[1]
+            memory = int(re_result[-1][:-2])
+        except:
+            memory = int(gpu_info.total_memory) // (1000**3)
+            gpu_model = gpu_name
+
     print(
         "Node Count: ",
         node_count,
         "Local Device Size: ",
         local_device_count,
+        "GPU Model: ",
+        gpu_model,
+        "GPU Memory: ",
+        memory,
         "World size: ",
         paddle.distributed.get_world_size(),
         flush=True,
     )
     cluster.gen_default_config_cluster(
-        node_count=node_count, device_count=local_device_count
+        node_count=node_count,
+        device_count=local_device_count,
+        gpu_model=gpu_model,
+        gpu_memory=memory,
     )
     return cluster

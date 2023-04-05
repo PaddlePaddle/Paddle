@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -31,8 +31,8 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
     int depth = ctx.Attr<int>("depth");
     if (ctx.HasInput("depth_tensor")) {
       std::vector<int32_t> depth_data;
-      depth_data =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("depth_tensor"));
+      depth_data = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("depth_tensor"));
       depth = depth_data[0];
 
       auto out_dims = out->dims();

@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
-from paddle.fluid import core
+from paddle.fluid import core, framework
 
 
 # collect original ops: op which has both inference and grad definition
@@ -118,8 +117,8 @@ def generate_all_ops_inputs_outputs_map(op_descs):
     for op_type, op_proto in op_descs.items():
         if op_type not in original_ops_:
             continue
-        inputs = list()
-        outpus = list()
+        inputs = []
+        outpus = []
         for input_ in op_proto[INPUTS]:
             if (
                 not op_proto[INPUTS][input_][EXTRA]

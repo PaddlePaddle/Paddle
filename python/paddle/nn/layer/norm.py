@@ -39,10 +39,10 @@ from paddle.fluid.framework import in_dygraph_mode
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
-from .. import Layer
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
+from .layers import Layer
 
 __all__ = []
 

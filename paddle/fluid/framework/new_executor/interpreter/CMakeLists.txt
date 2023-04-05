@@ -28,6 +28,7 @@ set(INTERPRETER_DEPS
     enforce
     scope
     glog
+    comm_context_manager
     ${DEVICE_EVENT_LIBS}
     glog)
 

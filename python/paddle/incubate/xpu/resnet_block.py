@@ -14,10 +14,9 @@
 
 import numpy as np
 
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+import paddle
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer
 from paddle.nn import initializer as I
@@ -478,10 +477,10 @@ class ResNetBasicBlock(Layer):
         super().__init__()
         self._stride1 = stride1
         self._stride2 = stride2
-        self._kernel1_size = utils.convert_to_list(
+        self._kernel1_size = paddle.utils.convert_to_list(
             filter1_size, 2, 'filter1_size'
         )
-        self._kernel2_size = utils.convert_to_list(
+        self._kernel2_size = paddle.utils.convert_to_list(
             filter2_size, 2, 'filter2_size'
         )
         self._dilation1 = dilation1
@@ -500,7 +499,7 @@ class ResNetBasicBlock(Layer):
         self._find_conv_max = find_conv_max
 
         if has_shortcut:
-            self._kernel3_size = utils.convert_to_list(
+            self._kernel3_size = paddle.utils.convert_to_list(
                 filter3_size, 2, 'filter3_size'
             )
             self._padding3 = padding3

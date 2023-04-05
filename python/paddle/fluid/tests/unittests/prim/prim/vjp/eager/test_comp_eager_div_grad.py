@@ -20,7 +20,7 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
-core._set_prim_backward_enabled(True)
+core.set_prim_eager_enabled(True)
 
 
 @param.parameterized_class(
@@ -53,21 +53,15 @@ core._set_prim_backward_enabled(True)
         ),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestDivGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
         cls.primal1 = cls.primal1.astype(cls.dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
-    def test_tanh_grad_comp(self):
+    def test_div_grad_comp(self):
         def actual(primal0, primal1):
-            core._set_prim_backward_enabled(True)
+            core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
@@ -78,7 +72,7 @@ class TestTanhGradComp(unittest.TestCase):
             return res[0].numpy(), res[1].numpy()
 
         def desired(primal0, primal1):
-            core._set_prim_backward_enabled(False)
+            core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
@@ -104,7 +98,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

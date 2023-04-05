@@ -17,7 +17,7 @@ from collections.abc import Iterable, Mapping
 
 from ...fluid.dygraph.base import param_guard
 from ...fluid.framework import Parameter
-from .. import Layer
+from .layers import Layer
 
 __all__ = []
 

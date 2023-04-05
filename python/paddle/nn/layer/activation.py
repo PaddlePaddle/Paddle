@@ -15,10 +15,10 @@
 # TODO: define activation functions of neural network
 
 from paddle.framework import get_default_dtype
-from paddle.nn import Layer
 
 from .. import functional as F
 from ..initializer import Constant
+from .layers import Layer
 
 __all__ = []
 
@@ -1324,7 +1324,7 @@ class Softmax(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.softmax(x, self._axis, self._dtype, self._name)
+        return F.softmax(x, self._axis, name=self._name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''

@@ -30,6 +30,9 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_mp_fp16(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py')
 
+    def test_hybrid_parallel_mp_bf16(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_bf16.py')
+
     def test_hybrid_parallel_mp_clip_grad(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
 

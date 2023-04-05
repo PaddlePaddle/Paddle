@@ -88,7 +88,7 @@ class Choice(TunableVariable):
     def __init__(self, name, values, default=None):
         super().__init__(name=name, default=default)
 
-        types = set(type(v) for v in values)
+        types = {type(v) for v in values}
         if len(types) > 1:
             raise TypeError(
                 "Choice can contain only one type of value, but found values: {} with types: {}.".format(

@@ -61,15 +61,15 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
           || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          || arg_type == std::type_index(typeid(const GPUContext&))) {
+          || arg_type == std::type_index(typeid(const GPUContext&))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-          || arg_type == std::type_index(typeid(const XPUContext&))) {
+          || arg_type == std::type_index(typeid(const XPUContext&))
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_KP)
-          || arg_type == std::type_index(typeid(const KPSContext&))) {
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+          || arg_type == std::type_index(typeid(const KPSContext&))
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
           || arg_type == std::type_index(typeid(const CustomContext&))) {
 #else
-
       ) {
 #endif
         // do nothing, skip context arg now
@@ -777,7 +777,7 @@ struct KernelRegistrar {
       #kernel_name,                                                            \
       #backend,                                                                \
       DATA_LAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::CppTypeToDataType<cpp_dtype>::Type(),                             \
       arg_parse_functor_macro(meta_kernel_fn, cpp_dtype, context),             \
       args_def_fn,                                                             \
       kernel_unfold_macro(meta_kernel_fn<cpp_dtype, context>),                 \

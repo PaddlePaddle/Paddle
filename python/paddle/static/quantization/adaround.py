@@ -19,7 +19,7 @@ import time
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 from ..log_helper import get_logger
 from .utils import (

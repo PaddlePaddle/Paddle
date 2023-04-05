@@ -92,6 +92,13 @@ if(WITH_MKLML)
     DEPS phi_dynamic_loader mklml)
 endif()
 
+if(WITH_FLASHATTN)
+  cc_library(
+    phi_dynload_flashattn
+    SRCS flashattn.cc
+    DEPS phi_dynamic_loader flashattn)
+endif()
+
 cc_library(
   phi_dynload_lapack
   SRCS lapack.cc

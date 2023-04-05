@@ -103,13 +103,13 @@ class CategoricalTest(unittest.TestCase):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.logits_static = fluid.data(
+            self.logits_static = paddle.static.data(
                 name='logits', shape=self.logits_shape, dtype='float32'
             )
-            self.other_logits_static = fluid.data(
+            self.other_logits_static = paddle.static.data(
                 name='other_logits', shape=self.logits_shape, dtype='float32'
             )
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 
@@ -211,13 +211,13 @@ class CategoricalTest2(CategoricalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.logits_static = fluid.data(
+            self.logits_static = paddle.static.data(
                 name='logits', shape=self.logits_shape, dtype='float64'
             )
-            self.other_logits_static = fluid.data(
+            self.other_logits_static = paddle.static.data(
                 name='other_logits', shape=self.logits_shape, dtype='float64'
             )
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 
@@ -234,7 +234,7 @@ class CategoricalTest3(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 
@@ -263,7 +263,7 @@ class CategoricalTest4(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 
@@ -344,7 +344,7 @@ class CategoricalTest8(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = self.logits_np.tolist()
             self.other_logits_static = self.other_logits_np.tolist()
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 
@@ -361,7 +361,7 @@ class CategoricalTest9(CategoricalTest):
         with fluid.program_guard(self.test_program):
             self.logits_static = tuple(self.logits_np.tolist())
             self.other_logits_static = tuple(self.other_logits_np.tolist())
-            self.value_static = fluid.data(
+            self.value_static = paddle.static.data(
                 name='value', shape=self.value_shape, dtype='int64'
             )
 

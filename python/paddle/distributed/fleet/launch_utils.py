@@ -28,8 +28,8 @@ import time
 from contextlib import closing
 from distutils.util import strtobool
 
-import paddle.framework as framework
 import paddle.utils.cpp_extension.extension_utils as utils
+from paddle import framework
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -370,7 +370,7 @@ def terminate_local_procs(procs):
         time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
-    exit(1)
+    sys.exit(1)
 
 
 def get_host_name_ip():
@@ -678,7 +678,7 @@ def watch_local_trainers(procs, nranks):
 
         if error:
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
@@ -953,10 +953,10 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = [x for x in range(0, args.nproc_per_node)]
     else:
-        assert (
-            False
-        ), "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
-            device_mode
+        raise AssertionError(
+            "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
+                device_mode
+            )
         )
 
     return (device_mode, devices_per_proc)

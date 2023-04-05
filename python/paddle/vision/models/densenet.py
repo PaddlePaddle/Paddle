@@ -15,7 +15,7 @@
 import math
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,

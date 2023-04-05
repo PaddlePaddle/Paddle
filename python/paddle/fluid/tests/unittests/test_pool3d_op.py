@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -271,6 +271,67 @@ def avg_pool3D_forward_naive(
     return out
 
 
+def pool3d_wrapper_not_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    tmp = X._use_gpudnn(False)
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool3d(
+        tmp,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
+def pool3d_wrapper_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool3d(
+        X,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
 class TestPool3D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
@@ -322,6 +383,11 @@ class TestPool3D_Op(OpTest):
 
         self.outputs = {'Out': output}
 
+        if self.use_cudnn:
+            self.python_api = pool3d_wrapper_use_cudnn
+        else:
+            self.python_api = pool3d_wrapper_not_use_cudnn
+
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
@@ -339,15 +405,15 @@ class TestPool3D_Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
-                    place, set(['X']), 'Out', max_relative_error=1e-2
+                    place, {'X'}, 'Out', max_relative_error=1e-2
                 )
             else:
-                self.check_grad_with_place(place, set(['X']), 'Out')
+                self.check_grad_with_place(place, {'X'}, 'Out')
         elif self.pool_type != "max":
             if core.is_compiled_with_rocm():
-                self.check_grad(set(['X']), 'Out', max_relative_error=1e-2)
+                self.check_grad({'X'}, 'Out', max_relative_error=1e-2)
             else:
-                self.check_grad(set(['X']), 'Out')
+                self.check_grad({'X'}, 'Out')
 
     def init_data_format(self):
         self.data_format = "NCDHW"
@@ -783,10 +849,10 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00
             )
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):

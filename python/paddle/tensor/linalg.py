@@ -99,6 +99,7 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -596,7 +597,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just suport axis type int or list (length of list <=1) if p = 0, found {}".format(
+                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
                     axis
                 )
             )
@@ -1333,8 +1334,8 @@ def cross(x, y, axis=9, name=None):
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
     Args:
-        x (Tensor): The first input tensor.
-        y (Tensor): The second input tensor.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1367,9 +1368,21 @@ def cross(x, y, axis=9, name=None):
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            ['float16', 'float32', 'float64', "int32", "int64"],
+            'cross',
+        )
         helper = LayerHelper("cross", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['dim'] = axis
 
         helper.append_op(
@@ -1931,7 +1944,7 @@ def svd(x, full_matrices=False, name=None):
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
         vh = helper.create_variable_for_type_inference(dtype=x.dtype)
         s = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['full_matrices'] = full_matrices
         helper.append_op(
             type='svd',
@@ -2068,7 +2081,7 @@ def qr(x, mode="reduced", name=None):
         helper = LayerHelper('qr', **locals())
         q = helper.create_variable_for_type_inference(dtype=x.dtype)
         r = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = dict()
+        attrs = {}
         attrs['mode'] = mode
         helper.append_op(
             type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
@@ -2167,7 +2180,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
         lu = helper.create_variable_for_type_inference(dtype=x.dtype)
         p = helper.create_variable_for_type_inference(dtype='int')
         info = helper.create_variable_for_type_inference(dtype='int')
-        attrs = dict()
+        attrs = {}
         attrs['pivot'] = pivot
         helper.append_op(
             type='lu',
@@ -2266,7 +2279,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         l = helper.create_variable_for_type_inference(dtype=x.dtype)
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        attrs = dict()
+        attrs = {}
         attrs['unpack_ludata'] = unpack_ludata
         attrs['unpack_pivots'] = unpack_pivots
         helper.append_op(

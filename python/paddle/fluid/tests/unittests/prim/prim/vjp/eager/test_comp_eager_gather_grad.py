@@ -75,11 +75,11 @@ class TestGatherGradComp(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        core._set_prim_backward_enabled(False)
+        core.set_prim_eager_enabled(False)
 
     def test_exp_grad_comp(self):
         def actual(primal0, index, axis):
-            core._set_prim_backward_enabled(True)
+            core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(
                 primal0, dtype=primal0.dtype, stop_gradient=False
@@ -92,7 +92,7 @@ class TestGatherGradComp(unittest.TestCase):
             return res[0].numpy()
 
         def desired(primal0, index, axis):
-            core._set_prim_backward_enabled(False)
+            core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(
                 primal0, dtype=primal0.dtype, stop_gradient=False

@@ -20,7 +20,7 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 BATCH_SIZE = 32
 BATCH_NUM = 10

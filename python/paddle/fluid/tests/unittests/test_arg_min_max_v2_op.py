@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def create_kernel_case(op_type, numpy_op_type):
@@ -364,6 +363,32 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 output = paddle.argmin(x=data, dtype=None)
 
             self.assertRaises(ValueError, test_argmin_dtype_type)
+
+
+class TestArgMaxOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.argmax(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
+
+
+class TestArgMinOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.argmin(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == '__main__':

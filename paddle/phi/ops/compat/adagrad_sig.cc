@@ -18,15 +18,17 @@ namespace phi {
 
 KernelSignature AdagradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Grad")) {
-    return KernelSignature("adagrad",
-                           {"Param", "Grad", "Moment", "LearningRate"},
-                           {"epsilon"},
-                           {"ParamOut", "MomentOut"});
+    return KernelSignature(
+        "adagrad",
+        {"Param", "Grad", "Moment", "LearningRate", "MasterParam"},
+        {"epsilon", "multi_precision"},
+        {"ParamOut", "MomentOut", "MasterParamOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
-    return KernelSignature("adagrad_dense_param_sparse_grad",
-                           {"Param", "Grad", "Moment", "LearningRate"},
-                           {"epsilon"},
-                           {"ParamOut", "MomentOut"});
+    return KernelSignature(
+        "adagrad_dense_param_sparse_grad",
+        {"Param", "Grad", "Moment", "LearningRate", "MasterParam"},
+        {"epsilon", "multi_precision"},
+        {"ParamOut", "MomentOut", "MasterParamOut"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});

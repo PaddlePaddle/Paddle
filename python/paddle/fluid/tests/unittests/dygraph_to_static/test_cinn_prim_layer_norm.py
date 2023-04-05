@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
@@ -43,7 +42,7 @@ def apply_to_static(net, use_cinn):
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
-        super(PrimeNet, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(64, 64)
 
     def forward(self, x, w, b):
@@ -89,7 +88,16 @@ class TestPrimForward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Please use PartialProgramLayer(second output parameter of get_concrete_program) rather than
+        # main_program here, as main_program is original program before to_prim.
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x, self.w, self.b)[
+                1
+            ]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
@@ -150,33 +158,36 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x, self.w, self.b)[
+                1
+            ]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
     def test_cinn_prim(self):
-        plat = platform.system()
-        if plat == "Linux":
-            for dtype in self.dtypes:
-                if paddle.device.get_device() == "cpu":
-                    print("need pass this case")
-                    continue
-                x_n, w_n, b_n = generate_data(dtype)
-                self.x = paddle.to_tensor(x_n)
-                self.w = paddle.to_tensor(w_n)
-                self.b = paddle.to_tensor(b_n)
-                self.x.stop_gradient = False
-                dy_res = self.train(use_prim=False)
-                cinn_res = self.train(use_prim=True)
+        for dtype in self.dtypes:
+            if paddle.device.get_device() == "cpu":
+                print("need pass this case")
+                continue
+            x_n, w_n, b_n = generate_data(dtype)
+            self.x = paddle.to_tensor(x_n)
+            self.w = paddle.to_tensor(w_n)
+            self.b = paddle.to_tensor(b_n)
+            self.x.stop_gradient = False
+            dy_res = self.train(use_prim=False)
+            cinn_res = self.train(use_prim=True)
 
-                np.testing.assert_allclose(
-                    cinn_res,
-                    dy_res,
-                    rtol=TOLERANCE[dtype]['rtol'],
-                    atol=TOLERANCE[dtype]['atol'],
-                )
-        else:
-            pass
+            np.testing.assert_allclose(
+                cinn_res,
+                dy_res,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
+            )
 
 
 if __name__ == '__main__':

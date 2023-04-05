@@ -15,10 +15,9 @@
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import Layer
+from paddle import fluid
 from paddle.jit.api import to_static
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -145,7 +144,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._hidden_act = hidden_act

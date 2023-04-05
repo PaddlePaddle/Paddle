@@ -1,0 +1,15 @@
+# This file is designed for fusion C++ backward operators, which manages the
+# generated code for dynamic mode and static mode.
+# The operators in the file have extra configuration item "support_dygraph_mode".
+# If one operator have "support_dygraph_mode : True", it supports dygraph mode.
+
+- backward_op : fused_dropout_add_grad
+  forward : fused_dropout_add (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(seed_offset)
+  args : (Tensor seed_offset, Tensor out_grad, Scalar p, bool is_test, str mode, bool fix_seed)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out_grad, out_grad]
+  kernel :
+    func : fused_dropout_add_grad
+  support_dygraph_mode : true

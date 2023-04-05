@@ -27,7 +27,7 @@ import paddle.nn as nn
 from paddle.fluid import Program, program_guard
 
 sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
+from eager_op_test import OpTest, _set_use_system_allocator
 from test_dist_base import TestDistBase
 
 paddle.enable_static()

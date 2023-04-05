@@ -28,9 +28,9 @@ import unittest
 from contextlib import closing
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.utils.ps_util import DistributedInfer
 
 paddle.enable_static()
