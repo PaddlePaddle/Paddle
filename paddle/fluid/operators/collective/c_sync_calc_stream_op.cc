@@ -50,10 +50,3 @@ REGISTER_OP_NPU_KERNEL(c_sync_calc_stream,
                        ops::CSyncCalcStreamKernel<int>,
                        ops::CSyncCalcStreamKernel<int64_t>,
                        ops::CSyncCalcStreamKernel<paddle::platform::float16>);
-
-REGISTER_OP_MLU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float>,
-                       ops::CSyncCalcStreamKernel<double>,
-                       ops::CSyncCalcStreamKernel<int>,
-                       ops::CSyncCalcStreamKernel<int64_t>,
-                       ops::CSyncCalcStreamKernel<paddle::platform::float16>);
