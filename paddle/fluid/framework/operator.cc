@@ -2753,13 +2753,6 @@ void OperatorWithKernel::ParseInputDataType(
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
-      PADDLE_ENFORCE_EQ(
-          sp_t->initialized(),
-          true,
-          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                            "contains uninitialized Tensor.",
-                                            Type(),
-                                            name));
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
     } else if (var->IsType<LoDTensorArray>()) {

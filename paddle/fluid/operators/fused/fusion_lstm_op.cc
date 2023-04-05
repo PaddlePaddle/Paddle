@@ -298,11 +298,10 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                    \
-  using DeviceContext = phi::CPUContext;                     \
   auto* x = ctx.Input<phi::DenseTensor>("X");                \
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
   auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \
@@ -580,6 +579,5 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm,
-                       ops::FuisonLSTMKernel<float>,
-                       ops::FuisonLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_lstm, CPU, ALL_LAYOUT, ops::FuisonLSTMKernel, float, double) {}
