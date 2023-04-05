@@ -24,74 +24,6 @@ from paddle.fluid.framework import (
 )
 from paddle.framework import LayerHelper, in_dygraph_mode
 
-
-def _get_reduce_axis(axis, x):
-    """
-    Internal function for max, min, amax and amin.
-    It computes the attribute reduce_all value based on axis.
-    """
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, (tuple, range)):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis = [axis]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(axis)
-                )
-            )
-    if axis is None:
-        axis = []
-    if axis == [] or len(axis) == len(x.shape):
-        reduce_all = True
-    else:
-        reduce_all = False
-    return reduce_all, axis
-
-
-def _contain_var(list_or_tuple):
-    """
-    Check whether list or tuple contains variable.
-    """
-    for item in list_or_tuple:
-        if isinstance(item, Variable):
-            return True
-    return False
-
-
-def _convert_to_tensor_list(old_list, dtype="int32"):
-    """
-    Converts all elements of a list to Variable.
-    """
-    from paddle.fluid.layers import fill_constant
-
-    new_list_tensor = []
-    for ele in old_list:
-
-        if isinstance(ele, Variable):
-            ele.stop_gradient = True
-            new_list_tensor.append(ele)
-        else:
-            assert isinstance(ele, int)
-            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
-            new_list_tensor.append(temp_out)
-    return new_list_tensor
-
-
-def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, Variable):
-        if axis.shape[0] == len(x.shape):
-            reduce_all = True
-        else:
-            reduce_all = False
-    else:
-        reduce_all, axis = _get_reduce_axis(axis, x)
-        if _contain_var(axis):
-            axis = _convert_to_tensor_list(axis)
-    return reduce_all, axis
-
-
 __all__ = []
 
 _int_dtype_ = [
@@ -269,8 +201,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
-        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        attrs = {'axis': axis, 'dtype': dtype, 'keep_dim': keepdim}
+        if axis is None:
+            axis = []
+        else:
+            axis = [axis]
+        attrs = {'axis': axis, 'dtype': dtype, 'keepdim': keepdim}
 
         if dtype_flag:
             attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
