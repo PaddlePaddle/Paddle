@@ -320,25 +320,24 @@ function(op_library TARGET)
       DEPS ${op_library_DEPS} ${op_common_deps})
   else()
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
-
-    # Combine the cc source files.
-    compose_unity_target_sources(
-      ${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
-      ${mlu_cc_srcs})
-    if(TARGET ${UNITY_TARGET})
-      # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
-      target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
-    else()
-      # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
-      cc_library(
-        ${UNITY_TARGET}
-        SRCS ${unity_target_cc_sources}
-        DEPS ${op_library_DEPS} ${op_common_deps})
+    if(WITH_UNITY_BUILD AND op_library_UNITY)
+      # Combine the cc source files.
+      compose_unity_target_sources(
+        ${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
+        ${mlu_cc_srcs})
+      if(TARGET ${UNITY_TARGET})
+        # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
+        target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
+      else()
+        # If `UNITY_TARGET` does not exist, create `UNITY_TARGET` with source files.
+        cc_library(
+          ${UNITY_TARGET}
+          SRCS ${unity_target_cc_sources}
+          DEPS ${op_library_DEPS} ${op_common_deps})
+      endif()
+      # Add alias library to handle dependencies.
+      add_library(${TARGET} ALIAS ${UNITY_TARGET})
     endif()
-    # Add alias library to handle dependencies.
-    add_library(${TARGET} ALIAS ${UNITY_TARGET})
-
-  endif()
   endif()
 
   list(LENGTH cu_srcs cu_srcs_len)
