@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import sys
+import unittest
 
 import numpy as np
 
 import paddle
-import paddle.fluid.tests.unittest
 from paddle.device.cuda.graphs import CUDAGraph
 
 sys.path.append("..")
-from test_cuda_graph_static_mode import build_program
+from paddle.fluid.tests.unittests.test_cuda_graph_static_mode import build_program
 
 paddle.enable_static()
 
