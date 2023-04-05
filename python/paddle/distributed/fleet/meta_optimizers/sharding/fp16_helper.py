@@ -201,7 +201,6 @@ class FP16Utils(object):
         inf_var_int32 = block.create_var(name=inf_var_name + "@cast_int32",
                                          shape=inf_var.shape,
                                          dtype=core.VarDesc.VarType.INT32)
-
         block._insert_op_without_sync(update_loss_scaling_op_idx,
                                       type='cast',
                                       inputs={'X': inf_var},

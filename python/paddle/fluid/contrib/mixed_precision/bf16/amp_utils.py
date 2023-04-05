@@ -66,146 +66,7 @@ def _dtype_to_str(dtype):
     else:
         return 'fp32'
 
-def _keep_layer_norm_scale_bias_to_fp32(*args):
-    global _keep_layer_norm_scale_bias_to_fp32_flag
-    if len(args) == 0:
-        return _keep_layer_norm_scale_bias_to_fp32_flag
-    else:
-        assert len(args) == 1 and isinstance(args[0], bool)
-        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
-        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
-        return old_value
 
-
-def _keep_fp32_input(op, in_name):
-    op_type = op.type
-    if op_type == 'batch_norm':
-        # Scale, Bias, Mean, Variance should be float32.
-        return in_name != 'X'
-    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
-        return in_name != 'X'
-    if op_type == 'fused_bn_add_activation':
-        return in_name not in {'X', 'Z'}
-    if op_type == 'resnet_unit':
-        return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
-    if op_type in ['fused_attention', 'fused_feedforward']:
-        return in_name in {
-            'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
-        }
-    if op_type == 'fused_multi_transformer':
-        return in_name in {'LnScale', 'LnBias', 'FFNLnScale', 'FFNLnBias'}
-    return False
-
-def _keep_fp32_output(op, out_name):
-    op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation']:
-        return out_name != 'Y'
-    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
-        return out_name != 'Y'
-    if op_type == 'resnet_unit':
-        return out_name not in {'Y', 'ConvX', 'ConvZ'}
-    if op_type in ['fused_attention', 'fused_feedforward']:
-        return out_name in {
-            'LnMean', 'LnVariance', 'Ln2Mean', 'Ln2Variance', 'Ln1Mean',
-            'Ln1Variance'
-        }
-    return False
-
-
-def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
-    """
-    Insert cast op and rename args of input and output.
-
-    Args:
-        block (Program): The block in which the operator is.
-        op (Operator): The operator to insert cast op.
-        idx (int): The index of current operator.
-        src_dtype (VarType): The input variable dtype of cast op.
-        dest_dtype (VarType): The output variable dtype of cast op.
-
-    Returns:
-        num_cast_op (int): The number of cast ops that have been inserted.
-    """
-    num_cast_ops = 0
-    print("-------insert-------")
-
-    for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-                op, in_name):
-            continue
-        for in_var_name in op.input(in_name):
-            in_var = block._find_var_recursive(in_var_name)
-            if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
-                continue
-            if in_var.dtype == src_dtype:
-                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
-                out_var = block.vars.get(cast_name)
-                if out_var is None or out_var.dtype != dest_dtype:
-                    op_device = op.attr('op_device')
-                    # NOTE(wangxi): optimize for pipeline, reduce one send.
-                    # if in_var is stop_gradient and prev_op device is `all`,
-                    # set cast_op device to `all`, can reduce send cast_var.
-                    # TODO: need remove this after we unified the dynamic
-                    # and static pipeline interface.
-                    if src_dtype == core.VarDesc.VarType.FP32 and in_var.stop_gradient:
-                        prev_op = None
-                        if in_var.op is op:
-                            prev_op = find_true_prev_op(block.ops, op,
-                                                        in_var_name)
-                        elif in_var.op is not None:
-                            prev_op = in_var.op
-
-                        prev_op_device = None
-                        if prev_op is not None:
-                            prev_op_device = prev_op.attr('op_device')
-
-                        if prev_op_device is not None and 'all' in prev_op_device:
-                            op_device = prev_op_device
-
-                    out_var = block.create_var(
-                        name=cast_name,
-                        dtype=dest_dtype,
-                        persistable=False,
-                        stop_gradient=in_var.stop_gradient)
-
-                    print(op, in_var.name, out_var.name, op.attr('op_device'), op.type, op.attr('op_role'))
-
-                    block._insert_op_without_sync(idx,
-                                                  type="cast",
-                                                  inputs={"X": in_var},
-                                                  outputs={"Out": out_var},
-                                                  attrs={
-                                                      "in_dtype": in_var.dtype,
-                                                      "out_dtype":
-                                                      out_var.dtype,
-                                                      "op_device": op_device,
-                                                      "op_role":
-                                                      op.attr("op_role"),
-                                                  })
-                    num_cast_ops += 1
-                _rename_arg(op, in_var.name, out_var.name)
-            else:
-                if op.has_attr('in_dtype'):
-                    op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.BF16:
-        for out_name in op.output_names:
-            if _keep_fp32_output(op, out_name):
-                continue
-            for out_var_name in op.output(out_name):
-                out_var = block.var(out_var_name)
-                if out_var.type not in _valid_types:
-                    continue
-                if out_var.dtype == core.VarDesc.VarType.FP32:
-                    out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
-                    if op.has_attr('out_dtype'):
-                        op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
-    
-    
-    print("-------insert-------")
-
-    return num_cast_ops
-
-'''
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
     Insert cast op and rename args of input and output.
@@ -270,45 +131,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
     return num_cast_ops
-'''
 
-def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
-                         op_var_rename_map):
-    num_cast_ops = 0
 
-    target_var = block.var(target_name)
-    if target_var.type not in _valid_types or target_var.dtype == dest_dtype:
-        return num_cast_ops
-
-    assert target_var.dtype == src_dtype, \
-        "The real dtype({}) is not equal to the src dtype({})".format(
-            _dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
-
-    cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
-    cast_var = block.vars.get(cast_name)
-    if cast_var is None or cast_var.dtype != dest_dtype:
-        cast_var = block.create_var(name=cast_name,
-                                    dtype=dest_dtype,
-                                    persistable=False,
-                                    stop_gradient=target_var.stop_gradient)
-        block._insert_op(idx,
-                         type="cast",
-                         inputs={"X": target_var},
-                         outputs={"Out": cast_var},
-                         attrs={
-                             "in_dtype": target_var.dtype,
-                             "out_dtype": cast_var.dtype,
-                             "op_device": op.attr("op_device"),
-                             "op_role": op.attr("op_role"),
-                         })
-
-        #print(f"cast_var.name={cast_var.name},op_role={op.attr('op_role')}")
-        num_cast_ops += 1
-        op_var_rename_map[block.idx][target_var.name] = cast_var.name
-
-    return num_cast_ops
-
-'''
 def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
                          op_var_rename_map):
     num_cast_ops = 0
@@ -332,14 +156,13 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
                          outputs={"Out": cast_var},
                          attrs={
                              "in_dtype": target_var.dtype,
-                             "out_dtype": cast_var.dtype,
-                             "op_device": op.attr("op_device"),
+                             "out_dtype": cast_var.dtype
                          })
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
     return num_cast_ops
-'''
+
 
 def _is_in_fp32_varnames(op, amp_lists):
     if not amp_lists.fp32_varnames:
