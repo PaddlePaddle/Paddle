@@ -1980,11 +1980,7 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
-#ifdef PADDLE_WITH_MLU
-    return ActBwdOpFwdDeps::kDepX;
-#else
     return ActBwdOpFwdDeps::kDepOut;
-#endif
   }
 };
 

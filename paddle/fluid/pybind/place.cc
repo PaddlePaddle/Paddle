@@ -155,10 +155,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -617,81 +613,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
-#ifdef PADDLE_WITH_IPU
-      .def("get_device_id",
-           [](const platform::IPUPlace &self) { return self.GetDeviceId(); })
-#endif
       .def("__str__", string::to_string<const platform::IPUPlace &>);
-
-  // MLUPlace
-  py::class_<platform::MLUPlace> mluplace(m, "MLUPlace", R"DOC(
-    MLUPlace is a descriptor of a device.
-    It represents a MLU device on which a tensor will be allocated and a model will run.
-
-    Examples:
-        .. code-block:: python
-          import paddle
-          # required: mlu
-          mlu_place = paddle.MLUPlace(0)
-
-        )DOC");
-  g_mluplace_pytype = reinterpret_cast<PyTypeObject *>(mluplace.ptr());
-  mluplace
-      .def("__init__",
-           [](platform::MLUPlace &self, int dev_id) {
-#ifdef PADDLE_WITH_MLU
-             if (UNLIKELY(dev_id < 0)) {
-               LOG(ERROR) << string::Sprintf(
-                   "Invalid MLUPlace(%d), device id must be 0 or "
-                   "positive integer",
-                   dev_id);
-               std::exit(-1);
-             }
-             if (UNLIKELY(dev_id >= platform::GetMLUDeviceCount())) {
-               if (platform::GetMLUDeviceCount() == 0) {
-                 LOG(ERROR) << "Cannot use MLU because there is no MLU "
-                               "detected on your "
-                               "machine.";
-                 std::exit(-1);
-               } else {
-                 LOG(ERROR) << string::Sprintf(
-                     "Invalid MLUPlace(%d), must inside [0, %d), because MLU "
-                     "number on your machine is %d",
-                     dev_id,
-                     platform::GetMLUDeviceCount(),
-                     platform::GetMLUDeviceCount());
-                 std::exit(-1);
-               }
-             }
-             new (&self) platform::MLUPlace(dev_id);
-#else
-             LOG(ERROR) << string::Sprintf(
-                 "Cannot use MLU because you have installed CPU/GPU/... "
-                 "version "
-                 "PaddlePaddle.\n"
-                 "If you want to use MLU, please try to install MLU version "
-                 "PaddlePaddle by: pip install paddlepaddle-mlu\n"
-                 "If you only have CPU, please change MLUPlace(%d) to be "
-                 "CPUPlace().\n",
-                 dev_id);
-             std::exit(-1);
-#endif
-           })
-      .def("_type", &PlaceIndex<platform::MLUPlace>)
-#ifdef PADDLE_WITH_MLU
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::Place>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CUDAPlace>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::CPUPlace>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::NPUPlace>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::IPUPlace>)
-      .def("_equals", &IsSamePlace<platform::MLUPlace, platform::MLUPlace>)
-      .def("_equals",
-           &IsSamePlace<platform::MLUPlace, platform::CUDAPinnedPlace>)
-      .def("get_device_id",
-           [](const platform::MLUPlace &self) { return self.GetDeviceId(); })
-#endif
-      .def("__str__", string::to_string<const platform::MLUPlace &>);
 
   py::class_<platform::Place> platformplace(m, "Place");
   g_place_pytype = reinterpret_cast<PyTypeObject *>(platformplace.ptr());

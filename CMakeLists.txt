@@ -53,7 +53,6 @@ option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
-option(WITH_MLU "Compile PaddlePaddle with CAMBRICON MLU" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
@@ -80,9 +79,6 @@ if(WITH_GPU AND WITH_ASCEND)
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
-endif()
-if(WITH_GPU AND WITH_MLU)
-  message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -430,14 +426,6 @@ if(NOT WITH_XPU AND WITH_XPU_BKCL)
       CACHE STRING "Disable BKCL when compiling without XPU" FORCE)
 endif()
 
-if(NOT WITH_MLU AND WITH_CNCL)
-  message(
-    WARNING "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
-  set(WITH_MLU
-      OFF
-      CACHE STRING "Disable CNCL when compiling without MLU" FORCE)
-endif()
-
 if(WITH_NCCL)
   add_definitions("-DPADDLE_WITH_NCCL")
   include(nccl)
@@ -467,10 +455,6 @@ if(WITH_GPU)
   if(NOT WIN32)
     include(cupti)
   endif()
-endif()
-
-if(WITH_MLU)
-  include(neuware)
 endif()
 
 if(WITH_ROCM)

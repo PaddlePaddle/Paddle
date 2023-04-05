@@ -23,9 +23,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
@@ -72,13 +69,6 @@ struct FillConstantVisitor {
           context_.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
-    } else {
-      phi::funcs::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-    }
-#elif defined(PADDLE_WITH_MLU)
-    if (platform::is_mlu_place(context_.GetPlace())) {
-      FillMLUTensorWithHostValue<T>(context_, static_cast<T>(value_), tensor_);
     } else {
       phi::funcs::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
@@ -551,14 +541,6 @@ REGISTER_OP_NPU_KERNEL(
     ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
     ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
     ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-#endif
-
-#if defined(PADDLE_WITH_MLU)
-REGISTER_OP_MLU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, float>);
 #endif
 
 REGISTER_OP_VERSION(coalesce_tensor)

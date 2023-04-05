@@ -168,15 +168,6 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
-#elif defined(PADDLE_WITH_MLU)
-  auto unsupported_ops_mlu_fp16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
-                                unsupported_ops_mlu_fp16.end());
-  auto unsupported_ops_mlu_bf16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
-                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "

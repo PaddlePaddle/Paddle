@@ -124,15 +124,6 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::MLU: {
-#ifdef PADDLE_WITH_MLU
-      platform::MLUPlace p(place.GetDeviceId());
-      return visitor(p);
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Paddle is not compiled with MLU. Cannot visit mlu device"));
-#endif
-    }
     case phi::AllocationType::CUSTOM: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());

@@ -58,10 +58,6 @@
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -194,11 +190,6 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_MLU
-        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
-        }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
@@ -254,11 +245,6 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_MLU
-        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
-        }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
@@ -290,11 +276,6 @@ class AllocatorFacadePrivate {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
-#endif
-#ifdef PADDLE_WITH_MLU
-        for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
-        }
 #endif
         break;
       }
@@ -801,12 +782,6 @@ class AllocatorFacadePrivate {
   }
 #endif
 
-#ifdef PADDLE_WITH_MLU
-  void InitNaiveBestFitMLUAllocator(platform::MLUPlace p) {
-    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
-  }
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
@@ -851,13 +826,6 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = CreateCUDAAllocator(p);
     }
 #endif
-#ifdef PADDLE_WITH_MLU
-    int device_count = platform::GetMLUDeviceCount();
-    for (int i = 0; i < device_count; ++i) {
-      platform::MLUPlace p(i);
-      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
-    }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
@@ -892,12 +860,6 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetIPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::IPUPlace(dev_id));
-    }
-#endif
-#ifdef PADDLE_WITH_MLU
-    int device_count = platform::GetMLUDeviceCount();
-    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
-      places.emplace_back(platform::MLUPlace(dev_id));
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

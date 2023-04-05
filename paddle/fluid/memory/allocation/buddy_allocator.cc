@@ -56,9 +56,6 @@ BuddyAllocator::BuddyAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
     re_allocate_size_func_ = &platform::GpuReallocSize;
-#elif defined(PADDLE_WITH_MLU)
-    init_allocate_size_func_ = &platform::MLUInitAllocSize;
-    re_allocate_size_func_ = &platform::MLUReallocSize;
 #endif
   }
 #endif
@@ -253,9 +250,6 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(
       &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
-#elif defined(PADDLE_WITH_MLU)
-  allocate_bytes = DeviceAllocateSize(
-      &platform::MLUInitAllocSize, &platform::MLUReallocSize, request_bytes);
 #endif
 #endif
 

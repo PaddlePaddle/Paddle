@@ -55,10 +55,6 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
-if (WITH_MLU)
-    add_subdirectory(mlu)
-endif()
-
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
@@ -132,10 +128,6 @@ else()
 endif()
 
 if (WITH_ASCEND_CL)
-  op_library(sync_batch_norm_op)
-endif()
-
-if (WITH_MLU)
   op_library(sync_batch_norm_op)
 endif()
 

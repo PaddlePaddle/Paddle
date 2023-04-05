@@ -267,59 +267,6 @@ void TensorCopyImpl(const TENSOR& src,
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
-    auto src_mlu_place = src_place;
-    auto dst_cpu_place = dst_place;
-    auto stream =
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
-    memory::Copy(dst_cpu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
-  }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_mlu_place(dst_place)) {
-    auto src_cpu_place = src_place;
-    auto dst_mlu_place = dst_place;
-    auto stream =
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
-    memory::Copy(dst_mlu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
-  }
-  else if (platform::is_mlu_place(src_place) &&  // NOLINT
-           platform::is_mlu_place(dst_place)) {
-    auto src_mlu_place = src_place;
-    auto dst_mlu_place = dst_place;
-    auto stream =
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream();
-    memory::Copy(dst_mlu_place, dst_ptr, src_mlu_place, src_ptr, size, stream);
-  }
-  else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Copying from %s to %s is not supported.", src_place, dst_place));
-  }
-#endif
-#ifdef PADDLE_WITH_IPU
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_ipu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_ipu_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
-              << dst_place;
-      return;
-    }
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-  else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Copying from %s to %s is not supported.", src_place, dst_place));
-  }
-#endif
 }
 
 template <typename TENSOR>
@@ -480,29 +427,6 @@ void TensorCopySync(const phi::DenseTensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
-  else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_mlu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
-  else if (platform::is_mlu_place(src_place) &&  // NOLINT
-           platform::is_mlu_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-              << dst_place;
-      return;
-    }
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
-  else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Copy from %s to %s is not supported.", src_place, dst_place));
-  }
-#endif
 #ifdef PADDLE_WITH_IPU
   else if (platform::is_ipu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
@@ -605,31 +529,6 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
-    } else if (platform::is_mlu_place(tensor.place())) {
-#ifdef PADDLE_WITH_MLU
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-      std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& mlu_dev_ctx =
-          static_cast<const platform::MLUDeviceContext&>(dev_ctx);
-      platform::CPUPlace cpu;
-      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
-      while (size != 0) {
-        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu,
-                     buf.get(),
-                     tensor.place(),
-                     reinterpret_cast<const void*>(data),
-                     size_to_write,
-                     mlu_dev_ctx.stream());
-        mlu_dev_ctx.Wait();
-        os.write(buf.get(), size_to_write);
-        data += size_to_write;
-        size -= size_to_write;
-      }
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "MLUPlace is not supported when not compiled with MLU"));
-#endif
     } else if (platform::is_custom_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
@@ -720,8 +619,7 @@ void TensorFromStream(std::istream& is,
         platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(shape));
       framework::VisitDataType(
@@ -803,8 +701,7 @@ void TensorFromStream(std::istream& is,
         platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(dims));
       framework::VisitDataType(
