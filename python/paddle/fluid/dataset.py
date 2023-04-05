@@ -280,7 +280,7 @@ class DatasetBase:
                 slot_var.type = "uint16"
             else:
                 raise ValueError(
-                    "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
+                    "Currently, fluid.dataset only supports dtype=float32, dtype=int32, dtype=float16, dtype=uint16 and dtype=int64"
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
