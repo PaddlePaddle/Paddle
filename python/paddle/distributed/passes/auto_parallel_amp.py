@@ -462,7 +462,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
     grads = [g for _, g in params_grads]
     check_type(grads, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in grads:
-        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64', 'uint16'],
+        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'check_finite_and_unscale')
 
     found_inf = main_block.create_var(
