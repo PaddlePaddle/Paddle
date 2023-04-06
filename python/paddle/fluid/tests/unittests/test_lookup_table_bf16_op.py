@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 import paddle
 from paddle import enable_static, fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,

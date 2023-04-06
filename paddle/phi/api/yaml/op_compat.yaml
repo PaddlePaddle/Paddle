@@ -153,6 +153,11 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_value
+  outputs :
+    out : Out
+  manual_signature : [assign_value]
+
 - op : atan
   inputs :
     x : X
@@ -197,6 +202,13 @@
     reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : bce_loss
+  backward : bce_loss_grad
+  inputs :
+    {input : X, label : Label}
+  outputs :
+    out : Out
 
 - op : bernoulli
   inputs :
@@ -441,6 +453,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : decode_jpeg
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -585,10 +603,24 @@
 
 - op : embedding (lookup_table_v2)
   backward : embedding_grad (lookup_table_v2_grad)
+  inputs :
+    {x : Ids, weight : W}
+  outputs :
+    out : Out
+  manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : empty
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
 
 - op : equal
   inputs :
@@ -1178,6 +1210,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : logical_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_not
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : logit
   inputs :
     x : X
@@ -1227,9 +1283,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
-             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
-             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
@@ -1532,6 +1586,16 @@
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : randint
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  manual_signature : [randint]
 
 - op : real
   backward : real_grad
@@ -2044,6 +2108,23 @@
     x : X
   outputs :
     out : Y
+
+- op : uniform (uniform_random)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+      min :
+        data_type : float
+        support_tensor : true
+      max :
+        data_type : float
+        support_tensor : true
+  manual_signature : [uniform]
 
 - op : unique_consecutive
   inputs :

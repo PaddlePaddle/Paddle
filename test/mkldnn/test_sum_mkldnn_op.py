@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.op as fluid_op
 from paddle.fluid import core
+from paddle.fluid.tests.unittests.op import Operator
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
@@ -70,7 +70,7 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
                 tensor = var.get_tensor()
                 tensor.set(var_value, place)
 
-        sum_op = fluid_op.Operator(
+        sum_op = Operator(
             "sum", X=["x0", "x1"], Out=out_var_name, use_mkldnn=True
         )
         expected_out = np.array(self.x0 + self.x1)
