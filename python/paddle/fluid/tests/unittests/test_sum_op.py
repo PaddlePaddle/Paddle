@@ -25,13 +25,13 @@ from eager_op_test import (
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from op import Operator
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import enable_static, fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.op import Operator
 
 
 def sum_wrapper(X, use_mkldnn=False):

@@ -199,6 +199,30 @@ class TestUnbindOp4(TestUnbindOp):
         self.out[1] = self.out[1].reshape((3, 2))
 
 
+class TestUnbindFP16Op(OpTest):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "unbind"
+        self.python_api = paddle.unbind
+        self.dtype = self.get_dtype()
+        self.axis = 0
+        self.num = 3
+        x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        self.out = np.split(x, self.num, self.axis)
+        self.inputs = {'X': x}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+        }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def get_dtype(self):
+        return np.float16
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestUnbindBF16Op(OpTest):
     def setUp(self):
         paddle.disable_static()

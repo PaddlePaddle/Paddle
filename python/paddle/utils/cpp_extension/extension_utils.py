@@ -1057,6 +1057,22 @@ def _gen_output_content(
         if out_idx in inplace_reverse_idx:
             in_idx = inplace_reverse_idx[out_idx]
         if (
+            in_idx != -1
+            and "@VECTOR" in in_names[in_idx]
+            and "@OPTIONAL" in in_names[in_idx]
+        ):
+            # inplace optional vector<Tensor> output case
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = [core.eager.Tensor() for _ in range(len({lower_in_names}))]
+{indent}else:
+{indent}    outs['{out_name}'] = core.eager.Tensor()
+{indent}ctx.add_outputs(outs['{out_name}'])"""
+            static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+        elif (
             in_idx != -1 and "@VECTOR" in in_names[in_idx]
         ):  # inplace vector<Tensor> output case
             lower_in_names = in_names[in_idx].split("@")[0].lower()

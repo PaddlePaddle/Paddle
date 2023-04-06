@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_transpose_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace paddle {
