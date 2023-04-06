@@ -43,7 +43,6 @@
   kernel :
     func : affine_grid_grad
     param : [output_grad, output_shape, align_corners]
-  no_need_buffer : input
 
 - backward_op : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
