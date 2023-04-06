@@ -49,6 +49,9 @@ class TestFP16Inf(TestInf):
 
 
 # BFP16 isinf Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestInfBF16(OpTest):
     def setUp(self):
         self.op_type = "isinf"
@@ -94,6 +97,9 @@ class TestFP16NAN(TestNAN):
 
 
 # BFP16 isnan Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNANBF16(OpTest):
     def setUp(self):
         self.op_type = "isnan"
@@ -140,6 +146,9 @@ class TestFP16Isfinite(TestIsfinite):
 
 
 # BFP16 isfinite Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestIsfiniteBF16(OpTest):
     def setUp(self):
         self.op_type = "isfinite"
