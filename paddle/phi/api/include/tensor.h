@@ -217,6 +217,14 @@ class PADDLE_API Tensor final {
   phi::DataLayout layout() const;
 
   /**
+   * @brief Determine whether tensor is DistTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_dist_tensor() const;
+
+  /**
    * @brief Determine whether tensor is DenseTensor
    *
    * @return true

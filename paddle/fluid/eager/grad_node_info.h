@@ -118,6 +118,8 @@ class Edge {
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
 
+class DistAttr;
+
 /**
  * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
  * has lots of operators whose backward logic is depends on if it has some
@@ -135,6 +137,7 @@ class GradSlotMeta {
     meta_ = std::make_shared<phi::DenseTensorMeta>(meta);
   }
   bool HasTensorMeta() const { return meta_ && meta_.get(); }
+
   const phi::DenseTensorMeta& GetTensorMeta() const {
     if (!HasTensorMeta()) {
       PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -162,6 +165,7 @@ class GradSlotMeta {
   bool stop_gradient_{false};
   phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
+  std::shared_ptr<DistAttr> dis_attr_ = nullptr;
   Edge adj_edge_;
 };
 

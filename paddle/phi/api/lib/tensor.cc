@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -124,6 +125,10 @@ DataType Tensor::dtype() const { return impl_->dtype(); }
 DataType Tensor::type() const { return impl_->dtype(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
+
+bool Tensor::is_dist_tensor() const {
+  return phi::DistTensor::classof(impl_.get());
+}
 
 bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());

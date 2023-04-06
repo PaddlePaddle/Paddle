@@ -50,6 +50,7 @@ class GradTensorHolder {
            size_t rank,
            const paddle::Tensor& t,
            bool create_graph = false);
+
   void CopyValueFromTensor(size_t slot_id,
                            size_t rank,
                            const paddle::Tensor& t,
