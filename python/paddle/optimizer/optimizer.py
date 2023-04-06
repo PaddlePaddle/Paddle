@@ -651,13 +651,12 @@ class Optimizer:
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
+            var = paddle.create_parameter(
+                name=var_name, shape=param.shape, dtype='float32'
             )
+            var.is_master_weight = True
+            # Copy the distributed attr of param to master_param.
+            var.is_distributed = param.is_distributed
             block = self.helper.startup_program.global_block()
             block.append_op(
                 type="cast",

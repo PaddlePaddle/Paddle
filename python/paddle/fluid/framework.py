@@ -3895,14 +3895,15 @@ class Block:
         else:
             raise ValueError("Var {0} is not found recursively".format(name))
 
-    def all_parameters(self):
-        return list(self.iter_parameters())
+    def all_parameters(self, include_master_weight=False):
+        return list(self.iter_parameters(), include_master_weight)
 
-    def iter_parameters(self):
+    def iter_parameters(self, include_master_weight=False):
         return (
             item[1]
             for item in self.vars.items()
             if isinstance(item[1], Parameter)
+            and (not item[1].is_master_weight or include_master_weight)
         )
 
     def create_var(self, *args, **kwargs):
@@ -6703,7 +6704,7 @@ class Program:
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
-    def all_parameters(self):
+    def all_parameters(self, include_master_weight=False):
         """
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
 
@@ -6739,7 +6740,7 @@ class Program:
         """
         parameters = []
         for each_block in self.blocks:
-            parameters.extend(each_block.all_parameters())
+            parameters.extend(each_block.all_parameters(include_master_weight))
         return parameters
 
     def state_dict(self, mode='all', scope=None):
@@ -6807,6 +6808,9 @@ class Program:
 
         def is_parameter(var):
             return isinstance(var, Parameter)
+
+        def is_master_parameter(var):
+            return isinstance(var, Parameter) and var.is_master_weight
 
         def is_persistable(var):
             if (
@@ -6995,6 +6999,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
 
         self.need_clip = kwargs.get('need_clip', True)
 
+        self.is_master_weight = kwargs.get('is_master_weight', False)
+
         self.is_distributed = False
 
         self.is_parameter = True
@@ -7036,6 +7042,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
                 "regularizer",
                 "do_model_average",
                 "need_clip",
+                "is_master_weight",
+                "is_distributed",
             )
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
