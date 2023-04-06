@@ -40,7 +40,7 @@ class TestProfiler(unittest.TestCase):
             hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = paddle.zeros(shape=[1], dtype='int64')
             counter = paddle.zeros(
-                shape=[1], dtype='int64', valie=0, force_cpu=True
+                shape=[1], dtype='int64', value=0, force_cpu=True
             )
             until = paddle.tensor.fill_constant([1], dtype='int64', value=10)
             data_arr = paddle.tensor.array_write(hidden1, i)
