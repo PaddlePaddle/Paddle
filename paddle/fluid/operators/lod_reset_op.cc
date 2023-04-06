@@ -259,14 +259,13 @@ PD_REGISTER_STRUCT_KERNEL(lod_reset,
                           int64_t) {}
 
 #ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    lod_reset,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext,
-                        paddle::platform::float16>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, double>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int64_t>);
+using XPUCtx = paddle::platform::XPUDeviceContext;
+REGISTER_OP_XPU_KERNEL(lod_reset,
+                       ops::LoDResetKernel<paddle::platform::float16, XPUCtx>,
+                       ops::LoDResetKernel<float, XPUCtx>,
+                       ops::LoDResetKernel<double, XPUCtx>,
+                       ops::LoDResetKernel<int, XPUCtx>,
+                       ops::LoDResetKernel<int64_t, XPUCtx>);
 #endif
 
 PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
