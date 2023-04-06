@@ -107,9 +107,9 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                         rank_id, X_dims_mapping, process_mesh
                     )
                     # make recompute seed under control
-                    pre_op.set_attr("rng_name", rng_name)
-                    pre_op.set_attr("deterministic", True)
-                    pre_op.set_attr("force_cpu", True)
+                    pre_op._set_attr("rng_name", rng_name)
+                    pre_op._set_attr("deterministic", True)
+                    pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
                         "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
