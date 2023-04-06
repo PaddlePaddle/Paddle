@@ -49,8 +49,6 @@ def auto_parallel_random_seed(seed):
     Randomness for rank0-rank1-rank2-rank3 (rank4-rank5-rank6-rank7) should be Independent;
     Randomness for rank0 and rank4 (rank1 and rank5, ...) should be Consistent.
 
-
-    The model parallel randomness case between "Global & Local regions" is a special case when the Mesh is 1D.
     This function should be called only once before auto parallel compiles the computation graph (e.g. auto_parallel.engine.prepare() or fit()).
 
     Examples:

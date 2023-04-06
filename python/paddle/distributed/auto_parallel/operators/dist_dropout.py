@@ -69,14 +69,18 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
             )
             assert 'Seed' in kwargs, "input [{}] is not given".format('Seed')
 
-            if len(kwargs['Seed']) > 0 or (
-                src_op.attr("fix_seed") and src_op.attr("seed")
+            if (
+                len(kwargs['Seed']) > 0
+                or len(src_op.input("Seed")) > 0
+                or (src_op.attr("fix_seed") and src_op.attr("seed"))
             ):
                 print(
                     "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
                         src_op
                     )
                 )
+            elif rank_id not in op_dist_attr.process_mesh.process_ids:
+                pass
             else:
                 # determinate rng
                 X_var = main_block._var_recursive(kwargs['X'][0])
