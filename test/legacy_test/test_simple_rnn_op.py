@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ from eager_op_test import OpTest
 import paddle
 from paddle.fluid import core
 
-sys.path.append("./rnn")
-from test.rnn.convert import get_params_for_net
-from test.rnn.rnn_numpy import LSTM
+sys.path.append("../rnn")
+from rnn.convert import get_params_for_net
+from rnn.rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -48,7 +48,7 @@ def rnn_wrapper(
     dropout_state_in = paddle.Tensor()
     return paddle._C_ops.rnn(
         Input,
-        PreState,
+        [PreState],
         WeightList,
         SequenceLength,
         dropout_state_in,
@@ -63,7 +63,7 @@ def rnn_wrapper(
     )
 
 
-class TestRNNOp(OpTest):
+class TestSimpleRNNOp(OpTest):
     def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
@@ -78,8 +78,9 @@ class TestRNNOp(OpTest):
         self.op_type = "rnn"
         self.python_api = rnn_wrapper
         self.python_out_sig = ["Out", "DropoutState", "State"]
-        self.python_out_sig_sub_name = {"State": ["last_hidden", "last_cell"]}
-        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.python_out_sig_sub_name = {"State": ["last_hidden"]}
+
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
         self.sequence_length = (
             None
             if core.is_compiled_with_rocm()
@@ -87,8 +88,8 @@ class TestRNNOp(OpTest):
         )
         self.num_layers = 1
         self.is_bidirec = False
-        self.mode = "LSTM"
         self.is_test = False
+        self.mode = "RNN_TANH"
         self.dropout = 0.0
         self.set_attrs()
 
@@ -108,48 +109,38 @@ class TestRNNOp(OpTest):
             input[9][3:][:] = 0
             input[8][4:][:] = 0
 
-        rnn1 = LSTM(
+        rnn1 = SimpleRNN(
             input_size,
             hidden_size,
             num_layers=self.num_layers,
             time_major=True,
             direction=direction,
             dropout=self.dropout,
+            nonlinearity=self.mode,
             dtype=self.dtype,
         )
 
         flat_w = get_params_for_net(rnn1)
-        output, (last_hidden, last_cell) = rnn1(
-            input, sequence_length=self.sequence_length
-        )
 
-        if core.is_compiled_with_rocm():
-
-            def rocm_rnn_get_place():
-                places = [core.CUDAPlace(0)]
-                return places
-
-            self._get_places = rocm_rnn_get_place
+        output, last_hidden = rnn1(input, sequence_length=self.sequence_length)
 
         init_h = np.zeros(
             (self.num_layers * self.direction_num, batch_size, hidden_size)
         ).astype(self.dtype)
-        init_c = np.zeros(
-            (self.num_layers * self.direction_num, batch_size, hidden_size)
-        ).astype(self.dtype)
+
         state_out = np.ndarray(300).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
-            'PreState': [('init_h', init_h), ('init_c', init_c)],
+            'PreState': [('init_h', init_h)],
             'SequenceLength': self.sequence_length,
         }
         if self.sequence_length is None:
             self.inputs = {
                 'Input': input,
                 'WeightList': flat_w,
-                'PreState': [('init_h', init_h), ('init_c', init_c)],
+                'PreState': [('init_h', init_h)],
             }
         self.attrs = {
             'dropout_prob': self.dropout,
@@ -157,111 +148,57 @@ class TestRNNOp(OpTest):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
-            'mode': self.mode,
             'is_test': self.is_test,
+            'mode': self.mode,
         }
         self.outputs = {
             'Out': output,
-            "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
+            'State': [('last_hidden', last_hidden)],
             'Reserve': np.ndarray(400).astype("uint8"),
             'DropoutState': state_out,
         }
 
-    def test_output(self):
-        self.check_output(no_check_set=['Reserve', 'DropoutState'])
-
     def set_attrs(self):
         pass
+
+    def test_output(self):
+        self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
     def test_grad(self):
         if not self.is_test:
             var_name_list = self.get_weight_names()
-            grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list = ['Input', 'init_h']
             grad_check_list.extend(var_name_list)
-            self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
-            )
-
-    def test_grad_only_input(self):
-        if not self.is_test:
-            var_name_list = self.get_weight_names()
-            grad_check_list = ['Input']
-            grad_check_list.extend(var_name_list)
-            self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
-            )
-
-    def test_grad_only_h(self):
-        if not self.is_test:
-            var_name_list = self.get_weight_names()
-            grad_check_list = ['init_h']
-            grad_check_list.extend(var_name_list)
-            self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
-            )
-
-    def test_grad_only_c(self):
-        if not self.is_test:
-            var_name_list = self.get_weight_names()
-            grad_check_list = ['init_c']
-            grad_check_list.extend(var_name_list)
-            self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
-            )
+            self.check_grad(set(grad_check_list), ['Out', 'last_hidden'])
 
 
-class TestRNNOp1(TestRNNOp):
+class TestSimpleRNNOp1(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
 
 
-class TestRNNOp2(TestRNNOp):
+class TestSimpleRNNOp2(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
-class TestRNNOp3(TestRNNOp):
+class TestSimpleRNNOp3(TestSimpleRNNOp):
     def set_attrs(self):
+        self.sequence_length = None
         self.is_test = True
+
+
+class TestSimpleRNNOp4(TestSimpleRNNOp):
+    def set_attrs(self):
         self.sequence_length = None
-
-
-class TestRNNOp4(TestRNNOp):
-    def set_attrs(self):
-        self.is_test = True
-        self.sequence_length = None
-        self.is_bidirec = True
-
-
-class TestRNNOp5(TestRNNOp):
-    def set_attrs(self):
-        self.num_layers = 2
-
-
-class TestRNNOp6(TestRNNOp):
-    def set_attrs(self):
-        self.num_layers = 2
-        self.is_bidirec = True
-
-
-class TestRNNOp7(TestRNNOp):
-    def set_attrs(self):
-        self.num_layers = 2
         self.is_bidirec = True
         self.is_test = True
 
 
-class TestRNNOp8(TestRNNOp):
+class TestSimpleRNNOp5(TestSimpleRNNOp):
     def set_attrs(self):
-        self.num_layers = 2
-        self.is_bidirec = True
-        self.sequence_length = None
-
-
-class TestRNNOp9(TestRNNOp):
-    def set_attrs(self):
-        self.num_layers = 3
+        self.mode = "RNN_RELU"
 
 
 if __name__ == '__main__':
