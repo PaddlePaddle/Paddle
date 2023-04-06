@@ -51,6 +51,8 @@ def parallel_manual_seed(seed):
 
     This function should be called only once before auto parallel compiles the computation graph (e.g. auto_parallel.engine.prepare() or fit()).
 
+    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute amonge mesh, and would NOT affect other processe like Parameter initialization.
+
     Examples:
         # seed relative to training step
         auto_parallel_random_seed((step + 13) * 257)
