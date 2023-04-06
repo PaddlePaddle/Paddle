@@ -61,10 +61,9 @@ const std::string StringizeDownstreamMap(
 
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
     const std::vector<Instruction>& instructions) {
-  PADDLE_ENFORCE_EQ(
-      is_build_,
-      false,
-      phi::errors::AlreadyExists("The op dependency has been built"));
+  if (is_build_) {
+    return op_downstream_map_;
+  }
 
   instructions_ = &instructions;
   op_num_ = instructions_->size();

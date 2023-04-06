@@ -2616,19 +2616,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<imperative::HCCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::HCCLParallelContext>>(
-      m, "HCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::NPUPlace &>())
-      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::HCCLParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
 #if defined(PADDLE_WITH_CNCL)
   py::class_<imperative::CNCLParallelContext,
              imperative::ParallelContext,

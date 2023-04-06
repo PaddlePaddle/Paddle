@@ -33,9 +33,11 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 
 USE_OP_ITSELF(batch_norm);
+USE_OP_ITSELF(fused_bn_add_activation);
+USE_OP_ITSELF(fused_bn_add_activation_grad);
 PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
-USE_CUDA_ONLY_OP(fused_bn_add_activation);
-USE_CUDA_ONLY_OP(fused_bn_add_activation_grad);
+PD_DECLARE_KERNEL(fused_bn_add_activation, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(fused_bn_add_activation_grad, GPU, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
