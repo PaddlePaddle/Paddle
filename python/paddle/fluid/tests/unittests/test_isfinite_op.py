@@ -50,7 +50,9 @@ class TestFP16Inf(TestInf):
 
 # BFP16 isinf Test
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestInfBF16(OpTest):
     def setUp(self):
@@ -65,7 +67,7 @@ class TestInfBF16(OpTest):
         self.outputs = {'Out': out}
 
     def test_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestNAN(OpTest):
@@ -98,7 +100,9 @@ class TestFP16NAN(TestNAN):
 
 # BFP16 isnan Test
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNANBF16(OpTest):
     def setUp(self):
@@ -113,7 +117,7 @@ class TestNANBF16(OpTest):
         self.outputs = {'Out': out}
 
     def test_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestIsfinite(OpTest):
@@ -147,7 +151,9 @@ class TestFP16Isfinite(TestIsfinite):
 
 # BFP16 isfinite Test
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestIsfiniteBF16(OpTest):
     def setUp(self):
@@ -162,7 +168,7 @@ class TestIsfiniteBF16(OpTest):
         self.outputs = {'Out': out}
 
     def test_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 if __name__ == '__main__':
