@@ -122,7 +122,8 @@ class TestSupportedTypeInfo(unittest.TestCase):
         self.assertEqual(res, True)
 
     @unittest.skipIf(
-        paddle.device.cuda.get_device_capability()[0] >= 8.0,
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] >= 8.0,
         "run test when maximum gpu's compute capability is 8.0.",
     )
     def test_gpu_bf16_unsupported(self):
@@ -132,7 +133,8 @@ class TestSupportedTypeInfo(unittest.TestCase):
         self.assertEqual(res, False)
 
     @unittest.skipIf(
-        paddle.device.cuda.get_device_capability()[0] < 8.0,
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 8.0,
         "run test when gpu's compute capability is at least 8.0.",
     )
     def test_gpu_bf16_supported(self):
