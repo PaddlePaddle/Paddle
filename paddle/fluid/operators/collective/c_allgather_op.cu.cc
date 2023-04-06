@@ -59,7 +59,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
-    out->mutable_data<T>(out_dims, place);
+    ctx.cuda_device_context().template Alloc<T>(out);
 
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
