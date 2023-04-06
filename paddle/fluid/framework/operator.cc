@@ -2367,13 +2367,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
                             platform::errors::InvalidArgument(
                                 "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    // In order to solve the problem that the output latitude of NPU reshape
-    // operator is not changed when inplace.
-    if (type_ != "reshape2" && type_ != "reshape2_grad") {
-      original_tensor->Resize(original_dims);
-    }
   }
 }
 
@@ -2759,13 +2753,6 @@ void OperatorWithKernel::ParseInputDataType(
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
-      PADDLE_ENFORCE_EQ(
-          sp_t->initialized(),
-          true,
-          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                            "contains uninitialized Tensor.",
-                                            Type(),
-                                            name));
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
     } else if (var->IsType<LoDTensorArray>()) {

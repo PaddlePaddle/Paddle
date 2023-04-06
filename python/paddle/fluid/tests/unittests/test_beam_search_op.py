@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def create_tensor(scope, name, np_data):
