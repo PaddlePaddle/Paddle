@@ -14,12 +14,13 @@
 
 import logging
 
-_logger = get_logger(logging.INFO)
-
 import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 
+from ...utils.log_utils import get_logger
+
+_logger = get_logger(logging.INFO)
 from ..random import determinate_rng, is_enable_auto_rand_ctrl
 from ..utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
