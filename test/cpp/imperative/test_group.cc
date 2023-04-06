@@ -77,7 +77,8 @@ void GroupConcatSplit(Place place, size_t size) {
     }
 
     if (std::is_same<Place, platform::CUDAPlace>::value) {
-#if defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CNCL)
       paddle::memory::Copy(
           place, data, cpu_place, value.data(), sizeof(T) * value.size(), 0);
 #endif
