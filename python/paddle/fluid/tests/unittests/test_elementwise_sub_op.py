@@ -497,16 +497,14 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseOp):
             'X': np.random.rand(100, 3, 2).astype('float32'),
             'Y': np.random.rand(100).astype('float32'),
         }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.outputs = {
+            'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
+        }
         self.inputs = {
             'X': convert_float_to_uint16(self.inputs['X']),
             'Y': convert_float_to_uint16(self.inputs['Y']),
         }
-        self.outputs = {
-            'Out': convert_float_to_uint16(
-                self.outputs['Out'].reshape(100, 1, 1)
-            )
-        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.attrs = {'axis': 0}
 
     def test_check_output(self):
@@ -552,16 +550,14 @@ class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
             'X': np.random.rand(2, 100, 3).astype('float32'),
             'Y': np.random.rand(100).astype('float32'),
         }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.outputs = {
+            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
+        }
         self.inputs = {
             'X': convert_float_to_uint16(self.inputs['X']),
             'Y': convert_float_to_uint16(self.inputs['Y']),
         }
-        self.outputs = {
-            'Out': convert_float_to_uint16(
-                self.outputs['Out'].reshape(1, 100, 1)
-            )
-        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.attrs = {'axis': 1}
 
     def test_check_output(self):
@@ -603,6 +599,41 @@ class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseOp):
         self.dtype = np.float16
 
 
+class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        self.python_api = paddle.subtract
+        self.inputs = {
+            'X': np.random.rand(2, 3, 100).astype('float32'),
+            'Y': np.random.rand(100).astype('float32'),
+        }
+        self.outputs = {
+            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
+        }
+        self.inputs = {
+            'X': convert_float_to_uint16(self.inputs['X']),
+            'Y': convert_float_to_uint16(self.inputs['Y']),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
+
+
 class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -612,7 +643,9 @@ class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
             'X': np.random.rand(2, 10, 12, 3).astype('float32'),
             'Y': np.random.rand(10, 12).astype('float32'),
         }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.outputs = {
+            'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
+        }
         self.inputs = {
             'X': convert_float_to_uint16(self.inputs['X']),
             'Y': convert_float_to_uint16(self.inputs['Y']),
@@ -680,6 +713,10 @@ class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.attrs = {'axis': 1}
+        self.if_check_prim()
+
+    def if_check_prim(self):
+        self.check_prim = True
 
 
 class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseOp):
