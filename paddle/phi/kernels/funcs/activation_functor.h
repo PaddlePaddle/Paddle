@@ -72,7 +72,7 @@ struct Sine<dtype::float16> {
 
 template <>
 struct Sine<dtype::bfloat16> {
-  HOSTDEVICES dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
     return dtype::bfloat16(sin(static_cast<float>(val)));
   }
 };
