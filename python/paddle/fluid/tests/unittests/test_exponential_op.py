@@ -347,8 +347,14 @@ class TestExponentialAPI(unittest.TestCase):
 
 class TestExponentialFP16Op(TestExponentialOp1):
     def config(self):
-        self.lam = 0.25
+        self.lam = 0.5
         self.dtype = "float16"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 @unittest.skipIf(
