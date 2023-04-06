@@ -283,11 +283,11 @@ class TestEmptyAPI(unittest.TestCase):
 class TestEmptyFP16Op(TestEmptyOp):
     def init_config(self):
         shape = [500, 3]
-        dtype = 'float16'
-        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+        self.dtype = np.float16
+        dtype_inner = convert_np_dtype_to_dtype_(self.dtype)
         self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.inputs = {}
-        self.outputs = {'Out': np.zeros(shape).astype(dtype)}
+        self.outputs = {'Out': np.zeros(shape).astype(self.dtype)}
 
 
 @unittest.skipIf(
