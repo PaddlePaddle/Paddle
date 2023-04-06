@@ -595,7 +595,8 @@ if(WITH_PYTHON)
     COMMAND
       ${CMAKE_COMMAND} -E touch
       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
+  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
+                                                        touch __init__.py)
   add_dependencies(
     framework_py_proto
     trainer_py_proto
@@ -619,7 +620,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_executor_desc_py_proto
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -651,6 +652,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
+    DEPENDS fleet_proto_init index_dataset_py_proto
     DEPENDS index_dataset_py_proto
     COMMAND
       cp
