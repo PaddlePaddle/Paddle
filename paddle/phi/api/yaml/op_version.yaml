@@ -173,7 +173,7 @@
   version :
     - checkpoint : Add a new attribute [use_softmax]
       action :
-        - add_attr : force_cpu
+        - add_attr : use_softmax
           comment : A flag to indicate whether to do softmax
           default : "true"
 
