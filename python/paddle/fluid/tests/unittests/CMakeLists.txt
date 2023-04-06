@@ -1200,7 +1200,8 @@ set(TEST_CINN_OPS
     test_layer_norm_op
     test_cast_op
     test_dropout_op
-    test_group_norm_op)
+    test_group_norm_op
+    test_roll_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
