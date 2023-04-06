@@ -1370,7 +1370,7 @@ class SplitFlOpsPass(PassBase):
         return party_program_map
 
     def _insert_partA_communicate_op(self, block, idx):
-        comm_info = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        comm_info = f"forward_joint_{1}_{2}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1395,7 +1395,7 @@ class SplitFlOpsPass(PassBase):
         return
 
     def _insert_partB_communicate_op(self, block, idx):
-        comm_info = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        comm_info = f"backward_joint_{2}_{1}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1523,7 +1523,7 @@ class SplitFlOpsPass(PassBase):
             bp_op_list + push_sparse_op_list, self.partA_program, 1
         )
         # 2.1. insert partA recv op
-        block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        block_input_flag = f"backward_joint_{2}_{1}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
@@ -1584,7 +1584,7 @@ class SplitFlOpsPass(PassBase):
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
 
         # 3. insert partB recv op
-        block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        block_input_flag = f"forward_joint_{1}_{2}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],

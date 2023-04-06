@@ -155,7 +155,7 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
         )
         self.assertTrue(
             compare(self.reference, result, self.atol, self.rtol),
-            "[{}] outputs are miss-matched.".format(type(self).__name__),
+            f"[{type(self).__name__}] outputs are miss-matched.",
         )
         self.assertTrue(
             verify_node_count(program._graph, "fused_gemm_epilogue", 3),
@@ -312,12 +312,12 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
 
         self.fetch = [
             self.loss.name,
-            '{}.w_0@GRAD'.format(multi_layer.linear1.full_name()),
-            '{}.b_0@GRAD'.format(multi_layer.linear1.full_name()),
-            '{}.w_0@GRAD'.format(multi_layer.linear2.full_name()),
-            '{}.b_0@GRAD'.format(multi_layer.linear2.full_name()),
-            '{}.w_0@GRAD'.format(multi_layer.linear3.full_name()),
-            '{}.b_0@GRAD'.format(multi_layer.linear3.full_name()),
+            f'{multi_layer.linear1.full_name()}.w_0@GRAD',
+            f'{multi_layer.linear1.full_name()}.b_0@GRAD',
+            f'{multi_layer.linear2.full_name()}.w_0@GRAD',
+            f'{multi_layer.linear2.full_name()}.b_0@GRAD',
+            f'{multi_layer.linear3.full_name()}.w_0@GRAD',
+            f'{multi_layer.linear3.full_name()}.b_0@GRAD',
         ]
         self.outs_ref = self.exe.run(
             self.main_prog, feed=self.feed, fetch_list=self.fetch
@@ -338,7 +338,7 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
         for ref, res in zip(self.outs_ref, outs_res):
             self.assertTrue(
                 compare(ref, res, self.atol, self.rtol),
-                "[{}] output is miss-matched.".format(type(self).__name__),
+                f"[{type(self).__name__}] output is miss-matched.",
             )
 
         self.assertTrue(

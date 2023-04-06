@@ -77,13 +77,13 @@ class Normal(distribution.Distribution):
             sample = normal_a.sample([2])
             # a random tensor created by normal distribution with shape: [2, 1]
             entropy = normal_a.entropy()
-            # [1.4189385] with shape: [1]
+            # [1.4189385] with shape: []
             lp = normal_a.log_prob(value_tensor)
             # [-1.2389386] with shape: [1]
             p = normal_a.probs(value_tensor)
             # [0.28969154] with shape: [1]
             kl = normal_a.kl_divergence(normal_b)
-            # [0.34939718] with shape: [1]
+            # [0.34939718] with shape: []
     """
 
     def __init__(self, loc, scale, name=None):
@@ -101,7 +101,6 @@ class Normal(distribution.Distribution):
                 'Normal',
             )
 
-        self.batch_size_unknown = False
         self.all_arg_is_float = False
         self.name = name if name is not None else 'Normal'
         self.dtype = 'float32'
@@ -112,7 +111,6 @@ class Normal(distribution.Distribution):
             scale = float(scale)
 
         if self._validate_args(loc, scale):
-            self.batch_size_unknown = True
             self.loc = loc
             self.scale = scale
             self.dtype = convert_dtype(loc.dtype)
@@ -174,8 +172,7 @@ class Normal(distribution.Distribution):
         shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
-
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
@@ -236,9 +233,12 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, self.dtype, 0.0
-        )
+        if -1 in batch_shape:
+            zero_tmp = tensor.fill_constant_batch_size_like(
+                self.loc + self.scale, batch_shape, self.dtype, 0.0
+            )
+        else:
+            zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(
             0.5 + zero_tmp,
             0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),

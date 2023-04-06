@@ -363,7 +363,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_transpose_eltwiseadd_bn_fuse_pass",  //
              "conv_bias_mkldnn_fuse_pass",              //
              "conv_transpose_bias_mkldnn_fuse_pass",
-             "interpolate_mkldnn_pass",
              // TODO(baoachun): Need to support 5-dimensional input.
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
@@ -519,6 +518,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
+      "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
@@ -527,9 +527,11 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "one_beam_size_fuse_pass",
+      "delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",
+      "conv2d_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",

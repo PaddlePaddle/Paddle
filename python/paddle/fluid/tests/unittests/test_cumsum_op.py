@@ -401,7 +401,7 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
                 check_prim=True,
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
     globals()[cls_name] = TestCumsumFP16Op
 
@@ -442,7 +442,7 @@ def create_test_bf16_class(parent):
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(place, ["X"], "Out", check_prim=True)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestCumsumBF16Op.__name__ = cls_name
     globals()[cls_name] = TestCumsumBF16Op
 

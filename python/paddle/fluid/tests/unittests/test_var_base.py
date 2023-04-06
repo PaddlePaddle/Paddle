@@ -168,7 +168,7 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x_array.dtype, x.numpy().dtype)
                 np.testing.assert_array_equal(x_array, x.numpy())
 
-                x = paddle.to_tensor(1.0)
+                x = paddle.to_tensor(1.0, place=place)
                 self.assertEqual(x.item(), 1.0)
                 self.assertTrue(isinstance(x.item(), float))
 
@@ -272,9 +272,6 @@ class TestVarBase(unittest.TestCase):
             check_with_place("gpu_pinned")
             check_with_place(core.CUDAPlace(0))
             check_with_place("gpu:0")
-        if core.is_compiled_with_npu():
-            check_with_place(core.NPUPlace(0))
-            check_with_place("npu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
         with paddle.fluid.dygraph.guard(core.CPUPlace()):

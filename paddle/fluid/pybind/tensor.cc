@@ -87,25 +87,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/fluid/pybind/distributed_py.h"
-#include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/io.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/lod_utils.h"
-#include "paddle/utils/none.h"
-#ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#endif
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
+#include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
@@ -113,12 +104,18 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/lod_utils.h"
+#include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -137,11 +134,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -178,6 +170,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -493,6 +486,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+      .def("_set_complex64_element", TensorSetElement<paddle::complex64>)
+      .def("_get_complex64_element", TensorGetElement<paddle::complex64>)
+      .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
+      .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
       .def("_place", [](phi::DenseTensor &self) { return self.place(); })
       .def("_dtype",
            [](phi::DenseTensor &self) {

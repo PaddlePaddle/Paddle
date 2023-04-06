@@ -32,6 +32,8 @@ seed = 42
 
 random.seed(seed)
 default_main_program().random_seed = seed
+np.random.seed(seed)
+paddle.seed(seed)
 
 
 class TestFusedMultiTransformerOp(OpTest):

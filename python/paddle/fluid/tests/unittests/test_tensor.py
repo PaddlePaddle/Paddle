@@ -41,6 +41,8 @@ class TestTensor(unittest.TestCase):
             'float16',
             'float32',
             'float64',
+            'complex64',
+            'complex128',
         ]
 
     def test_int_tensor(self):
@@ -99,6 +101,58 @@ class TestTensor(unittest.TestCase):
             tensor_array = np.random.randint(
                 -127, high=128, size=[100, 200], dtype=np.int8
             )
+            place = core.CUDAPlace(0)
+            cuda_tensor.set(tensor_array, place)
+            cuda_tensor_array_2 = np.array(cuda_tensor)
+            self.assertAlmostEqual(
+                cuda_tensor_array_2.all(), tensor_array.all()
+            )
+
+    def test_complex64_tensor(self):
+        scope = core.Scope()
+        var = scope.var("complex64_tensor")
+        cpu_tensor = var.get_tensor()
+        tensor_array = (
+            np.random.uniform(-1, 1, (100, 200))
+            + 1j * np.random.uniform(-1, 1, (100, 200))
+        ).astype(np.complex64)
+        place = core.CPUPlace()
+        cpu_tensor.set(tensor_array, place)
+        cpu_tensor_array_2 = np.array(cpu_tensor)
+        self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
+
+        if core.is_compiled_with_cuda():
+            cuda_tensor = var.get_tensor()
+            tensor_array = (
+                np.random.uniform(-1, 1, (100, 200))
+                + 1j * np.random.uniform(-1, 1, (100, 200))
+            ).astype(np.complex64)
+            place = core.CUDAPlace(0)
+            cuda_tensor.set(tensor_array, place)
+            cuda_tensor_array_2 = np.array(cuda_tensor)
+            self.assertAlmostEqual(
+                cuda_tensor_array_2.all(), tensor_array.all()
+            )
+
+    def test_complex128_tensor(self):
+        scope = core.Scope()
+        var = scope.var("complex128_tensor")
+        cpu_tensor = var.get_tensor()
+        tensor_array = (
+            np.random.uniform(-1, 1, (100, 200))
+            + 1j * np.random.uniform(-1, 1, (100, 200))
+        ).astype(np.complex128)
+        place = core.CPUPlace()
+        cpu_tensor.set(tensor_array, place)
+        cpu_tensor_array_2 = np.array(cpu_tensor)
+        self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
+
+        if core.is_compiled_with_cuda():
+            cuda_tensor = var.get_tensor()
+            tensor_array = (
+                np.random.uniform(-1, 1, (100, 200))
+                + 1j * np.random.uniform(-1, 1, (100, 200))
+            ).astype(np.complex128)
             place = core.CUDAPlace(0)
             cuda_tensor.set(tensor_array, place)
             cuda_tensor_array_2 = np.array(cuda_tensor)
@@ -384,6 +438,71 @@ class TestTensor(unittest.TestCase):
             exception = ex
 
         self.assertIsNotNone(exception)
+
+    def test_tensor_set_item_complex128(self):
+        array = (
+            np.random.random((100, 100)) + 1j * np.random.random((100, 100))
+        ).astype(np.complex128)
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX128)
+        tensor._set_complex128_element(0, 42.1 + 42.1j)
+        np.testing.assert_allclose(
+            tensor._get_complex128_element(0), 42.1 + 42.1j
+        )
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX128)
+            tensor._set_complex128_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                tensor._get_complex128_element(0), 42.1 + 42.1j
+            )
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX128)
+            tensor._set_complex128_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                tensor._get_complex128_element(0), 42.1 + 42.1j
+            )
+
+    def test_tensor_set_item_complex64(self):
+        array = (
+            np.random.random((100, 100)) + 1j * np.random.random((100, 100))
+        ).astype(np.complex64)
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX64)
+        tensor._set_complex64_element(0, 42.1 + 42.1j)
+        np.testing.assert_allclose(
+            np.complex64(tensor._get_complex64_element(0)),
+            np.complex64(42.1 + 42.1j),
+        )
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX64)
+            tensor._set_complex64_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                np.complex64(tensor._get_complex64_element(0)),
+                np.complex64(42.1 + 42.1j),
+            )
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.COMPLEX64)
+            tensor._set_complex64_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                np.complex64(tensor._get_complex64_element(0)),
+                np.complex64(42.1 + 42.1j),
+            )
 
 
 if __name__ == '__main__':

@@ -662,7 +662,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    float,
                    double) {}
 
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,

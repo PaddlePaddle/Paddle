@@ -14,6 +14,10 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/backends/dynload/cublasLt.h"
+#endif
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"

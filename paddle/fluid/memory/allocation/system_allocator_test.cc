@@ -83,14 +83,6 @@ TEST(GPUAllocator, AllocFailure) {
 }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-TEST(NPUAllocator, Alloc) {
-  paddle::memory::detail::NPUAllocator a(0);
-  TestAllocator(&a, 1 << 20);
-  TestAllocator(&a, 1);
-}
-#endif
-
 #ifdef PADDLE_WITH_MLU
 TEST(MLUAllocator, Alloc) {
   paddle::memory::detail::MLUAllocator a(0);

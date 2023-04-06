@@ -231,9 +231,9 @@ class DevelopCommand(DevelopCommandBase):
         distributed_proto_source_path = (
             paddle_source_dir + '/python/paddle/distributed/fleet/proto/'
         )
-        os.system("rm -rf {}".format(fluid_proto_source_path))
+        os.system(f"rm -rf {fluid_proto_source_path}")
         shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
-        os.system("rm -rf {}".format(distributed_proto_source_path))
+        os.system(f"rm -rf {distributed_proto_source_path}")
         shutil.copytree(
             distributed_proto_binary_path, distributed_proto_source_path
         )
@@ -255,7 +255,7 @@ class DevelopCommand(DevelopCommandBase):
             )
         )
         write_cuda_env_config_py(
-            filename='{}/python/paddle/cuda_env.py'.format(paddle_source_dir)
+            filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
         )
         write_parameter_server_version_py(
             filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
@@ -667,7 +667,7 @@ def find_files(pattern, root, recursive=False):
 @contextmanager
 def cd(path):
     if not os.path.isabs(path):
-        raise RuntimeError('Can only cd to absolute path, got: {}'.format(path))
+        raise RuntimeError(f'Can only cd to absolute path, got: {path}')
     orig_path = os.getcwd()
     os.chdir(path)
     try:
@@ -679,7 +679,7 @@ def cd(path):
 def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
-            args.append("-D{}={}".format(key, value))
+            args.append(f"-D{key}={value}")
 
 
 def get_cmake_generator():
@@ -784,7 +784,7 @@ def run_cmake_build(build_path):
 
         build_args += ["--"]
         if IS_WINDOWS:
-            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
+            build_args += [f"/p:CL_MPCount={max_jobs}"]
         else:
             build_args += ["-j", max_jobs]
     else:
@@ -1457,10 +1457,12 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
-        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
 
     for dependency in python_dependcies_module:
-        if dependency not in installed_packages:
+        if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
@@ -1503,7 +1505,7 @@ def main():
         )
     )
     write_cuda_env_config_py(
-        filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
+        filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
     )
     write_parameter_server_version_py(
         filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(

@@ -111,7 +111,7 @@ def visit_member(parent_name, member, func):
         return
     else:
         raise RuntimeError(
-            "Unsupported generate signature of member, type {0}".format(
+            "Unsupported generate signature of member, type {}".format(
                 str(type(member))
             )
         )

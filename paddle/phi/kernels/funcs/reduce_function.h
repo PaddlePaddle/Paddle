@@ -1150,7 +1150,6 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       gpuStream_t stream,
                       bool is_mean = false) {
   dev_ctx.template Alloc<Ty>(y);
-
   ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       x,

@@ -52,14 +52,14 @@ class InternalUtils;
 
 /// \brief Paddle data type.
 enum DataType {
+  FLOAT32,
   INT64,
   INT32,
   UINT8,
   INT8,
-  FLOAT64,
-  FLOAT32,
   FLOAT16,
   BOOL,
+  FLOAT64,
   // TODO(Inference): support more data types if needed.
 };
 

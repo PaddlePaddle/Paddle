@@ -293,9 +293,9 @@ class Machine:
     def __str__(self):
         str = ""
         for device in self.devices.values():
-            str += ", device: {}".format(device)
+            str += f", device: {device}"
         for link in self.links.values():
-            str += ", link: {}".format(link)
+            str += f", link: {link}"
         return str
 
     def __repr__(self):
@@ -823,7 +823,7 @@ class Cluster:
     def __str__(self):
         str = ""
         for machine in self.machines.values():
-            str += "machine: {}\n".format(machine)
+            str += f"machine: {machine}\n"
         return str
 
     def __repr__(self):
