@@ -291,13 +291,6 @@ void Tracer::TraceOpImpl(const std::string& type,
     } else if (platform::is_npu_place(place)) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
-    } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-      platform::SetMLUDeviceId(place.device);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with MLU if use MLUPlace."));
-#endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);

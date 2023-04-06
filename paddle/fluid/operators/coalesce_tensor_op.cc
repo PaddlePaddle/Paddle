@@ -54,17 +54,8 @@ struct FillConstantVisitor {
   void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
                                        std::is_same<T, int16_t>::value)>::type
                  * = nullptr) const {
-#if defined(PADDLE_WITH_MLU)
-    if (platform::is_mlu_place(context_.GetPlace())) {
-      FillMLUTensorWithHostValue<T>(context_, static_cast<T>(value_), tensor_);
-    } else {
-      phi::funcs::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-    }
-#else
     phi::funcs::SetConstant<DeviceContext, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-#endif
   }
 
   const DeviceContext &dev_ctx_;
@@ -505,14 +496,6 @@ REGISTER_OPERATOR(coalesce_tensor,
                   CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
-#if defined(PADDLE_WITH_MLU)
-REGISTER_OP_MLU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, float>);
-#endif
 
 REGISTER_OP_VERSION(coalesce_tensor)
     .AddCheckpoint(

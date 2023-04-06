@@ -34,9 +34,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "xpu/refactor/math.h"
 #endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
