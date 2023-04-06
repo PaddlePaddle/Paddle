@@ -303,7 +303,6 @@ register_unity_group(
   cc
   smooth_l1_loss_op.cc
   uniform_random_batch_size_like_op.cc
-  uniform_random_op.cc
   unique_op.cc
   unique_with_counts_op.cc
   unpool_op.cc
@@ -555,7 +554,7 @@ register_unity_group(
 register_unity_group(
   cu
   smooth_l1_loss_op.cu
-  uniform_random_op.cu
+  uniform_random_batch_size_like_op.cu
   unstack_op.cu
   where_index_op.cu
   where_op.cu
