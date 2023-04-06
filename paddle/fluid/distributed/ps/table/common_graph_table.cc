@@ -1775,7 +1775,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
         FLAGS_graph_edges_split_mode == "dbh" ||
         FLAGS_graph_edges_split_mode == "DBH") {
       if (!is_key_for_self_rank(id)) {
-        VLOG(2) << "id " << id << " not matched, node_id: " << node_id_
+        VLOG(3) << "id " << id << " not matched, node_id: " << node_id_
                 << " , node_num:" << node_num_;
         continue;
       }
@@ -1854,7 +1854,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
         FLAGS_graph_edges_split_mode == "dbh" ||
         FLAGS_graph_edges_split_mode == "DBH") {
       if (!is_key_for_self_rank(id)) {
-        VLOG(2) << "id " << id << " not matched, node_id: " << node_id_
+        VLOG(3) << "id " << id << " not matched, node_id: " << node_id_
                 << " , node_num:" << node_num_;
         continue;
       }
@@ -1989,7 +1989,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
       // only keep hash(src_id) = hash(dst_id) = node_id edges
       // src id
       if (!is_key_for_self_rank(src_id)) {
-        VLOG(2) << " node num :" << src_id
+        VLOG(3) << " node num :" << src_id
                 << " not split into node_id_:" << node_id_
                 << " node_num:" << node_num_;
         continue;
@@ -1997,7 +1997,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
       // dst id
       if (!FLAGS_graph_edges_split_only_by_src_id &&
           !is_key_for_self_rank(dst_id)) {
-        VLOG(2) << " dest node num :" << dst_id
+        VLOG(3) << " dest node num :" << dst_id
                 << " will not add egde, node_id_:" << node_id_
                 << " node_num:" << node_num_;
         continue;
