@@ -32,17 +32,27 @@ class SimpleNet(paddle.nn.Layer):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
 )
 class TestMasterGrad(unittest.TestCase):
-    def check_results(self, fp32_grads):
+    def check_results(
+        self, fp32_grads, op_list, total_steps, accumulate_batchs_num
+    ):
         for grad in fp32_grads:
             self.assertEqual(grad.dtype, paddle.float32)
+        # fp16 calls
+        self.assertEqual(int(op_list['matmul_v2'].split(',')[0]), total_steps)
+        self.assertEqual(
+            int(op_list['adamw_'].split(',')[0]),
+            2 * (total_steps / accumulate_batchs_num),
+        )
+        self.assertEqual(
+            int(op_list['transfer_dtype'].split(',')[0]),
+            total_steps + total_steps * 2,
+        )
 
-    def run_dygraph(self):
-        accumulate_batchs_num = 2
-        total_steps = 4
+    def run_dygraph(self, total_steps, accumulate_batchs_num):
         model = SimpleNet(2, 4)
         opt = paddle.optimizer.AdamW(parameters=model.parameters())
         model, opt = paddle.amp.decorate(
@@ -50,9 +60,11 @@ class TestMasterGrad(unittest.TestCase):
         )
         scaler = paddle.amp.GradScaler()
 
+        paddle.amp.debugging.enable_operator_stats_collection()
         for i in range(total_steps):
             x = np.random.random((2, 2)).astype('float32')
             label = np.random.random((2, 4)).astype('float32')
+
             with paddle.amp.auto_cast(level='O2'):
                 out = model(paddle.to_tensor(x))
                 loss = paddle.nn.functional.l1_loss(
@@ -61,14 +73,23 @@ class TestMasterGrad(unittest.TestCase):
             scaled = scaler.scale(loss)
             scaled.backward()
             fp32_grads = [model.linear.weight.grad, model.linear.bias.grad]
-            self.check_results(fp32_grads)
             if (i + 1) % accumulate_batchs_num == 0:
                 scaler.step(opt)
                 scaler.update()
                 opt.clear_grad()
+        paddle.amp.debugging.disable_operator_stats_collection()
+        op_list = paddle.fluid.core.get_low_precision_op_list()
+        return fp32_grads, op_list
 
     def test_master_grad(self):
-        self.run_dygraph()
+        total_steps = 4
+        accumulate_batchs_num = 2
+        fp32_grads, op_list = self.run_dygraph(
+            total_steps, accumulate_batchs_num
+        )
+        self.check_results(
+            fp32_grads, op_list, total_steps, accumulate_batchs_num
+        )
 
 
 if __name__ == '__main__':

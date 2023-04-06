@@ -1188,18 +1188,21 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                                             PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
+  // tensor_list is a list of model parameters.
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   for (auto& tensor : tensor_list) {
     VLOG(6) << "set master_grad for tensor: " << tensor.name();
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         egr::egr_utils_api::IsLeafTensor(tensor),
+        true,
         paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
-    PADDLE_ENFORCE(grad != nullptr,
-                   paddle::platform::errors::Fatal(
-                       "Detected NULL grad"
-                       "Please check if you have manually cleared"
-                       "the grad inside autograd_meta"));
+    PADDLE_ENFORCE_NE(grad,
+                      nullptr,
+                      paddle::platform::errors::Fatal(
+                          "Detected NULL grad"
+                          "Please check if you have manually cleared"
+                          "the grad inside autograd_meta"));
     auto dtype = (*grad).dtype();
     if ((*grad).initialized() &&
         (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16)) {

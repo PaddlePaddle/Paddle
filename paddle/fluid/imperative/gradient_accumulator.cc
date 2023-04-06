@@ -197,6 +197,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
 
+  // AddKernel already support inputs of different dtype. For AMP master_grad,
+  // the dtype of source tensor and destination tensor will be diferent. So the
+  // check requiring input dtypes to be the same have been removed.
 #define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
     auto cpu_ctx = static_cast<CONTEXT*>(                                      \

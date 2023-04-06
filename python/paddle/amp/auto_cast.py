@@ -95,9 +95,11 @@ PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
 
+
 def amp_state():
     global _g_amp_state_
     return _g_amp_state_
+
 
 class AMPGlobalState:
     def __init__(self):
@@ -114,34 +116,6 @@ _amp_global_state = AMPGlobalState()
 
 def amp_global_state():
     return _amp_global_state
-
-
-def low_precision_op_list():
-    if os.getenv("FLAGS_low_precision_op_list") is not None:
-        level = int(os.getenv("FLAGS_low_precision_op_list"))
-        print('<{:-^120}>'.format(" op list "))
-        op_list = paddle.fluid.core.get_low_precision_op_list()
-        op_count = 0
-        print(
-            '<{:-^40}'.format(" Op Name "),
-            '|',
-            '{:-^17}'.format("FP16 Calls"),
-            '|',
-            '{:-^17}'.format("BF16 Calls"),
-            '|',
-            '{:-^17}'.format('FP32 Calls'),
-            '|',
-            '{:-^17}>'.format('Other Calls'),
-        )
-        for x in op_list:
-            # fp16, bf16, fp32, other
-            called = op_list[x].split(",")
-            print(
-                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
-                % (x, called[0], called[1], called[2], called[3])
-            )
-            op_count += 1
-        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
 
 
 # NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
