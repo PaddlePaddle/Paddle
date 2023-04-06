@@ -3791,8 +3791,17 @@ def gather_nd(x, index, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'],
-        'gather_np',
+        [
+            'bool',
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int16',
+            'int32',
+            'int64',
+        ],
+        'gather_nd',
     )
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
