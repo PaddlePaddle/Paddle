@@ -596,7 +596,7 @@ def start_local_trainers(
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
-            os.system(f"mkdir -p {log_dir}")
+            os.makedirs(log_dir, exist_ok=True)
             if os.path.exists("%s/endpoints.log" % log_dir):
                 os.system(f"rm -f {log_dir}/endpoints.log")
             with open("%s/endpoints.log" % log_dir, "w") as f:
@@ -1762,7 +1762,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/serverlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["server"].append(fn)
                 proc = subprocess.Popen(
@@ -1870,7 +1870,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["worker"].append(fn)
                 proc = subprocess.Popen(
@@ -1938,7 +1938,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/coordinator.%d" % (args.log_dir, idx), "w")
                 self.log_fns["coordinator"].append(fn)
                 proc = subprocess.Popen(
@@ -2029,7 +2029,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/heterlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["heter_worker"].append(fn)
                 proc = subprocess.Popen(

@@ -174,7 +174,7 @@ class LocalFS(FS):
         assert not os.path.isfile(fs_path), "{} is already a file".format(
             fs_path
         )
-        os.system(f"mkdir -p {fs_path}")
+        os.makedirs(fs_path, exist_ok=True)
 
     def rename(self, fs_src_path, fs_dst_path):
         """
