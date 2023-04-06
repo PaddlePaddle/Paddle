@@ -187,9 +187,6 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   if (size_of_dtype == -1) {
     size_of_dtype = phi::SizeOf(dtype);
   }
-  if (use_align && align_size <= 0) {
-    align_size = size_of_dtype;
-  }
   GetMemSizeAndDtype(
       input, &numel, size_of_dtype, dev_ctx.GetPlace(), use_align, align_size);
 

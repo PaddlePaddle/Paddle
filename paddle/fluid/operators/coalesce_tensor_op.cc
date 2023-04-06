@@ -216,9 +216,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
-    if (use_align && align_size <= 0) {
-      align_size = size_of_dtype;
-    }
     GetMemSizeAndDtype(in_tensors,
                        in_var_names,
                        &numel,
