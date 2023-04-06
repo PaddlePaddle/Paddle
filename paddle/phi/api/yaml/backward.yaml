@@ -34,15 +34,15 @@
     func : addmm_grad
 
 - backward_op : affine_grid_grad
-  forward : affine_grid (Tensor input, IntArray outputShape={}, bool align_corners=true) -> Tensor(output)
-  args : (Tensor input, Tensor output_grad, IntArray outputShape, bool align_corners=true)
+  forward : affine_grid (Tensor input, IntArray output_shape={}, bool align_corners=true) -> Tensor(output)
+  args : (Tensor input, Tensor output_grad, IntArray output_shape, bool align_corners=true)
   output : Tensor(input_grad)
   infer_meta :
     func : AffineGridGradInferMeta
-    param : [output_grad, outputShape, align_corners]
+    param : [output_grad, output_shape, align_corners]
   kernel :
     func : affine_grid_grad
-    param : [output_grad, outputShape, align_corners]
+    param : [output_grad, output_shape, align_corners]
   no_need_buffer : input
 
 - backward_op : angle_grad
