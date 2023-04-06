@@ -70,6 +70,13 @@ struct Sine<dtype::float16> {
   }
 };
 
+template <>
+struct Sine<dtype::bfloat16> {
+  HOSTDEVICES dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(sin(static_cast<float>(val)));
+  }
+};
+
 template <typename T>
 struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
@@ -79,6 +86,13 @@ template <>
 struct Cosine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
     return dtype::float16(cos(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Cosine<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(cos(static_cast<float>(val)));
   }
 };
 
