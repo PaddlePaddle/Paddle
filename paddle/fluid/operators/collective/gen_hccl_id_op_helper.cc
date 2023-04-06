@@ -30,10 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
 DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {

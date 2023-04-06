@@ -150,15 +150,6 @@ AmpOperators::AmpOperators()
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
 // NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  auto unsupported_ops_npu_fp16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_npu_fp16.begin(),
-                                unsupported_ops_npu_fp16.end());
-  auto unsupported_ops_npu_bf16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_npu_bf16.begin(),
-                                unsupported_ops_npu_bf16.end());
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));

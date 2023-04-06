@@ -25,7 +25,10 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_resource_pool.h"
 #endif
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
@@ -89,10 +92,10 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  aclrtStream compute_stream_;
-  std::shared_ptr<platform::NpuStreamObject> stream_;
-  std::vector<std::shared_ptr<platform::NpuEventObject>> events_;
+#ifdef PADDLE_WITH_MLU
+  mluStream compute_stream_;
+  std::shared_ptr<platform::MluStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::MluEventObject>> events_;
 #endif
 
 #ifdef PADDLE_WITH_XPU

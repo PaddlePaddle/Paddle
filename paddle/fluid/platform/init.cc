@@ -216,8 +216,9 @@ void InitDevices(const std::vector<int> devices) {
 #ifdef PADDLE_WITH_IPU
     places.emplace_back(platform::IPUPlace(devices[i]));
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    places.emplace_back(platform::NPUPlace(devices[i]));
+
+#ifdef PADDLE_WITH_MLU
+    places.emplace_back(platform::MLUPlace(devices[i]));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
