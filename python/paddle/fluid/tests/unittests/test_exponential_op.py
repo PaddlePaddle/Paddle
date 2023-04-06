@@ -364,12 +364,12 @@ class TestExponentialFP16Op(OpTest):
 
     def verify_output(self, outs):
         hist1, _ = np.histogram(outs[0], range=(0, 5))
-        hist1 = hist1.astype("float16")
+        hist1 = hist1.astype(np.float16)
         hist1 = hist1 / float(outs[0].size)
 
         data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
         hist2, _ = np.histogram(data_np, range=(0, 5))
-        hist2 = hist2.astype("float16")
+        hist2 = hist2.astype(np.float16)
         hist2 = hist2 / float(data_np.size)
 
         np.testing.assert_allclose(hist1, hist2, rtol=0.03)
