@@ -1582,5 +1582,34 @@ void roll_grad(const Tensor& x,
     set_output<T>(x_grad_output, x_grad);
   }
 }
+
+template <typename T>
+void tile_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& repeat_times,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto out_dims = phi::make_ddim(repeat_times.GetData());
+    auto _repeat_times = repeat_times.GetData();
+    if (out_dims != x.dims()) {
+      auto result = out_grad;
+      for (int i = 0; i < repeat_times.size(); i++) {
+        int size = out_grad.shape()[i] / repeat_times[i];
+        std::vector<int> sections(repeat_times[i], size);
+        auto split_arr = split<T>(result, IntArray(sections), i);
+        auto zero_tensor =
+            full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
+        for (int j = 0; j < split_arr.size(); j++) {
+          zero_tensor = split_arr[j] + zero_tensor;
+        }
+        result = zero_tensor;
+      }
+      result = reshape<T>(result, x.shape());
+      set_output<T>(result, x_grad);
+    } else {
+      by_pass<T>(out_grad, x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle

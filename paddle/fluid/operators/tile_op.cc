@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -157,6 +160,25 @@ class TileGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("repeat_times_tensor", this->Input("repeat_times_tensor"));
     op->SetInput("RepeatTimes", this->Input("RepeatTimes"));
     op->SetAttrMap(this->Attrs());
+  }
+};
+
+class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto repeat_times = this->Attr<std::vector<int64_t>>("repeat_times");
+    VLOG(6) << "Runing tile_grad composite func";
+    prim::tile_grad<prim::DescTensor>(
+        x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
   }
 };
 
