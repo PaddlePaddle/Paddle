@@ -1150,17 +1150,7 @@ def _custom_api_content(op_name):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
             if in_dygraph_mode():
-                from paddle.profiler.utils import in_profiler_mode
-                if in_profiler_mode():
-                    import paddle.profiler as profiler
-                    trace_event = profiler.RecordEvent(
-                        name="Custom Operator PythonProfiler",
-                        event_type=profiler.TracerEventType.PythonUserDefined,
-                    )
-                    trace_event.begin()
                 outs = core.eager._run_custom_op("{op_name}", {params_list})
-                if in_profiler_mode():
-                    trace_event.end()
                 {dynamic_content}
             else:
                 {static_content}

@@ -47,7 +47,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -520,9 +519,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
   paddle::CustomOpKernelContext ctx;
-  phi::RecordEvent custom_operator_record_event(
-      "Custom operator C++ layer", phi::TracerEventType::UserDefined, 1);
-  phi::RecordEvent* dygraph_record_event;
   {
     eager_gil_scoped_release guard;
     auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
@@ -540,10 +536,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
     const auto& inplace_map =
         paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
-    dygraph_record_event =
-        new phi::RecordEvent("custom_operator " + op_type + " add inputs",
-                             phi::TracerEventType::Operator,
-                             1);
     for (size_t i = 0; i < inputs.size(); ++i) {
       const auto& input = inputs.at(i);
       // Parse op_type first, so that use i + 1
@@ -569,11 +561,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to CustomOpKernelContext. Add Tensor for general case.";
       }
     }
-    delete dygraph_record_event;
-    dygraph_record_event =
-        new phi::RecordEvent("custom_operator " + op_type + " add attrs",
-                             phi::TracerEventType::Operator,
-                             1);
     // Parse op_type and inputs first, so that use 1 + inputs.size() + i
     int attr_start_idx = 1 + inputs.size();
     for (size_t i = 0; i < attrs.size(); ++i) {
@@ -614,11 +601,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             attr_type_str));
       }
     }
-    delete dygraph_record_event;
-    dygraph_record_event =
-        new phi::RecordEvent("custom_operator " + op_type + " add outputs",
-                             phi::TracerEventType::Operator,
-                             1);
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
@@ -659,18 +641,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       // general Tensor or inplace Tensor, initialized tensor.
       ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
     }
-    delete dygraph_record_event;
 
     // handle inplace map
     ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
-    {
-      phi::RecordEvent custom_operator_compute_record_event(
-          "Custom operator " + op_type + " compute",
-          phi::TracerEventType::Operator,
-          1);
-      VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-      (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
-    }
+    VLOG(7) << "Run Kernel of Custom Op: " << op_type;
+    (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
     ctx.AssignInplaceOutputs();
 
     // handle optional None output when construct backward graph
@@ -692,11 +667,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         }
       }
     }
-
-    dygraph_record_event = new phi::RecordEvent(
-        "custom_operator " + op_type + " before construct dygraph",
-        phi::TracerEventType::Operator,
-        1);
 
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
     size_t slot_ins_num = ctx.InputRange().size();
@@ -737,13 +707,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         }
       }
     }
-    delete dygraph_record_event;
 
     if (require_any_grad && (vec_map.size() > 1)) {
-      dygraph_record_event = new phi::RecordEvent(
-          "custom_operator " + op_type + " build dygraph node",
-          phi::TracerEventType::Operator,
-          1);
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);
       for (size_t i = 0; i < outs_auto_grad_metas.size(); ++i) {
@@ -765,12 +730,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           slot_outs_num, slot_ins_num, op_type);
       const auto& slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
-      delete dygraph_record_event;
 
-      dygraph_record_event = new phi::RecordEvent(
-          "custom_operator " + op_type + " prepare dygraph inputs",
-          phi::TracerEventType::Operator,
-          1);
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
       for (size_t i = 0; i < slot_ins_num; i++) {
@@ -827,7 +787,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         attrs[it->second] = res_attrs[it->first];
       }
       grad_node->SetAttrs(attrs);
-      delete dygraph_record_event;
     }
   }
   return ToPyObject(*ctx.AllMutableOutput());
