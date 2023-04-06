@@ -648,7 +648,7 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
   for (auto pair : idx2fetches_) {
     feed_fetch_vars.emplace_back(pair.second);
   }
-  fleet_exe_->Init(config_.dist_config().carrier_id(),
+  fleet_exe_->Init(1,
                    *(inference_program_.get()),
                    scope_.get(),
                    place_,
@@ -1654,7 +1654,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
     inference::Timer timer;
     timer.tic();
-    fleet_exe_->Run(config_.dist_config().carrier_id());
+    fleet_exe_->Run();
     VLOG(3) << "Fleet executor inf runs once use: "
             << std::to_string(timer.toc()) << "ms";
     return true;
