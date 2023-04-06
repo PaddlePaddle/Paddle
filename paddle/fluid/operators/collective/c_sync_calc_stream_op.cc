@@ -32,28 +32,23 @@ Call calculation stream synchronization.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+using MLU = plat::MLUPlace;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
                              ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream,
-                        ops::CSyncCalcStreamKernel<float>,
-                        ops::CSyncCalcStreamKernel<double>,
-                        ops::CSyncCalcStreamKernel<int>,
-                        ops::CSyncCalcStreamKernel<int64_t>,
-                        ops::CSyncCalcStreamKernel<paddle::platform::float16>);
-
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float>,
-                       ops::CSyncCalcStreamKernel<double>,
-                       ops::CSyncCalcStreamKernel<int>,
-                       ops::CSyncCalcStreamKernel<int64_t>,
-                       ops::CSyncCalcStreamKernel<paddle::platform::float16>);
+                       ops::CSyncCalcStreamKernel<float, MLU>,
+                       ops::CSyncCalcStreamKernel<double, MLU>,
+                       ops::CSyncCalcStreamKernel<int, MLU>,
+                       ops::CSyncCalcStreamKernel<int64_t, MLU>,
+                       ops::CSyncCalcStreamKernel<plat::float16, MLU>);
 
 REGISTER_OP_MLU_KERNEL(c_sync_calc_stream,
-                       ops::CSyncCalcStreamKernel<float>,
-                       ops::CSyncCalcStreamKernel<double>,
-                       ops::CSyncCalcStreamKernel<int>,
-                       ops::CSyncCalcStreamKernel<int64_t>,
-                       ops::CSyncCalcStreamKernel<paddle::platform::float16>);
+                       ops::CSyncCalcStreamKernel<float, MLU>,
+                       ops::CSyncCalcStreamKernel<double, MLU>,
+                       ops::CSyncCalcStreamKernel<int, MLU>,
+                       ops::CSyncCalcStreamKernel<int64_t, MLU>,
+                       ops::CSyncCalcStreamKernel<plat::float16, MLU>);

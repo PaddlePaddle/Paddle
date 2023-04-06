@@ -31,10 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
 // Node1: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=1 GLOG_v=4 RANK_ID=1
 // DEVICE_ID=1 ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
 // Node2: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=0 GLOG_v=4 RANK_ID=0
