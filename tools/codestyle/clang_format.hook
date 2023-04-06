@@ -17,4 +17,4 @@ if ! [[ $version == *"$VERSION"* ]]; then
     pip install clang-format==13.0.0
 fi
 
-clang-format $@
+$(python -c 'import os, clang_format;print(os.path.join(clang_format.__path__[0],"data/bin/clang-format"))') $@
