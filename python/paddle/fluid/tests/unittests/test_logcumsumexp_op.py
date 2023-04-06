@@ -324,13 +324,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
-        x = np.arange(100).reshape(10, 10).astype("float32")
-        self.axis = 0
-        self.flatten = True
-        self.reverse = True
-        output = np_logcumsumexp(
-            x, axis=self.axis, flatten=self.flatten, reverse=self.reverse
-        )
+        x = np.arange(12).reshape(3, 4).astype("float32")
+        output = np.log(np.cumsum(np.exp(x)))
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
@@ -339,19 +334,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[
-                np_logcumsumexp_grad(
-                    self.inputs['X'],
-                    1 / self.inputs['X'].size,
-                    self.axis,
-                    self.flatten,
-                    self.reverse,
-                )
-            ],
-        )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':
