@@ -331,12 +331,12 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
-        input, attrs = self.input_and_attrs()
+        x, attrs = self.input_and_attrs()
         self.attrs = attrs
         if "dtype" in attrs:
             del attrs["dtype"]
-        output = np_logcumsumexp(input, **attrs)
-        self.inputs = {'X': convert_float_to_uint16(input)}
+        output = np_logcumsumexp(x, **attrs)
+        self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):

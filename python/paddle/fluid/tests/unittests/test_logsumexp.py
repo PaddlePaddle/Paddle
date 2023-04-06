@@ -172,7 +172,7 @@ class TestLogsumexp_FP16(TestLogsumexp):
         out_pad = logsumexp_wrapper(tensor_x)
         paddle.enable_static()
         np.testing.assert_allclose(
-            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-03
+            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-08
         )
 
     def test_check_grad(self):
@@ -181,7 +181,7 @@ class TestLogsumexp_FP16(TestLogsumexp):
         ref_x_grad = logsumexp_ref_grad(ref_x)
         x = self.inputs['X'].astype(np.float16)
         x_grad = logsumexp_op_grad(x)
-        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-02, atol=1e-02)
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
 
 
 @unittest.skipIf(

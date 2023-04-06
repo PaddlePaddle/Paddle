@@ -2163,7 +2163,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float16, float32 or float64, which
+        x (Tensor): The input Tensor with data type float16, float32, float64 or uint16, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2203,7 +2203,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
         )
 
         helper = LayerHelper('logsumexp', **locals())
@@ -3303,7 +3303,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, uint16. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3348,7 +3348,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], "logcumsumexp"
         )
 
         helper = LayerHelper('logcumsumexp', **locals())
