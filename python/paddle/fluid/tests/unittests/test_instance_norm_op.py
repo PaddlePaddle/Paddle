@@ -218,6 +218,12 @@ class PrimeNet(paddle.nn.Layer):
         return res
 
 
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
+
+
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward v.s Dygraph
@@ -235,7 +241,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-
+        net = apply_to_static(net, False)
         net = paddle.amp.decorate(models=net, level='O2')
 
         with paddle.amp.auto_cast(level='O2'):
