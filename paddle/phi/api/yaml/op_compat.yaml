@@ -153,6 +153,11 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_value
+  outputs :
+    out : Out
+  manual_signature : [assign_value]
+
 - op : atan
   inputs :
     x : X

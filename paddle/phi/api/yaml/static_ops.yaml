@@ -47,6 +47,17 @@
   inplace : (x -> out)
   backward : assign_grad
 
+- op : assign_value
+  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    data_type : dtype
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
