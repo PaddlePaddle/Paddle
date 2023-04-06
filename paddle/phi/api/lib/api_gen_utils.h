@@ -107,5 +107,17 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
 
 phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type);
 
+phi::DenseTensor* ProcessStridesBackup(phi::DenseTensor** tensor);
+
+std::vector<phi::DenseTensor*> ProcessStridesBackup(
+    std::vector<phi::DenseTensor*>* tensor);
+
+phi::DenseTensor* ProcessStridesBackup(phi::SelectedRows** tensor);
+
+void TransStride(phi::DenseTensor* from, phi::DenseTensor* to);
+void TransStride(const std::vector<phi::DenseTensor*>& from,
+                 const std::vector<phi::DenseTensor*>& to);
+void TransStride(phi::SelectedRows* from, phi::SelectedRows* to);
+
 }  // namespace experimental
 }  // namespace paddle
