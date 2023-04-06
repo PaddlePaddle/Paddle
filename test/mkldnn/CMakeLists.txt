@@ -14,6 +14,14 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+
+# NODE(Ruibiao): Remove it after static build is enabled by default.
+if(WITH_MKLDNN AND NOT WIN32)
+  py_test_modules(
+    test_dequantize_mkldnn_op_static_build MODULES test_dequantize_mkldnn_op
+    ENVS FLAGS_new_executor_static_build=true)
+endif()
+
 set_tests_properties(test_concat_mkldnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv3d_mkldnn_op PROPERTIES TIMEOUT 120)
 if(WITH_MKLDNN AND NOT WIN32)

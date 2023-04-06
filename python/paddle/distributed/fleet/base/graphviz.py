@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import logging
 import os
 import random
-import functools
 import subprocess
-import logging
 
 
 def crepr(v):
@@ -43,7 +43,7 @@ class Rank:
 
         return (
             '{'
-            + 'rank={};'.format(self.kind)
+            + f'rank={self.kind};'
             + ','.join([node.name for node in self.nodes])
             + '}'
         )
@@ -97,7 +97,7 @@ class Graph:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        logging.warning("write block debug graph to {}".format(image_path))
+        logging.warning(f"write block debug graph to {image_path}")
         return image_path
 
     def show(self, dot_path):
@@ -125,13 +125,11 @@ class Graph:
     def __str__(self):
         reprs = [
             'digraph G {',
-            'title = {}'.format(crepr(self.title)),
+            f'title = {crepr(self.title)}',
         ]
 
         for attr in self.attrs:
-            reprs.append(
-                "{key}={value};".format(key=attr, value=crepr(self.attrs[attr]))
-            )
+            reprs.append(f"{attr}={crepr(self.attrs[attr])};")
 
         reprs.append(self._rank_repr())
 
@@ -161,8 +159,7 @@ class Node:
             label=self.label,
             extra=','
             + ','.join(
-                "%s=%s" % (key, crepr(value))
-                for key, value in self.attrs.items()
+                f"{key}={crepr(value)}" for key, value in self.attrs.items()
             )
             if self.attrs
             else "",
@@ -191,8 +188,7 @@ class Edge:
             if not self.attrs
             else "["
             + ','.join(
-                "{}={}".format(attr[0], crepr(attr[1]))
-                for attr in self.attrs.items()
+                f"{attr[0]}={crepr(attr[1])}" for attr in self.attrs.items()
             )
             + "]",
         )
@@ -292,5 +288,5 @@ class GraphPreviewGenerator:
             source,
             target,
             color="#00000" if not highlight else "orange",
-            **kwargs
+            **kwargs,
         )

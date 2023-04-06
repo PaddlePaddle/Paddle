@@ -214,15 +214,6 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
-- op : bce_loss
-  args : (Tensor input, Tensor label)
-  output : Tensor
-  infer_meta :
-    func : BCELossInferMeta
-  kernel :
-    func : bce_loss
-  backward : bce_loss_grad
-
 - op : bilinear_tensor_product
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
   output : Tensor
@@ -843,38 +834,6 @@
   kernel :
     func : logcumsumexp
   backward : logcumsumexp_grad
-
-- op : logical_and
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_and
-
-- op : logical_not
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : logical_not
-
-- op : logical_or
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_or
-
-- op : logical_xor
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : logical_xor
 
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})

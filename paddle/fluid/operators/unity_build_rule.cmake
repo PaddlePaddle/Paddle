@@ -82,7 +82,6 @@ register_unity_group(
   diag_v2_op.cc
   dot_op.cc
   edit_distance_op.cc
-  empty_op.cc
   enqueue_op.cc
   erf_op.cc
   py_func_op.cc
@@ -223,7 +222,6 @@ register_unity_group(
   quantize_op.cc
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
-  randint_op.cc
   random_crop_op.cc
   randperm_op.cc
   range_op.cc
@@ -303,7 +301,6 @@ register_unity_group(
   cc
   smooth_l1_loss_op.cc
   uniform_random_batch_size_like_op.cc
-  uniform_random_op.cc
   unique_op.cc
   unique_with_counts_op.cc
   unpool_op.cc
@@ -504,7 +501,6 @@ register_unity_group(
   pull_box_sparse_op.cu)
 register_unity_group(
   cu
-  randint_op.cu
   random_crop_op.cu
   randperm_op.cu
   range_op.cu
@@ -555,7 +551,7 @@ register_unity_group(
 register_unity_group(
   cu
   smooth_l1_loss_op.cu
-  uniform_random_op.cu
+  uniform_random_batch_size_like_op.cu
   unstack_op.cu
   where_index_op.cu
   where_op.cu
