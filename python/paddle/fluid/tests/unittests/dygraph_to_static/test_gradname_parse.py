@@ -35,11 +35,12 @@ class SimpleNet(paddle.nn.Layer):
         self.bn1 = BatchNorm(10, param_attr=param_attr1, bias_attr=bias_attr1)
 
     def forward(self, x):
-        x = self.linear0(x)
-        x = self.bn0(x)
-        x = self.linear1(x)
-        x = self.bn1(x)
-        return x
+        x1 = self.linear0(x)
+        x2 = self.bn0(x1)
+        x3 = self.linear1(x2)
+        x4 = self.bn1(x3)
+        dx = paddle.grad(x4, x)
+        return dx[0]
 
 
 class TestGradNameParse(unittest.TestCase):
@@ -52,6 +53,7 @@ class TestGradNameParse(unittest.TestCase):
         )
         net = paddle.jit.to_static(net)
         inp = paddle.rand([100, 100], dtype="float32")
+        inp.stop_gradient = False
         out = net(inp)
         loss = out.mean()
         loss.backward()
