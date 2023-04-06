@@ -199,7 +199,7 @@ def weighted_sample_neighbors(
             out_neighbors,
             out_count,
             out_eids,
-        ) = _C_ops.graph_weighted_sample_neighbors(
+        ) = _C_ops.weighted_sample_neighbors(
             row,
             colptr,
             edge_weight,
@@ -213,34 +213,34 @@ def weighted_sample_neighbors(
         return out_neighbors, out_count
 
     check_variable_and_dtype(
-        row, "row", ("int32", "int64"), "graph_weighted_sample_neighbors"
+        row, "row", ("int32", "int64"), "weighted_sample_neighbors"
     )
     check_variable_and_dtype(
-        colptr, "colptr", ("int32", "int64"), "graph_weighted_sample_neighbors"
+        colptr, "colptr", ("int32", "int64"), "weighted_sample_neighbors"
     )
     check_variable_and_dtype(
         edge_weight,
         "edge_weight",
         ("float32"),
-        "graph_weighted_sample_neighbors",
+        "weighted_sample_neighbors",
     )
     check_variable_and_dtype(
         input_nodes,
         "input_nodes",
         ("int32", "int64"),
-        "graph_weighted_sample_neighbors",
+        "weighted_sample_neighbors",
     )
     if return_eids:
         check_variable_and_dtype(
-            eids, "eids", ("int32", "int64"), "graph_weighted_sample_neighbors"
+            eids, "eids", ("int32", "int64"), "weighted_sample_neighbors"
         )
 
-    helper = LayerHelper("graph_weighted_sample_neighbors", **locals())
+    helper = LayerHelper("weighted_sample_neighbors", **locals())
     out_neighbors = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_count = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
     helper.append_op(
-        type="graph_weighted_sample_neighbors",
+        type="weighted_sample_neighbors",
         inputs={
             "row": row,
             "colptr": colptr,

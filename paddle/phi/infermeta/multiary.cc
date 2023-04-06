@@ -3234,16 +3234,16 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void GraphWeightedSampleNeighborsInferMeta(const MetaTensor& row,
-                                           const MetaTensor& col_ptr,
-                                           const MetaTensor& edge_weight,
-                                           const MetaTensor& x,
-                                           const MetaTensor& eids,
-                                           int sample_size,
-                                           bool return_eids,
-                                           MetaTensor* out,
-                                           MetaTensor* out_count,
-                                           MetaTensor* out_eids) {
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids) {
   // GSN: GraphSampleNeighbors
   auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
     if (dims.size() == 2) {

@@ -36,7 +36,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/graph_weighted_sample_neighbors_kernel.h"
+#include "paddle/phi/kernels/weighted_sample_neighbors_kernel.h"
 #define SAMPLE_SIZE_THRESHOLD 1024
 
 namespace phi {
@@ -310,18 +310,17 @@ __launch_bounds__(BLOCK_SIZE) __global__
 }
 
 template <typename T, typename Context>
-void GraphWeightedSampleNeighborsKernel(
-    const Context& dev_ctx,
-    const DenseTensor& row,
-    const DenseTensor& col_ptr,
-    const DenseTensor& edge_weight,
-    const DenseTensor& x,
-    const paddle::optional<DenseTensor>& eids,
-    int sample_size,
-    bool return_eids,
-    DenseTensor* out,
-    DenseTensor* out_count,
-    DenseTensor* out_eids) {
+void WeightedSampleNeighborsKernel(const Context& dev_ctx,
+                                   const DenseTensor& row,
+                                   const DenseTensor& col_ptr,
+                                   const DenseTensor& edge_weight,
+                                   const DenseTensor& x,
+                                   const paddle::optional<DenseTensor>& eids,
+                                   int sample_size,
+                                   bool return_eids,
+                                   DenseTensor* out,
+                                   DenseTensor* out_count,
+                                   DenseTensor* out_eids) {
   auto* row_data = row.data<T>();
   auto* col_ptr_data = col_ptr.data<T>();
   auto* weights_data = edge_weight.data<float>();
@@ -534,9 +533,9 @@ void GraphWeightedSampleNeighborsKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_weighted_sample_neighbors,
+PD_REGISTER_KERNEL(weighted_sample_neighbors,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphWeightedSampleNeighborsKernel,
+                   phi::WeightedSampleNeighborsKernel,
                    int,
                    int64_t) {}

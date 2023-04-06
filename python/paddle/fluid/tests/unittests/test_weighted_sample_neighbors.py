@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 
-class TestGraphWeightedSampleNeighbors(unittest.TestCase):
+class TestWeightedSampleNeighbors(unittest.TestCase):
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))

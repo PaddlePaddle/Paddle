@@ -652,15 +652,6 @@
     func : gelu
   backward : gelu_grad
 
-- op : graph_weighted_sample_neighbors
-  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
-  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
-  infer_meta :
-    func : GraphWeightedSampleNeighborsInferMeta
-  kernel :
-    func : graph_weighted_sample_neighbors
-  optional: eids
-
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
   output : Tensor(out)
@@ -1792,6 +1783,15 @@
     data_type: input
   intermediate: warprnntgrad
   backward : warprnnt_grad
+
+- op : weighted_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
+  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : WeightedSampleNeighborsInferMeta
+  kernel :
+    func : weighted_sample_neighbors
+  optional: eids
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

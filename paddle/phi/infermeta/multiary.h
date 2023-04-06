@@ -304,16 +304,16 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    MetaTensor* out_count,
                                    MetaTensor* out_eids);
 
-void GraphWeightedSampleNeighborsInferMeta(const MetaTensor& row,
-                                           const MetaTensor& col_ptr,
-                                           const MetaTensor& edge_weight,
-                                           const MetaTensor& x,
-                                           const MetaTensor& eids,
-                                           int sample_size,
-                                           bool return_eids,
-                                           MetaTensor* out,
-                                           MetaTensor* out_count,
-                                           MetaTensor* out_eids);
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids);
 
 void HSigmoidLossInferMeta(const MetaTensor& x,
                            const MetaTensor& label,
