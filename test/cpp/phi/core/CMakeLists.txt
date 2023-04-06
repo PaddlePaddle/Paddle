@@ -55,13 +55,13 @@ endif()
 cc_test(
   test_string_tensor
   SRCS test_string_tensor.cc
-  DEPS string_tensor)
+  DEPS phi)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 
 cc_test(
   test_tensor_array
   SRCS test_tensor_array.cc
-  DEPS tensor_array)
+  DEPS phi)
 
 if(WITH_GPU)
   nv_test(
