@@ -109,7 +109,7 @@ void AffineGridInferMeta(const MetaTensor& input,
           "But received third dimesion=[%d], dimesions=[%s]",
           theta_dims[2],
           theta_dims));
-  if (outputShape.GetData().size() == 4) {
+  if (outputShape.GetData().size() == 4 && !outputShape.FromTensor()) {
     // N * H * W * 2
     output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
   } else {
