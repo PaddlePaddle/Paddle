@@ -92,7 +92,7 @@ REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumInplaceInferer);
 
 PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
-                          GPU,
+                          CPU,
                           ALL_LAYOUT,
                           ops::MpAllReduceSumCPUKernel,
                           float,
