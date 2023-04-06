@@ -164,7 +164,7 @@ class EagerLayoutTransformer {
       for (size_t i = 0; i < out_tensor->size(); i++) {
         auto meta = phi::DenseTensorUtils::GetMutableMeta(
             static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()));
-        meta =->layout = DesiredLayout();
+        meta->layout = DesiredLayout();
         meta->strides = meta->calc_strides(meta->dims, meta->layout);
       }
     }
