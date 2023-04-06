@@ -153,6 +153,11 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_value
+  outputs :
+    out : Out
+  manual_signature : [assign_value]
+
 - op : atan
   inputs :
     x : X
@@ -448,6 +453,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : decode_jpeg
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -601,6 +612,15 @@
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : empty
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
 
 - op : equal
   inputs :
@@ -1545,6 +1565,16 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
+- op : randint
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  manual_signature : [randint]
+
 - op : real
   backward : real_grad
   inputs :
@@ -2056,6 +2086,23 @@
     x : X
   outputs :
     out : Y
+
+- op : uniform (uniform_random)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+      min :
+        data_type : float
+        support_tensor : true
+      max :
+        data_type : float
+        support_tensor : true
+  manual_signature : [uniform]
 
 - op : unique_consecutive
   inputs :
