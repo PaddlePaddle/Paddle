@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import logging
+
+_logger = get_logger(logging.INFO)
+
 import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
@@ -69,16 +73,43 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
             )
             assert 'Seed' in kwargs, "input [{}] is not given".format('Seed')
 
-            if (
-                len(kwargs['Seed']) > 0
-                or len(src_op.input("Seed")) > 0
-                or (src_op.attr("fix_seed") and src_op.attr("seed"))
-            ):
-                print(
+            if src_op.attr("fix_seed") and src_op.attr("seed"):
+                _logger.info(
                     "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
                         src_op
                     )
                 )
+            # NOTE Adopt for recompute
+            # If user already set seed, We should not modify it. But if the seed is added by recompute pass, it should be under control.
+            # TODO  in future recompute pass should happen after parallel partitione. and remove this at that time.
+            elif len(kwargs['Seed']) > 0 or len(src_op.input("Seed")) > 0:
+                seed_var_name = kwargs['Seed'][0]
+                if seed_var_name.startswith('rc_seed'):
+                    pre_op = main_block.ops[-1]
+                    assert (
+                        pre_op.type == "seed"
+                        and pre_op.attr("rng_name") is None
+                    ), f"found exception op {str(pre_op)}"
+
+                    # determinate rng
+                    X_var = main_block._var_recursive(kwargs['X'][0])
+                    X_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                        X_var.name
+                    )
+                    process_mesh = op_dist_attr.process_mesh
+                    rng_name = determinate_rng(
+                        rank_id, X_dims_mapping, process_mesh
+                    )
+                    # make recompute seed under control
+                    pre_op.set_attr("rng_name", rng_name)
+                    pre_op.set_attr("deterministic", True)
+                    pre_op.set_attr("force_cpu", True)
+                else:
+                    _logger.info(
+                        "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
+                            src_op
+                        )
+                    )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
             else:
@@ -87,7 +118,9 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 X_dims_mapping = op_dist_attr.get_input_dims_mapping(X_var.name)
                 process_mesh = op_dist_attr.process_mesh
 
-                rng_name = determinate_rng(X_var, X_dims_mapping, process_mesh)
+                rng_name = determinate_rng(
+                    rank_id, X_dims_mapping, process_mesh
+                )
                 assert rng_name is not None and rng_name != ""
 
                 # insert seed op
@@ -131,6 +164,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 op_dist_attr.set_input_dist_attr(
                     seed_var.name, seed_var_dist_attr
                 )
+                kwargs['Seed'] = [seed_var.name]
 
         DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
 

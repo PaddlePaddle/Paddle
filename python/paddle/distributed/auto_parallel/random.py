@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 
 import paddle
 
 from ..utils.log_utils import get_logger
+from .process_mesh import retrive_unique_id_for_process_mesh
 from .utils import _get_idx_in_axis
 
-_logger = get_logger
+_logger = get_logger(logging.INFO)
 
 _rng_name_to_seed = {}
 _enable_random_control = False
@@ -70,7 +72,7 @@ def determinate_rng(rank, dims_mapping, process_mesh):
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
     # instead of using offsets to coodinate seed across devices.
-    if i > 4:
+    if len(process_mesh.shape) > 4:
         raise NotImplementedError(
             "Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {}".format(
                 str(process_mesh)
@@ -79,10 +81,15 @@ def determinate_rng(rank, dims_mapping, process_mesh):
     global _basic_seed
     seed_ = _basic_seed
 
-    sharding_expr = f'mesh:{process_mesh.unique_id}'
-    seed_ += mesh_offset * (process_mesh.unique_id + 1)
+    # FIXME
+    # unique_id = process_mesh.unique_id
+    unique_id = retrive_unique_id_for_process_mesh(
+        process_mesh.shape, process_mesh.process_ids
+    )
+    sharding_expr = f'mesh:{unique_id}'
+    seed_ += _mesh_offset * (unique_id + 1)
 
-    for i in range(len(process_mesh._shape)):
+    for i in range(len(process_mesh.shape)):
         if i not in dims_mapping:
             relative_idx = -1
         else:
