@@ -448,6 +448,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : decode_jpeg
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :

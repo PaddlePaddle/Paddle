@@ -57,6 +57,16 @@
     func : broadcast
     param: [x, root]
 
+- op : decode_jpeg
+  args : (Tensor x, str mode = "unchanged")
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+    param : [x, mode]
+  kernel :
+    func : decode_jpeg
+    param : [x, mode]
+
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
   output : Tensor
