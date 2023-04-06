@@ -495,8 +495,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       } else {
         output->Resize({batch_size, embedding_size - cvm_offset});
       }
-      output_data[i] =
-          reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
+      output_data[i] = reinterpret_cast<T *>(output->data<T>());
     }
 
     FusedSeqpoolCVM(ctx,
@@ -563,8 +562,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
       auto *out_grad = out_grads[i];
       out_grads_data[i] = reinterpret_cast<const T *>(out_grad->data<T>());
 
-      in_grads_data[i] =
-          reinterpret_cast<T *>(in_grad->mutable_data<T>(ctx.GetPlace()));
+      in_grads_data[i] = reinterpret_cast<T *>(in_grad->data<T>());
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
     }
     FusedSeqpoolCVMGrad(ctx,
