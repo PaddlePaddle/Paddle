@@ -25,4 +25,5 @@ PD_REGISTER_KERNEL(erf_grad,
                    phi::ErfGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
