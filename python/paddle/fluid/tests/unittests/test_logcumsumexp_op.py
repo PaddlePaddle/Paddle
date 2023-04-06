@@ -320,30 +320,38 @@ class TestLogcumsumexpFP16(unittest.TestCase):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float32).reshape(10, 10), {
-            'axis': 0,
-            'flatten': True,
-            'reverse': True,
-        }
-
     def setUp(self):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
-        x, attrs = self.input_and_attrs()
-        self.attrs = attrs
-        if "dtype" in attrs:
-            del attrs["dtype"]
-        output = np_logcumsumexp(x, **attrs)
+        x = np.arange(100).reshape(10, 10).astype("float32")
+        self.axis = 0
+        self.flatten = True
+        self.reverse = True
+        output = np_logcumsumexp(
+            x, axis=self.axis, flatten=self.flatten, reverse=self.reverse
+        )
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(0))
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                np_logcumsumexp_grad(
+                    self.inputs['X'],
+                    1 / self.inputs['X'].size,
+                    self.axis,
+                    self.flatten,
+                    self.reverse,
+                )
+            ],
+        )
 
 
 if __name__ == '__main__':
