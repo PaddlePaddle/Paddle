@@ -82,7 +82,7 @@ __global__ void CEmbeddingGrad(T *table,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -136,7 +136,7 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -195,17 +195,27 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(c_embedding,
-                        ops::CEmbeddingCUDAKernel<float>,
-                        ops::CEmbeddingCUDAKernel<double>,
+
+PD_REGISTER_STRUCT_KERNEL(c_embedding,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingCUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::CEmbeddingCUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::CEmbeddingCUDAKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(c_embedding_grad,
-                        ops::CEmbeddingGradCUDAKernel<float>,
-                        ops::CEmbeddingGradCUDAKernel<double>,
+                          plat::float16) {
+}
+
+PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingGradCUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::CEmbeddingGradCUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::CEmbeddingGradCUDAKernel<plat::float16>);
+                          plat::float16) {
+}
