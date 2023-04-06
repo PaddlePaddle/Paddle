@@ -226,13 +226,14 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MultiDeviceContextPool& pool =
+      platform::MultiDeviceContextPool::Instance();
   for (auto iter : node_->vars_to_dtype()) {
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;
     vars->set_name(var_name);
     std::ostringstream ss;
-    auto& dev_ctx = *pool.Get(place_);
+    auto& dev_ctx = *pool.Get(place_, carrier_->carrier_id());
     auto* var = scope->FindVar(var_name);
     PADDLE_ENFORCE(
         var,
@@ -281,6 +282,7 @@ void ComputeInterceptor::RunOps() {
                           "microbatch_scopes, but recevice scope index %ld",
                           microbatch_scopes_.size(),
                           cur_scope_id_));
+    VLOG(3) << "ComputeInterceptor carrier id " << carrier_->carrier_id();
     op->Run(*microbatch_scopes_[cur_scope_id_], place_, carrier_->carrier_id());
     if (gc_) {
       framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
@@ -332,10 +334,11 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
                         microbatch_scopes_.size(),
                         scope_id));
   auto* scope = microbatch_scopes_[scope_id];
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::MultiDeviceContextPool& pool =
+      platform::MultiDeviceContextPool::Instance();
   for (const auto& var_iter : msg.vars_list()) {
     const std::string& name = var_iter.name();
-    auto& dev_ctx = *pool.Get(place_);
+    auto& dev_ctx = *pool.Get(place_, carrier_->carrier_id());
     std::istringstream ss(var_iter.stensor());
     auto* var = scope->Var(name);
     auto* tensor = var->GetMutable<phi::DenseTensor>();

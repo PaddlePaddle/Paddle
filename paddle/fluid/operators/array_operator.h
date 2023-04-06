@@ -46,8 +46,9 @@ class ArrayOp : public framework::OperatorBase {
                           i_tensor.dims()));
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    platform::MultiDeviceContextPool &pool =
+        platform::MultiDeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place, device_context_id_);
 
     size_t offset;
     if (platform::is_gpu_place(i_tensor.place()) ||
