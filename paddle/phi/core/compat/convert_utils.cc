@@ -99,6 +99,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
         return phi::CustomPlace(
             device_type,
             set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
+      } else if (backend == Backend::CUSTOM) {
+        return phi::CustomPlace();
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(

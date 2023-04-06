@@ -35,7 +35,7 @@ class TestElementwiseOp(OpTest):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -64,7 +64,7 @@ class TestElementwiseOp(OpTest):
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -79,12 +79,12 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -99,12 +99,12 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -119,12 +119,12 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -144,7 +144,7 @@ class TestBF16ElementwiseOp(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -165,7 +165,7 @@ class TestBF16ElementwiseOp(OpTest):
     def if_check_prim(self):
         self.check_prim = True
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -371,7 +371,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def init_base_dtype(self):
         self.dtype = np.float64
@@ -424,7 +424,7 @@ class TestComplexElementwiseSubOp(OpTest):
             check_prim=self.check_prim,
         )
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def if_check_prim(self):
@@ -446,7 +446,7 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def if_check_prim(self):

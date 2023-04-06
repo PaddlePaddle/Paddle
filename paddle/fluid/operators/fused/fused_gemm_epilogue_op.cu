@@ -130,5 +130,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
                                      paddle::platform::float16>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
+                                     paddle::platform::bfloat16>);
 #endif

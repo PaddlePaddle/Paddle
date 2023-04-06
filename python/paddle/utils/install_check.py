@@ -272,7 +272,7 @@ def run_check():
         device_list = paddle.static.npu_places()
     else:
         device_str = "CPU"
-        device_list = paddle.static.cpu_places(device_count=2)
+        device_list = paddle.static.cpu_places(device_count=1)
     device_count = len(device_list)
 
     _run_static_single(use_cuda, use_xpu, use_npu)
@@ -280,12 +280,13 @@ def run_check():
     print("PaddlePaddle works well on 1 {}.".format(device_str))
 
     try:
-        _run_parallel(device_list)
-        print(
-            "PaddlePaddle works well on {} {}s.".format(
-                device_count, device_str
+        if len(device_list) > 1:
+            _run_parallel(device_list)
+            print(
+                "PaddlePaddle works well on {} {}s.".format(
+                    device_count, device_str
+                )
             )
-        )
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
@@ -307,3 +308,4 @@ def run_check():
                 device_str
             )
         )
+        raise e

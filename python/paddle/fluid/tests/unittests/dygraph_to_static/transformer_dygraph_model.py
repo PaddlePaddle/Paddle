@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
 from paddle.fluid.dygraph import Layer, to_variable
-from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Linear
 
@@ -857,13 +856,13 @@ class Transformer(Layer):
             trg_pos = layers.fill_constant(
                 shape=trg_word.shape, dtype="int64", value=i
             )
-            caches = map_structure(
+            caches = paddle.utils.map_structure(
                 merge_batch_beams, caches
             )  # TODO: modified for dygraph2static
             logits = self.decoder(
                 trg_word, trg_pos, None, trg_src_attn_bias, enc_output, caches
             )
-            caches = map_structure(split_batch_beams, caches)
+            caches = paddle.utils.map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
                 paddle.log(paddle.nn.functional.softmax(logits))
             )
@@ -883,7 +882,7 @@ class Transformer(Layer):
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
-            caches = map_structure(
+            caches = paddle.utils.map_structure(
                 lambda x: gather(x, beam_indices, batch_pos), caches
             )
             log_probs = gather(log_probs, topk_indices, batch_pos)

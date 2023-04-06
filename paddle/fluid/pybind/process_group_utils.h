@@ -60,11 +60,17 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
     auto *out_data = out->data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
+    phi::stream::Stream stream_wrapper(context.GetPlace(), context.stream());
+
     for (const auto &tensor : in) {
       const auto *in_data = tensor.data<T>();
-      auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
-      offset += sz;
+      if (out_data + offset != in_data) {
+        device->MemoryCopyD2D(out_data + offset,
+                              in_data,
+                              tensor.numel() * sizeof(T),
+                              &stream_wrapper);
+      }
+      offset += tensor.numel();
     }
   }
 };
@@ -78,11 +84,17 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
     auto *in_data = in.data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
+    phi::stream::Stream stream_wrapper(context.GetPlace(), context.stream());
+
     for (auto *p_tensor : *out) {
       auto *out_data = p_tensor->data<T>();
-      auto sz = p_tensor->numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
-      offset += sz;
+      if (out_data != in_data + offset) {
+        device->MemoryCopyD2D(out_data,
+                              in_data + offset,
+                              p_tensor->numel() * sizeof(T),
+                              &stream_wrapper);
+      }
+      offset += p_tensor->numel();
     }
   }
 };

@@ -548,15 +548,15 @@ Meanwhile, we need to simplify the writing method of Kernel registration. The ex
 
     ```c++
     REGISTER_OP_CPU_KERNEL(
-        scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
-        ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);
+        scale, ops::ScaleKernel<phi::CPUContext, float>,
+        ops::ScaleKernel<phi::CPUContext, double>,
+        ops::ScaleKernel<phi::CPUContext,
+                         phi::dtype::bfloat16>,
+        ops::ScaleKernel<phi::CPUContext, uint8_t>,
+        ops::ScaleKernel<phi::CPUContext, int8_t>,
+        ops::ScaleKernel<phi::CPUContext, int16_t>,
+        ops::ScaleKernel<phi::CPUContext, int>,
+        ops::ScaleKernel<phi::CPUContext, int64_t>);
     ```
 
 2. Paddle-Lite's kernel registration method declares input and output information for each Kernel, but since the kernel of each data type is different, it will also cause redundancy in the writing method. As you can see in the following code, except for the data type, other information is basically redundant.

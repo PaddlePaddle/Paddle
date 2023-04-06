@@ -335,7 +335,7 @@ message DistributedStrategy {
   optional float last_comm_group_size_MB = 27 [ default = 1 ];
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
-  optional bool without_graph_optimization = 30 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = true ];
   optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];

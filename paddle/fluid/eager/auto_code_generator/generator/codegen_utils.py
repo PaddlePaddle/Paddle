@@ -62,6 +62,12 @@ ops_to_fill_zero_for_empty_grads = set(
         "concat_double_grad",
         "expand_grad",
         "argsort_grad",
+        "eigh_grad",
+        "add_grad",
+        "subtract_grad",
+        "multiply_grad",
+        "divide_grad",
+        "matmul_grad",
     ]
 )
 

@@ -165,7 +165,7 @@ GradNodePyLayer::operator()(
           this->OutputMeta()[i][0].IsStopGradient(),
           true,
           paddle::platform::errors::InvalidArgument(
-              "%s's backward function should not return empyt at %d position.",
+              "%s's backward function should not return empty at %d position.",
               name(),
               i));
       grad_out.push_back({});

@@ -109,7 +109,6 @@ class ParameterServerRuntime(RuntimeBase):
             assert isinstance(each_var, Variable)
 
             origin_varname, _, _ = _get_varname_parts(each_var.name)
-
             new_var = paddle.static.io._clone_var_in_block(load_block, each_var)
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):

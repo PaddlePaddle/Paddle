@@ -375,9 +375,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
           num_classes_per_device_ptr,
           num_classes_per_device_ptr,
           num_classes_per_device.numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(
-                  num_classes_per_device.dtype())),
+          phi::ToNCCLDataType(num_classes_per_device.dtype()),
           ncclSum,
           comm->comm(),
           calcu_stream));

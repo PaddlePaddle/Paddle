@@ -26,6 +26,8 @@ import paddle.fluid.dygraph as dg
 class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
         self.python_api = paddle.erf
         self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
@@ -41,7 +43,7 @@ class TestErfOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestErfLayer(unittest.TestCase):

@@ -693,6 +693,56 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* dOut,
+                  const DenseTensor* ddX,
+                  DenseTensor* dX,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "SoftplusDoubleGrad"));
+    auto x_beta = static_cast<T>(beta) * x;
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SoftplusDoubleGrad"));
+
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SoftplusDoubleGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SoftplusDoubleGrad"));
+      // ddx * dout * beta * exp(x_beta) / (exp(x_beta) + 1) ^ 2, if x_beta
+      // <= threshold
+      // 0, if x_beta > threshold
+      dx.device(*d) =
+          (x_beta > static_cast<T>(threshold))
+              .select(x.constant(static_cast<T>(0)),
+                      ddx * dout * static_cast<T>(beta) * x_beta.exp() /
+                          (x_beta.exp() + static_cast<T>(1))
+                              .pow(static_cast<T>(2)));
+    }
+
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SoftplusDoubleGrad"));
+      // ddx / (1 + exp(-x_beta)), if x_beta <= threshold
+      // ddx, if x_beta > threshold
+      ddout.device(*d) =
+          (x_beta > static_cast<T>(threshold))
+              .select(ddx, ddx / (static_cast<T>(1) + (-x_beta).exp()));
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // Tangent(x) = tan(x)
 template <typename T>
 struct TanFunctor : public BaseActivationFunctor<T> {

@@ -27,9 +27,11 @@ class TestSplitOp(OpTest):
         self.python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
+            self.enable_cinn = False
             x = np.random.random((4, 5, 6)).astype(np.float32)
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': convert_float_to_uint16(x)}
@@ -58,7 +60,7 @@ class TestSplitOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 # test with attr(num)
@@ -67,6 +69,7 @@ class TestSplitOp_2(OpTest):
         self.python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -96,7 +99,7 @@ class TestSplitOp_2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 # attr(axis) is Tensor
@@ -189,6 +192,8 @@ class TestSplitOp_unk_section(OpTest):
         self.python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -218,7 +223,7 @@ class TestSplitOp_unk_section(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 class TestSplitByrefOp(OpTest):

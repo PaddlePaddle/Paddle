@@ -113,6 +113,16 @@ struct MemoryInterface {
    */
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  /**
+   * @brief get the memory usage of current GPU device.
+   *
+   * @param[size_t] available  device available memory to alloc
+   * @param[size_t] total      device total memory
+   */
+  void (*gpu_memory_usage)(size_t* available, size_t* total);
+#endif
 };
 
 class MemoryUtils {
@@ -234,6 +244,18 @@ class MemoryUtils {
     return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void GpuMemoryUsage(size_t* available, size_t* total) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NOT_NULL(
+        memory_method_->gpu_memory_usage,
+        phi::errors::Unavailable(
+            "gpu_memory_usage method in memory_method_ is not initiazed "
+            "yet. You need init it first."));
+    return memory_method_->gpu_memory_usage(available, total);
+  }
+#endif
+
   void CheckMemoryMethod() {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
@@ -288,7 +310,13 @@ void Copy(const Place& dst_place,
           const Place& src_place,
           const void* src,
           size_t num);
+
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void GpuMemoryUsage(size_t* available, size_t* total);
+#endif
+
 }  // namespace memory_utils
 
 }  // namespace phi

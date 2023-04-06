@@ -38,7 +38,7 @@ class TestElementwiseAddOp(OpTest):
         self.init_kernel_type()
         self.init_axis()
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -105,7 +105,7 @@ class TestElementwiseAddOp(OpTest):
     def if_check_prim(self):
         self.check_prim = self.axis == -1
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -115,7 +115,7 @@ class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -182,7 +182,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -204,7 +204,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             place, ['X'], 'Out', no_grad_set=set('Y'), check_prim=True
         )
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -481,7 +481,7 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
         self.y = np.random.rand(100, 1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 100, 1)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 

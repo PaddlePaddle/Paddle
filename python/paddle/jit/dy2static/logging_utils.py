@@ -17,7 +17,7 @@ import threading
 
 from paddle.fluid import log_helper
 
-from .utils import ast_to_source_code
+from .ast_utils import ast_to_source_code
 
 __all__ = []
 

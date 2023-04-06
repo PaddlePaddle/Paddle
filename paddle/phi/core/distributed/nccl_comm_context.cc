@@ -53,5 +53,17 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   stream));
 }
 
+void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor,
+                                gpuStream_t stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllGather(in_tensor.data(),
+                                  out_tensor->data(),
+                                  in_tensor.numel(),
+                                  ToNCCLDataType(in_tensor.type()),
+                                  nccl_comm_,
+                                  stream));
+}
+
 }  // namespace distributed
 }  // namespace phi

@@ -52,7 +52,7 @@ class UnaryOpConverter : public OpConverter {
     nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
     auto op_pair = ops.find(op_type_);
-    nvinfer1::ILayer* layer;
+    nvinfer1::ILayer* layer = nullptr;
 #if !IS_TRT_VERSION_GE(8500)
     nvinfer1::DataType org_type = input_tensor->getType();
     bool cast = org_type == nvinfer1::DataType::kINT8 ||

@@ -15,7 +15,6 @@
 from functools import reduce
 
 import paddle
-import paddle.fluid.layers.utils as utils
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
@@ -589,7 +588,7 @@ class Inserter:
         attrs['value'] = int("1")
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant'
         )
         fillconstant_op = block._insert_op(

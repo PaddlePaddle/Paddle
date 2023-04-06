@@ -798,21 +798,13 @@ class DataLoader:
                 # Define network
                 loss = simple_net(image, label)
 
-                # Set data source of DataLoader
-                #
-                # If DataLoader is iterable, places must be given and the number of places must be the same with device number.
-                #  - If you are using GPU, call `paddle.static.cuda_places()` to get all GPU places.
-                #  - If you are using CPU, call `paddle.static.cpu_places()` to get all CPU places.
-                #
-                # If DataLoader is not iterable, places can be None.
                 places = static.cuda_places() if USE_GPU else static.cpu_places()
                 set_data_source(loader, places)
 
                 exe = static.Executor(places[0])
                 exe.run(static.default_startup_program())
 
-                prog = static.CompiledProgram(static.default_main_program()).with_data_parallel(loss_name=loss.name)
-
+                prog = static.CompiledProgram(static.default_main_program())
                 if loader.iterable:
                     train_iterable(exe, prog, loss, loader)
                 else:
@@ -890,54 +882,6 @@ class DataLoader:
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-        Examples 3:
-
-            .. code-block:: python
-
-                '''
-                Example of `drop_last` using in static graph multi-cards mode
-                '''
-                import paddle
-                import paddle.static as static
-                import numpy as np
-                import os
-
-                # We use 2 CPU cores to run inference network
-                os.environ['CPU_NUM'] = '2'
-
-                paddle.enable_static()
-
-                # The data source has only 3 batches, which can not be
-                # divided evenly to each CPU core
-                def batch_generator():
-                    for i in range(3):
-                        yield np.array([i+1]).astype('float32'),
-
-                x = static.data(name='x', shape=[None], dtype='float32')
-                y = x * x
-
-                def run_inference(drop_last):
-                    loader = paddle.io.DataLoader.from_generator(feed_list=[x],
-                            capacity=8, drop_last=drop_last)
-                    loader.set_batch_generator(batch_generator, static.cpu_places())
-
-                    exe = static.Executor(paddle.CPUPlace())
-                    prog = static.CompiledProgram(static.default_main_program())
-                    prog = prog.with_data_parallel()
-
-                    result = []
-                    for data in loader():
-                        each_ret, = exe.run(prog, feed=data, fetch_list=[y])
-                        result.extend(each_ret)
-                    return result
-
-                # Set drop_last to True, so that the last batch whose
-                # number is less than CPU core number would be discarded.
-                print(run_inference(drop_last=True)) # [1.0, 4.0]
-
-                # Set drop_last to False, so that the last batch whose
-                # number is less than CPU core number can be tested.
-                print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
         if _non_static_mode():
             return DygraphGeneratorLoader(

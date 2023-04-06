@@ -36,7 +36,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=False)
+            self.check_output()
 
         def test_errors(self):
             paddle.enable_static()

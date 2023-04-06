@@ -31,7 +31,6 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
             "AdaptiveLocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
@@ -215,7 +214,6 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
             "LocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'

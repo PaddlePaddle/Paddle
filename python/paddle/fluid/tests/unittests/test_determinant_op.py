@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -30,10 +30,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_eager=True)
+        self.check_grad(['Input'], ['Out'])
 
     def init_data(self):
         np.random.seed(0)
@@ -95,13 +95,11 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(
-            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
-        )
+        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
         np.random.seed(0)

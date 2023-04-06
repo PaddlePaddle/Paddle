@@ -369,35 +369,33 @@ void DeviceInterface::BlasAXPBY(size_t dev_id,
 }
 
 // profiler
-void DeviceInterface::ProfilerInitialize(
-    paddle::platform::TraceEventCollector* collector, void** user_data) {
+void DeviceInterface::ProfilerInitialize(phi::TraceEventCollector* collector,
+                                         void** user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerFinalize(
-    paddle::platform::TraceEventCollector* collector, void* user_data) {
+void DeviceInterface::ProfilerFinalize(phi::TraceEventCollector* collector,
+                                       void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::ProfilerPrepareTracing(
-    paddle::platform::TraceEventCollector* collector, void* user_data) {
+    phi::TraceEventCollector* collector, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerStartTracing(
-    paddle::platform::TraceEventCollector* collector, void* user_data) {
+void DeviceInterface::ProfilerStartTracing(phi::TraceEventCollector* collector,
+                                           void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::ProfilerStopTracing(
-    paddle::platform::TraceEventCollector* collector, void* user_data) {
+void DeviceInterface::ProfilerStopTracing(phi::TraceEventCollector* collector,
+                                          void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::ProfilerCollectTraceData(
-    paddle::platform::TraceEventCollector* collector,
-    uint64_t start_ns,
-    void* user_data) {
+    phi::TraceEventCollector* collector, uint64_t start_ns, void* user_data) {
   INTERFACE_UNIMPLEMENT;
 }
 

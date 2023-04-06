@@ -238,8 +238,11 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         saved_mean = helper.create_variable_for_type_inference(
             dtype=param_dtype, stop_gradient=True
         )
@@ -348,15 +351,18 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        dtype = x.dtype
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         mean_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
         variance_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
-        layer_norm_out = helper.create_variable_for_type_inference(dtype)
+        layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
         helper.append_op(
             type="layer_norm",

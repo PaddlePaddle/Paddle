@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 
+#include <gloo/allgather.h>
 #include <gloo/broadcast.h>
 #include <gloo/types.h>
 
@@ -56,5 +57,15 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
   gloo::broadcast(opts);
 }
 
+void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
+                                const phi::DenseTensor& in_tensor) {
+  // gloo only uses CPU now
+
+  gloo::AllgatherOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  gloo::allgather(opts);
+}
 }  // namespace distributed
 }  // namespace phi

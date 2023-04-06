@@ -11,7 +11,7 @@ paddle2onnx>=0.9.6
 scipy>=1.6
 prettytable
 distro
-numpy>=1.20,<1.22
+numpy>=1.20
 autograd==1.4
 librosa==0.8.1
 parameterized

@@ -609,8 +609,7 @@ paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
     return ::pybind11::handle(obj).cast<paddle::CustomOpKernelContext>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be "
-        "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
+        "argument (position %d) must be CustomOpKernelContext, "
         "but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));

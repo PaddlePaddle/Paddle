@@ -23,6 +23,7 @@ from paddle.fluid import core
 SEED = 1
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
+paddle.enable_static()
 
 
 # random seed must set before configuring the network.
@@ -207,7 +208,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
             test_program.block(0).var(hidden1.name).stop_gradient, True
         )
         self.assertEqual(
-            test_program.block(0).var(hidden2.name).stop_gradient, False
+            test_program.block(0).var(hidden2.name).stop_gradient, True
         )
 
 

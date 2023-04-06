@@ -120,7 +120,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         gc_vars = core._get_eager_deletion_vars(
             fluid.default_main_program().desc, [loss.name]
         )
-        self.assertEqual(len(gc_vars), 5)
+        self.assertEqual(len(gc_vars), 3)
 
         exe = Executor(self.place)
         exe.run(fluid.default_startup_program())

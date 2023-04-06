@@ -592,64 +592,6 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
         return rnn_1()
 
 
-class EagerDeletionRecurrentOpParallelExecutorTest(
-    EagerDeletionRecurrentOpTest1
-):
-    '''
-    Test RNNOp with ParallelExecutor
-    equation:
-        h_t = ( x_t + h_{t-1} ) / scale
-    vars:
-        - x
-    memories:
-        - h
-    outputs:
-        - h
-    '''
-
-    def forward(self):
-        self.feed_map = {
-            x: create_tensor(getattr(self.py_rnn, x), self.place)
-            for x in self.data_field
-        }
-
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.enable_inplace = True
-        exec_strategy = fluid.ExecutionStrategy()
-        parallel_exe = fluid.ParallelExecutor(
-            use_cuda=False,
-            main_program=self.main_program,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
-        )
-        out = parallel_exe.run(feed=self.feed_map, fetch_list=[self.output])
-        return out[0]
-
-    def backward(self):
-        self.feed_map = {
-            x: create_tensor(getattr(self.py_rnn, x), self.place)
-            for x in self.data_field
-        }
-        fetch_list = [
-            self.main_program.global_block().var(grad_var_name(x))
-            for x in self.data_field
-        ]
-
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.enable_inplace = True
-        exec_strategy = fluid.ExecutionStrategy()
-        parallel_exe = fluid.ParallelExecutor(
-            use_cuda=False,
-            loss_name=self.output.name,
-            main_program=self.main_program,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
-        )
-        return parallel_exe.run(
-            feed=self.feed_map, fetch_list=fetch_list, return_numpy=False
-        )
-
-
 class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
     EagerDeletionRecurrentOpTest1
 ):

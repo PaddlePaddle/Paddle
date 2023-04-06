@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -44,9 +44,9 @@ class TestElementwiseModOp(OpTest):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -101,9 +101,9 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
 
 class TestElementwiseModOpFp16(TestElementwiseModOp):
@@ -117,9 +117,9 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output(check_eager=True)
+            self.check_output()
         else:
-            self.check_output(check_eager=False)
+            self.check_output()
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):

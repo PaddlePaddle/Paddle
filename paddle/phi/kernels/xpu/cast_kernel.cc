@@ -106,5 +106,5 @@ PD_REGISTER_KERNEL(cast,
                    bool,
                    uint8_t,
                    double) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

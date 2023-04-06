@@ -3751,7 +3751,6 @@ class Block:
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self._to_readable_code()
@@ -4074,6 +4073,9 @@ class Block:
             param = EagerParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+        # NOTE(Aurelius84): we deliver stop_gradient in append_op, so we
+        # need recorde it state and reset it back after calling this API
+        stop_gradient = param.stop_gradient
 
         if 'initializer' in kwargs:
 
@@ -4109,6 +4111,7 @@ class Block:
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = stop_gradient
         return param
 
     def append_op(self, *args, **kwargs):
@@ -4118,10 +4121,10 @@ class Block:
         Returns:
             Operator: the append Operator.
         """
+        op_type = kwargs.get("type", None)
         if _non_static_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
-            type = kwargs.get("type", None)
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4131,7 +4134,7 @@ class Block:
             op = Operator(
                 block=self,
                 desc=None,
-                type=type,
+                type=op_type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs,
@@ -4143,7 +4146,7 @@ class Block:
             # currently, we only support stop_gradient in dygraph mode.
 
             _dygraph_tracer().trace_op(
-                type,
+                op_type,
                 kwargs.get("inputs", {}),
                 kwargs.get("outputs", {}),
                 attrs if attrs else {},
@@ -4152,18 +4155,43 @@ class Block:
             )
         else:
             from paddle.fluid.dygraph.base import param_guard
+            from paddle.utils import flatten
+
+            def pass_stop_gradient(ins, outs):
+                """
+                Set out.stop_gradient = True if all inputs stop_gradient is True.
+                """
+                need_reset = True
+                for var in flatten(ins):
+                    if getattr(var, 'stop_gradient', None) is False:
+                        need_reset = False
+                        break
+                if need_reset:
+                    for var in flatten(outs):
+                        if isinstance(var, Variable):
+                            var.stop_gradient = True
 
             op_desc = self.desc.append_op()
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
             # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
-            inputs = kwargs.get("inputs", None)
-            outputs = kwargs.get("outputs", None)
+            ignore_ops = {
+                'conditional_block',
+                'conditional_block_grad',
+                'recurrent',
+                'recurrent_grad',
+                'while',
+                'while_grad',
+            }
+            if op_type not in ignore_ops:
+                pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
                 op = Operator(
                     block=self,
                     desc=op_desc,
-                    type=kwargs.get("type", None),
+                    type=op_type,
                     inputs=inputs,
                     outputs=outputs,
                     attrs=kwargs.get("attrs", None),

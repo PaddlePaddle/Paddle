@@ -602,6 +602,9 @@ class OpConverter {
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
       bool test_mode = false) {
+    if (layer == nullptr) {
+      return;
+    }
     size_t num_out = output_tensor_names.size();
     std::string layer_name = layer_type + " (Output: ";
     for (size_t i = 0; i < num_out; i++) {

@@ -16,7 +16,6 @@ import unittest
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.utils import flatten
 from paddle.incubate.autograd.primrules import _orig2prim
 
 paddle.enable_static()
@@ -67,7 +66,7 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
             all_ops = [op.type for op in self.main_program.block(0).ops]
 
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
-            prim_out = flatten(prim_out)
+            prim_out = paddle.utils.flatten(prim_out)
             for k, v in self.out_map.items():
                 self.assertEqual(prim_out[k].shape, v.shape)
 

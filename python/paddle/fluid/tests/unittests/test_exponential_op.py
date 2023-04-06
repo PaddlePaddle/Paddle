@@ -26,6 +26,7 @@ class TestExponentialOp1(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
         self.config()
 
         self.attrs = {"lambda": self.lam}
@@ -55,6 +56,7 @@ class TestExponentialOp1(OpTest):
         self.check_grad(
             ['X'],
             'Out',
+            in_place=True,
             user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)

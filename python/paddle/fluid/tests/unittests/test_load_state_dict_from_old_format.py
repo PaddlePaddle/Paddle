@@ -75,7 +75,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def train_and_save_model(self, only_params=False):
+    def train_and_save_model(self):
         with new_program_scope():
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
@@ -122,19 +122,14 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                     param.name
                 )
 
-            if only_params:
-                fluid.io.save_params(
-                    exe, self.save_dirname, filename=self.params_filename
-                )
-            else:
-                fluid.io.save_inference_model(
-                    self.save_dirname,
-                    ["img"],
-                    [prediction],
-                    exe,
-                    model_filename=self.model_filename,
-                    params_filename=self.params_filename,
-                )
+            fluid.io.save_inference_model(
+                self.save_dirname,
+                ["img"],
+                [prediction],
+                exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename,
+            )
 
         return static_param_dict
 
@@ -193,16 +188,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             params_filename=self.params_filename,
             model_filename=self.model_filename,
         )
-        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
-
-    def test_load_state_dict_from_save_params(self):
-        self.save_dirname = os.path.join(
-            self.temp_dir.name, "static_mnist.load_state_dict.save_params"
-        )
-        self.params_filename = None
-        orig_param_dict = self.train_and_save_model(True)
-
-        new_load_param_dict = paddle.load(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
 

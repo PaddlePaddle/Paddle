@@ -150,12 +150,12 @@ class TestDygraphLoadStatic(unittest.TestCase):
         )
         out = exe.run(framework.default_startup_program())
 
-        fluid.save(
+        paddle.static.save(
             framework.default_main_program(),
             os.path.join(temp_dir.name, "test_1"),
         )
 
-        para_dict = fluid.load_program_state(
+        para_dict = paddle.static.load_program_state(
             os.path.join(temp_dir.name, "test_1")
         )
 

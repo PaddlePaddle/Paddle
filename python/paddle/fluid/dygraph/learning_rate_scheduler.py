@@ -92,12 +92,10 @@ class LearningRateDecay:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Variable):
-                assert value.shape == [
-                    1
-                ], "shape of Variable in state_dict must be [1] {}".format(
-                    value.shape
-                )
-                value = value.numpy()[0]
+                assert (
+                    value.size == 1
+                ), "size of Variable in state_dict must be 1"
+                value = float(value)
             state_dict[key] = value
 
         return state_dict
@@ -857,7 +855,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 # adjust learning rate according to avg_loss
                 reduce_lr.step(avg_loss)
                 lr = adam.current_step_lr()
-                print("current avg_loss is %s, current lr is %s" % (avg_loss.numpy()[0], lr))
+                print("current avg_loss is %s, current lr is %s" % (float(avg_loss), lr))
 
     """
 
@@ -979,14 +977,11 @@ class ReduceLROnPlateau(LearningRateDecay):
                 )
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
-                        old_lr = (
-                            self.learning_rate.numpy()[0]
-                            if isinstance(self.learning_rate, Variable)
-                            else self.learning_rate
-                        )
                         print(
                             'Epoch {}: reducing learning rate from {} to {}.'.format(
-                                self.epoch_num, old_lr, new_lr.numpy()[0]
+                                self.epoch_num,
+                                float(self.learning_rate),
+                                float(new_lr),
                             )
                         )
                     self.learning_rate = new_lr

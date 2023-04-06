@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid.io as io
 from paddle.fluid.dygraph import guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import ParamBase, Variable, default_main_program
@@ -46,8 +45,6 @@ class ParameterChecks(unittest.TestCase):
         self.assertEqual(0, param.block.idx)
         exe = Executor(paddle.CPUPlace())
         p = exe.run(main_program, fetch_list=[param])[0]
-        np.testing.assert_array_equal(p, np.ones(shape) * val)
-        p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         np.testing.assert_array_equal(p, np.ones(shape) * val)
 
         zero_dim_param = b.create_parameter(name='x', shape=[], dtype='float32')

@@ -53,10 +53,13 @@ class TestGumbelSoftmaxOp(OpTest):
 
 
 class TestGumbelSoftmax_ZeroDim(OpTest):
+    def init_attrs(self):
+        self.dtype = "float64"
+
     def setUp(self):
         self.op_type = "gumbel_softmax"
         self.python_api = F.gumbel_softmax
-        self.dtype = "float64"
+        self.init_attrs()
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = np.array(1.0).astype(self.dtype)
 
@@ -101,6 +104,43 @@ class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
         self.attrs = {"hard": True, "axis": 1}
         self.count_expected = 100
         self.dtype = "float64"
+
+
+class TestGumbelSoftmax_ZeroDim_FP16OP(TestGumbelSoftmax_ZeroDim):
+    def init_attrs(self):
+        self.dtype = np.float16
+
+
+class TestGumbelSoftmaxFP16OP2(TestGumbelSoftmaxOp):
+    def init_attrs(self):
+        self.shape = [20, 10]
+        self.attrs = {"hard": True, "axis": 0}
+        self.count_expected = 10
+        self.dtype = np.float16
+
+
+class TestGumbelSoftmaxFP16OP3(TestGumbelSoftmaxOp):
+    def init_attrs(self):
+        self.shape = [100]
+        self.attrs = {"hard": True, "axis": -1}
+        self.count_expected = 1
+        self.dtype = np.float16
+
+
+class TestGumbelSoftmaxFP16OP4(TestGumbelSoftmaxOp):
+    def init_attrs(self):
+        self.shape = [20, 10, 5]
+        self.attrs = {"hard": True, "axis": -1}
+        self.count_expected = 200
+        self.dtype = np.float16
+
+
+class TestGumbelSoftmaxFP16OP5(TestGumbelSoftmaxOp):
+    def init_attrs(self):
+        self.shape = [20, 10, 5]
+        self.attrs = {"hard": True, "axis": 1}
+        self.count_expected = 100
+        self.dtype = np.float16
 
 
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):

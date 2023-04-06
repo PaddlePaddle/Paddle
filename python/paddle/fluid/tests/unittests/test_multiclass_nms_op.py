@@ -626,7 +626,9 @@ class TestMulticlassNMS2Op(TestMulticlassNMSOp):
         det_outs = np.array(det_outs)
 
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
@@ -696,7 +698,9 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
 
         det_outs = np.array(det_outs)
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
@@ -768,7 +772,9 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         det_outs = np.array(det_outs)
 
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs

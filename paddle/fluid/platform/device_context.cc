@@ -193,23 +193,5 @@ const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
-    : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
-#endif
-
 }  // namespace platform
 }  // namespace paddle

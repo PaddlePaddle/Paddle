@@ -32,8 +32,22 @@ class Squeeze2OpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     // Get Attrs
-    std::vector<int> axes =
-        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+    std::vector<int> axes;
+    if (op_desc.HasAttr("axes")) {
+      axes = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+    }
+    if (axes.size() == 0) {
+      for (int i = 0; i < input_dims.nbDims; i++) {
+        if (input_dims.d[i] == -1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The necessary attributes of the squeeze2 operator axes is "
+              "missing."));
+        } else if (input_dims.d[i] == 1) {
+          axes.push_back(engine_->with_dynamic_shape() ? i : i + 1);
+        }
+      }
+    }
+
     PADDLE_ENFORCE_GT(
         axes.size(),
         0,

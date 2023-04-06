@@ -28,6 +28,7 @@ void CumprodKernel(const Context &dev_ctx,
                    const DenseTensor &input,
                    int dim,
                    DenseTensor *out) {
+  using CumType = typename funcs::CumTypeTrait<T>::Type;
   const auto *x = &input;
   auto *y = out;
   size_t outer_dim, mid_dim, inner_dim;
@@ -39,19 +40,22 @@ void CumprodKernel(const Context &dev_ctx,
 
   const auto *x_data = x->data<T>();
   auto *y_data = dev_ctx.template Alloc<T>(y);
-  phi::funcs::InclusiveScan(x_data,
-                            y_data,
+  const CumType *x_ptr = reinterpret_cast<const CumType *>(x_data);
+  CumType *y_ptr = reinterpret_cast<CumType *>(y_data);
+  phi::funcs::InclusiveScan(x_ptr,
+                            y_ptr,
                             outer_dim,
                             mid_dim,
                             inner_dim,
-                            static_cast<T>(1),
-                            funcs::MultiplyFunctor<T>(),
+                            static_cast<CumType>(1.0f),
+                            funcs::MultiplyFunctor<CumType>(),
                             /*reverse=*/false,
                             dev_ctx);
 }
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cumprod,
                    GPU,
                    ALL_LAYOUT,
@@ -62,3 +66,17 @@ PD_REGISTER_KERNEL(cumprod,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+#else
+PD_REGISTER_KERNEL(cumprod,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumprodKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif

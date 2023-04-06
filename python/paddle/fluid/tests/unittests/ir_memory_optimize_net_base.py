@@ -80,9 +80,8 @@ class BuildIrMemOptBase(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        train_cp = compiler.CompiledProgram(fluid.default_main_program())
-        train_cp = train_cp.with_data_parallel(
-            loss_name=cost.name, build_strategy=build_strategy
+        train_cp = compiler.CompiledProgram(
+            fluid.default_main_program(), build_strategy=build_strategy
         )
         fetch_list = [cost.name]
 

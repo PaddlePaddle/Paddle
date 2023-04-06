@@ -45,13 +45,15 @@ enum class AlgorithmType {
   kConvBackwardFilter = 3,
   kTranspose = 4,
   kMatmul = 5,
+  kGatherGemmScatterFP16NN = 6,
+  kGatherGemmScatterFP32NN = 7,
 #if !defined(PADDLE_WITH_CUDNN_FRONTEND)
-  kAlgorithmCount = 6
+  kAlgorithmCount = 8
 #else
-  kConvForwardV8 = 6,
-  kConvBackwardDataV8 = 7,
-  kConvBackwardFilterV8 = 8,
-  kAlgorithmCount = 9
+  kConvForwardV8 = 8,
+  kConvBackwardDataV8 = 9,
+  kConvBackwardFilterV8 = 10,
+  kAlgorithmCount = 11
 #endif
 };
 
@@ -86,6 +88,20 @@ class AutoTuneCache {
 
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_same<T, float>::value,
+                          AlgorithmsCacheMap&>::type
+  GetGatherGemmScatter() {
+    return Get(AlgorithmType::kGatherGemmScatterFP32NN);
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
+                          AlgorithmsCacheMap&>::type
+  GetGatherGemmScatter() {
+    return Get(AlgorithmType::kGatherGemmScatterFP16NN);
   }
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND

@@ -129,7 +129,7 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
       iter,
       place_to_comm_ctx_.end(),
       phi::errors::NotFound(
-          "Cannot find the NCCL commmunicator in this process group."));
+          "Cannot find the NCCL communicator in this process group."));
   return iter->second->nccl_comm();
 }
 

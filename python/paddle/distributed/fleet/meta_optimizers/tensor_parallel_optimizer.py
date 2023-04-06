@@ -37,9 +37,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.mp_ring_id = 0
         self.global_ring_id = 1
         self.dp_ring_id = 2

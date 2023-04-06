@@ -17,6 +17,7 @@ from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
+from .utils import is_builtin  # noqa: F401
 
 PDB_SET = "pdb.set_trace"
 
@@ -48,8 +49,6 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.jit.dy2static.convert_call_func import is_builtin
-
             need_convert_builtin_func_list = {
                 'len',
                 'zip',

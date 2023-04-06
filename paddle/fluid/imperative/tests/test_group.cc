@@ -18,6 +18,10 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/reducer.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/utils/data_type.h"
+
 namespace paddle {
 namespace imperative {
 

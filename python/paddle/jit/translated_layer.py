@@ -27,7 +27,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
-from paddle.fluid.layers.utils import _hash_with_id
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
@@ -1025,7 +1024,7 @@ def _run_dygraph(instance, input, program_holder):
         'is_test',
         instance._is_test,
         'program_id',
-        _hash_with_id(trace_program, instance),
+        paddle.utils._hash_with_id(trace_program, instance),
     ]
     if not instance._is_test:
         attrs.extend(

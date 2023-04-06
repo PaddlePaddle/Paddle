@@ -39,6 +39,10 @@ class OpMetaInfoHelper {
       const paddle::OpMetaInfo& info) {
     return info.attrs_;
   }
+  static const std::unordered_map<std::string, std::string>& GetInplaceMap(
+      const paddle::OpMetaInfo& info) {
+    return info.inplace_map_;
+  }
   static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
     return info.kernel_fn_;
   }

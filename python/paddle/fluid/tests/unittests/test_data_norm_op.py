@@ -19,6 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
@@ -537,6 +538,23 @@ class TestDataNormOpErrorr(unittest.TestCase):
             paddle.enable_static()
             x3 = paddle.static.data("", shape=[0], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.data_norm, x3)
+
+            # The size of input in data_norm should not be 0.
+            def test_0_size():
+                paddle.enable_static()
+                x = fluid.data(name='x', shape=[0, 3], dtype='float32')
+                out = paddle.static.nn.data_norm(x, slot_dim=1)
+                cpu = fluid.core.CPUPlace()
+                exe = fluid.Executor(cpu)
+                exe.run(fluid.default_startup_program())
+                test_program = fluid.default_main_program().clone(for_test=True)
+                exe.run(
+                    test_program,
+                    fetch_list=out,
+                    feed={'x': np.ones([0, 3]).astype('float32')},
+                )
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

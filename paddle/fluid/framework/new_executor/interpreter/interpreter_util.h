@@ -111,6 +111,8 @@ void FakeInitializeOutputsForStructureKernel(
 
 void LogDeviceMemoryStats(const platform::Place& place);
 
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

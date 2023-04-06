@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -23,10 +23,47 @@ from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
+def adam_wrapper(
+    param,
+    grad,
+    LearningRate,
+    moment1,
+    moment2,
+    beta1_pow,
+    beta2_pow,
+    master_weight=None,
+    find_inf=None,
+    beta1=0.78,
+    beta2=0.836,
+    epsilon=1e-4,
+    lazy_mode=False,
+):
+    _, _, _, _, _, _ = paddle._C_ops.adam_(
+        param,
+        grad,
+        LearningRate,
+        moment1,
+        moment2,
+        beta1_pow,
+        beta2_pow,
+        master_weight,
+        find_inf,
+        beta1,
+        beta2,
+        epsilon,
+        lazy_mode,
+        1000,
+        False,
+        False,
+    )
+
+
 class TestAdamOp1(OpTest):
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -73,6 +110,8 @@ class TestAdamOp2(OpTest):
     def setUp(self):
         '''Test Adam Op with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         self.set_shape()
         param = np.random.uniform(-1, 1, self.shape).astype("float32")
         grad = np.random.uniform(-1, 1, self.shape).astype("float32")
@@ -122,6 +161,8 @@ class TestAdamOpMultipleSteps(OpTest):
     def setUp(self):
         '''Test Adam Operator with supplied attributes'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         self.num_steps = 10
 
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -414,6 +455,8 @@ class TestAdamOpBetaVariable(OpTest):
     def setUp(self):
         '''Test Adam Op with beta as Variable'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -459,6 +502,8 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
     def setUp(self):
         '''Test Adam Op with beta/epsilon as Variable'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -505,6 +550,8 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -554,6 +601,8 @@ class TestAdamOpWithSkipUpdate(OpTest):
     def setUp(self):
         '''Test Adam Op with global_beta_pow'''
         self.op_type = "adam"
+        self.python_api = adam_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")

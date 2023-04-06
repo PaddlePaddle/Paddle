@@ -113,4 +113,6 @@ void NMSKernel(const Context& dev_ctx,
                      dev_ctx.stream());
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
+PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

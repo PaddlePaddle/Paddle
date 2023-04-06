@@ -349,6 +349,7 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
         x = paddle.static.data('x', x_shape, dtype)
         x.persistable = True
+        x.stop_gradient = False
         out = paddle.nn.functional.pad(x, pad)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 

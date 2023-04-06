@@ -39,6 +39,7 @@ from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
+from .creation import polar  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -192,6 +193,7 @@ from .math import remainder_  # noqa: F401
 from .math import mod  # noqa: F401
 from .math import floor_mod  # noqa: F401
 from .math import multiply  # noqa: F401
+from .math import multiply_  # noqa: F401
 from .math import add  # noqa: F401
 from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
@@ -243,6 +245,8 @@ from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
+from .math import sigmoid  # noqa: F401
+from .math import sigmoid_  # noqa: F401
 from .math import ldexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
@@ -381,6 +385,7 @@ tensor_method_func = [  # noqa
     'mod',
     'floor_mod',
     'multiply',
+    'multiply_',
     'add',
     'add_',
     'subtract',
@@ -526,7 +531,10 @@ tensor_method_func = [  # noqa
     'bucketize',
     'sgn',
     'frexp',
-    'ldexp',
+    'polar',
+    'sigmoid',
+    'sigmoid_',
+     'ldexp',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

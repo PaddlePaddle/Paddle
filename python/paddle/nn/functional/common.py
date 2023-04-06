@@ -1730,7 +1730,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         data_format(str, optional): An string from: "NHWC", "NCHW". Specify the data format of
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
-            to set this property.
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, padded with 0 according to pad and data type is same as input.
@@ -1739,12 +1739,11 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
-
-            x_shape = (1, 1, 2, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x_shape = paddle.to_tensor([1, 1, 2, 3])
+            x = paddle.arange(paddle.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.zeropad2d(x, [1, 2, 1, 1])
+            print(y)
             # [[[[0. 0. 0. 0. 0. 0.]
             #    [0. 1. 2. 3. 0. 0.]
             #    [0. 4. 5. 6. 0. 0.]
@@ -1924,7 +1923,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         label(Tensor): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float16" "float32" and "float64".
         prior_dist(Tensor, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -1966,7 +1965,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
+        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
     )
 
     helper = LayerHelper("label_smooth", **locals())
@@ -1997,7 +1996,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
-    .. hint::
+    Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 

@@ -236,6 +236,10 @@ class AscendOptimizer(Optimizer):
                 ret_list.append(var)
         return ret_list
 
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self.inner_opt._set_auxiliary_var(key, val)
+
     def minimize(
         self,
         loss,

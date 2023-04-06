@@ -41,6 +41,7 @@ std::vector<Tensor> split<Tensor>(const Tensor& x,
   VLOG(4) << "Eager Prim API split_ad_func call";
   return ::split_ad_func(x, sections, axis);
 }
+
 template <>
 Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
   return ::cast_ad_func(x, dtype);

@@ -138,10 +138,7 @@ def fetch_all():
         if "fetch" in dir(
             importlib.import_module("paddle.dataset.%s" % module_name)
         ):
-            getattr(
-                importlib.import_module("paddle.dataset.%s" % module_name),
-                "fetch",
-            )()
+            importlib.import_module('paddle.dataset.%s' % module_name).fetch()
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
