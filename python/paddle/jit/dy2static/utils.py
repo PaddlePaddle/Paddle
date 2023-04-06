@@ -35,6 +35,7 @@ from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -1488,7 +1489,10 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
     return names
 
 
-def prim_or_cinn_is_enabled(build_strategy):
+def prim_or_cinn_is_enabled(build_strategy, backend):
+    if backend == 'CINN':
+        return True
+
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
@@ -1524,3 +1528,18 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def dy2st_prim_guard(backend):
+    core.check_and_set_prim_all_enabled()
+    orign_fwd = core._is_fwd_prim_enabled()
+    orign_bwd = core._is_bwd_prim_enabled()
+
+    if backend == 'CINN':
+        core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        core._set_prim_forward_enabled(orign_fwd)
+        core._set_prim_backward_enabled(orign_bwd)
