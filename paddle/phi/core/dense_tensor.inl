@@ -55,7 +55,6 @@ size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
@@ -86,7 +85,6 @@ void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
                          phi::DataType type);
 
-void set_type(phi::DataType type);
 
 InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 

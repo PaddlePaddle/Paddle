@@ -113,6 +113,9 @@ class DenseTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
+  void set_type(DataType type);
+
+  void set_layout(const DataLayout layout);
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
