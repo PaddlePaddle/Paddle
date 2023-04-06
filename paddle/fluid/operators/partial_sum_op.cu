@@ -70,7 +70,7 @@ __global__ void PartialSumGradCUDAKernel(T **res_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -144,7 +144,7 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

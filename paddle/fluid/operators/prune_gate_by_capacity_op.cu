@@ -128,7 +128,7 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 PD_REGISTER_STRUCT_KERNEL(prune_gate_by_capacity,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::PruneGateByCapacityCUDAKernel,
                           int64_t) {}

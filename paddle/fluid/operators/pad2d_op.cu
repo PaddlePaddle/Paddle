@@ -619,7 +619,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(pad2d,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::Pad2dCUDAKernel,
                           float,
@@ -628,7 +628,7 @@ PD_REGISTER_STRUCT_KERNEL(pad2d,
                           int64_t,
                           plat::float16) {}
 PD_REGISTER_STRUCT_KERNEL(pad2d_grad,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::Pad2dGradCUDAKernel,
                           float,

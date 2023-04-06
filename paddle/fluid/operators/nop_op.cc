@@ -45,7 +45,7 @@ establish the dependency between input and output tensors.
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NopKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {}
@@ -63,5 +63,3 @@ PD_REGISTER_STRUCT_KERNEL(nop, CPU, ALL_LAYOUT, ops::NopKernel, float) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_STRUCT_KERNEL(nop, GPU, ALL_LAYOUT, ops::NopKernel, float) {}
 #endif
-
-REGISTER_OP_NPU_KERNEL(nop, ops::NopKernel<float>);

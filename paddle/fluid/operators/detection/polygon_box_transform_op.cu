@@ -73,6 +73,7 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(polygon_box_transform,
                           GPU,
                           ALL_LAYOUT,
