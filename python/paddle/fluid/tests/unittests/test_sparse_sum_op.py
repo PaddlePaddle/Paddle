@@ -133,13 +133,14 @@ class TestSparseSumStatic(unittest.TestCase):
             )
         paddle.disable_static()
 
-    def test_sum_1d(self):
+    def test_sum(self):
+        # 1d
         self.check_result_coo([5], None, False)
         self.check_result_coo([5], None, True)
         self.check_result_coo([5], 0, True)
         self.check_result_coo([5], 0, False)
 
-    def test_sum_2d(self):
+        # 2d
         self.check_result_coo([2, 5], None, False, dtype="float32")
         self.check_result_coo([2, 5], None, True)
         self.check_result_coo([2, 5], 0, True, dtype="float32")
@@ -147,12 +148,12 @@ class TestSparseSumStatic(unittest.TestCase):
         self.check_result_coo([2, 5], 1, False)
         self.check_result_coo([2, 5], 0, False)
 
-    def test_sum_3d(self):
+        # 3d
         for i in [0, 1, -2, None]:
             self.check_result_coo([6, 2, 3], i, False)
             self.check_result_coo([6, 2, 3], i, True)
 
-    def test_sum_nd(self):
+        # nd
         for i in range(6):
             self.check_result_coo([8, 3, 4, 4, 5, 3], i, False)
             self.check_result_coo([8, 3, 4, 4, 5, 3], i, True)
