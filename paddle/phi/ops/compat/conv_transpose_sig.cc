@@ -123,6 +123,9 @@ KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(conv2d_transpose_grad_grad,
+                             conv2d_transpose_double_grad);
+
 PD_REGISTER_ARG_MAPPING_FN(conv2d_transpose,
                            phi::Conv2dTransposeOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_transpose_grad,
