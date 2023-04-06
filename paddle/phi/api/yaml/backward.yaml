@@ -121,6 +121,17 @@
     func : atanh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : bce_loss_grad
+  forward : bce_loss (Tensor input, Tensor label) -> Tensor(out)
+  args : (Tensor input, Tensor label, Tensor out_grad)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : bce_loss_grad
+  inplace : (out_grad -> input_grad)
+
 - backward_op : bicubic_interp_grad
   forward : bicubic_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)

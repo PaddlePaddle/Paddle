@@ -21,28 +21,39 @@ from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import fluid
-from paddle.fluid import framework
+from paddle.fluid import core, framework
 from paddle.fluid.framework import Program, program_guard
 
 
 class TestEyeOp(OpTest):
     def setUp(self):
         '''
-        Test eye op with specified shape
+        Test eye op with default shape
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
+        self.init_dtype()
+        self.init_attrs()
 
         self.inputs = {}
         self.attrs = {
-            'num_rows': 219,
-            'num_columns': 319,
-            'dtype': framework.convert_np_dtype_to_dtype_(np.int32),
+            'num_rows': self.num_columns,
+            'num_columns': self.num_columns,
+            'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
         }
-        self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
+        self.outputs = {
+            'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)
+        }
 
     def test_check_output(self):
         self.check_output()
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def init_attrs(self):
+        self.num_rows = 319
+        self.num_columns = 319
 
 
 class TestEyeOp1(OpTest):
@@ -176,6 +187,35 @@ class TestEyeRowsCol(UnittestBase):
     def test_error(self):
         with self.assertRaises(TypeError):
             paddle.eye(-1)
+
+
+class TestEyeFP16OP(TestEyeOp):
+    '''Test eye op with specified dtype'''
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestEyeBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "eye"
+        self.dtype = np.uint16
+        self.python_api = paddle.eye
+        self.inputs = {}
+        self.attrs = {
+            'num_rows': 219,
+            'num_columns': 319,
+        }
+        self.outputs = {'Out': np.eye(219, 319)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 if __name__ == "__main__":

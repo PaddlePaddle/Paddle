@@ -19,26 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MemoryEfficientAttentionBackwardKernel(
-    const Context& ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& cu_seqlens_q,
-    const paddle::optional<DenseTensor>& cu_seqlens_k,
-    const DenseTensor& output,
-    const DenseTensor& logsumexp,
-    const DenseTensor& seed_and_offset,
-    const DenseTensor& output_grad,
-    const Scalar& max_seqlen_q,
-    const Scalar& max_seqlen_k,
-    const bool causal,
-    const double dropout_p,
-    const float scale,
-    DenseTensor* query_grad,
-    DenseTensor* key_grad,
-    DenseTensor* value_grad,
-    DenseTensor* bias_grad);
+void BilinearGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& weight,
+                        const DenseTensor& dout,
+                        DenseTensor* dx,
+                        DenseTensor* dy,
+                        DenseTensor* dweight,
+                        DenseTensor* dbias);
 
 }  // namespace phi

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
-namespace paddle {
-namespace framework {
-std::shared_ptr<AscendInstance> AscendInstance::ascend_instance_ = nullptr;
-}  // end namespace framework
-}  // end namespace paddle
-#endif
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void BilinearKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& weight,
+                    const paddle::optional<DenseTensor>& bias,
+                    DenseTensor* out);
+
+}  // namespace phi

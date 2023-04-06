@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/bilinear_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/bilinear_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void FusedSoftmaxMaskKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& mask,
-                            DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(
+    bilinear, GPU, ALL_LAYOUT, phi::BilinearKernel, float, double) {}
