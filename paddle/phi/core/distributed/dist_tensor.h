@@ -29,6 +29,8 @@ class DistTensor : public TensorBase,
  public:
   using DDim = phi::DDim;
 
+  static const char* name() { return "DistTensor"; }
+
   ~DistTensor() = default;
 
   /// \brief Returns the number of elements contained in tensor.

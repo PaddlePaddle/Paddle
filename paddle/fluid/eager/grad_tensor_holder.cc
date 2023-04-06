@@ -161,7 +161,8 @@ void GradTensorHolder::add(size_t slot_id,
             buffer_tensor, t, &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
       }
-    } else if (t.is_distributed_tensor()) {
+    } else if (t.is_dist_tensor()) {
+      buffer_tensor = add_ad_func(t, buffer_tensor);
     } else if (t.is_sparse_coo_tensor()) {
       auto t_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
       paddle::Tensor t_values(
