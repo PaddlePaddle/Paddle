@@ -74,7 +74,12 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
             )
             assert 'Seed' in kwargs, "input [{}] is not given".format('Seed')
 
-            if src_op.attr("fix_seed") and src_op.attr("seed"):
+            if (
+                src_op.has_attr("fix_seed")
+                and src_op.attr("fix_seed")
+                and src_op.has_attr("seed")
+                and src_op.attr("seed")
+            ):
                 _logger.info(
                     "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
                         src_op
