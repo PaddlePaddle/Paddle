@@ -254,7 +254,6 @@ class CacheKey:
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         with_hook = self.kwargs.get("with_hook", False)
         is_train = self.kwargs.get("is_train", False)
-        backend = self.kwargs.get("backend", None)
         return hash(
             (
                 id(self.function_spec),
@@ -264,7 +263,6 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
-                backend,
             )
         )
 
@@ -1187,11 +1185,9 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
 
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
                 func_spec=cache_key.function_spec,

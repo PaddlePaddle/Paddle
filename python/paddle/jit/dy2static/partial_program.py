@@ -640,8 +640,6 @@ class PartialProgramLayer:
 
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
-            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
-            core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             with dy2st_prim_guard(self._backend):
                 backward.gradients(targets=targets, inputs=[])
