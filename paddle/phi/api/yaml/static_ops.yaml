@@ -70,6 +70,17 @@
     data_type : weight
   backward : embedding_grad
 
+- op : empty
+  args : (IntArray shape = {}, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : empty
+    param : [shape, dtype]
+    data_type : dtype
+
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

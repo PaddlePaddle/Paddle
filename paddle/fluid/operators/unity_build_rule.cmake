@@ -82,7 +82,6 @@ register_unity_group(
   diag_v2_op.cc
   dot_op.cc
   edit_distance_op.cc
-  empty_op.cc
   enqueue_op.cc
   erf_op.cc
   py_func_op.cc
