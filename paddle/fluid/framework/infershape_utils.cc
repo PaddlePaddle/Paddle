@@ -357,10 +357,14 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
+      meta->strides = meta->calc_strides(meta->dims, meta->layout);
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
+      meta->strides = meta->calc_strides(meta->dims, meta->layout);
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
