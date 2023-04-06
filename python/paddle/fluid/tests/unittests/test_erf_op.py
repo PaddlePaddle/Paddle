@@ -19,7 +19,6 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
 from paddle import fluid
 
@@ -90,8 +89,10 @@ class TestErfFP16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not paddle.fluid.core.is_compiled_with_cuda()
+    or not paddle.fluid.core.is_bfloat16_supported(
+        paddle.fluid.core.CUDAPlace(0)
+    ),
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestErfBF16OP(OpTest):
@@ -108,11 +109,11 @@ class TestErfBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(y_ref)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = paddle.fluid.core.CUDAPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = paddle.fluid.core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
