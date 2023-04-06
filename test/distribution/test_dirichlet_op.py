@@ -19,7 +19,7 @@ import scipy.stats
 
 import paddle
 
-sys.path.append("../")
+sys.path.append("../legacy_test")
 from eager_op_test import OpTest
 
 paddle.enable_static()
