@@ -103,6 +103,10 @@ Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
   return inputs_.at(idx);
 }
 
+std::vector<Tensor>* CustomOpKernelContext::AllMutableInput() {
+  return &inputs_;
+}
+
 paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
   if (!inputs_.at(idx).is_initialized()) {
     return paddle::none;

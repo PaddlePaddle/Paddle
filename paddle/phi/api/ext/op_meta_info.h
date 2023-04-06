@@ -119,6 +119,7 @@ class PADDLE_API CustomOpKernelContext {
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
   Tensor& MutableInputAt(size_t idx);
+  std::vector<Tensor>* AllMutableInput();
   paddle::optional<Tensor> OptionalInputAt(size_t idx);
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
                                                               size_t end);

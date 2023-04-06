@@ -520,9 +520,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
   paddle::CustomOpKernelContext ctx;
-  bool trace_backward = true;
   phi::RecordEvent custom_operator_record_event(
       "Custom operator C++ layer", phi::TracerEventType::UserDefined, 1);
+  phi::RecordEvent* dygraph_record_event;
   {
     eager_gil_scoped_release guard;
     auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
@@ -540,6 +540,10 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
     const auto& inplace_map =
         paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+    dygraph_record_event =
+        new phi::RecordEvent("custom_operator " + op_type + " add inputs",
+                             phi::TracerEventType::Operator,
+                             1);
     for (size_t i = 0; i < inputs.size(); ++i) {
       const auto& input = inputs.at(i);
       // Parse op_type first, so that use i + 1
@@ -565,6 +569,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to CustomOpKernelContext. Add Tensor for general case.";
       }
     }
+    delete dygraph_record_event;
+    dygraph_record_event =
+        new phi::RecordEvent("custom_operator " + op_type + " add attrs",
+                             phi::TracerEventType::Operator,
+                             1);
     // Parse op_type and inputs first, so that use 1 + inputs.size() + i
     int attr_start_idx = 1 + inputs.size();
     for (size_t i = 0; i < attrs.size(); ++i) {
@@ -605,6 +614,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             attr_type_str));
       }
     }
+    delete dygraph_record_event;
+    dygraph_record_event =
+        new phi::RecordEvent("custom_operator " + op_type + " add outputs",
+                             phi::TracerEventType::Operator,
+                             1);
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
@@ -645,6 +659,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       // general Tensor or inplace Tensor, initialized tensor.
       ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
     }
+    delete dygraph_record_event;
 
     // handle inplace map
     ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
@@ -678,52 +693,45 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       }
     }
 
-    phi::RecordEvent* dygraph_record_event;
     dygraph_record_event = new phi::RecordEvent(
         "custom_operator " + op_type + " before construct dygraph",
         phi::TracerEventType::Operator,
         1);
 
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
-    VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-    VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-    std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas(
-        ctx.InputRange().size());
-    std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas(
-        ctx.OutputRange().size());
+    size_t slot_ins_num = ctx.InputRange().size();
+    size_t slot_outs_num = ctx.OutputRange().size();
+    VLOG(7) << "We got slot num of ins is: " << slot_ins_num;
+    VLOG(7) << "We got slot num of outs is: " << slot_outs_num;
+    std::vector<egr::AutogradMeta*> ins_auto_grad_metas =
+        egr::EagerUtils::nullable_autograd_meta(*ctx.AllMutableInput());
+    std::vector<egr::AutogradMeta*> outs_auto_grad_metas =
+        egr::EagerUtils::unsafe_autograd_meta(*ctx.AllMutableOutput());
 
-    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-      ins_auto_grad_metas[i] =
-          egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
-              ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
-    }
-    for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
-      outs_auto_grad_metas[i] =
-          egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
-              ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
-    }
     bool require_any_grad = false;
-    for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
-      require_any_grad =
-          require_any_grad || egr::EagerUtils::ComputeRequireGrad(
-                                  trace_backward, &(ins_auto_grad_metas[i]));
+    bool trace_backward = true;
+    for (size_t i = 0; i < ins_auto_grad_metas.size(); ++i) {
+      require_any_grad = egr::EagerUtils::ComputeRequireGrad(
+          trace_backward, ins_auto_grad_metas[i]);
+      if (require_any_grad) {
+        break;
+      }
     }
 
     // handle inplace map
-    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-      if (inplace_map.find(inputs[i]) != inplace_map.end()) {
-        size_t input_size =
-            ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
-        size_t start_idx = ctx.InputRangeAt(i).first;
-        for (size_t j = 0; j < input_size; j++) {
-          egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
-                                        ins_auto_grad_metas[i][j],
-                                        require_any_grad);
-          if (ctx.MutableInputAt(start_idx + j).defined()) {
+    if (!inplace_map.empty()) {
+      for (size_t i = 0; i < ctx.InputRange().size(); i++) {
+        if (inplace_map.find(inputs[i]) == inplace_map.end()) {
+          continue;
+        }
+        const auto& input_pair = ctx.InputRangeAt(i);
+        for (size_t j = input_pair.first; j < input_pair.second; j++) {
+          egr::EagerUtils::CheckInplace(
+              ctx.InputAt(j), ins_auto_grad_metas[j], require_any_grad);
+          if (ctx.MutableInputAt(j).defined()) {
             // Bump Inplace Version
-            ctx.MutableInputAt(start_idx + j).bump_inplace_version();
-            VLOG(3) << "Custom operator: Tensor("
-                    << ctx.InputAt(start_idx + j).name()
+            ctx.MutableInputAt(j).bump_inplace_version();
+            VLOG(3) << "Custom operator: Tensor(" << ctx.InputAt(j).name()
                     << ") uses Inplace Strategy.";
           }
         }
@@ -738,23 +746,24 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           1);
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-        egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
+      for (size_t i = 0; i < outs_auto_grad_metas.size(); ++i) {
+        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_metas[i]);
       }
       // Note(HongyuJia): In dygraph eager mode, CheckInplace makes sure leaf
       // nodes set stop_gradient=True. However, dygraph mode can also outputs
       // lead nodes' gradients (For example, we can get x.grad after x.add_(y)).
       // To be consistent with dygraph mode, we have to PassStopGradient for all
       // inplaced ins_auto_grad_metas.
-      std::unordered_map<size_t, size_t> inplace_index_map =
-          ctx.GetInplaceIndexMap();
+      const auto& inplace_index_map = ctx.GetInplaceIndexMap();
       for (auto pair : inplace_index_map) {
-        egr::EagerUtils::PassStopGradient(false,
-                                          &(ins_auto_grad_metas[pair.first]));
+        const auto& size_pair = ctx.InputRangeAt(pair.first);
+        for (size_t i = size_pair.first; i < size_pair.second; ++i) {
+          egr::EagerUtils::PassStopGradient(false, ins_auto_grad_metas[i]);
+        }
       }
       auto grad_node = std::make_shared<egr::RunCustomOpNode>(
-          outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
-      auto slot_map =
+          slot_outs_num, slot_ins_num, op_type);
+      const auto& slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
       delete dygraph_record_event;
 
@@ -764,25 +773,26 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           1);
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
-      for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+      for (size_t i = 0; i < slot_ins_num; i++) {
         const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
             ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
-          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
+          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0].at(i));
         } else {
-          grad_node->SetGradOutMeta(
-              in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
+          grad_node->SetGradOutMeta(in_tensors, slot_ins_num - 1 - no_grad_cnt);
           no_grad_cnt++;
         }
       }
       // Prepare Grad inputs with grad of fwd outputs
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-        const std::vector<paddle::Tensor>& out_tensors = ctx.OutputsBetweeen(
-            ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second);
-
-        egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
-        egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
+      for (size_t i = 0; i < slot_outs_num; i++) {
+        const auto& size_pair = ctx.OutputRangeAt(i);
+        const std::vector<paddle::Tensor>& out_tensors =
+            ctx.OutputsBetweeen(size_pair.first, size_pair.second);
+        for (size_t j = size_pair.first; j < size_pair.second; j++) {
+          egr::EagerUtils::SetOutRankWithSlot(outs_auto_grad_metas[j], i);
+          egr::EagerUtils::SetHistory(outs_auto_grad_metas[j], grad_node);
+        }
         grad_node->SetGradInMeta(out_tensors, i);
       }
 
@@ -806,7 +816,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   ctx.InputRangeAt(it->first).second));
       }
 
-      auto attrs_names =
+      const auto& attrs_names =
           paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[1]);
       const std::vector<paddle::any>& res_attrs = ctx.Attrs();
       std::vector<paddle::any> attrs(attrs_names.size());
