@@ -392,8 +392,14 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
-    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
-      VLOG(3) << "input metatensor is not phi::DenseTensor or LoDTensorArray.";
+    // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
+    // 'var->SetLodLevel' will fail. This case will happen when execute
+    // 'test_hsigmoid_op.py'. So it is needed to assert 'var' type.
+    if ((var && (var->GetType() != proto::VarType::LOD_TENSOR &&
+                 var->GetType() != proto::VarType::LOD_TENSOR_ARRAY)) ||
+        (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array())) {
+      VLOG(3) << "this tensor or input metatensor is not phi::DenseTensor or "
+                 "LoDTensorArray.";
       return;
     }
     if (var) {
@@ -410,7 +416,9 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var == nullptr) return;
-    if (var->IsType<phi::SelectedRows>()) {
+    // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
+    // `var->GetMutable<phi::SelectedRows>()` will failed.
+    if (var->IsType<phi::SelectedRows>() && meta_tensor.is_selected_rows()) {
       auto* selected_rows = var->GetMutable<phi::SelectedRows>();
       auto& input_selected_rows =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();

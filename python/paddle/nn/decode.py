@@ -712,7 +712,7 @@ def _dynamic_decode_imperative(
 
     step_idx = 0
     step_idx_tensor = paddle.full(shape=[1], fill_value=step_idx, dtype="int64")
-    while cond.item():
+    while np.array(cond).item():
         (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
             step_idx_tensor, inputs, states, **kwargs
         )
