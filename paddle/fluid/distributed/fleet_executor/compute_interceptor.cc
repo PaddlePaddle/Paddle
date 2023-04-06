@@ -281,7 +281,7 @@ void ComputeInterceptor::RunOps() {
                           "microbatch_scopes, but recevice scope index %ld",
                           microbatch_scopes_.size(),
                           cur_scope_id_));
-    op->Run(*microbatch_scopes_[cur_scope_id_], place_);
+    op->Run(*microbatch_scopes_[cur_scope_id_], place_, carrier_->carrier_id());
     if (gc_) {
       framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
                                      op,
