@@ -595,8 +595,7 @@ if(WITH_PYTHON)
     COMMAND
       ${CMAKE_COMMAND} -E touch
       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                        touch __init__.py)
+  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
   add_dependencies(
     framework_py_proto
     trainer_py_proto
