@@ -14,10 +14,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid, tensor
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
 
 
@@ -53,6 +54,7 @@ class TrilTriuOpDefaultTest(OpTest):
         self.dtype = np.float64
 
     def initTestCase(self):
+        self.init_dtype()
         self.real_op_type = np.random.choice(['triu', 'tril'])
         self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
@@ -61,6 +63,27 @@ class TrilTriuOpDefaultTest(OpTest):
 class TrilTriuOpDefaultTestFP16(TrilTriuOpDefaultTest):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    'not supported bf16',
+)
+class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def setUp(self):
+        super().setUp()
+        self.outputs["Out"] = convert_float_to_uint16(self.outputs["Out"])
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+
+    def initTestCase(self):
+        self.init_dtype()
+        self.real_op_type = np.random.choice(['triu', 'tril'])
+        self.diagonal = None
+        self.X = np.arange(1, 101, dtype="float32").reshape([10, -1])
 
 
 def case_generator(op_type, Xshape, diagonal, expected):
