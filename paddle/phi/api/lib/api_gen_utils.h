@@ -114,12 +114,17 @@ std::vector<phi::DenseTensor*> ProcessStridesBackup(
 
 phi::SelectedRows* ProcessStridesBackup(phi::SelectedRows** tensor);
 
+template <typename Context>
 void TransStride(const Context& dev_ctx,
                  phi::DenseTensor* from,
                  phi::DenseTensor* to);
+
+template <typename Context>
 void TransStride(const Context& dev_ctx,
                  const std::vector<phi::DenseTensor*>& from,
                  const std::vector<phi::DenseTensor*>& to);
+
+template <typename Context>
 void TransStride(const Context& dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to);
