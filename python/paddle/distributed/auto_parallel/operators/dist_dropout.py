@@ -94,7 +94,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op = main_block.ops[-1]
                     assert (
                         pre_op.type == "seed"
-                        and pre_op.attr("rng_name") is None
+                        and len(pre_op.attr("rng_name")) == 0
                     ), f"found exception op {str(pre_op)}"
 
                     # determinate rng
