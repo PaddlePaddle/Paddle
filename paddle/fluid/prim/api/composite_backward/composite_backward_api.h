@@ -33,6 +33,42 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto offset = full<T>(phi::vectorize(x.dims()), 3.0, x.dtype());
+    auto condition = less_equal<T>(x, offset);
+    auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + 0.5), out_grad);
+    auto res = where<T>(
+        less_than<T>(x, full<T>(phi::vectorize(x.dims()), -3.0, x.dtype())),
+        full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()),
+        tmp1);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void leaky_relu_grad(const Tensor& out,
+                     const Tensor& out_grad,
+                     float negative_slope,
+                     Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition, out_grad, out_grad * negative_slope);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void silu_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+    auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto condition = greater_than<T>(
@@ -1530,6 +1566,7 @@ void gelu_grad(const Tensor& x,
   }
 }
 
+
 // minimum grad
 template <typename T>
 void minimum_grad(const Tensor& x,
@@ -1574,6 +1611,24 @@ void minimum_grad(const Tensor& x,
     } else {
       set_output<T>(dy_res, y_grad);
     }
+  }
+}
+
+
+template <typename T>
+void roll_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& shifts,
+               const std::vector<int64_t>& axis,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto shifts_ = shifts.GetData();
+    int64_t nums = shifts_.size();
+    for (int64_t i = 0; i < nums; i++) {
+      shifts_[i] = 0 - shifts_[i];
+    }
+    auto x_grad_output = roll<T>(out_grad, shifts_, axis);
+    set_output<T>(x_grad_output, x_grad);
   }
 }
 
