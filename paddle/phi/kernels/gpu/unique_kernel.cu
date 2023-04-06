@@ -613,7 +613,7 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
-    }
+}
 
 PD_REGISTER_KERNEL(unique_raw,
                    GPU,
@@ -627,4 +627,4 @@ PD_REGISTER_KERNEL(unique_raw,
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
-                   }
+}
