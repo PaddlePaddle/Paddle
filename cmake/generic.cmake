@@ -364,20 +364,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Only deps libmklml.so, not link
-      if("${cc_library_DEPS};" MATCHES "mklml;")
-        list(REMOVE_ITEM cc_library_DEPS mklml)
-        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
-          list(APPEND cc_library_DEPS dynload_mklml)
-        endif()
-        add_dependencies(${TARGET_NAME} mklml)
-        if(WIN32)
-          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else()
-          target_link_libraries(${TARGET_NAME}
-                                "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif()
-      endif()
+
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")

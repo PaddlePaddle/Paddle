@@ -211,3 +211,27 @@ function(prune_declaration_h)
     endif()
   endforeach()
 endfunction()
+
+function(collect_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${CMAKE_CURRENT_SOURCE_DIR}/${src}"
+        CACHE INTERNAL "")
+  endforeach()
+endfunction()
+
+function(collect_generated_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${src}"
+        CACHE INTERNAL "")
+  endforeach()
+endfunction()

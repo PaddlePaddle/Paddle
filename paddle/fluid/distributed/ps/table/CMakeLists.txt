@@ -48,7 +48,7 @@ cc_library(
        string_helper
        simple_threadpool
        xxhash
-       generator)
+       phi)
 
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})

@@ -1,7 +1,7 @@
 cc_library(
   eager_scale
   SRCS scale.cc
-  DEPS phi_api phi autograd_meta scale_node)
+  DEPS phi autograd_meta scale_node)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(

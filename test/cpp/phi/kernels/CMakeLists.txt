@@ -6,7 +6,7 @@ if(WITH_GPU)
   nv_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS math_function)
+    DEPS phi)
   nv_test(
     test_broadcast_gpu
     SRCS test_ternary_broadcast.cu
@@ -16,13 +16,13 @@ if(WITH_ROCM)
   hip_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS math_function)
+    DEPS phi)
 endif()
 
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
-  DEPS blas phi_backends)
+  DEPS blas phi)
 
 # For String Kernels
 cc_test(
@@ -99,7 +99,7 @@ cc_test(
 cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
-  DEPS phi_backends memory)
+  DEPS phi memory)
 
 cc_test(
   sequence_padding_test

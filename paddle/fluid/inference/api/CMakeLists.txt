@@ -56,7 +56,7 @@ if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
 endif()
 
 cc_library(

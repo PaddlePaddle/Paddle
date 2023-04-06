@@ -28,7 +28,6 @@ set(PYBIND_DEPS
     gloo_wrapper
     infer_io_utils
     heter_wrapper
-    generator
     op_version_registry
     ps_gpu_wrapper
     custom_operator
@@ -37,15 +36,12 @@ set(PYBIND_DEPS
     fleet_executor
     global_utils
     phi_utils
-    tcp_store
-    comm_context_manager
+    phi
     new_profiler
     auto_parallel
     jit_layer
     jit_property
     prim_utils
-    operants_manager
-    phi_tensor_operants
     static_tensor_operants)
 
 if(WITH_PSCORE)
@@ -148,7 +144,6 @@ set(PYBIND_SRCS
     auto_parallel_py.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
@@ -501,10 +496,8 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS tensor_api)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
-    list(APPEND PYBIND_DEPS flags)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,

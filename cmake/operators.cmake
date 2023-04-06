@@ -72,7 +72,7 @@ function(op_library TARGET)
   set(MIOPEN_FILE)
   set(mkldnn_cc_srcs)
   set(MKLDNN_FILE)
-  set(op_common_deps operator op_registry math_function layer
+  set(op_common_deps operator op_registry phi layer
                      common_infer_shape_functions)
   if(WITH_MLU)
     set(op_common_deps ${op_common_deps} mlu_baseop)

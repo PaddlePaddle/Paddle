@@ -6,9 +6,9 @@ cc_library(
 cc_test(
   errors_test
   SRCS errors_test.cc
-  DEPS errors enforce)
+  DEPS phi enforce)
 
-set(enforce_deps flags errors flags phi_enforce)
+set(enforce_deps phi)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
@@ -26,16 +26,16 @@ cc_test(
 cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
-  DEPS phi_backends)
+  DEPS phi)
 cc_test(
   os_info_test
   SRCS os_info_test.cc
-  DEPS phi_os_info)
+  DEPS phi)
 
 cc_library(
   place
   SRCS place.cc
-  DEPS enforce phi_place)
+  DEPS enforce phi)
 cc_test(
   place_test
   SRCS place_test.cc
@@ -121,7 +121,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context custom_kernel context_pool memcpy)
+  DEPS device_context phi memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -134,7 +134,6 @@ cc_library(
        xxhash
        ${STREAM_CALLBACK_DEPS}
        place
-       phi_place
        eigen3
        cpu_helper
        framework_proto
@@ -144,12 +143,9 @@ cc_library(
        ${MKLDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
-       cudnn_workspace_helper
+       phi
        ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS}
-       phi_backends
-       phi_device_context
-       generator)
+       ${MLU_CTX_DEPS})
 
 cc_library(
   collective_helper
@@ -232,12 +228,12 @@ if(WITH_GPU)
       cuda_graph_with_memory_pool
       SRCS cuda_graph_with_memory_pool.cc
       DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
-           allocator phi_backends)
+           allocator phi)
   else()
     nv_library(
       cuda_graph_with_memory_pool
       SRCS cuda_graph_with_memory_pool.cc
-      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi)
   endif()
   nv_test(
     device_context_test
@@ -288,7 +284,7 @@ cc_test(
 cc_library(
   lodtensor_printer
   SRCS lodtensor_printer.cc
-  DEPS ddim
+  DEPS phi
        place
        tensor
        scope
@@ -306,41 +302,30 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi_os_info
-         phi_device_tracer
+    DEPS phi
          gpu_info
          enforce
          dynload_cuda
          new_profiler
          stats
          op_proto_maker
-         shape_inference
-         phi_profiler)
+         shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi_os_info
-         phi_device_tracer
+    DEPS phi
          gpu_info
          enforce
          new_profiler
          stats
          op_proto_maker
-         shape_inference
-         phi_profiler)
+         shape_inference)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi_os_info
-         phi_device_tracer
-         enforce
-         new_profiler
-         stats
-         op_proto_maker
-         shape_inference
-         phi_profiler)
+    DEPS phi enforce new_profiler stats op_proto_maker shape_inference)
 endif()
 
 cc_test(
@@ -376,7 +361,7 @@ if(WITH_GPU)
   nv_test(
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
-    DEPS gpu_info flags)
+    DEPS gpu_info phi)
   nv_library(
     cuda_device_guard
     SRCS cuda_device_guard.cc
@@ -391,7 +376,7 @@ if(WITH_ROCM)
   hip_test(
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
-    DEPS gpu_info flags)
+    DEPS gpu_info phi)
   hip_library(
     cuda_device_guard
     SRCS cuda_device_guard.cc
@@ -429,4 +414,4 @@ cc_library(
 cc_test(
   init_phi_test
   SRCS init_phi_test.cc
-  DEPS phi_tensor init_phi)
+  DEPS phi init_phi)

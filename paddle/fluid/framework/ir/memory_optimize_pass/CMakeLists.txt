@@ -76,5 +76,4 @@ cc_library(
 cc_test(
   test_reference_count_pass_last_lived_ops
   SRCS test_reference_count_pass_last_lived_ops.cc
-  DEPS parallel_executor elementwise_mul_op elementwise_add_op generated_op
-       eigen_function)
+  DEPS parallel_executor elementwise_mul_op elementwise_add_op generated_op phi)

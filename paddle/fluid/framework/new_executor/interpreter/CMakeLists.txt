@@ -6,7 +6,6 @@ set(INTERPRETER_DEPS
     device_context
     global_utils
     op_registry
-    phi_tensor_utils
     scope
     framework_proto
     data_feed_proto
@@ -31,7 +30,7 @@ set(INTERPRETER_DEPS
     enforce
     scope
     glog
-    comm_context_manager
+    phi
     ${DEVICE_EVENT_LIBS}
     glog)
 

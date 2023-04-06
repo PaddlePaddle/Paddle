@@ -443,7 +443,7 @@ copy(
   DSTS ${dst_dir}/${module}/allocation)
 
 set(module "platform")
-set(platform_lib_deps phi_profiler_proto errors)
+set(platform_lib_deps phi_profiler_proto phi)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif()

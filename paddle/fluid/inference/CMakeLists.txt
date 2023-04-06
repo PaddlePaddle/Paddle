@@ -36,13 +36,7 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(utils_modules pretty_log string_helper benchmark)
-
-if(WITH_CUSTOM_DEVICE)
-  set(fluid_modules ${fluid_modules} phi_capi)
-endif()
 
 add_subdirectory(api)
 
@@ -71,12 +65,11 @@ if(WIN32 AND WITH_GPU)
                                    ${utils_modules})
 else()
   # message("${fluid_modules}")
-  # message("PHI_MODULES ${phi_modules}")
-  # message("${phi_kernels}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
-  create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
-                    ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
+  create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API}
+                    ${utils_modules})
+  #target_link_libraries(paddle_inference phi)
 endif()
 
 if(NOT APPLE)
@@ -134,8 +127,7 @@ endif()
 
 #export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
 if(UNIX)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
-                            $<TARGET_OBJECTS:phi_function_api>)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} $<TARGET_OBJECTS:phi>)
 endif()
 
 # Create shared inference library

@@ -9,10 +9,10 @@ cc_test_old(
   crop_op
   activation_op
   generated_op
-  pooling
   transpose_op
   fused_transpose_op
   scope
   device_context
   enforce
-  executor)
+  executor
+  phi)

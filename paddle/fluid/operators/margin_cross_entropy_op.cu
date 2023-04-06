@@ -585,14 +585,6 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(margin_cross_entropy_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MarginCrossEntropyGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-
 PD_REGISTER_KERNEL(margin_cross_entropy,
                    GPU,
                    ALL_LAYOUT,

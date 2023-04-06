@@ -73,7 +73,7 @@ cc_test_old(
   DEPS
   brpc_utils
   scope
-  math_function
+  phi
   ${COMMON_DEPS}
   ${RPC_DEPS})
 

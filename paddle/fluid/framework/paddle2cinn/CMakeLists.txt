@@ -5,7 +5,7 @@ pass_library(
   cinn_subgraph_detector
   subgraph_detector
   cinn_compiler
-  errors
+  phi
   enforce)
 
 cc_library(
@@ -15,7 +15,7 @@ cc_library(
 cc_library(
   transform_type
   SRCS transform_type.cc
-  DEPS errors enforce cinn)
+  DEPS phi enforce cinn)
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc

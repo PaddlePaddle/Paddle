@@ -7,44 +7,44 @@ endif()
 
 # please add new math_library in alphabetical order
 if(WITH_MLU)
-  math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
+  math_library(concat_and_split DEPS phi mlu_baseop)
 else()
-  math_library(concat_and_split DEPS concat_and_split_functor)
+  math_library(concat_and_split DEPS phi)
 endif()
-math_library(context_project DEPS im2col math_function)
+math_library(context_project DEPS phi)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
 math_library(sample_prob)
-math_library(sampler DEPS generator)
+math_library(sampler DEPS phi)
 
-# math_library(math_function DEPS blas dense_tensor tensor)
+# math_library(phi DEPS phi tensor)
 
-math_library(sequence_pooling DEPS math_function jit_kernel_helper)
+math_library(sequence_pooling DEPS phi)
 if(WITH_ASCEND_CL)
-  math_library(beam_search DEPS math_function beam_search_npu)
+  math_library(beam_search DEPS phi beam_search_npu)
 elseif(WITH_XPU)
-  math_library(beam_search DEPS math_function beam_search_xpu)
+  math_library(beam_search DEPS phi beam_search_xpu)
 else()
-  math_library(beam_search DEPS math_function)
+  math_library(beam_search DEPS phi)
 endif()
 
 math_library(unpooling)
 math_library(prelu)
 math_library(bert_encoder_functor)
-math_library(tree2col DEPS math_function)
+math_library(tree2col DEPS phi)
 
 cc_test(
   selected_rows_functor_test
   SRCS selected_rows_functor_test.cc
-  DEPS allocator selected_rows_functor)
+  DEPS allocator phi)
 cc_test(
   im2col_test
   SRCS im2col_test.cc
-  DEPS im2col)
+  DEPS phi)
 cc_test(
   vol2col_test
   SRCS vol2col_test.cc
-  DEPS vol2col)
+  DEPS phi)
 cc_test(
   sequence_pooling_test
   SRCS sequence_pooling_test.cc
@@ -57,13 +57,13 @@ if(WITH_GPU)
   nv_test(
     selected_rows_functor_gpu_test
     SRCS selected_rows_functor_test.cu.cc
-    DEPS selected_rows_functor math_function)
+    DEPS phi)
 endif()
 if(WITH_ROCM)
   hip_test(
     selected_rows_functor_gpu_test
     SRCS selected_rows_functor_test.cu.cc
-    DEPS selected_rows_functor math_function)
+    DEPS phi)
 endif()
 cc_test(
   concat_test
