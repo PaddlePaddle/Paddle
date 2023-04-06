@@ -443,18 +443,23 @@ void TensorCopyImpl(const TENSOR& src,
 void TensorCopy(const Tensor& src,
                 const platform::Place& dst_place,
                 Tensor* dst) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   TensorCopyImpl<Tensor>(src, dst_place, dst);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 }
 void TensorCopy(const Tensor& src,
                 const platform::Place& dst_place,
                 const platform::DeviceContext& ctx,
                 Tensor* dst) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   TensorCopyImpl<Tensor>(src, dst_place, ctx, dst);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 }
 
 void TensorCopySync(const Tensor& src,
                     const platform::Place& dst_place,
                     Tensor* dst) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   if (&src == dst) {
     auto src_copy = src;
     TensorCopySync(src_copy, dst_place, dst);
@@ -649,6 +654,7 @@ void TensorCopySync(const Tensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 }
 
 void TensorToStream(std::ostream& os,
