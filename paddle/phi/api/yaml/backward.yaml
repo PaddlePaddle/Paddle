@@ -1878,6 +1878,19 @@
   kernel :
     func : unstack_grad
 
+- backward_op : warpctc_grad
+  forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)
+  args : (Tensor logits, Tensor logits_length, Tensor warpctcgrad, Tensor loss_grad, int blank, bool norm_by_times)
+  output : Tensor(logits_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [logits]
+  kernel :
+    func : warpctc_grad
+    data_type : loss_grad
+  optional : logits_length
+  no_need_buffer : logits
+
 - backward_op : warprnnt_grad
   forward : warprnnt (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0) -> Tensor(loss), Tensor(warprnntgrad)
   args : (Tensor input, Tensor input_lengths, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0)
