@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_gaussian_random_op import (
     TestGaussianRandomOp,
 )
