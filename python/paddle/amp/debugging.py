@@ -20,8 +20,8 @@ from enum import Enum
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import dygraph_only
 from paddle.fluid import core
+from paddle.fluid.framework import dygraph_only
 
 __all__ = [
     "enable_operator_stats_collection",
@@ -117,13 +117,15 @@ class TensorCheckerConfig:
 
         if core.is_compiled_with_cuda():
             for i in range(core.get_cuda_device_count()):
-                self.initial_seed = core.default_cuda_generator(i).initial_seed()
+                self.initial_seed = core.default_cuda_generator(
+                    i
+                ).initial_seed()
         elif core.is_compiled_with_xpu():
             for i in range(core.get_xpu_device_count()):
                 self.initial_seed = core.default_xpu_generator(i).initial_seed()
-    
+
         self.initial_seed = core.default_cpu_generator().initial_seed()
-    
+
         # check debug_mode
         if self.debug_mode.name not in DebugMode.__members__:
             raise ValueError(
@@ -189,18 +191,17 @@ class TensorCheckerConfig:
         )
 
     def _set_seed(self, enable):
-        if enable:
-            if self.initial_seed != 34342423252:
-                self.seed = self.initial_seed
-            self.keep_random(self.seed, True)
-        else:
-            self.keep_random(self.initial_seed, False)
+        if self.initial_seed != 34342423252:
+            self.seed = self.initial_seed
+        self.keep_random(self.seed, True)
 
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
         if check_flag:
             # set debug level
-            paddle.set_flags({"FLAGS_check_nan_inf_level": self.debug_mode.value})
+            paddle.set_flags(
+                {"FLAGS_check_nan_inf_level": self.debug_mode.value}
+            )
 
             # set output_dir
             if self.dump_dir is not None:
@@ -231,6 +232,7 @@ class TensorCheckerConfig:
 
     def end(self):
         self._set_env(False)
+
 
 def _get_operator_stats_flag():
     flags = paddle.get_flags(["FLAGS_low_precision_op_list"])
