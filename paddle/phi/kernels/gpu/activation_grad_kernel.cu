@@ -436,7 +436,8 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(cos_double_grad,
                    GPU,
@@ -457,7 +458,8 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
