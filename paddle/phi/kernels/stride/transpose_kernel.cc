@@ -23,12 +23,20 @@ void TransposeStrideKernel(const Context& ctx,
                            const DenseTensor& x,
                            const std::vector<int>& axis,
                            DenseTensor* out) {
+  size_t x_rank = x.dims().size();
+  std::vector<int> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
   auto meta = x.meta();
   auto in_strides = x.strides();
   auto in_dims = x.dims();
-  for (size_t i = 0; i < axis.size(); i++) {
-    meta.strides[i] = in_strides[axis[i]];
-    meta.dims[i] = in_dims[axis[i]];
+  for (size_t i = 0; i < formated_axis.size(); i++) {
+    meta.strides[i] = in_strides[formated_axis[i]];
+    meta.dims[i] = in_dims[formated_axis[i]];
   }
 
   out->set_meta(meta);

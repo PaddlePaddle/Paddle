@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
@@ -212,81 +213,17 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
 template <typename Context>
 phi::DenseTensor TensorContiguous(const Context& dev_ctx,
                                   const phi::DenseTensor& tensor) {
-  // phi::DenseTensor dense_out;
-  // phi::MetaTensor meta_input(tensor);
-  // phi::MetaTensor meta_out(&dense_out);
-  // UnchangedInferMeta(meta_input, &meta_out);
+  phi::DenseTensor dense_out;
+  phi::MetaTensor meta_input(tensor);
+  phi::MetaTensor meta_out(&dense_out);
+  UnchangedInferMeta(meta_input, &meta_out);
 
-  // PD_VISIT_ALL_TYPES(tensor.dtype(), "TensorContiguous", ([&] {
-  //                      phi::ContiguousKernel<data_t, Context>(dev_ctx,
-  //                      tensor, &dense_out);
-  //                    }));
-  // return dense_out;
-  switch (tensor.dtype()) {
-    case DataType::FLOAT32:
-      return phi::Contiguous<float>(dev_ctx, tensor);
-    case DataType::FLOAT64:
-      return phi::Contiguous<double>(dev_ctx, tensor);
-    case DataType::INT32:
-      return phi::Contiguous<int32_t>(dev_ctx, tensor);
-    case DataType::INT64:
-      return phi::Contiguous<int64_t>(dev_ctx, tensor);
-    case DataType::FLOAT16:
-      return phi::Contiguous<phi::dtype::float16>(dev_ctx, tensor);
-    case DataType::BFLOAT16:
-      return phi::Contiguous<phi::dtype::bfloat16>(dev_ctx, tensor);
-    case DataType::BOOL:
-      return phi::Contiguous<bool>(dev_ctx, tensor);
-    case DataType::INT16:
-      return phi::Contiguous<int16_t>(dev_ctx, tensor);
-    case DataType::UINT8:
-      return phi::Contiguous<uint8_t>(dev_ctx, tensor);
-    case DataType::INT8:
-      return phi::Contiguous<int8_t>(dev_ctx, tensor);
-    case DataType::COMPLEX64:
-      return phi::Contiguous<phi::dtype::complex<float>>(dev_ctx, tensor);
-    case DataType::COMPLEX128:
-      return phi::Contiguous<phi::dtype::complex<double>>(dev_ctx, tensor);
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Data type (%s) is not supported when casting data type.",
-          tensor.dtype()));
-  }
+  PD_VISIT_ALL_TYPES(tensor.dtype(), "TensorContiguous", ([&] {
+                       phi::ContiguousKernel<data_t, Context>(
+                           dev_ctx, tensor, &dense_out);
+                     }));
+  return dense_out;
 }
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-phi::DenseTensor TensorContiguous(const phi::GPUContext& dev_ctx,
-                                  const phi::DenseTensor& tensor) {
-  switch (tensor.dtype()) {
-    case DataType::FLOAT32:
-      return phi::Contiguous<float>(dev_ctx, tensor);
-    case DataType::FLOAT64:
-      return phi::Contiguous<double>(dev_ctx, tensor);
-    case DataType::INT32:
-      return phi::Contiguous<int32_t>(dev_ctx, tensor);
-    case DataType::INT64:
-      return phi::Contiguous<int64_t>(dev_ctx, tensor);
-    case DataType::FLOAT16:
-      return phi::Contiguous<phi::dtype::float16>(dev_ctx, tensor);
-    case DataType::BOOL:
-      return phi::Contiguous<bool>(dev_ctx, tensor);
-    case DataType::INT16:
-      return phi::Contiguous<int16_t>(dev_ctx, tensor);
-    case DataType::UINT8:
-      return phi::Contiguous<uint8_t>(dev_ctx, tensor);
-    case DataType::INT8:
-      return phi::Contiguous<int8_t>(dev_ctx, tensor);
-    case DataType::COMPLEX64:
-      return phi::Contiguous<phi::dtype::complex<float>>(dev_ctx, tensor);
-    case DataType::COMPLEX128:
-      return phi::Contiguous<phi::dtype::complex<double>>(dev_ctx, tensor);
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Data type (%s) is not supported when casting data type.",
-          tensor.dtype()));
-  }
-}
-#endif
 
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
