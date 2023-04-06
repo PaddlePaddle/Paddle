@@ -315,7 +315,7 @@ std::vector<phi::DenseTensor*> ProcessStridesBackup(
   return backup;
 }
 
-phi::DenseTensor* ProcessStridesBackup(phi::SelectedRows** tensor) {
+phi::SelectedRows* ProcessStridesBackup(phi::SelectedRows** tensor) {
   return nullptr;
 }
 
@@ -325,7 +325,7 @@ void TransStride(const Context& dev_ctx,
                  phi::DenseTensor* to) {
   if (to) {
     PD_VISIT_ALL_TYPES(
-        tensor.dtype(), "StridedCopyKernel", ([&] {
+        to->dtype(), "StridedCopyKernel", ([&] {
           phi::StridedCopyKernel<data_t, Context>(
               dev_ctx, *from, phi::vectorize<int64_t>(to->strides()), to);
         }));
@@ -338,10 +338,10 @@ void TransStride(const Context& dev_ctx,
                  const std::vector<phi::DenseTensor*>& to) {
   for (size_t i = 0; i < to.size(); i++) {
     if (to[i]) {
-      PD_VISIT_ALL_TYPES(tensor.dtype(), "StridedCopyKernel", ([&] {
+      PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
                            phi::StridedCopyKernel<data_t, Context>(
                                dev_ctx,
-                               from[i],
+                               *from[i],
                                phi::vectorize<int64_t>(to[i]->strides()),
                                to[i]);
                          }));
