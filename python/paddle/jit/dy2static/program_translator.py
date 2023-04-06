@@ -1225,7 +1225,9 @@ class ProgramCache:
                         )
                     )
 
-        partial_program = partial_program_from(concrete_program)
+        partial_program = partial_program_from(
+            concrete_program, cache_key.class_instance is not None
+        )
         if core._is_fwd_prim_enabled() and not _in_amp_guard():
             partial_program.set_hooker(
                 PrimHooker(concrete_program.main_program)

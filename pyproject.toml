@@ -14,7 +14,6 @@ extend_skip_glob = [
     "python/paddle/fluid/[!t]**",
     "python/paddle/fluid/tra**",
     "python/paddle/utils/gast/**",
-    "python/paddle/fluid/tests/unittests/npu/**",
 ]
 
 [tool.ruff]
@@ -23,7 +22,6 @@ exclude = [
     "./python/paddle/fluid/[!t]**",
     "./python/paddle/fluid/tra**",
     "./python/paddle/utils/gast/**",
-    "./python/paddle/fluid/tests/unittests/npu/**",
 ]
 target-version = "py37"
 select = [
@@ -96,7 +94,7 @@ select = [
     # "PLE2514",
     # "PLE2515",
     # "PLR0133",
-    # "PLR0206",
+    "PLR0206",
     "PLR0402",
     # "PLR0911",
     # "PLR0912",

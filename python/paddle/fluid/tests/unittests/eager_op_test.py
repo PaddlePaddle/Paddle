@@ -24,6 +24,16 @@ from copy import copy
 
 import numpy as np
 from op import Operator
+from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
+from testsuite import append_input_output, append_loss_ops, create_op, set_input
+from white_list import (
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    no_grad_set_white_list,
+    op_accuracy_white_list,
+    op_threshold_white_list,
+)
 
 import paddle
 from paddle import fluid
@@ -36,20 +46,9 @@ from paddle.fluid.framework import (
     _current_expected_place,
     canonicalize_attrs,
 )
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
-from testsuite import append_input_output, append_loss_ops, create_op, set_input
-from white_list import (
-    check_shape_white_list,
-    compile_vs_runtime_white_list,
-    no_check_set_white_list,
-    no_grad_set_white_list,
-    op_accuracy_white_list,
-    op_threshold_white_list,
-)
-
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 
 @signature_safe_contextmanager
@@ -338,10 +337,7 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        if paddle.is_compiled_with_npu():
-            cls._use_system_allocator = _set_use_system_allocator(False)
-        else:
-            cls._use_system_allocator = _set_use_system_allocator(True)
+        cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -376,9 +372,6 @@ class OpTest(unittest.TestCase):
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
 
-        def is_npu_op_test():
-            return hasattr(cls, "use_npu") and cls.use_npu
-
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
@@ -411,7 +404,6 @@ class OpTest(unittest.TestCase):
                 and not is_xpu_op_test()
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
-                and not is_npu_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
             ):
@@ -1965,10 +1957,8 @@ class OpTest(unittest.TestCase):
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
-        if (
-            not paddle.is_compiled_with_xpu()
-            and not paddle.is_compiled_with_npu()
-            and not isinstance(place, core.CustomPlace)
+        if not paddle.is_compiled_with_xpu() and not isinstance(
+            place, core.CustomPlace
         ):
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol
