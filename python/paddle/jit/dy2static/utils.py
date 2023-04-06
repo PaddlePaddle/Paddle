@@ -1454,7 +1454,6 @@ def _param_grad_names(program_desc, params):
     names = []
     # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
-
     for param in params:
         candidate = []
         suffix = param.name + '@GRAD'
