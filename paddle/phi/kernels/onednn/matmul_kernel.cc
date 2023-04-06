@@ -28,25 +28,6 @@ using phi::ReshapeToMatrix;
 
 namespace phi {
 
-DDim GetDimsForInput(const OneDNNContext &dev_ctx,
-                     DDim input_dims,
-                     std::string input_name) {
-  auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
-          : std::vector<int>();
-  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
-                  ? PADDLE_GET_CONST(
-                        std::vector<int>,
-                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
-                  : std::vector<int>();
-  if (!shape.empty() && !axis.empty()) {
-    return input_dims.reshape(shape).transpose(axis);
-  }
-  return input_dims;
-}
-
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          std::vector<int64_t> *x_bd_dims,
@@ -120,9 +101,8 @@ void MatmulKernel(const Context &dev_ctx,
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
 
-  auto x_dims = vectorize(GetDimsForInput(dev_ctx, x.dims(), "X"));
-  auto y_dims = vectorize(GetDimsForInput(dev_ctx, y.dims(), "Y"));
-
+  auto x_dims = vectorize(x.dims());
+  auto y_dims = vectorize(y.dims());
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
 
