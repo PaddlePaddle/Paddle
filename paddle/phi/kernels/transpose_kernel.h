@@ -41,11 +41,10 @@ DenseTensor Transpose(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TransposeInferMeta(x, axis, &meta_out);
-  if (FLAGS_use_stride_kernel) {
-    TransposeStrideKernel<Context>(dev_ctx, x, axis, &dense_out);
-  } else {
-    TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
-  }
+
+  // do not call TransposeStrideKernel, because some other kernels call
+  // Transpose directly
+  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
 
   return dense_out;
 }
