@@ -2173,6 +2173,13 @@
   outputs :
     {scores : Scores, path : Path}
 
+- op : warpctc
+  backward : warpctc_grad
+  inputs :
+    {logits : Logits, label : Label, logits_length : LogitsLength, labels_length : LabelLength}
+  outputs :
+    {warpctcgrad : WarpCTCGrad, loss : Loss}
+
 - op : where
   backward : where_grad
   inputs :
