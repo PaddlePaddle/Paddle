@@ -564,8 +564,6 @@ class TestLACModel(unittest.TestCase):
             )
 
             step = 0
-            chunk_evaluator = fluid.metrics.ChunkEvaluator()
-            chunk_evaluator.reset()
 
             loss_data = []
             for epoch_id in range(args.epoch):
