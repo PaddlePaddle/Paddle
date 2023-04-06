@@ -653,7 +653,6 @@ if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
     DEPENDS fleet_proto_init index_dataset_py_proto
-    DEPENDS index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py
