@@ -54,7 +54,7 @@ void GatherTreeKernel(const Context &dev_ctx,
             parent,
             beam_size,
             phi::errors::InvalidArgument(
-                "The parents must be less than beam size, but recieved"
+                "The parents must be less than beam size, but received"
                 "parents %d is greater than or equal to beam size %d. ",
                 parent,
                 beam_size));

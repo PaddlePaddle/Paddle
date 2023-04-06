@@ -50,7 +50,7 @@ void ClipSparseKernel(const Context& dev_ctx,
   auto* out_tensor = out->mutable_value();
   auto* out_data = out_tensor->data<T>();
   int64_t numel = out_tensor->numel();
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx,
         out_data,
         out_data + numel,

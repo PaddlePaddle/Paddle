@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -68,7 +68,7 @@ class LinalgPinvTestCase(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input",
                     shape=self._input_shape,
                     dtype=self._input_data.dtype,

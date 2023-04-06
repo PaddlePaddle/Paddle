@@ -385,7 +385,11 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
-    create_shape = [] if len(loss.shape) == 0 else [1]
+    # 0D Tensor or 0-Size Tensor
+    if len(loss.shape) == 0 or 0 in loss.shape:
+        create_shape = loss.shape
+    else:
+        create_shape = [1]
     op_desc = _create_op_desc_(
         "fill_constant",
         {},
@@ -1671,6 +1675,18 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
                         continue
+
+        # sum may create invalid variable, here to deal with it.
+        if op_desc.type() == 'sum':
+            new_inputs = []
+            for grad_var_name in op_desc.input_arg_names():
+                if block.desc.has_var_recursive(grad_var_name.encode()):
+                    # meet invalid sum variables, remove the invalid operand.
+                    new_inputs.append(grad_var_name)
+            assert (
+                len(new_inputs) > 0
+            ), "After remove invalid variables, sum op have no inputs."
+            op_desc.set_input("X", new_inputs)
 
         new_vars = set()
         # create new gradient variables

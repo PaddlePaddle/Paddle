@@ -125,12 +125,16 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
-  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+  }
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
     if (std::is_same<T, float>::value) cutlass = false;
   }
+  if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+
   if (cutlass) {
     auto* out_values = out->mutable_non_zero_elements();
     T* out_values_ptr = out_values->data<T>();
@@ -150,60 +154,18 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
-      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp16_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp16Kernel(M, N, K);
-        gather_gemm_scatter(
-            dev_ctx,
-            reinterpret_cast<const cutlass::half_t*>(
-                x.non_zero_elements().data<T>()),
-            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            M,
-            N,
-            K,
-            static_cast<const int32_t*>(gather_indices),
-            static_cast<const int32_t*>(scatter_indices),
-            static_cast<cutlass::half_t>(1),
-            static_cast<cutlass::half_t>(1));
-      }
-      if constexpr (std::is_same<T, float>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp32_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp32Kernel(M, N, K, dev_ctx.GetComputeCapability());
-        gather_gemm_scatter(dev_ctx,
-                            x.non_zero_elements().data<T>(),
-                            tmp_kernel_ptr,
-                            out_values_ptr,
-                            out_values_ptr,
-                            M,
-                            N,
-                            K,
-                            gather_indices,
-                            scatter_indices,
-                            static_cast<T>(1),
-                            static_cast<T>(1));
-      }
-      if constexpr (std::is_same<T, double>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp64_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp64Kernel(M, N, K);
-        gather_gemm_scatter(dev_ctx,
-                            x.non_zero_elements().data<T>(),
-                            tmp_kernel_ptr,
-                            out_values_ptr,
-                            out_values_ptr,
-                            M,
-                            N,
-                            K,
-                            gather_indices,
-                            scatter_indices,
-                            static_cast<T>(1),
-                            static_cast<T>(1));
-      }
+      GatherGemmScatterDriver(dev_ctx,
+                              x.non_zero_elements().data<T>(),
+                              tmp_kernel_ptr,
+                              out_values_ptr,
+                              out_values_ptr,
+                              M,
+                              N,
+                              K,
+                              gather_indices,
+                              scatter_indices,
+                              static_cast<T>(1.0),
+                              static_cast<T>(1.0));
     }
   } else {
 #endif
@@ -337,4 +299,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
 }

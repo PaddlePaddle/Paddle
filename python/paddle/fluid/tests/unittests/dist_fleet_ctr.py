@@ -25,7 +25,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -144,7 +144,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             input=lr_embbding, pool_type="sum"
         )
 
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
@@ -208,7 +208,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             self.test_reader.reset()
 
         pass_time = time.time() - pass_start
-        message = "Distributed Test Succeed, Using Time {}\n".format(pass_time)
+        message = f"Distributed Test Succeed, Using Time {pass_time}\n"
         fleet.util.print_on_rank(message, 0)
 
     def do_pyreader_training(self, fleet):

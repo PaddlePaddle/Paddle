@@ -24,7 +24,10 @@ PD_REGISTER_KERNEL(momentum,
                    phi::MomentumDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
                    GPU,
@@ -32,4 +35,7 @@ PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
                    phi::MomentumSparseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}

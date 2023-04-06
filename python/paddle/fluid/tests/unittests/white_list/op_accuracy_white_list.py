@@ -38,6 +38,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'increment',
     'l1_norm',
     'log_loss',
+    'logit',
     'lrn',
     'margin_rank_loss',
     'match_matrix_tensor',
@@ -86,4 +87,9 @@ NO_FP16_CHECK_GRAD_OP_LIST = [
     'pool3d',
     'softmax',
     'conv2d_transpose',
+]
+
+NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
+    'fake_quantize_moving_average_abs_max',
+    'p_norm',
 ]

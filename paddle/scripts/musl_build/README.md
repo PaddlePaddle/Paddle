@@ -116,6 +116,6 @@ make -j8
 - **build_paddle.sh**: paddle building script
 - **build_inside.sh**: build_paddle.sh will invoke this script inside the docker for compiling.
 - **config.sh**: build config script for configure compiling option setting.
-- **Dockerfile**: build docker defination file.
+- **Dockerfile**: build docker definition file.
 - **package.txt**: build required develop packages for alpine linux.
 - **REAME.md**: this file.

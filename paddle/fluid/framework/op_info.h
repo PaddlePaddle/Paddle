@@ -91,6 +91,8 @@ class OpInfo {
   // some ops don't have grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
 
+  bool HasCompGradOpMaker() const { return grad_comp_op_maker_ != nullptr; }
+
   bool HasNonEmptyGradOpMaker() const {
     return grad_op_maker_ != nullptr && !use_empty_grad_op_desc_maker_;
   }

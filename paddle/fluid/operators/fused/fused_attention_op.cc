@@ -120,6 +120,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     auto y_dim = ctx->GetInputDim("QKVW");
     int dim_head;
     int hidden_size;
+    int nranks = 1;
     if (transpose_qkv_wb) {
       PADDLE_ENFORCE_EQ(y_dim.size(),
                         2,
@@ -149,8 +150,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           platform::errors::InvalidArgument(
                               "The dimensions of qkv_weight must be 2"
                               "(dim_embed, 3 * dim_embed)."));
+      } else {
+        // compute the mp nranks
+        nranks = (y_dim[0] * 3) / y_dim[1];
       }
-      dim_head = y_dim[0] / num_heads;
+      dim_head = y_dim[0] / (num_heads * nranks);
       hidden_size = y_dim[0];
     } else {
       PADDLE_ENFORCE_EQ(y_dim.size(),
@@ -210,11 +214,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     }
 
     if (transpose_qkv_wb) {
-      // [batch_size, seq_len, 3 * hidden_size]
-      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+      // [batch_size, seq_len, 3 * num_heads * dim_head]
+      ctx->SetOutputDim("QKVOut",
+                        {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
 
       if (ctx->HasInput("QKVBias")) {
-        ctx->SetOutputDim("QKVBiasOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+        ctx->SetOutputDim("QKVBiasOut",
+                          {x_dim[0], x_dim[1], 3 * num_heads * dim_head});
       }
     } else {
       // [batch_size, seq_len, 3, num_head, head_size]

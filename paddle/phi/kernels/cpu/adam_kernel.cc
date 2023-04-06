@@ -16,11 +16,11 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 DECLARE_int32(inner_op_parallelism);
 
@@ -70,9 +70,10 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
-
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -114,7 +115,7 @@ void AdamDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  paddle::operators::jit::adam_attr_t attr(beta1_, beta2_);
+  phi::jit::adam_attr_t attr(beta1_, beta2_);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -123,9 +124,8 @@ void AdamDenseKernel(const Context& dev_ctx,
   const T* grad_ptr = grad.data<T>();
 
   auto adam =
-      paddle::operators::jit::KernelFuncs<paddle::operators::jit::AdamTuple<T>,
-                                          phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::AdamTuple<T>, phi::CPUPlace>::Cache().At(
+          attr);
 
   static constexpr int64_t chunk_size = 512;
 

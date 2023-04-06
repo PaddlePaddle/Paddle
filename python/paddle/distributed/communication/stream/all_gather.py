@@ -14,9 +14,9 @@
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.communication.group import _get_global_group
+from paddle.fluid import data_feeder
 
 
 def _all_gather_into_tensor_in_dygraph(

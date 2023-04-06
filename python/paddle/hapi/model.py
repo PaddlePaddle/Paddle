@@ -24,20 +24,17 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.layers import collective
-from paddle.fluid.layers.utils import flatten
+from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.metric import Metric
@@ -61,10 +58,10 @@ def to_list(value):
 
 def to_numpy(var):
     assert isinstance(
-        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
+        var, (Variable, fluid.core.eager.Tensor)
     ), "not a variable"
-    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
-        return var.numpy()
+    if isinstance(var, fluid.core.eager.Tensor):
+        return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
 
@@ -93,10 +90,11 @@ def extract_args(func):
     return inspect.getfullargspec(func).args
 
 
-def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(
-        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
-    )
+def _all_gather(x):
+    output = []
+    dist.all_gather(output, x)
+    output = paddle.concat(output, axis=0)
+    return output
 
 
 def wait_server_ready(endpoints):
@@ -185,22 +183,54 @@ def init_communicator(
                 'rank_ids': nranks,
             },
         )
+    elif core.is_compiled_with_xpu():
+        bkcl_id_var = block.create_var(
+            name=fluid.unique_name.generate('bkcl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': bkcl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):
     if place is None:
         place = (
-            fluid.CUDAPlace(ParallelEnv().dev_id)
-            if ParallelEnv().nranks > 1
+            fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+            if paddle.distributed.ParallelEnv().nranks > 1
             else fluid.CUDAPlace(0)
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
-    strategy.nranks = ParallelEnv().nranks
-    strategy.local_rank = ParallelEnv().local_rank
-    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-    strategy.current_endpoint = ParallelEnv().current_endpoint
+    strategy = paddle.distributed.parallel.ParallelStrategy()
+    strategy.nranks = paddle.distributed.ParallelEnv().nranks
+    strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
+    strategy.trainer_endpoints = (
+        paddle.distributed.ParallelEnv().trainer_endpoints
+    )
+    strategy.current_endpoint = (
+        paddle.distributed.ParallelEnv().current_endpoint
+    )
 
     if strategy.nranks < 2:
         return
@@ -282,8 +312,8 @@ class StaticGraphAdapter:
             'test_batch': 0,
         }
 
-        self._nranks = ParallelEnv().nranks
-        self._local_rank = ParallelEnv().local_rank
+        self._nranks = paddle.distributed.ParallelEnv().nranks
+        self._local_rank = paddle.distributed.ParallelEnv().local_rank
 
         self._amp_level = "O0"
         self._amp_configs = {}
@@ -464,7 +494,7 @@ class StaticGraphAdapter:
 
             assert (
                 var.name in converted_state
-            ), "variable [{}] is not in optimizer state file".format(var.name)
+            ), f"variable [{var.name}] is not in optimizer state file"
             self._set_var(var, converted_state[var.name])
 
     def _set_var(self, var, ndarray):
@@ -628,9 +658,9 @@ class StaticGraphAdapter:
                 losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
-                outputs = [_all_gather(o, self._nranks) for o in outputs]
+                outputs = [_all_gather(o) for o in outputs]
                 if mode != 'test':
-                    labels = [_all_gather(l, self._nranks) for l in labels]
+                    labels = [_all_gather(l) for l in labels]
 
             if mode != 'test':
                 for metric in self.model._metrics:
@@ -665,7 +695,7 @@ class StaticGraphAdapter:
                         amp_lists=amp_lists,
                         use_pure_fp16=self._amp_level == "O2",
                         use_fp16_guard=self._use_fp16_guard,
-                        **self._amp_configs
+                        **self._amp_configs,
                     )
 
                 self.model._optimizer.minimize(self._loss_endpoint)
@@ -710,6 +740,15 @@ class StaticGraphAdapter:
                     continue
 
                 uninitialized.append(var_py)
+
+            # for RawProgramOptimizer, it will insert OP with no outputs like:
+            #       c_comm_init(inputs={X=['comm_id_0']}
+            # but we cannot prune this op.
+            block = self._startup_prog.global_block()
+            for op in block.ops:
+                if op.type == "c_comm_init":
+                    uninitialized.append(op)
+
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
@@ -733,8 +772,8 @@ class DynamicGraphAdapter:
     def __init__(self, model):
         super().__init__()
         self.model = model
-        self._nranks = ParallelEnv().nranks
-        self._local_rank = ParallelEnv().local_rank
+        self._nranks = paddle.distributed.ParallelEnv().nranks
+        self._local_rank = paddle.distributed.ParallelEnv().local_rank
         self._merge_count = {
             'eval_total': 0,
             'test_total': 0,
@@ -750,14 +789,16 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
-            stradegy.nranks = ParallelEnv().nranks
-            stradegy.local_rank = ParallelEnv().local_rank
-            stradegy.trainer_endpoints = ParallelEnv().trainer_endpoints
-            stradegy.current_endpoint = ParallelEnv().current_endpoint
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
+            stradegy.nranks = paddle.distributed.ParallelEnv().nranks
+            stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
+            stradegy.trainer_endpoints = (
+                paddle.distributed.ParallelEnv().trainer_endpoints
             )
+            stradegy.current_endpoint = (
+                paddle.distributed.ParallelEnv().current_endpoint
+            )
+            self.ddp_model = paddle.DataParallel(self.model.network, stradegy)
 
     @property
     def mode(self):
@@ -786,7 +827,7 @@ class DynamicGraphAdapter:
         with paddle.amp.auto_cast(
             enable=self._amp_level != 'O0',
             **self._amp_custom_lists,
-            level=self._amp_level
+            level=self._amp_level,
         ):
             if self._nranks > 1:
                 outputs = self.ddp_model(*[to_variable(x) for x in inputs])
@@ -844,8 +885,8 @@ class DynamicGraphAdapter:
             losses = to_list(losses)
 
         if self._nranks > 1:
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
-            labels = [_all_gather(l, self._nranks) for l in labels]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
+            labels = [_all_gather(l) for l in labels]
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
@@ -890,7 +931,7 @@ class DynamicGraphAdapter:
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
-            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
+            outputs = [_all_gather(o) for o in to_list(outputs)]
 
         return [to_numpy(o) for o in to_list(outputs)]
 
@@ -1373,7 +1414,7 @@ class Model:
 
         """
 
-        if ParallelEnv().local_rank == 0:
+        if paddle.distributed.ParallelEnv().local_rank == 0:
             if not training:
                 self._save_inference_model(path)
             else:
@@ -1441,9 +1482,7 @@ class Model:
         def _check_match(key, param):
             state = param_state.get(key, None)
             if state is None:
-                raise ValueError(
-                    "{} is not found in the providing file.".format(key)
-                )
+                raise ValueError(f"{key} is not found in the providing file.")
             if list(state.shape) != list(param.shape):
                 raise ValueError(
                     "{} receives a shape {}, but the expected shape is {}.".format(
@@ -1459,7 +1498,7 @@ class Model:
                 '.pdparams',
                 '.pdopt',
                 '.pdmodel',
-            ], "Unknown postfix {} from weights".format(ext)
+            ], f"Unknown postfix {ext} from weights"
             return path
 
         path = _strip_postfix(path)
@@ -1472,9 +1511,7 @@ class Model:
                 match_res = _check_match(key, param)
             except ValueError as err:
                 if skip_mismatch:
-                    warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
-                    )
+                    warnings.warn(f"Skip loading for {key}. " + str(err))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -1657,7 +1694,10 @@ class Model:
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
-            if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
+            if (
+                paddle.distributed.ParallelEnv().nranks > 1
+                and not _parallel_context_initialized
+            ):
                 if fluid._non_static_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
                     startup_prog_seed = (
@@ -1687,7 +1727,7 @@ class Model:
         for metric in to_list(metrics):
             assert isinstance(
                 metric, Metric
-            ), "{} is not sub class of Metric".format(metric.__class__.__name__)
+            ), f"{metric.__class__.__name__} is not sub class of Metric"
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
@@ -2257,7 +2297,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 
@@ -2280,9 +2320,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 
@@ -2307,7 +2347,9 @@ class Model:
                 mode == 'train'
                 or self._adapter._merge_count.get(mode + '_batch', 0) <= 0
             ):
-                logs['batch_size'] = batch_size * ParallelEnv().nranks
+                logs['batch_size'] = (
+                    batch_size * paddle.distributed.ParallelEnv().nranks
+                )
             else:
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 

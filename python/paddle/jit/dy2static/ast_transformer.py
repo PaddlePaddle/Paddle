@@ -22,7 +22,7 @@ import os
 from . import logging_utils
 from .assert_transformer import AssertTransformer
 from .base_transformer import BaseTransformer
-from .basic_api_transformer import BasicApiTransformer
+from .basic_api_transformer import BasicApiTransformer, NameloadJstTransformer
 from .break_continue_transformer import (
     BreakContinueTransformer,
     BreakTransformOptimizer,
@@ -86,7 +86,7 @@ class DygraphToStaticAst(BaseTransformer):
 
     def transfer_from_node_type(self, node_wrapper):
         self.translator_logger.log(
-            1, "Source code: \n{}".format(ast_to_source_code(self.root))
+            1, f"Source code: \n{ast_to_source_code(self.root)}"
         )
         # Generic transformation
         self.visit(node_wrapper.node)
@@ -105,6 +105,7 @@ class DygraphToStaticAst(BaseTransformer):
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call
+            NameloadJstTransformer,
             TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 

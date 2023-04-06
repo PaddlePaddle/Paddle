@@ -254,6 +254,8 @@ class ClipHelper:
                 "c_allreduce_sum",
             ] and not is_data_parallel_reduce_op(op):
                 return False
+            if op.type in ["send_v2", "recv_v2"]:
+                return False
 
         return True
 
@@ -454,7 +456,7 @@ class ClipGradByGloblNormPass(PassBase):
                     )
                     # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', str('/') + SyncMode.GlobalNormSync
+                        'op_namescope', '/' + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 

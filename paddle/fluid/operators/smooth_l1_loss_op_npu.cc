@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -196,7 +195,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     // outy_grad = - gradient
     if (outy_grad) {
       outy_grad->mutable_data<T>(context.GetPlace());
-      phi::DenseTensor coeff(experimental::DataType::FLOAT32);
+      phi::DenseTensor coeff(phi::DataType::FLOAT32);
       coeff.mutable_data<float>({1}, context.GetPlace());
       FillNpuTensorWithConstant<float>(&coeff, -1);
       const auto& runner_y_grad =

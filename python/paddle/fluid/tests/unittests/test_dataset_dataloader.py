@@ -20,7 +20,7 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 10
+            file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = fluid.cpu_places()
+            places = [fluid.CPUPlace()]
             use_cuda = False
         else:
-            file_num = fluid.core.get_cuda_device_count()
-            places = fluid.cuda_places()
+            file_num = 1
+            places = [fluid.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -127,9 +127,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
             random_delta_batch_size = np.zeros(shape=[file_num])
 
         for i in range(file_num):
-            filename = os.path.join(
-                self.temp_dir.name, 'dataset_test_{}.txt'.format(i)
-            )
+            filename = os.path.join(self.temp_dir.name, f'dataset_test_{i}.txt')
             filelist.append(filename)
             write_reader_data_to_file(
                 filename,
@@ -145,7 +143,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
+        prog = fluid.CompiledProgram(main_prog)
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)

@@ -13,15 +13,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -30,7 +21,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid nearest_interp_v2 op";
+    VLOG(3) << "convert a nearest_interp_v2 op to tensorrt op";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -82,6 +73,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
 
     // Priority: Input(SizeTensor) > attr(out_h/out_w) > attr(scale)
     nvinfer1::ITensor* outsize_tensor = nullptr;
+#if IS_TRT_VERSION_GE(8200)
     if (engine_->with_dynamic_shape() &&
         inputs.find("SizeTensor") != inputs.end()) {
       if (op_desc.Input("SizeTensor").size() >= 2) {
@@ -91,6 +83,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
             Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
       }
     }
+#endif
 
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);

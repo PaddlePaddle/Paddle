@@ -15,11 +15,11 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
@@ -35,7 +35,7 @@ inline void UniformRealDistribution(T *data,
   VLOG(4) << "[CPU] UniformRandomKernel<T>";
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
                                          static_cast<T>(max));
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
+  auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
     data[i] = dist(*engine);
@@ -50,7 +50,7 @@ inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
                                     const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
   std::uniform_real_distribution<float> dist(min, max);
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
+  auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
     data[i] = static_cast<paddle::platform::bfloat16>(dist(*engine));

@@ -17,8 +17,8 @@ import os
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
+from paddle import nn
+from paddle.distributed import fleet
 from paddle.vision.models import resnet50 as resnet
 
 __all__ = [

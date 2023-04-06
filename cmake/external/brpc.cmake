@@ -18,6 +18,7 @@ find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
 message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
+message(STATUS "WITH_SNAPPY:" ${WITH_SNAPPRY})
 
 add_library(ssl SHARED IMPORTED GLOBAL)
 set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
@@ -46,7 +47,7 @@ ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
-  GIT_TAG 1.2.0
+  GIT_TAG 1.4.0
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

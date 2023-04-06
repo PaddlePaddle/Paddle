@@ -150,7 +150,7 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
                                        size_t alignment,
                                        size_t nranks,
                                        phi::DataType dtype) {
-  auto sizeof_dtype = paddle::experimental::SizeOf(dtype);
+  auto sizeof_dtype = phi::SizeOf(dtype);
   PADDLE_ENFORCE_EQ(
       alignment % sizeof_dtype,
       0,
@@ -261,7 +261,7 @@ static phi::DenseTensor CopyAndShareBufferForInitedTensor(
                sliced_tensor.data(),
                place,
                origin->data(),
-               numel * paddle::experimental::SizeOf(dtype),
+               numel * phi::SizeOf(dtype),
                stream);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);

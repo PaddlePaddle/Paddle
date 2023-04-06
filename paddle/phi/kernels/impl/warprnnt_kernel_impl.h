@@ -138,7 +138,7 @@ class WarpRNNTFunctor {
     // There is no memory allocated operations within warp-rnnt.
     rnntStatus_t status = RNNT_STATUS_UNKNOWN_ERROR;
     bool gpu = false;
-    if (paddle::platform::is_gpu_place(dev_ctx.GetPlace())) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gpu = true;
 #else
@@ -207,7 +207,7 @@ class WarpRNNTFunctor {
     options_.fastemit_lambda = fastemit_lambda;
     options_.batch_first = true;
 
-    if (paddle::platform::is_gpu_place(dev_ctx.GetPlace())) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = RNNT_GPU;
       options_.stream =

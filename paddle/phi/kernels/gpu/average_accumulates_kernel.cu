@@ -30,24 +30,24 @@ void GetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
                                       int64_t* old_num_accumulates) {
   auto stream = dev_ctx.stream();
   auto cuda_place = in_old_num_accumulates.place();
-  paddle::memory::Copy(phi::CPUPlace(),
-                       old_num_accumulates,
-                       cuda_place,
-                       in_old_num_accumulates.data<int64_t>(),
-                       sizeof(int64_t),
-                       stream);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       num_accumulates,
-                       cuda_place,
-                       in_num_accumulates.data<int64_t>(),
-                       sizeof(int64_t),
-                       stream);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       num_updates,
-                       cuda_place,
-                       in_num_updates.data<int64_t>(),
-                       sizeof(int64_t),
-                       stream);
+  memory_utils::Copy(phi::CPUPlace(),
+                     old_num_accumulates,
+                     cuda_place,
+                     in_old_num_accumulates.data<int64_t>(),
+                     sizeof(int64_t),
+                     stream);
+  memory_utils::Copy(phi::CPUPlace(),
+                     num_accumulates,
+                     cuda_place,
+                     in_num_accumulates.data<int64_t>(),
+                     sizeof(int64_t),
+                     stream);
+  memory_utils::Copy(phi::CPUPlace(),
+                     num_updates,
+                     cuda_place,
+                     in_num_updates.data<int64_t>(),
+                     sizeof(int64_t),
+                     stream);
 }
 
 template <>
@@ -68,26 +68,26 @@ void SetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
   auto stream = dev_ctx.stream();
 
   auto cuda_place = out_old_num_accumulates->place();
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       out_num_accumulates_ptr,
-                       phi::CPUPlace(),
-                       &num_accumulates,
-                       sizeof(int64_t),
-                       stream);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     out_num_accumulates_ptr,
+                     phi::CPUPlace(),
+                     &num_accumulates,
+                     sizeof(int64_t),
+                     stream);
 
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       out_old_num_accumulates_ptr,
-                       phi::CPUPlace(),
-                       &old_num_accumulates,
-                       sizeof(int64_t),
-                       stream);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     out_old_num_accumulates_ptr,
+                     phi::CPUPlace(),
+                     &old_num_accumulates,
+                     sizeof(int64_t),
+                     stream);
 
-  paddle::memory::Copy(cuda_place,
-                       out_num_updates_ptr,
-                       phi::CPUPlace(),
-                       &num_updates,
-                       sizeof(int64_t),
-                       stream);
+  memory_utils::Copy(cuda_place,
+                     out_num_updates_ptr,
+                     phi::CPUPlace(),
+                     &num_updates,
+                     sizeof(int64_t),
+                     stream);
 }
 
 }  // namespace phi

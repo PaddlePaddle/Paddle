@@ -117,7 +117,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
   DenseTensor dx_tmp;
-  paddle::framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
+  phi::Copy(dev_ctx, *dx, dev_ctx.GetPlace(), false, &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
   phi::funcs::TransposeNormal<Context, T> trans;

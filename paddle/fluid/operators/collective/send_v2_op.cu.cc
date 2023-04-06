@@ -39,8 +39,7 @@ void send_shape_info(const phi::DenseTensor& x,
                           "NCCLComm and Stream should be provided if use NCCL "
                           "to send the shape info."));
   }
-  paddle::experimental::DataType shape_dytpe =
-      paddle::experimental::DataType::INT32;
+  phi::DataType shape_dytpe = phi::DataType::INT32;
   ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
   auto dims = x.dims();

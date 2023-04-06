@@ -15,7 +15,7 @@
 import json
 import unittest
 
-import paddle.distributed.fleet.ascend_utils as ascend_utils
+from paddle.distributed.fleet import ascend_utils
 
 RANK_TABLE_JSON = {
     "status": "completed",

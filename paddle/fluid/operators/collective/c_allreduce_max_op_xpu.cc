@@ -18,4 +18,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(c_allreduce_max,
+                       ops::CAllReduceOpXPUKernel<ops::kRedMax, plat::float16>,
+                       ops::CAllReduceOpXPUKernel<ops::kRedMax, int>,
                        ops::CAllReduceOpXPUKernel<ops::kRedMax, float>)

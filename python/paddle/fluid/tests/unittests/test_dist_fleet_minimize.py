@@ -16,9 +16,9 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -37,11 +37,11 @@ class TestPSMinimize(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = paddle.less_than(cos_q_nt, cos_q_pt)
-            cond = fluid.layers.cast(cond, dtype='float64')
+            cond = paddle.cast(cond, dtype='float64')
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
                 ),
                 name="simnet_acc",
@@ -174,7 +174,7 @@ class TestPSMinimize(unittest.TestCase):
         """
         gen sparse config
         """
-        sparse_config = dict()
+        sparse_config = {}
         # sparse_config['sparse_table_class'] = "DownpourSparseSSDTable"
         sparse_config['sparse_table_class'] = "DownpourSparseTable"
         sparse_config['sparse_compress_in_save'] = True
@@ -248,7 +248,7 @@ class TestPSMinimize(unittest.TestCase):
         strategy.a_sync_configs = configs
         strategy.a_sync = True
 
-        sparse_config = dict()
+        sparse_config = {}
         sparse_config['embedding'] = self.gen_sparse_config()
         strategy.fleet_desc_configs = sparse_config
 

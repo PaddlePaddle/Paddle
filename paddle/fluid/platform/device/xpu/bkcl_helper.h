@@ -51,10 +51,12 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
     return BKCL_FLOAT64;
   } else if (type == framework::proto::VarType::FP16) {
     return BKCL_FLOAT16;
+  } else if (type == framework::proto::VarType::UINT8) {
+    return BKCL_UINT8;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "BKCL currently only support FP32, INT64, INT32, FP64 and FP16, other "
-        "data types are not supported."));
+        "BKCL currently only support FP32, INT64, INT32, FP64, FP16 and UINT8, "
+        "other data types are not supported."));
   }
 }
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,12 +15,11 @@
 import paddle
 
 # TODO: define loss functions of neural network
-import paddle.fluid as fluid
-from paddle import in_dynamic_mode
+from paddle import fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
-from .. import Layer
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
@@ -525,16 +523,24 @@ class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
+
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
+
     .. math::
         Out = (input - label)^2
+
     If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
+
     .. math::
         Out = \operatorname{mean}((input - label)^2)
+
     If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
+
     .. math::
         Out = \operatorname{sum}((input - label)^2)
+
     where `input` and `label` are `float32` tensors of same shape.
+
     Parameters:
         reduction (str, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
@@ -542,12 +548,16 @@ class MSELoss(Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+
     Shape:
         input (Tensor): Input tensor, the data type is float32 or float64
         label (Tensor): Label tensor, the data type is float32 or float64
         output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
             mse_loss = paddle.nn.loss.MSELoss()
             input = paddle.to_tensor([1.5])
@@ -555,6 +565,7 @@ class MSELoss(Layer):
             output = mse_loss(input, label)
             print(output)
             # [0.04000002]
+
     """
 
     def __init__(self, reduction='mean'):

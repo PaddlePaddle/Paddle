@@ -67,7 +67,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
-        # the backward function only filte the gradient with current rank id
+        # the backward function only filter the gradient with current rank id
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.main_block
         backward_op = dist_op_context.cur_src_op

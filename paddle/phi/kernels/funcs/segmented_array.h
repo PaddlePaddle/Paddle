@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -107,7 +108,7 @@ struct ArraySetterBase {
                      void* src,
                      size_t num_bytes,
                      bool use_cuda_graph = false) {
-    allocation = paddle::memory::Alloc(
+    allocation = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

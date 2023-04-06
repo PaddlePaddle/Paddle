@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
@@ -69,6 +71,7 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.shape = [2, 3, 4, 5]
             self.epsilon = 1e-05
+            self.no_grad_set = None
             self.set_attrs()
 
             np.random.seed(12345)
@@ -112,7 +115,12 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.check_output_with_place(paddle.XPUPlace(0))
 
         def test_check_grad(self):
-            self.check_grad_with_place(paddle.XPUPlace(0), ['X'], 'Y')
+            self.check_grad_with_place(
+                paddle.XPUPlace(0),
+                ['X', 'Scale', 'Bias'],
+                ['Y'],
+                self.no_grad_set,
+            )
 
     class TestXPUInstanceNormOp1(XPUTestInstanceNormOp):
         def set_attrs(self):
@@ -133,6 +141,57 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
     class TestXPUInstanceNormOp5(XPUTestInstanceNormOp):
         def set_attrs(self):
             self.shape = [10, 3, 512, 1]
+
+    class TestXPUInstanceNormOp6(XPUTestInstanceNormOp):
+        def set_attrs(self):
+            self.shape = [10, 12, 32, 32]
+            self.no_grad_set = {'Scale', 'Bias'}
+
+    class TestXPUInstanceNormOp7(XPUTestInstanceNormOp):
+        def set_attrs(self):
+            self.shape = [4, 5, 6, 7]
+            self.no_grad_set = {'Scale', 'Bias'}
+
+    class TestXPUInstanceNormOp8(XPUTestInstanceNormOp):
+        def set_attrs(self):
+            self.shape = [1, 8, 16, 16]
+            self.no_grad_set = {'Scale', 'Bias'}
+
+    class TestXPUInstanceNormOp9(XPUTestInstanceNormOp):
+        def set_attrs(self):
+            self.shape = [4, 16, 256, 128]
+            self.no_grad_set = {'Scale', 'Bias'}
+
+    class TestXPUInstanceNormOp10(XPUTestInstanceNormOp):
+        def set_attrs(self):
+            self.shape = [10, 3, 512, 1]
+            self.no_grad_set = {'Scale', 'Bias'}
+
+    class TestInstanceNormOpError(XPUOpTest):
+        def setUp(self):
+            self.__class__.op_type = "instance_norm"
+            self.__class__.no_need_check_grad = True
+            self.dtype = self.in_type
+
+        def test_errors(self):
+            with program_guard(Program(), Program()):
+                # the input of instance_norm must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
+                )
+                self.assertRaises(TypeError, paddle.static.nn.instance_norm, x1)
+
+                # the input dtype of instance_norm must be float32
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                )
+                self.assertRaises(TypeError, paddle.static.nn.instance_norm, x2)
+
+                # the first dimension of input for instance_norm must between [2d, 5d]
+                x3 = paddle.static.data(name='x', shape=[3], dtype="float32")
+                self.assertRaises(
+                    ValueError, paddle.static.nn.instance_norm, x3
+                )
 
 
 support_types = get_xpu_op_support_types('instance_norm')

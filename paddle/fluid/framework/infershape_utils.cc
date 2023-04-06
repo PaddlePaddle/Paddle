@@ -581,6 +581,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       case phi::AttributeType::SCALAR:
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
+          VLOG(6) << "type: " << AttrTypeID(attr);
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               infer_meta_context.EmplaceBackAttr(
@@ -606,6 +607,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr)));
               break;
+            case framework::proto::AttrType::SCALAR:
+              infer_meta_context.EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -618,7 +623,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiScalarFromVar(*var)));
+                  std::move(framework::MakePhiScalarFromVar(*var)));
             } else {
               phi::Scalar tensor_scalar(-1);
               tensor_scalar.SetFromTensor(true);
@@ -670,10 +675,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             }
             if (infershape_inputs.size() != 1) {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiIntArrayFromVarList(vars)));
+                  std::move(framework::MakePhiIntArrayFromVarList(vars)));
             } else {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(experimental::MakePhiIntArrayFromVar(*vars[0])));
+                  std::move(framework::MakePhiIntArrayFromVar(*vars[0])));
             }
           } else {
             // If is not in runtime, we will set default value(-1) for IntArray
@@ -744,6 +749,12 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               for (const auto& val : vec) {
                 scalar_list.emplace_back(val);
               }
+              infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+            } break;
+            case proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
+              std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
               infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
             } break;
             default:

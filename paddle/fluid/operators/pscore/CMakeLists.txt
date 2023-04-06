@@ -86,7 +86,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  scale_op
+  generated_op
   eigen_function)
 
 set_source_files_properties(
@@ -100,7 +100,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  scale_op
+  generated_op
   send_and_recv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
@@ -117,7 +117,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  scale_op
+  generated_op
   send_and_recv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
@@ -134,14 +134,14 @@ cc_test_old(
   executor
   scope
   proto_desc
-  scale_op
+  generated_op
   heter_listen_and_serv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
   eigen_function)
 
 #set_source_files_properties(heter_cloud_comm_cpu_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-#cc_test(heter_cloud_comm_cpu_test SRCS heter_cloud_comm_cpu_test.cc DEPS executor scope proto_desc scale_op heter_listen_and_serv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} eigen_function)
+#cc_test(heter_cloud_comm_cpu_test SRCS heter_cloud_comm_cpu_test.cc DEPS executor scope proto_desc generated_static_op heter_listen_and_serv_op ${RPC_DEPS} ${DISTRIBUTE_DEPS} eigen_function)
 
 set_source_files_properties(
   switch_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -153,7 +153,7 @@ cc_binary(
   executor
   scope
   proto_desc
-  scale_op
+  generated_op
   heter_listen_and_serv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}

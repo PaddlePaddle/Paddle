@@ -255,6 +255,18 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void FlashAttnInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out,
+                        MetaTensor* softmax,
+                        MetaTensor* softmax_lse,
+                        MetaTensor* seed_offset) {
+  out->set_dims(q.dims());
+  out->set_dtype(q.dtype());
+  out->set_layout(q.layout());
+}
+
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,
@@ -489,8 +501,20 @@ void GroupNormInferMeta(const MetaTensor& x,
   y->set_dims(x_dim);
   y->set_dtype(x.dtype());
   y->share_lod(x);
-  mean->set_dims({batch_size, groups});
-  variance->set_dims({batch_size, groups});
+
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
+  if (mean) {
+    mean->set_dims({batch_size, groups});
+    mean->set_dtype(param_type);
+  }
+  if (variance) {
+    variance->set_dims({batch_size, groups});
+    variance->set_dtype(param_type);
+  }
 }
 
 void LayerNormInferMeta(const MetaTensor& x,
@@ -562,14 +586,23 @@ void LayerNormInferMeta(const MetaTensor& x,
             right));
   }
 
+  phi::DataType x_dtype = x.dtype();
   out->set_dims(x_dim);
+  out->set_dtype(x_dtype);
+  out->share_lod(x);
+
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (mean) {
     mean->set_dims({left});
+    mean->set_dtype(param_type);
   }
   if (variance) {
     variance->set_dims({left});
+    variance->set_dtype(param_type);
   }
-  out->share_lod(x);
 }
 
 void LayerNormGradInferMeta(const MetaTensor& x,
@@ -1061,7 +1094,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
             index_dims[index_dims_size - 1],
             ref_dims_size));
     PADDLE_ENFORCE_GE(index_dims_size,
-                      2UL,
+                      1UL,
                       phi::errors::InvalidArgument(
                           "The rank of Input(Index) should be greater than 1, "
                           "but received the rank of Input(Index) is %d.",

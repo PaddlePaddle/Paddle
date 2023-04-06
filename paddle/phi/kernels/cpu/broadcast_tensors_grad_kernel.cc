@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -121,8 +120,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
     ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy
-      paddle::framework::TensorCopy(
-          *input_tensor, ctx.GetPlace(), ctx, output_tensor);
+      phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
     } else {
       PADDLE_ENFORCE_GE(
           reduce_dims_vec.size(),

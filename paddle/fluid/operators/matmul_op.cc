@@ -69,7 +69,7 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
@@ -237,7 +237,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               bool trans_b,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -376,7 +377,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               bool flag,
               phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
@@ -583,8 +585,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_y = GetDimForInput(*context, "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    // (jczaja): For NHWC execution output shape needs
-    // to be computed like instead x*y we are to do y*x
+    // For NHWC execution output shape needs to be
+    // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==

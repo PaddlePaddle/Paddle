@@ -27,6 +27,9 @@ namespace ir {
  * Specifies which operators should use cuDNN.
  */
 class CUDNNPlacementPass : public PlacementPassBase {
+ protected:
+  bool IsSupport(const Node* op) const override;
+
  private:
   const std::string GetPlacementName() const override { return "cuDNN"; }
 

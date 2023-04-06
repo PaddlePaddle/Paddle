@@ -174,15 +174,19 @@ __device__ T BlockReduce(T value) {
 
 __device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
                                              const int64_t num_inf,
+                                             const int64_t num_zero,
                                              int64_t offset,
                                              int64_t* num_nan_ptr,
-                                             int64_t* num_inf_ptr) {
+                                             int64_t* num_inf_ptr,
+                                             int64_t* num_zero_ptr) {
   int64_t block_num_nan = BlockReduce<int64_t, 2>(num_nan);
   int64_t block_num_inf = BlockReduce<int64_t, 2>(num_inf);
+  int64_t block_num_zero = BlockReduce<int64_t, 2>(num_zero);
 
   if (threadIdx.x == 0) {
     num_nan_ptr[offset] = block_num_nan;
     num_inf_ptr[offset] = block_num_inf;
+    num_zero_ptr[offset] = block_num_zero;
   }
 }
 
@@ -233,6 +237,7 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                          const int64_t numel,
                                          int64_t* block_num_nan_ptr,
                                          int64_t* block_num_inf_ptr,
+                                         int64_t* block_num_zero_ptr,
                                          MT* tensor_block_max_ptr,
                                          MT* tensor_block_min_ptr,
                                          MT* tensor_block_mean_ptr) {
@@ -240,6 +245,7 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
 
   int64_t num_nan = 0;
   int64_t num_inf = 0;
+  int64_t num_zero = 0;
 
   MT max_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
   MT min_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
@@ -256,10 +262,18 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
     } else if (isinf(value)) {
       num_inf += 1;
     }
+    if (value == static_cast<MT>(0)) {
+      num_zero += 1;
+    }
   }
 
-  BlockReduceNumNanInfAndWrite(
-      num_nan, num_inf, blockIdx.x, block_num_nan_ptr, block_num_inf_ptr);
+  BlockReduceNumNanInfAndWrite(num_nan,
+                               num_inf,
+                               num_zero,
+                               blockIdx.x,
+                               block_num_nan_ptr,
+                               block_num_inf_ptr,
+                               block_num_zero_ptr);
 
   BlockReduceMaxMinAndWrite<MT>(max_value,
                                 min_value,
@@ -273,6 +287,7 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
 template <typename T, typename MT>
 __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
                                          const int64_t* block_num_inf_ptr,
+                                         const int64_t* block_num_zero_ptr,
                                          const MT* tensor_block_max_ptr,
                                          const MT* tensor_block_min_ptr,
                                          const MT* tensor_block_mean_ptr,
@@ -283,11 +298,13 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     int64_t num_nan = 0;
     int64_t num_inf = 0;
+    int64_t num_zero = 0;
 
     // numel_max_min <= 128
     for (int64_t i = 0; i < numel_max_min; ++i) {
       num_nan += block_num_nan_ptr[i];
       num_inf += block_num_inf_ptr[i];
+      num_zero += block_num_zero_ptr[i];
     }
 
     MT max_value = static_cast<MT>(0);
@@ -314,6 +331,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
                                   numel,
                                   num_nan,
                                   num_inf,
+                                  num_zero,
                                   max_value,
                                   min_value,
                                   mean_value,
@@ -451,11 +469,12 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 
   int64_t numel_max_min = blocks;
 
-  phi::DenseTensor block_num_nan_inf;
-  block_num_nan_inf.Resize({static_cast<int64_t>(2 * numel_max_min)});
+  phi::DenseTensor block_num_nan_inf_zero;
+  block_num_nan_inf_zero.Resize({static_cast<int64_t>(3 * numel_max_min)});
   int64_t* block_num_nan_ptr =
-      dev_ctx->template Alloc<int64_t>(&block_num_nan_inf);
+      dev_ctx->template Alloc<int64_t>(&block_num_nan_inf_zero);
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
+  int64_t* block_num_zero_ptr = block_num_inf_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
@@ -468,6 +487,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                                   tensor.numel(),
                                                   block_num_nan_ptr,
                                                   block_num_inf_ptr,
+                                                  block_num_zero_ptr,
                                                   tensor_block_max_ptr,
                                                   tensor_block_min_ptr,
                                                   tensor_block_mean_ptr);
@@ -476,6 +496,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   FindGlobalMaxMinAndPrint<T, MT>
       <<<1, 1, 0, dev_ctx->stream()>>>(block_num_nan_ptr,
                                        block_num_inf_ptr,
+                                       block_num_zero_ptr,
                                        tensor_block_max_ptr,
                                        tensor_block_min_ptr,
                                        tensor_block_mean_ptr,

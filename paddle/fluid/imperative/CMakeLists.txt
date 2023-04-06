@@ -210,5 +210,3 @@ else()
          npu_op_runner
          phi_tensor)
 endif()
-
-add_subdirectory(tests)

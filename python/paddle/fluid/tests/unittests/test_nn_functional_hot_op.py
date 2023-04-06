@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn.functional as functional
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
+from paddle.nn import functional
 
 
 class TestOneHotOp(OpTest):
@@ -171,7 +171,7 @@ class TestOneHotOpApi(unittest.TestCase):
         self._run(num_classes)
 
     def test_api_with_depthTensor(self):
-        num_classes = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        num_classes = paddle.assign(np.array([10], dtype=np.int32))
         self._run(num_classes)
 
     def test_api_with_dygraph(self):

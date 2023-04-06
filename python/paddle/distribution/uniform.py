@@ -84,7 +84,7 @@ class Uniform(distribution.Distribution):
             sample = uniform.sample([2])
             # a random tensor created by uniform distribution with shape: [2, 1]
             entropy = uniform.entropy()
-            # [0.6931472] with shape: [1]
+            # [0.6931472] with shape: []
             lp = uniform.log_prob(value_tensor)
             # [-0.6931472] with shape: [1]
             p = uniform.probs(value_tensor)
@@ -117,7 +117,6 @@ class Uniform(distribution.Distribution):
             high = float(high)
 
         if self._validate_args(low, high):
-            self.batch_size_unknown = True
             self.low = low
             self.high = high
             self.dtype = convert_dtype(low.dtype)
@@ -137,8 +136,8 @@ class Uniform(distribution.Distribution):
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
-                self.low = tensor.cast(self.low, dtype=self.dtype)
-                self.high = tensor.cast(self.high, dtype=self.dtype)
+                self.low = paddle.cast(self.low, dtype=self.dtype)
+                self.high = paddle.cast(self.high, dtype=self.dtype)
 
         super().__init__(self.low.shape)
 
@@ -159,7 +158,7 @@ class Uniform(distribution.Distribution):
 
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
@@ -218,8 +217,8 @@ class Uniform(distribution.Distribution):
             name = self.name + '_log_prob'
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
             return paddle.subtract(
                 paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
             )
@@ -245,8 +244,8 @@ class Uniform(distribution.Distribution):
             name = self.name + '_probs'
             lb_bool = self.low < value
             ub_bool = value < self.high
-            lb = tensor.cast(lb_bool, dtype=value.dtype)
-            ub = tensor.cast(ub_bool, dtype=value.dtype)
+            lb = paddle.cast(lb_bool, dtype=value.dtype)
+            ub = paddle.cast(ub_bool, dtype=value.dtype)
             return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):

@@ -33,6 +33,13 @@ void WhereGradKernel(const Context& ctx,
 
   auto cond_shape = phi::vectorize(condition.dims());
   auto out_shape = phi::vectorize(out_grad.dims());
+  // use [1] to replace [], because xpu not support []
+  if (cond_shape.size() == 0) {
+    cond_shape = std::vector<int64_t>({1});
+  }
+  if (out_shape.size() == 0) {
+    out_shape = std::vector<int64_t>({1});
+  }
 
   T* dx = nullptr;
   T* dy = nullptr;

@@ -17,10 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import Executor, Program, default_main_program, program_guard
+from paddle import nn
+from paddle.fluid import (
+    Executor,
+    Program,
+    core,
+    default_main_program,
+    program_guard,
+)
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):
@@ -48,8 +53,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
             np_x1 = np.random.rand(*shape).astype(np.float32)
             np_x2 = np.random.rand(*shape).astype(np.float32)
 
-            x1 = paddle.fluid.data(name="x1", shape=shape)
-            x2 = paddle.fluid.data(name="x2", shape=shape)
+            x1 = paddle.static.data(name="x1", shape=shape)
+            x2 = paddle.static.data(name="x2", shape=shape)
             result = F.cosine_similarity(x1, x2, axis=axis, eps=eps)
             exe = Executor(place)
             fetches = exe.run(

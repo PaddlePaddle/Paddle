@@ -20,7 +20,6 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -598,9 +597,9 @@ void BatchNormKernel(const Context &ctx,
   cudnnBatchNormMode_t mode_;
 
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+      phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
 
   if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -651,19 +650,15 @@ void BatchNormKernel(const Context &ctx,
 //     platform::dynload::miopenDeriveBNTensorDescriptor(
 //         bn_param_desc_, data_desc_, test_mode ? miopenBNSpatial : mode_));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnSetTensorNdDescriptor(
-          data_desc_,
-          CudnnDataType<T>::type,
-          x_dims.size() > 3 ? x_dims.size() : 4,
-          dims.data(),
-          strides.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+      data_desc_,
+      CudnnDataType<T>::type,
+      x_dims.size() > 3 ? x_dims.size() : 4,
+      dims.data(),
+      strides.data()));
   // Note: PERSISTENT not implemented for inference
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnDeriveBNTensorDescriptor(
-          bn_param_desc_,
-          data_desc_,
-          test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+      bn_param_desc_, data_desc_, test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
 #endif
 
   auto handle = ctx.cudnn_handle();
@@ -830,7 +825,7 @@ void BatchNormKernel(const Context &ctx,
       }
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnBatchNormalizationForwardInference(
+          phi::dynload::cudnnBatchNormalizationForwardInference(
               handle,
               // Note: PERSISTENT not implemented for inference
               CUDNN_BATCHNORM_SPATIAL,
@@ -873,10 +868,11 @@ void BatchNormKernel(const Context &ctx,
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = x.
-      paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
+      phi::Copy(ctx, x, ctx.GetPlace(), false, y);
     } else {
       double this_factor = 1. - momentum;
 #ifdef PADDLE_WITH_HIP
+      this_factor = momentum;
       const int num = transformed_x.numel();
       const int block = 256;
       const int max_threads = ctx.GetMaxPhysicalThreadCount();
@@ -950,6 +946,7 @@ void BatchNormKernel(const Context &ctx,
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
       if (use_native_kernel) {
+        double this_factor = momentum;
         dim3 block;
         dim3 grid;
         const int block_size = 512;
@@ -1114,7 +1111,7 @@ void BatchNormKernel(const Context &ctx,
                 "The argument ReserveSpace of batch_norm op is not found."));
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::
+            phi::dynload::
                 cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                     /*handle=*/handle,
                     /*mode=*/mode_,
@@ -1128,14 +1125,13 @@ void BatchNormKernel(const Context &ctx,
 
         // -------------- cudnn batchnorm reserve space --------------
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::
-                cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
-                    /*handle=*/handle,
-                    /*mode=*/mode_,
-                    /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
-                    /*activationDesc=*/nullptr,
-                    /*xDesc=*/data_desc_,
-                    /*sizeInBytes=*/&reserve_space_size));
+            phi::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+                /*handle=*/handle,
+                /*mode=*/mode_,
+                /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+                /*activationDesc=*/nullptr,
+                /*xDesc=*/data_desc_,
+                /*sizeInBytes=*/&reserve_space_size));
 
         reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
         reserve_space_ptr =
@@ -1144,7 +1140,7 @@ void BatchNormKernel(const Context &ctx,
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
+            phi::dynload::cudnnBatchNormalizationForwardTrainingEx(
                 handle,
                 mode_,
                 CUDNN_BATCHNORM_OPS_BN,
@@ -1172,7 +1168,7 @@ void BatchNormKernel(const Context &ctx,
                 reserve_space_size));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationForwardTraining(
+            phi::dynload::cudnnBatchNormalizationForwardTraining(
                 handle,
                 mode_,
                 CudnnDataType<T>::kOne(),
@@ -1211,9 +1207,9 @@ void BatchNormKernel(const Context &ctx,
 #else
   // clean when exit.
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+      phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
 }
 

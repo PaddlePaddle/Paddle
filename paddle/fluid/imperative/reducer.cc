@@ -20,7 +20,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
@@ -103,7 +103,8 @@ static void SplitTensorsForAllReduce(
   }
   // Sometimes direct copies will be faster
   if (p_dense_tensors->size() < 10) {
-    operators::StridedMemcpyWithAxis0<T>(context, *in, shape_refer, &outs);
+    phi::funcs::StridedMemcpyWithAxis0<T, DeviceContext>(
+        context, *in, shape_refer, &outs);
   } else {
     operators::math::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);

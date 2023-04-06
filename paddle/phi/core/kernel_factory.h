@@ -24,15 +24,13 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
-
 namespace phi {
-
-using DataType = paddle::experimental::DataType;
 
 struct OpCount {
   OpCount() {
@@ -67,17 +65,19 @@ class KernelKey {
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {}
 
-  explicit KernelKey(Place place)
+  explicit KernelKey(const Place& place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
         dtype_(DataType::ALL_DTYPE) {}
 
-  explicit KernelKey(const int& dtype, Place place)
+  explicit KernelKey(const int& dtype, const Place& place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
         dtype_(phi::TransToPhiDataType(dtype)) {}
 
-  explicit KernelKey(Place place, DataLayout layout, DataType dtype)
+  explicit KernelKey(const Place& place,
+                     const DataLayout& layout,
+                     const DataType& dtype)
       : backend_(TransToPhiBackend(place)), layout_(layout), dtype_(dtype) {}
 
   Backend backend() const { return backend_; }
@@ -284,6 +284,8 @@ class Kernel {
     return kernel_registered_type_;
   }
 
+  GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
+
  private:
   KernelFn fn_{nullptr};
   void* variadic_fn_ = nullptr;
@@ -333,11 +335,12 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
-  void AddToLowPrecisionKernelList(
-      const std::string& name,
-      const paddle::experimental::DataType& kernel_key_type);
+  void AddToLowPrecisionKernelList(const std::string& name,
+                                   const DataType& kernel_key_type);
 
   std::map<const std::string, OpCount> GetLowPrecisionKernelList();
+
+  void ClearLowPrecisionKernelList() { low_precision_kernels_.clear(); }
 
  private:
   KernelFactory() = default;

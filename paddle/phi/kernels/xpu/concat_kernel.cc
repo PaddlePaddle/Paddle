@@ -116,5 +116,7 @@ PD_REGISTER_KERNEL(concat,
                    ALL_LAYOUT,
                    phi::ConcatKernel,
                    float,
+                   double,
                    phi::dtype::float16,
-                   int64_t) {}
+                   int64_t,
+                   int) {}

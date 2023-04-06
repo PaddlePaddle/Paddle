@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -35,11 +35,11 @@ class AttnLayerNorm {
   ~AttnLayerNorm() {}
 
   void ComputeForward(const InType* x_data,
-                      const LayerNormParamType<T>* scale_data,
-                      const LayerNormParamType<T>* bias_data,
+                      const phi::funcs::LayerNormParamType<T>* scale_data,
+                      const phi::funcs::LayerNormParamType<T>* bias_data,
                       OutType* y_data,
-                      LayerNormParamType<T>* mean_data,
-                      LayerNormParamType<T>* var_data,
+                      phi::funcs::LayerNormParamType<T>* mean_data,
+                      phi::funcs::LayerNormParamType<T>* var_data,
                       const float* dequant_out_scale_data = nullptr,
                       const int quant_out_scale_offset = 0,
                       const float quant_in_scale = 1.0,
@@ -48,14 +48,14 @@ class AttnLayerNorm {
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
-    switch (GetDesiredBlockDim(feature_size_)) {
+    switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T,
-                           LayerNormParamType<T>,
-                           kBlockDim,
-                           false,
-                           InType,
-                           OutType>
+          phi::funcs::LayerNormForward<T,
+                                       phi::funcs::LayerNormParamType<T>,
+                                       kBlockDim,
+                                       false,
+                                       InType,
+                                       OutType>
           <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
                                                   scale_data,
                                                   bias_data,
@@ -71,32 +71,33 @@ class AttnLayerNorm {
                                                   quant_max_bound,
                                                   quant_min_bound));
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Feature_size must be larger than 1"));
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("Feature_size must be larger than 1"));
         break;
     }
   }
 
   void ComputeBackward(const T* x_data,
                        const T* d_y_data,
-                       const LayerNormParamType<T>* scale_data,
-                       const LayerNormParamType<T>* mean_data,
-                       const LayerNormParamType<T>* var_data,
+                       const phi::funcs::LayerNormParamType<T>* scale_data,
+                       const phi::funcs::LayerNormParamType<T>* mean_data,
+                       const phi::funcs::LayerNormParamType<T>* var_data,
                        T* d_x_data,
-                       LayerNormParamType<T>* d_scale_data,
-                       LayerNormParamType<T>* d_bias_data) {
-    LayerNormBackward<T, LayerNormParamType<T>>(x_data,
-                                                d_y_data,
-                                                scale_data,
-                                                mean_data,
-                                                var_data,
-                                                d_x_data,
-                                                d_scale_data,
-                                                d_bias_data,
-                                                epsilon_,
-                                                batch_size_,
-                                                feature_size_,
-                                                dev_ctx_);
+                       phi::funcs::LayerNormParamType<T>* d_scale_data,
+                       phi::funcs::LayerNormParamType<T>* d_bias_data) {
+    phi::funcs::LayerNormBackward<T, phi::funcs::LayerNormParamType<T>>(
+        x_data,
+        d_y_data,
+        scale_data,
+        mean_data,
+        var_data,
+        d_x_data,
+        d_scale_data,
+        d_bias_data,
+        epsilon_,
+        batch_size_,
+        feature_size_,
+        dev_ctx_);
   }
 
  private:

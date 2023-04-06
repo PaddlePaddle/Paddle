@@ -24,7 +24,7 @@
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;
@@ -174,7 +174,7 @@ struct DeviceContext::Impl {
            const Place& place,
            size_t requested_size = 0,
            bool pinned = false) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(Alloc(tensor, place, dtype, requested_size, pinned));
   }
 
@@ -202,7 +202,7 @@ struct DeviceContext::Impl {
 
   template <typename T>
   T* HostAlloc(phi::TensorBase* tensor, size_t requested_size = 0) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
   }
 
@@ -238,6 +238,12 @@ struct DeviceContext::Impl {
     return host_generator_;
   }
 
+  distributed::CommContext* GetCommContext() const { return comm_context_; }
+
+  void SetCommContext(distributed::CommContext* comm_context) {
+    comm_context_ = comm_context;
+  }
+
  private:
   void ClearHolder(TensorBase* tensor) const {
     if (!tensor->initialized()) return;
@@ -264,6 +270,8 @@ struct DeviceContext::Impl {
 #endif
   Generator* device_generator_{nullptr};
   Generator* host_generator_{nullptr};
+
+  distributed::CommContext* comm_context_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
@@ -398,11 +406,11 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(float)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(double)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::bfloat16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::float16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::pstring)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::bfloat16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex64)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex128)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::pstring)
 
 #undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
 
@@ -416,6 +424,14 @@ void DeviceContext::SetHostGenerator(Generator* gen) {
 
 Generator* DeviceContext::GetHostGenerator() const {
   return impl_->GetHostGenerator();
+}
+
+void DeviceContext::SetCommContext(distributed::CommContext* comm_context) {
+  impl_->SetCommContext(comm_context);
+}
+
+distributed::CommContext* DeviceContext::GetCommContext() const {
+  return impl_->GetCommContext();
 }
 
 }  // namespace phi

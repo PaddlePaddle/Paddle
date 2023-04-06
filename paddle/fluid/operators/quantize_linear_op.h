@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -142,7 +142,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in,
-        experimental::CppTypeToDataType<D>::Type());
+        phi::CppTypeToDataType<D>::Type());
 
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     auto* out = context.Output<phi::DenseTensor>("Y");
@@ -180,13 +180,13 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     switch (scale->dtype()) {
-      case experimental::DataType::FLOAT64:
+      case phi::DataType::FLOAT64:
         ComputeImpl<double>(context);
         break;
-      case experimental::DataType::FLOAT32:
+      case phi::DataType::FLOAT32:
         ComputeImpl<float>(context);
         break;
-      case experimental::DataType::FLOAT16:
+      case phi::DataType::FLOAT16:
         ComputeImpl<paddle::platform::float16>(context);
         break;
       default:

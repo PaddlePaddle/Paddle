@@ -67,26 +67,64 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
                           "but received value is %d.",
                           ins_dims[0].size()));
 
-    for (size_t i = 0; i < num_inputs; ++i) {
-      const auto dims = ins_dims[i];
-      int rank = dims.size();
-      if (use_cvm) {
-        PADDLE_ENFORCE_GT(
-            dims[rank - 1],
-            2,
-            platform::errors::InvalidArgument(
-                "Shape error in %lu id, the last dimension(embedding) of the "
-                "'X' tensor must be larger than 2.",
-                i));
+    if (ctx->IsRuntime()) {
+      int batch_size = -1;
+      auto inputs_tensor = ctx->GetInputVarPtrs("X");
+      for (size_t i = 0; i < num_inputs; ++i) {
+        const auto dims = ins_dims[i];
+        int rank = dims.size();
+        int cur_batch_size = 0;
+        framework::Variable* x_var =
+            PADDLE_GET(framework::Variable*, inputs_tensor[i]);
+        const auto& x_tensor = x_var->Get<phi::DenseTensor>();
+        const auto& x_lod = x_tensor.lod();
+        if (x_lod.size() > 0) {
+          cur_batch_size = x_lod[0].size() - 1;
+        } else {
+          cur_batch_size = x_tensor.dims()[0];
+        }
+        if (batch_size == -1) {
+          batch_size = cur_batch_size;
+        } else {
+          PADDLE_ENFORCE_EQ(batch_size,
+                            cur_batch_size,
+                            platform::errors::PreconditionNotMet(
+                                "The batch size of all input should be same, "
+                                "please check, last batch_size is %d, current "
+                                "batch_size is %d",
+                                batch_size,
+                                cur_batch_size));
+        }
+        std::vector<int64_t> out_dim;
+        if (use_cvm) {
+          out_dim = {batch_size, dims[rank - 1]};
+        } else {
+          out_dim = {batch_size, dims[rank - 1] - cvm_offset};
+        }
+        outs_dims[i] = phi::make_ddim(out_dim);
       }
-      // input lod is not accessible here
-      std::vector<int64_t> out_dim;
-      if (use_cvm) {
-        out_dim = {-1, dims[rank - 1]};
-      } else {
-        out_dim = {-1, dims[rank - 1] - cvm_offset};
+    } else {
+      for (size_t i = 0; i < num_inputs; ++i) {
+        const auto dims = ins_dims[i];
+        int rank = dims.size();
+        if (use_cvm) {
+          PADDLE_ENFORCE_GT(
+              dims[rank - 1],
+              2,
+              platform::errors::InvalidArgument(
+                  "Shape error in %lu id, the last dimension(embedding) of the "
+                  "'X' tensor must be larger than 2.",
+                  i));
+        }
+        // input lod is not accessible here
+        std::vector<int64_t> out_dim;
+        if (use_cvm) {
+          out_dim = {-1, dims[rank - 1]};
+        } else {
+          out_dim = {-1, dims[rank - 1] - cvm_offset};
+        }
+        outs_dims[i] = phi::make_ddim(out_dim);
       }
-      outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

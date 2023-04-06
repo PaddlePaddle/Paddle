@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -67,6 +67,9 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ["X"], "Out")
 
     class TestExpandV2OpRank2_DimExpanding(TestExpandV2XPUOp):
         def init_data(self):
@@ -115,7 +118,7 @@ class XPUTestExpandV2Op(XPUOpTestWrapper):
             expand_shapes_tensor = []
             for index, ele in enumerate(self.expand_shape):
                 expand_shapes_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {
@@ -189,7 +192,7 @@ class TestExpandV2OpInteger(XPUOpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        pass
+        self.check_grad_with_place(self.place, ["X"], "Out")
 
 
 # Test python API
@@ -203,7 +206,7 @@ class TestExpandV2API(unittest.TestCase):
                 dtype="float32",
             )
 
-            positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
             expand_shape = paddle.static.data(
                 name="expand_shape",
                 shape=[2],

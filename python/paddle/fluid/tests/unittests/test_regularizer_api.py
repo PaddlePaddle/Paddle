@@ -20,8 +20,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def bow_net(
@@ -147,7 +147,7 @@ class TestRegularizer(unittest.TestCase):
             for para in param_list:
                 para_mul = paddle.square(x=para)
                 para_sum.append(paddle.sum(para_mul))
-            avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
+            avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)

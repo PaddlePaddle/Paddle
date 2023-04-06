@@ -75,7 +75,7 @@ class Imdb(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
@@ -129,8 +129,8 @@ class Imdb(Dataset):
         return data
 
     def _load_anno(self):
-        pos_pattern = re.compile(r"aclImdb/{}/pos/.*\.txt$".format(self.mode))
-        neg_pattern = re.compile(r"aclImdb/{}/neg/.*\.txt$".format(self.mode))
+        pos_pattern = re.compile(fr"aclImdb/{self.mode}/pos/.*\.txt$")
+        neg_pattern = re.compile(fr"aclImdb/{self.mode}/neg/.*\.txt$")
 
         UNK = self.word_idx['<unk>']
 

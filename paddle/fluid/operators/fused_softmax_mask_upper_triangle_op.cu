@@ -43,11 +43,11 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -67,11 +67,20 @@ __device__ __inline__ void load_data_upper_tri(plat::float16* dst,
   *(reinterpret_cast<float2*>(dst)) = *(reinterpret_cast<const float2*>(src));
 }
 
+__device__ __inline__ void load_data_upper_tri(plat::bfloat16* dst,
+                                               const plat::bfloat16* src) {
+  *(reinterpret_cast<float2*>(dst)) = *(reinterpret_cast<const float2*>(src));
+}
+
 __device__ __inline__ void load_data_upper_tri(float* dst, const float* src) {
   *(reinterpret_cast<float4*>(dst)) = *(reinterpret_cast<const float4*>(src));
 }
 
 __device__ __inline__ void load_zero_vector_upper_tri(plat::float16* dst) {
+  *(reinterpret_cast<float2*>(dst)) = make_float2(0.0f, 0.0f);
+}
+
+__device__ __inline__ void load_zero_vector_upper_tri(plat::bfloat16* dst) {
   *(reinterpret_cast<float2*>(dst)) = make_float2(0.0f, 0.0f);
 }
 
@@ -596,8 +605,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_upper_triangle,
     ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::bfloat16>,
     ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_upper_triangle_grad,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext,
+                                                plat::bfloat16>,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, float>);

@@ -13,6 +13,36 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/cudnn_placement_pass.h"
+#include "paddle/fluid/framework/operator.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+
+bool CUDNNPlacementPass::IsSupport(const Node* op) const {
+  std::string attr_name = GetAttrName();
+
+  if (!(op->Op()->HasAttr(attr_name) || op->Op()->HasProtoAttr(attr_name)))
+    return false;
+
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op->Op()->Type());
+  if (it == all_kernels.end()) {
+    // All control operators don't have kernel.
+    return false;
+  }
+  for (auto& kernel_pair : it->second) {
+    if (platform::is_gpu_place(kernel_pair.first.place_) &&
+        (kernel_pair.first.library_type_ == LibraryType::kCUDNN)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 REGISTER_PASS(cudnn_placement_pass, paddle::framework::ir::CUDNNPlacementPass)
     .RequirePassAttr("cudnn_enabled_op_types");

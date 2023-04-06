@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -139,7 +140,7 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDY<paddle::platform::complex<T>> {
+struct DivGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
       phi::dtype::complex<T> x,
       phi::dtype::complex<T> y,
@@ -265,7 +266,6 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
-                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
@@ -273,6 +273,7 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
   auto out = out_grad;  // Fake out, not used
   auto x_dim = x.dims();
   auto y_dim = y.dims();
+  int axis = -1;
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,
@@ -314,13 +315,13 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
-                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto out = out_grad;  // Fake out, not used
   auto x_dim = x.dims();
   auto y_dim = y.dims();
+  int axis = -1;
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,
@@ -830,13 +831,12 @@ struct HeavisideGradDy {
 };
 
 template <typename T, typename Context>
-void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
-                                    const DenseTensor& x,
-                                    const DenseTensor& y,
-                                    const DenseTensor& dout,
-                                    int axis,
-                                    DenseTensor* dx,
-                                    DenseTensor* dy) {
+void HeavisideGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
   phi::funcs::
       ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
@@ -845,65 +845,72 @@ void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
           y,
           dout,
           dout,
-          axis,
+          -1,
           dx,
           dy,
           HeavisideGradDx<T>(),
           HeavisideGradDy<T>());
 }
 
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow_grad_dx(T x, T y, T out, T dout) {
+  return dout * y *
+         std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+}
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow_grad_dx(T x, T y, T out, T dout) {
+  MPType x_val = static_cast<MPType>(x);
+  MPType y_val = static_cast<MPType>(y);
+  return static_cast<T>(static_cast<MPType>(dout) * y_val *
+                        std::pow(x_val, y_val - 1));
+}
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow_grad_dy(T x, T y, T out, T dout) {
+  return dout * std::log(static_cast<double>(x)) *
+         std::pow(static_cast<double>(x), static_cast<double>(y));
+}
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow_grad_dy(T x, T y, T out, T dout) {
+  MPType x_val = static_cast<MPType>(x);
+  MPType y_val = static_cast<MPType>(y);
+  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
+                        std::pow(x_val, y_val));
+}
+#else
+template <typename T, typename MPType>
+HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out, T dout) {
+  MPType x_val = static_cast<MPType>(x);
+  MPType y_val = static_cast<MPType>(y);
+  return static_cast<T>(static_cast<MPType>(dout) * y_val *
+                        std::pow(x_val, y_val - 1));
+}
+template <typename T, typename MPType>
+HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out, T dout) {
+  MPType x_val = static_cast<MPType>(x);
+  MPType y_val = static_cast<MPType>(y);
+  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
+                        std::pow(x_val, y_val));
+}
+#endif
+
 template <typename T>
 struct PowGradDX {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    if (std::is_integral<T>::value) {
-      return dout * y *
-             std::pow(static_cast<double>(x), static_cast<double>(y - 1));
-    }
-#endif
-    return dout * y * std::pow(x, y - 1);
-  }
-};
-
-template <>
-struct PowGradDX<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
-                                       dtype::float16 y,
-                                       dtype::float16 out,
-                                       dtype::float16 dout) const {
-    float tmp_y = static_cast<float>(y);
-    float tmp_dout = static_cast<float>(dout);
-    float tmp_x = static_cast<float>(x);
-    float result = tmp_dout * tmp_y * std::pow(tmp_x, tmp_y - 1.0f);
-    return static_cast<dtype::float16>(result);
+    return compute_pow_grad_dx<T, MPType>(x, y, out, dout);
   }
 };
 
 template <typename T, typename Enable = void>
 struct PowGradDY {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    if (std::is_integral<T>::value) {
-      return dout * std::log(static_cast<double>(x)) *
-             std::pow(static_cast<double>(x), static_cast<double>(y));
-    }
-#endif
-    return dout * std::log(x) * std::pow(x, y);
-  }
-};
-
-template <>
-struct PowGradDY<dtype::float16, void> {
-  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
-                                       dtype::float16 y,
-                                       dtype::float16 out,
-                                       dtype::float16 dout) const {
-    float tmp_y = static_cast<float>(y);
-    float tmp_dout = static_cast<float>(dout);
-    float tmp_x = static_cast<float>(x);
-    float tmp_pow = std::pow(tmp_x, tmp_y);
-    float result = tmp_pow * tmp_dout * std::log(tmp_x);
-    return static_cast<dtype::float16>(result);
+    return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
   }
 };
 

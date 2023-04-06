@@ -19,7 +19,7 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestMathOpPatches(unittest.TestCase):
     def test_add_scalar(self):
         a = paddle.static.data(name="a", shape=[-1, 1])
         b = a + 10
-        ab = fluid.layers.concat(input=[a, b], axis=1)
+        ab = paddle.concat([a, b], axis=1)
         c = ab + 10
         d = ab + a
         # e = a + ab

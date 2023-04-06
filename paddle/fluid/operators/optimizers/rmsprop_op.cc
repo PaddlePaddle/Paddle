@@ -38,6 +38,7 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default Tensor<float>)"
              " The moving average of gradient")
         .AsDispensable();
+
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
              "The learning rate should be a tensor of size 1.");
@@ -46,12 +47,17 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
              "Input gradient of the parameter.");
     AddInput("Moment",
              "(Tensor, default Tensor<float>) The moment that gets updated.");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
     AddOutput("MomentOut", "(Tensor) Output updated moment.");
     AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value.");
     AddOutput("MeanGradOut",
               "(Tensor) Output moving average of gradient updated value.");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) Constant "
@@ -64,6 +70,10 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("momentum", "(float, default 0.0) Constant value.")
         .SetDefault(0.0f);
     AddAttr<bool>("centered", "(bool, default false) use centered rmsprop.")
+        .SetDefault(false);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
         .SetDefault(false);
     AddComment(R"DOC(
 Rmsprop Optimizer.

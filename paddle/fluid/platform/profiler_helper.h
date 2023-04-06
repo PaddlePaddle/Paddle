@@ -44,6 +44,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/api/profiler/profiler_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -53,26 +54,7 @@ static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
 static TracerOption g_tracer_option = TracerOption::kDefault;
-// The profiler state, the initial value is ProfilerState::kDisabled
-static ProfilerState g_state = ProfilerState::kDisabled;
-// To hook RecordEvent's events, use it to nvtx timeline
-static bool g_enable_nvprof_hook = false;
-// The thread local event list only can be accessed by the specific thread
-// The thread index of each thread
-static thread_local uint64_t g_thread_id;
-// The g_next_thread_id is a global counter for threads, by the g_thread_id and
-// g_next_thread_id, we can know how many threads have created EventList.
-static uint32_t g_next_thread_id = 0;
-// The global mutex
-static std::mutex g_all_event_lists_mutex;
-// The total event lists of all threads
-static std::list<std::shared_ptr<EventList<Event>>> g_all_event_lists;
-// The thread local event list only can be accessed by the specific thread
-static thread_local std::shared_ptr<EventList<Event>> g_event_list;
 
-static std::list<std::shared_ptr<EventList<MemEvent>>> g_all_mem_event_lists;
-static thread_local std::shared_ptr<EventList<MemEvent>> g_mem_event_list;
-static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
 
@@ -88,40 +70,28 @@ static int FindNthReversePos(const std::string &s, const char ch, const int N) {
   return found_pos;
 }
 
-inline uint64_t GetTimeInNsec() {
-  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
-                                 std::chrono::high_resolution_clock,
-                                 std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             clock::now().time_since_epoch())
-      .count();
-}
+using phi::GetTimeInNsec;
 
-inline EventList<Event> &GetEventList() {
-  if (!g_event_list) {
-    std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-    g_event_list = std::make_shared<EventList<Event>>();
-    g_thread_id = g_next_thread_id++;
-    g_all_event_lists.emplace_front(g_event_list);
-    RecoreCurThreadId(g_thread_id);
-  }
-  return *g_event_list;
-}
+using phi::GetEventList;
 
 inline EventList<MemEvent> &GetMemEventList() {
-  if (!g_mem_event_list) {
-    g_mem_event_list = std::make_shared<EventList<MemEvent>>();
-    std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
+  if (!phi::ProfilerHelper::g_mem_event_list) {
+    phi::ProfilerHelper::g_mem_event_list =
+        std::make_shared<EventList<MemEvent>>();
+    std::lock_guard<std::mutex> guard(
+        phi::ProfilerHelper::g_all_mem_event_lists_mutex);
     g_mem_thread_id = g_mem_next_thread_id++;
-    g_all_mem_event_lists.emplace_front(g_mem_event_list);
+    phi::ProfilerHelper::g_all_mem_event_lists.emplace_front(
+        phi::ProfilerHelper::g_mem_event_list);
   }
-  return *g_mem_event_list;
+  return *phi::ProfilerHelper::g_mem_event_list;
 }
 
 std::vector<std::vector<MemEvent>> GetMemEvents() {
-  std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
+  std::lock_guard<std::mutex> guard(
+      phi::ProfilerHelper::g_all_mem_event_lists_mutex);
   std::vector<std::vector<MemEvent>> result;
-  for (auto &it : g_all_mem_event_lists) {
+  for (auto &it : phi::ProfilerHelper::g_all_mem_event_lists) {
     result.emplace_back((*it).Reduce());
   }
   return result;
@@ -234,7 +204,7 @@ void PrintMemProfiler(
 
 // parse memory events
 void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // place, annotation, alloc times,  alloc size
   std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
       annotation_report;
@@ -255,7 +225,8 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
 
 void DealWithShowName() {
   std::unordered_map<std::string, std::vector<std::string>> profiler_name_info;
-  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
+       it != phi::ProfilerHelper::g_all_event_lists.end();
        ++it) {
     for (auto &block : (*it)->event_blocks) {
       for (auto &r : block) {
@@ -382,9 +353,9 @@ void SetEvent(bool merge_thread,
       gpu_time = rit->CudaElapsedMs(analyze_event);
 #endif
       double cpu_time = rit->CpuElapsedMs(analyze_event);
-      if (g_state == ProfilerState::kCUDA) {
+      if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA) {
         event_time = gpu_time;
-      } else if (g_state == ProfilerState::kCPU) {
+      } else if (phi::ProfilerHelper::g_state == ProfilerState::kCPU) {
         event_time = cpu_time;
       } else {
         event_time = gpu_time + cpu_time;
@@ -653,11 +624,11 @@ void PrintProfiler(
               << "     Profiling Report     "
               << "<-------------------------\n\n";
     std::string place;
-    if (g_state == ProfilerState::kCPU) {
+    if (phi::ProfilerHelper::g_state == ProfilerState::kCPU) {
       place = "CPU";
-    } else if (g_state == ProfilerState::kCUDA) {
+    } else if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA) {
       place = "CUDA";
-    } else if (g_state == ProfilerState::kAll) {
+    } else if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       place = "All";
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -684,7 +655,7 @@ void PrintProfiler(
     std::cout.setf(std::ios::left);
     std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
               << "Calls" << std::setw(data_width) << "Total";
-    if (g_state == ProfilerState::kAll) {
+    if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       std::cout << std::setw(data_width * 2) << "CPU Time (Ratio)"
                 << std::setw(data_width * 2) << "GPU Time (Ratio)";
     }
@@ -729,7 +700,7 @@ void PrintProfiler(
       std::cout << std::setw(name_width) << print_name << std::setw(data_width)
                 << event_item.calls << std::setw(data_width)
                 << event_item.total_time;
-      if (g_state == ProfilerState::kAll) {
+      if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
         std::cout << std::setw(data_width * 2)
                   << string::Sprintf(
                          "%f (%f)",
@@ -890,7 +861,7 @@ void AnalyzeEvent(
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   if (merge_thread && events.size() < 2) return;
 
   std::string sorted_domain;

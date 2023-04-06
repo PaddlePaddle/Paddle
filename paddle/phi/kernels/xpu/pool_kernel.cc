@@ -44,11 +44,12 @@ void Pool2dKernel(const Context& ctx,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
-  PADDLE_ENFORCE_EQ(
+  // old model's data_format maybe AnyLayout
+  PADDLE_ENFORCE_NE(
       data_format,
-      "NCHW",
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support "
-                                   "data_format is 'NCHW', but received %s",
+      "NHWC",
+      phi::errors::InvalidArgument("The Pool2d XPU OP does not support "
+                                   "data_format is 'NHWC', but received %s",
                                    data_format));
 
   if (global_pooling) {
@@ -89,6 +90,12 @@ void Pool2dKernel(const Context& ctx,
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (!adaptive) {
+    if (kernel_size[0] > in_h) {
+      kernel_size[0] = in_h;
+    }
+    if (kernel_size[1] > in_w) {
+      kernel_size[1] = in_w;
+    }
     if (pooling_type == "max") {
       r = xpu::max_pool2d<XPUType>(
           ctx.x_context(),
@@ -156,6 +163,144 @@ void Pool2dKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
+void Pool3dKernel(const Context& ctx,
+                  const DenseTensor& x,
+                  const std::vector<int>& kernel_size_t,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings_t,
+                  bool ceil_mode,
+                  bool exclusive,
+                  const std::string& data_format,
+                  const std::string& pooling_type,
+                  bool global_pooling,
+                  bool adaptive,
+                  const std::string& padding_algorithm,
+                  DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  const bool channel_last = data_format == "NDHWC";
+  std::vector<int> paddings(paddings_t);
+  std::vector<int> kernel_size(kernel_size_t);
+
+  auto x_dims = x.dims();
+  int n = x.dims()[0];
+  int c = x.dims()[1];
+  int in_d = x.dims()[2];
+  int in_h = x.dims()[3];
+  int in_w = x.dims()[4];
+
+  int out_d = out->dims()[2];
+  int out_h = out->dims()[3];
+  int out_w = out->dims()[4];
+
+  if (data_format == "NDHWC") {
+    c = x.dims()[4];
+    in_d = x.dims()[1];
+    in_h = x.dims()[2];
+    in_w = x.dims()[3];
+
+    out_d = out->dims()[1];
+    out_h = out->dims()[2];
+    out_w = out->dims()[3];
+  }
+
+  DDim data_dims;
+
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
+
+  funcs::UpdatePadding(&paddings,
+                       global_pooling,
+                       adaptive,
+                       padding_algorithm,
+                       data_dims,
+                       strides,
+                       kernel_size);
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size, data_dims);
+  }
+
+  ctx.template Alloc<T>(out);
+  int* index_data = nullptr;
+  int r = xpu::Error_t::SUCCESS;
+  if (!adaptive) {
+    if (pooling_type == "max") {
+      r = xpu::max_pool3d<XPUType>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          index_data,
+          n,
+          c,
+          in_d,
+          in_h,
+          in_w,
+          kernel_size,
+          strides,
+          paddings,
+          data_format == "NCDHW");
+    } else if (pooling_type == "avg") {
+      r = xpu::avg_pool3d<XPUType>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          n,
+          c,
+          in_d,
+          in_h,
+          in_w,
+          kernel_size,
+          strides,
+          paddings,
+          !exclusive,
+          data_format == "NCDHW");
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unsupported pooling type for kunlun ", pooling_type));
+    }
+  } else {
+    if (pooling_type == "max") {
+      r = xpu::adaptive_max_pool3d<XPUType>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          index_data,
+          n,
+          c,
+          in_d,
+          in_h,
+          in_w,
+          out_d,
+          out_h,
+          out_w,
+          data_format == "NCDHW");
+    } else if (pooling_type == "avg") {
+      r = xpu::adaptive_avg_pool3d<XPUType>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          n,
+          c,
+          in_d,
+          in_h,
+          in_w,
+          out_d,
+          out_h,
+          out_w,
+          data_format == "NCDHW");
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unsupported pooling type for kunlun ", pooling_type));
+    }
+  }
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool3d");
+}
+
+template <typename T, typename Context>
 void MaxPool2dWithIndexKernel(const Context& ctx,
                               const DenseTensor& x,
                               const std::vector<int>& kernel_size,
@@ -216,6 +361,8 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    pool3d, XPU, ALL_LAYOUT, phi::Pool3dKernel, float, phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(max_pool2d_with_index,
                    XPU,

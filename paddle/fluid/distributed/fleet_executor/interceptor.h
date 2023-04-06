@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
@@ -39,6 +40,8 @@ namespace distributed {
 class TaskNode;
 class Carrier;
 class TaskLoop;
+
+using InterpreterCore = framework::InterpreterCore;
 
 constexpr int64_t SOURCE_ID = -1;
 constexpr int64_t SINK_ID = -2;
@@ -75,6 +78,10 @@ class Interceptor {
   void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
     microbatch_scopes_ = scopes;
   }
+  void SetInterpreterCore(
+      const std::vector<std::shared_ptr<InterpreterCore>> cores) {
+    cores_ = cores;
+  }
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
@@ -100,6 +107,7 @@ class Interceptor {
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
+  std::vector<std::shared_ptr<InterpreterCore>> cores_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;

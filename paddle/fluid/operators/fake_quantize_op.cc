@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
@@ -98,7 +98,7 @@ struct ClipAndFakeQuantFunctor<phi::CPUContext, T> {
                   phi::DenseTensor *out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
-    platform::Transform<phi::CPUContext> trans;
+    phi::Transform<phi::CPUContext> trans;
     if (round_type == 0) {
       trans(ctx,
             in.data<T>(),
@@ -130,7 +130,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
 
-    platform::Transform<phi::CPUContext> trans;
+    phi::Transform<phi::CPUContext> trans;
     if (round_type == 0) {
       trans(ctx,
             in.data<T>(),
@@ -175,7 +175,7 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
     auto in_dims = in.dims();
     const int64_t channel = in_dims[quant_axis];
-    platform::Transform<phi::CPUContext> trans;
+    phi::Transform<phi::CPUContext> trans;
     if (quant_axis == 0) {
       const int64_t channel_size = in.numel() / channel;
       for (int64_t i = 0; i < channel; i++) {
@@ -256,7 +256,7 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
     auto in_dims = in.dims();
     const int64_t channel = in_dims[quant_axis];
-    platform::Transform<phi::CPUContext> trans;
+    phi::Transform<phi::CPUContext> trans;
     if (quant_axis == 0) {
       const int64_t channel_size = in.numel() / channel;
       for (int i = 0; i < channel; i++) {

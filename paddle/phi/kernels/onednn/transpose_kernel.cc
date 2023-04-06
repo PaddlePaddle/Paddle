@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,67 +18,45 @@
 
 namespace phi {
 
-void SetInMemDescWithSqueeze2FuseSupport(
-    const std::vector<int> fused_squeeze2_axes,
-    DenseTensor* in,
-    const dnnl::memory::desc& in_md) {
-  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
-                                            fused_squeeze2_axes.end());
-  const std::vector<int64_t>& x_vec_dims = in_md.dims();
-  std::vector<int64_t> squeezed_op_tz(
-      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
-
-  int j = 0;
-  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
-    if (squeeze2_axes_set.count(i) ||
-        squeeze2_axes_set.count(i - x_vec_dims.size())) {
-      PADDLE_ENFORCE_EQ(
-          x_vec_dims[i],
-          1,
-          errors::InvalidArgument(
-              "Squeeze2 input dim %d should be equal to one, but get %d.",
-              i,
-              x_vec_dims[i]));
-      continue;
-    }
-    squeezed_op_tz[j++] = x_vec_dims[i];
-  }
-
-  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
-  in->Resize(make_ddim(squeezed_op_tz));
-}
-
-void SetInMemDescWithLogicalLayoutFusesSupport(
-    const OneDNNContext& dev_ctx,
-    DenseTensor* in,
-    const dnnl::memory::desc& in_md) {
-  const auto fused_squeeze2_axes =
-      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
-          : std::vector<int>();
-  if (fused_squeeze2_axes.empty()) {
-    in->set_mem_desc(in_md);
-    in->Resize(make_ddim(in_md.dims()));
-  } else {
-    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes, in, in_md);
-  }
-}
-
 template <typename T, typename Context>
 void TransposeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
+  // Here we need to match dims to paddle layout
+  // as we are producing non-oneDNN result
+  auto x_dims = x.dims();
+  if ((x_dims.size() >= 3) &&
+      (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+       phi::DataLayout::kNHWC)) {
+    int axis_size = axis.size();
+    std::vector<int> formated_axis = axis;
+    std::vector<int> count(axis_size, 0);
+    for (int i = 0; i < axis_size; i++) {
+      if (axis[i] < 0) {
+        formated_axis[i] = axis[i] + axis_size;
+      }
+    }
+    auto dims = phi::vectorize<int>(x_dims);
+
+    std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+    x_dims = x_dims.reshape(dims);
+    VLOG(3)
+        << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+
+    phi::DDim out_dims(x_dims);
+    for (size_t i = 0; i < axis.size(); i++) {
+      out_dims[i] = x_dims[formated_axis[i]];
+    }
+    out->Resize(out_dims);
+  }
+
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-      true,
+      dev_ctx.GetPlace().GetType(),
+      AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
-  SetInMemDescWithLogicalLayoutFusesSupport(
-      dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
-
-  if (axis.size() == 1) {
+  if (axis.size() == 1 || axis.size() == 0) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
@@ -90,42 +68,20 @@ void TransposeKernel(const Context& dev_ctx,
       x_vec_dims, x.dtype(), x_type, dev_ctx.GetEngine());
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
-  auto dst_md =
-      dnnl::memory::desc(x_vec_dims,
-                         x.mem_desc().data_type(),
-                         funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
 
-  // a trick is used here to fake transpose of out_md, so later it will be
-  // "untransposed", leaving output data in plain format tag
-  std::vector<int64_t> fake_strides(axis.size());
-  auto dims = dst_md.dims();
-  int total_stride = 1;
-  for (int i = static_cast<int>(dims.size()) - 1; i >= 0; --i) {
-    fake_strides[axis[i]] = total_stride;
-    total_stride *= dims[axis[i]];
-  }
-  dst_md =
+  auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
+  auto dst_md =
       dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
-  auto dst_data = dev_ctx.template Alloc<T>(out);
   auto reorder_dst_memory_p =
-      std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
+      reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
   auto& astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
-
-  // it is needed because oneDNN's permute axis understand axes order in
-  // different way PaddlePaddle's transpose
-  std::vector<int> permute_axis(axis.size());
-  for (size_t i = 0; i < axis.size(); ++i) {
-    permute_axis[axis[i]] = i;
-  }
-  funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
-      dev_ctx,
-      out,
-      reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
+  out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
+      funcs::TransposeToPermuteAxes(axis)));
 }
 }  // namespace phi
 

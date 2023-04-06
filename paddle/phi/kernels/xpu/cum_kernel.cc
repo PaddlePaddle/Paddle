@@ -66,19 +66,26 @@ void CumsumKernel(const Context& dev_ctx,
     }
   }
 
-  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T* y,
-  // const std::vector<int>& xshape, bool reverse, bool exclusive, int axis);
-  int r = cumsum(dev_ctx.x_context(),
-                 reinterpret_cast<const XPUType*>(x.data<T>()),
-                 reinterpret_cast<XPUType*>(out->data<T>()),
-                 x_shape,
-                 reverse,
-                 exclusive,
-                 axis_as_int);
+  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
+  // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
+  // axis);
+  int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x_shape,
+                               reverse,
+                               exclusive,
+                               axis_as_int);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cumsum, XPU, ALL_LAYOUT, phi::CumsumKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(cumsum,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CumsumKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

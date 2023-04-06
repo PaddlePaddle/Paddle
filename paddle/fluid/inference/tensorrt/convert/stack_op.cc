@@ -16,15 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,7 +27,7 @@ class StackOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid stack op to tensorrt stack layer";
+    VLOG(4) << "convert stack op to tensorrt stack layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto input = op_desc.Input("X");

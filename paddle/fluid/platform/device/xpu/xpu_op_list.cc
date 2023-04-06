@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 
 namespace paddle {
@@ -39,6 +39,7 @@ static void tokenize(const std::string& ops,
 }
 
 #ifdef PADDLE_WITH_XPU_KP
+
 bool is_in_xpu_kpwhite_list(const std::string& op_name) {
   static bool inited = false;
   static std::unordered_set<std::string> xpu_kpwhite_list;
@@ -62,6 +63,37 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
     return true;
   }
   return false;
+}
+
+XPUOpListMap get_xpu_kp_op_list(phi::backends::xpu::XPUVersion version) {
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
+                  ? phi::backends::xpu::get_kl1_ops()
+                  : phi::backends::xpu::get_kp_ops();
+  XPUOpListMap res;
+  for (auto& op : ops) {
+    std::vector<vartype::Type> op_types;
+    for (auto& item : op.second) {
+      op_types.push_back(
+          static_cast<vartype::Type>(phi::TransToProtoVarType(item)));
+    }
+    res[op.first] = std::move(op_types);
+  }
+  return res;
+}
+
+std::vector<vartype::Type> get_xpu_kp_op_support_type(
+    const std::string& op_name, phi::backends::xpu::XPUVersion version) {
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
+                  ? phi::backends::xpu::get_kl1_ops()
+                  : phi::backends::xpu::get_kp_ops();
+  std::vector<vartype::Type> res;
+  if (ops.find(op_name) != ops.end()) {
+    auto& dtypes = ops[op_name];
+    for (auto& type : dtypes) {
+      res.push_back(static_cast<vartype::Type>(phi::TransToProtoVarType(type)));
+    }
+  }
+  return res;
 }
 #endif
 

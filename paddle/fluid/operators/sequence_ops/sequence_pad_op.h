@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +45,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
 
     int padded_length = ctx.Attr<int>("padded_length");
 
-    math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+    phi::funcs::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(),
         *x,
         out,
@@ -53,7 +53,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
         padded_length,
         0,
         false,
-        math::kBatchLengthWidth);
+        phi::funcs::kBatchLengthWidth);
 
     phi::DenseTensor seq_len;
     seq_len.Resize(len_t->dims());
@@ -80,14 +80,14 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
 
       int padded_length = ctx.Attr<int>("padded_length");
 
-      math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+      phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(),
           *d_out,
           d_x,
           padded_length,
           0,
           false,
-          math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     }
   }
 };

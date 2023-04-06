@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -140,12 +140,12 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
           static_cast<int>(lod[0][i] + offset_data[i]),
           static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
-      StridedMemcpy<T>(ctx.device_context(),
-                       in_t.data<T>(),
-                       in_stride,
-                       in_t.dims(),
-                       out_stride,
-                       out->data<T>() + out_offset);
+      phi::funcs::StridedMemcpy<T>(ctx.device_context(),
+                                   in_t.data<T>(),
+                                   in_stride,
+                                   in_t.dims(),
+                                   out_stride,
+                                   out->data<T>() + out_offset);
       out_offset += length_data[i] * in_stride[0];
     }
   }
@@ -201,12 +201,12 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
             static_cast<int>(lod[0][i] + offset_data[i]),
             static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
-        StridedMemcpy<T>(ctx.device_context(),
-                         out_grad_t.data<T>(),
-                         out_grad_stride,
-                         out_grad_t.dims(),
-                         x_grad_stride,
-                         x_grad_t.data<T>());
+        phi::funcs::StridedMemcpy<T>(ctx.device_context(),
+                                     out_grad_t.data<T>(),
+                                     out_grad_stride,
+                                     out_grad_t.dims(),
+                                     x_grad_stride,
+                                     x_grad_t.data<T>());
       }
     }
   }

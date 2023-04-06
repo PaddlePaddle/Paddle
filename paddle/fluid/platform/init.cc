@@ -16,11 +16,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -55,6 +55,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
@@ -65,16 +68,6 @@ PADDLE_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
-}
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 #ifdef _WIN32
@@ -83,7 +76,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
+std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -107,6 +100,7 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
+    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
     ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
     successed = true;
 
@@ -191,17 +185,6 @@ void InitDevices() {
       devices = platform::GetXPUSelectedDevices();
     } catch (const std::exception &exp) {
       LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
-    }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-    platform::AclInstance::Instance();  // NOLINT
-    try {
-      // use user specified XPUs in single-node multi-process mode.
-      devices = platform::GetSelectedNPUDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
-                      "in runtime.";
     }
 #endif
 #ifdef PADDLE_WITH_IPU
@@ -453,6 +436,35 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
+}
+
+void InitMemoryMethod() {
+  std::call_once(memory_method_init_flag, [&]() {
+    auto &memory_utils = phi::MemoryUtils::Instance();
+    auto memory_method = std::make_unique<phi::MemoryInterface>();
+    memory_method->alloc = paddle::memory::Alloc;
+    memory_method->alloc_with_stream = paddle::memory::Alloc;
+    memory_method->alloc_shared = paddle::memory::AllocShared;
+    memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
+    memory_method->copy_with_stream =
+        paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
+    memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
+    memory_method->device_memory_stat_current_value =
+        paddle::memory::DeviceMemoryStatCurrentValue;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
+#endif
+    memory_method->emplace_device_contexts =
+        paddle::platform::EmplaceDeviceContexts;
+    memory_method->init_devices = InitDevices;
+    memory_utils.Init(std::move(memory_method));
   });
 }
 

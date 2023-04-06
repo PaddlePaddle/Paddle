@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_elementwise_add_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -65,12 +66,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
-    matmul->Op()->SetType("fused_matmul");
-    if (matmul_type == "matmul") {
-      matmul->Op()->SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
-      matmul->Op()->SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
-      matmul->Op()->SetAttr("matmul_alpha", matmul->Op()->GetAttr("alpha"));
-    }
+    ConvertToFusedOp(matmul->Op());
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
@@ -150,50 +146,6 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("matmul_alpha")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_activation")
-      .IsType<std::string>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_alpha")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fuse_beta")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_output_scale")
-      .IsType<float>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_X")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_X")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_Y")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_Y")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_reshape_Out")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("fused_transpose_Out")
-      .IsType<std::vector<int>>()
-      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

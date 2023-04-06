@@ -18,7 +18,7 @@ import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -95,7 +95,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             input=lr_embbding, pool_type="sum"
         )
 
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'

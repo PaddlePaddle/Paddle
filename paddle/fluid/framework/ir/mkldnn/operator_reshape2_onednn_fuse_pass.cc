@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_reshape2_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -28,7 +29,7 @@ void FuseOperatorReshape2OneDNNPass::ApplyImpl(Graph *graph) const {
   // THIS FUSE WILL WORK ONLY WITH OPERATORS THAT OUTPUTS PLAIN MEMORY, F.E.
   // ABCD FOR 4D! BE AWARE OF THAT!
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"fc", 1}, {"transpose2", 2}};
+      {"fc", 1}, {"fused_transpose", 2}, {"transpose2", 2}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseReshape2(graph, op_and_outputs.first, op_and_outputs.second);
@@ -114,6 +115,7 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
       return;
     }
 
+    ConvertToFusedOp(operator_op->Op());
     operator_op->Op()->SetAttr("fused_reshape2_shape", reshape2_shape);
     operator_op->Op()->SetOutput("Out", {reshape2_out->Name()});
 
@@ -140,5 +142,7 @@ REGISTER_PASS(operator_reshape2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(operator_reshape2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("reshape2", 0)
-            .GE("fc", 0));
+            .EQ("fused_transpose", 0)
+            .EQ("transpose2", 0)
+            .EQ("reshape2", 0)
+            .EQ("fc", 0));

@@ -19,50 +19,19 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event_collector.h"
 
 namespace paddle {
 namespace platform {
 
-class TraceEventCollector {
+class TraceEventCollector : public phi::TraceEventCollector {
  public:
-  void AddHostEvent(HostTraceEvent&& event) { host_events_.push_back(event); }
-
-  void AddRuntimeEvent(RuntimeTraceEvent&& event) {
-    runtime_events_.push_back(event);
-  }
-
-  void AddDeviceEvent(DeviceTraceEvent&& event) {
-    device_events_.push_back(event);
-  }
-
-  void AddThreadName(uint64_t tid, const std::string& name) {
-    thread_names_[tid] = name;
-  }
-
-  void AddMemEvent(MemTraceEvent&& event) { mem_events_.push_back(event); }
-
   void AddOperatorSupplementEvent(OperatorSupplementEvent&& event) {
     op_supplement_events_.push_back(event);
   }
 
-  const std::list<HostTraceEvent>& HostEvents() const { return host_events_; }
-
-  const std::list<RuntimeTraceEvent>& RuntimeEvents() const {
-    return runtime_events_;
-  }
-
-  const std::list<DeviceTraceEvent>& DeviceEvents() const {
-    return device_events_;
-  }
-
-  const std::list<MemTraceEvent>& MemEvents() const { return mem_events_; }
-
   const std::list<OperatorSupplementEvent>& OperatorSupplementEvents() const {
     return op_supplement_events_;
-  }
-
-  const std::unordered_map<uint64_t, std::string>& ThreadNames() const {
-    return thread_names_;
   }
 
   void ClearAll() {
@@ -75,11 +44,6 @@ class TraceEventCollector {
   }
 
  private:
-  std::unordered_map<uint64_t, std::string> thread_names_;
-  std::list<HostTraceEvent> host_events_;
-  std::list<RuntimeTraceEvent> runtime_events_;
-  std::list<DeviceTraceEvent> device_events_;
-  std::list<MemTraceEvent> mem_events_;
   std::list<OperatorSupplementEvent> op_supplement_events_;
 };
 
