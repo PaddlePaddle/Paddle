@@ -14,7 +14,9 @@
 
 import unittest
 
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
@@ -407,9 +409,6 @@ class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
-        self.public_python_api = raw_reduce_prod
-        self.prim_op_type = "prim"
-
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -423,26 +422,16 @@ class TestProdOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestProdOpFp64(TestProdOp):
-    def init_data_type(self):
-        self.data_type = "float64"
+        self.check_grad(['X'], 'Out')
 
 
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
-        self.python_api = raw_reduce_prod
-        self.public_python_api = raw_reduce_prod
+        self.python_api = paddle.prod
         self.op_type = "reduce_prod"
-        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].prod()}
         self.attrs = {'dim': [], 'reduce_all': True}
-
-        # 0-D tensor doesn't support in cinn
-        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
@@ -455,8 +444,6 @@ class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
-        self.public_python_api = raw_reduce_prod
-        self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -475,14 +462,13 @@ class TestProd6DOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
-        self.public_python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
@@ -1194,16 +1180,15 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.framework._static_guard():
-            with program_guard(Program(), Program()):
-                # The input type of reduce_sum_op must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([[-1]]), [[1]], fluid.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.sum, x1)
-                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-                self.assertRaises(TypeError, paddle.sum, x2)
+        with program_guard(Program(), Program()):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            self.assertRaises(TypeError, paddle.sum, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
+            self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -1407,6 +1392,47 @@ class TestAllZeroError(unittest.TestCase):
                 paddle.all(x, axis=1)
 
             self.assertRaises(ValueError, test_0_size)
+
+
+class TestAmaxGradCheck(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.init_test()
+
+    def init_test(self):
+        self.x_shape = [2]
+
+    @prog_scope()
+    def func(self, place):
+        eps = 0.005
+        dtype = np.float64
+        typename = "float64"
+        x = paddle.create_parameter(
+            dtype=typename, shape=self.x_shape, name='x'
+        )
+        out = paddle.amax(x)
+
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        gradient_checker.grad_check(
+            [x], out, x_init=[x_arr], place=place, eps=eps
+        )
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+def TestAmaxGradCheckCase1(TestAmaxGradCheck):
+    def init_test(self):
+        self.x_shape = [2, 3]
+
+
+def TestAmaxGradCheckCase2(TestAmaxGradCheck):
+    def init_test(self):
+        self.x_shape = [2, 4, 3]
 
 
 if __name__ == '__main__':
