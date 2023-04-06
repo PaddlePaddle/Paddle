@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +69,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     tmp.mutable_data<T>(framework::DDim({1}), place);
     FillNpuTensorWithConstant(&tmp, shard_size);
 
-    phi::DenseTensor condition(experimental::DataType::BOOL);
+    phi::DenseTensor condition(phi::DataType::BOOL);
     condition.mutable_data<bool>(in->dims(), place);
 
     phi::DenseTensor tmp2(in->type());

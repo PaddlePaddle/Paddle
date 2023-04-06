@@ -54,7 +54,6 @@ void* GetCUDADsoHandle() { return phi::dynload::GetCUDADsoHandle(); }
 void* GetWarpCTCDsoHandle() { return phi::dynload::GetWarpCTCDsoHandle(); }
 
 void* GetNCCLDsoHandle() { return phi::dynload::GetNCCLDsoHandle(); }
-void* GetHCCLDsoHandle() { return phi::dynload::GetHCCLDsoHandle(); }
 
 void* GetTensorRtDsoHandle() { return phi::dynload::GetTensorRtDsoHandle(); }
 

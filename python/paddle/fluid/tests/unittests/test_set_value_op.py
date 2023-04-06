@@ -18,10 +18,10 @@ import unittest
 from functools import reduce
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -498,7 +498,7 @@ def create_test_value_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -518,7 +518,7 @@ def create_test_value_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -538,7 +538,7 @@ def create_test_value_fp16(parent):
         def set_dtype(self):
             self.dtype = "float16"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    cls_name = "{}_{}".format(parent.__name__, "Valuefp16")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -558,7 +558,7 @@ def create_test_value_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -578,7 +578,7 @@ def create_test_value_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -598,7 +598,7 @@ def create_test_value_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -619,7 +619,7 @@ def create_test_value_numpy_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -639,7 +639,7 @@ def create_test_value_numpy_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -659,7 +659,7 @@ def create_test_value_numpy_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -679,7 +679,7 @@ def create_test_value_numpy_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -699,7 +699,7 @@ def create_test_value_numpy_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -724,7 +724,7 @@ def create_test_value_tensor_int32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -748,7 +748,7 @@ def create_test_value_tensor_int64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -772,7 +772,7 @@ def create_test_value_tensor_fp32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -796,7 +796,7 @@ def create_test_value_tensor_fp64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -820,7 +820,7 @@ def create_test_value_tensor_bool(parent):
         def _get_answer(self):
             self.data[0, 1] = False
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -1306,19 +1306,13 @@ class TestGradientTruncated(unittest.TestCase):
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
-            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            value = paddle.tensor.fill_constant([1], "float32", 1)
             # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
-            )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
-            )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", -2, force_cpu=True
-            )
+            start = paddle.tensor.fill_constant([1], "int32", 5, force_cpu=True)
+            end = paddle.tensor.fill_constant([1], "int32", 0, force_cpu=True)
+            step = paddle.tensor.fill_constant([1], "int32", -2, force_cpu=True)
 
             inputs = {
                 'Input': x,
@@ -1347,7 +1341,7 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op2(x):
-            value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
+            value = paddle.tensor.fill_constant([1, 3, 2], "float32", 1)
             # test stop_gradient
             value.stop_gradient = False
             x.stop_gradient = False
@@ -1372,18 +1366,12 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op3(x):
-            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            value = paddle.tensor.fill_constant([1], "float32", 1)
             x.stop_gradient = True
             value.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
-            )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
-            )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", 3, force_cpu=True
-            )
+            start = paddle.tensor.fill_constant([1], "int32", 0, force_cpu=True)
+            end = paddle.tensor.fill_constant([1], "int32", 5, force_cpu=True)
+            step = paddle.tensor.fill_constant([1], "int32", 3, force_cpu=True)
 
             inputs = {
                 'Input': x,

@@ -31,7 +31,7 @@
 namespace egr {
 
 /*
- * GeneralGrad is Helpper class to implement custom grad operation between
+ * GeneralGrad is Helper class to implement custom grad operation between
  * outputs and inputs.
  *
  * **/

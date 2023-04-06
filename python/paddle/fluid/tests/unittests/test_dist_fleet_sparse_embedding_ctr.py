@@ -24,7 +24,7 @@ paddle.enable_static()
 from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")

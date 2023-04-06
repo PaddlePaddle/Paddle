@@ -99,7 +99,7 @@ class RecomputeState(ProgramStats):
             segments.append([segment_idx[0], segment_idx[-1] + 1])
             self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
 
-        for i in reversed(sorted(no_recompute_segments)):
+        for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
             ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
@@ -293,9 +293,7 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(
-                "recompute segment[{}/{}]".format(i + 1, len(segments))
-            )
+            logging.info(f"recompute segment[{i + 1}/{len(segments)}]")
             logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,

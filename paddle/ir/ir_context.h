@@ -23,12 +23,13 @@ namespace ir {
 class IrContextImpl;
 class StorageManager;
 class AbstractType;
+class AbstractAttribute;
 class TypeId;
 class Dialect;
 
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
-/// Type and its related data structures.
+/// Type, Attribute and other related data structures.
 ///
 class IrContext {
  public:
@@ -60,7 +61,7 @@ class IrContext {
   /// \return The storage uniquer used for constructing TypeStorage
   /// instances.
   ///
-  StorageManager &storage_manager();
+  StorageManager &type_storage_manager();
 
   ///
   /// \brief Returns the storage uniquer used for constructing TypeStorage
@@ -70,6 +71,34 @@ class IrContext {
   /// instances.
   ///
   std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
+
+  ///
+  /// \brief Register an AbstractAttribute to IrContext
+  ///
+  /// \param type_id The type id of the AbstractAttribute.
+  /// \param abstract_attribute AbstractAttribute* provided by user.
+  ///
+  void RegisterAbstractAttribute(ir::TypeId type_id,
+                                 AbstractAttribute *abstract_attribute);
+
+  ///
+  /// \brief Returns the storage uniquer used for constructing AttributeStorage
+  /// instances.
+  ///
+  /// \return The storage uniquer used for constructing AttributeStorage
+  /// instances.
+  ///
+  StorageManager &attribute_storage_manager();
+
+  ///
+  /// \brief Returns the storage uniquer used for constructing AttributeStorage
+  /// instances.
+  ///
+  /// \return The storage uniquer used for constructing AttributeStorage
+  /// instances.
+  ///
+  std::unordered_map<TypeId, AbstractAttribute *>
+      &registed_abstracted_attribute();
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,

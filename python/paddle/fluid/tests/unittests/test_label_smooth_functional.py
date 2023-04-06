@@ -47,7 +47,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                label_var = fluid.data(
+                label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
                 y_var = F.label_smooth(
@@ -67,7 +67,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                label_var = fluid.data(
+                label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
                 y_var = F.label_smooth(

@@ -15,7 +15,6 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -336,7 +335,7 @@ class StaticRNN:
 
             vocab_size, hidden_size=10000, 200
             paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -427,7 +426,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -456,7 +455,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -559,7 +558,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -612,7 +611,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -674,7 +673,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -925,11 +924,12 @@ class While:
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)           # loop counter
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
 
-            loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
+            loop_len = paddle.full(shape=[1],dtype='int64', fill_value=10)    # loop length
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -952,11 +952,11 @@ class While:
             import numpy as np
 
             paddle.enable_static()
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
-            data = fluid.data(name='data', shape=[1], dtype='float32')
-            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+            i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+            loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
+            one = paddle.full(shape=[1], dtype='float32', fill_value=1)
+            data = paddle.static.data(name='data', shape=[1], dtype='float32')
+            sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -1053,7 +1053,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -1150,7 +1150,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_dygraph_mode():
-        now_cond = pre_cond.numpy().item()
+        now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -1160,7 +1160,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy().item()
+            now_cond = cond(*output_vars).item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:
@@ -1537,13 +1537,15 @@ class Switch:
     .. code-block:: python
 
         '''
+        import paddle
+        import paddle.fluid as fluid
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=1)
             with switch.case(cond2):
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=2)
             with switch.default():
-                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+                i = paddle.full(shape=[1], dtype='int64', fill_value=0)
         '''
 
     Args:
@@ -1561,20 +1563,20 @@ class Switch:
                 dtype='float32',
                 persistable=True,
                 name="learning_rate")
-            zero_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=0.0)
-            one_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=1.0)
-            two_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=2.0)
+            zero_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=0.0)
+            one_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=1.0)
+            two_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=2.0)
 
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.assign(input=one_var, output=lr)
+                    paddle.assign(input=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.assign(input=two_var, output=lr)
+                    paddle.assign(input=two_var, output=lr)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())

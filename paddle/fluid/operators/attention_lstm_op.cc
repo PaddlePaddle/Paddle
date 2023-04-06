@@ -340,12 +340,10 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   phi::funcs::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AttentionLSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
-
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     auto* c0 = ctx.Input<phi::DenseTensor>("C0");
@@ -525,6 +523,5 @@ REGISTER_OPERATOR(attention_lstm,
                   ops::AttentionLSTMOp,
                   ops::AttentionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(attention_lstm,
-                       ops::AttentionLSTMKernel<float>,
-                       ops::AttentionLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    attention_lstm, CPU, ALL_LAYOUT, ops::AttentionLSTMKernel, float, double) {}

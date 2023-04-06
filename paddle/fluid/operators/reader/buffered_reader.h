@@ -25,10 +25,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
-#endif
+
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #include "paddle/fluid/platform/device/mlu/mlu_resource_pool.h"
@@ -56,6 +53,8 @@ class BufferedReader : public framework::DecoratedReader {
                  bool pin_memory = false);
 
   ~BufferedReader() override;
+
+  platform::Place GetPlace() const { return place_; }
 
  private:
   void ReadTillBufferFullAsync();
@@ -91,12 +90,6 @@ class BufferedReader : public framework::DecoratedReader {
   gpuStream_t compute_stream_;
   std::shared_ptr<platform::CudaStreamObject> stream_;
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  aclrtStream compute_stream_;
-  std::shared_ptr<platform::NpuStreamObject> stream_;
-  std::vector<std::shared_ptr<platform::NpuEventObject>> events_;
 #endif
 
 #ifdef PADDLE_WITH_MLU

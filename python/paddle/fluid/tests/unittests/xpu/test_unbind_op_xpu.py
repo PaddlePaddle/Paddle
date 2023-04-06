@@ -25,10 +25,8 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -42,10 +40,10 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
         def test_unbind(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
-            x_1 = fluid.data(shape=[2, 3], dtype=self.dtype, name='x_1')
+            x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
             [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
-            axis = fluid.data(shape=[1], dtype='int32', name='axis')
+            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
             exe = fluid.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
@@ -75,17 +73,16 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
                 np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
         def test_unbind_dygraph_final_state(self):
-            with _test_eager_guard():
-                self.test_unbind_dygraph()
+            self.test_unbind_dygraph()
 
     class TestLayersUnbind(unittest.TestCase):
         def test_layers_unbind(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
-            x_1 = fluid.data(shape=[2, 3], dtype=self.dtype, name='x_1')
+            x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
             [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
-            axis = fluid.data(shape=[1], dtype='int32', name='axis')
+            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
             exe = fluid.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
@@ -194,7 +191,7 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             with program_guard(Program(), Program()):
                 self.dtype = self.in_type
                 self.place = paddle.XPUPlace(0)
-                x = fluid.data(shape=[2, 3], dtype=self.dtype, name='x')
+                x = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x')
 
                 def test_table_Variable():
                     tensor.unbind(input=x, axis=2.0)

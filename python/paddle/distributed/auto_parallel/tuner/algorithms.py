@@ -99,7 +99,7 @@ def register_algor(name):
 
 def new_algorithm(name, config):
     algor_class = AlgorithmBase._REGISTERED_ALGORITHMS.get(name)
-    assert algor_class is not None, "Algorithm {} is not defined.".format(name)
+    assert algor_class is not None, f"Algorithm {name} is not defined."
     algor_obj = algor_class(config)
     return algor_obj
 
@@ -119,7 +119,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         stage_range = self._config.sharding.get("tuning_range", None)
         if stage_range:
             assert set(stage_range).issubset(
-                set([0, 1, 2, 3])
+                {0, 1, 2, 3}
             ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
                 stage_range
             )
@@ -140,7 +140,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
             sharding = new_strategy.sharding
             sharding.stage = stage
 
-            name = "trial-sharding-stage{}".format(stage)
+            name = f"trial-sharding-stage{stage}"
             trial = Trial(new_strategy, name, self.changed_configs)
 
             return trial

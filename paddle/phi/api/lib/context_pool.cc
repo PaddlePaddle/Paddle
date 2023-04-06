@@ -15,14 +15,13 @@ limitations under the License. */
 #include "paddle/phi/api/include/context_pool.h"
 
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
 #endif
-
-#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace experimental {
@@ -36,7 +35,7 @@ const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = context_map_.find(place);
   if (it == context_map_.end()) {
     if (!phi::DeviceContextPool::IsInitialized()) {
-      paddle::framework::InitDevices();
+      phi::memory_utils::InitDevices();
     }
     // only when we need the specific DeviceContext, get and cache it
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);

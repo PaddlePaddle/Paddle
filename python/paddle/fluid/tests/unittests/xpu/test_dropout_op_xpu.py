@@ -21,8 +21,7 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()

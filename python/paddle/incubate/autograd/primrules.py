@@ -315,7 +315,7 @@ def rsqrt_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('matmul_v2')
 def matmul_v2_orig2prim(op, x, y):
     def trans(shape):
-        ret = [i for i in range(len(shape))]
+        ret = list(range(len(shape)))
         ret[-1], ret[-2] = ret[-2], ret[-1]
         return ret
 
@@ -605,10 +605,7 @@ def batch_norm_orig2prim(
 
 @REGISTER_ORIG2PRIM('size')
 def size_orig2prim(op, x):
-    # TODO(zhouwei): will change shape [1] to [] to support zero-dim
-    return fill_const(
-        functools.reduce(operator.mul, x.shape), (1,), paddle.int64
-    )
+    return fill_const(functools.reduce(operator.mul, x.shape), (), paddle.int64)
 
 
 # Register prim2orig lower rules

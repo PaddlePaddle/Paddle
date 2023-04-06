@@ -64,6 +64,7 @@ class DistributedContext:
         fetch_vars={},
         cluster=None,
         strategy=None,
+        json_config=None,
     ):
         # Data members related to original programs (unchanged)
         self._original_serial_main_program = serial_main_prog
@@ -129,6 +130,8 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
+        self._json_config = json_config
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -180,6 +183,10 @@ class DistributedContext:
     @property
     def process_meshes(self):
         return self._process_meshes
+
+    @process_meshes.setter
+    def process_meshes(self, val):
+        self._process_meshes = val
 
     @property
     def pass_context(self):
@@ -397,7 +404,7 @@ class DistributedContext:
         if dist:
             self._restore_dist_info(dist_mode)
 
-    def initialize(self, with_graph=True, with_cpp=False):
+    def initialize(self, with_graph=True, with_cpp=False, no_default=False):
         if not self._is_initialized:
             if not self._serial_main_program:
                 if self._original_serial_main_program:
@@ -418,7 +425,7 @@ class DistributedContext:
             if not self._serial_fetch_vars:
                 self._restore_serial_fetch_vars()
 
-            self._init_dist_attr_for_program()
+            self._init_dist_attr_for_program(no_default)
             # Backup the original distributed information for later restore
             self._original_dist_tensors_for_program = copy.deepcopy(
                 self._dist_tensors_for_program
@@ -974,9 +981,9 @@ class DistributedContext:
 
     def validate_dist_attr_for_program(self):
         if not self._is_initialized:
-            assert (
-                False
-            ), "Program must be initialized before validating its distributed attributes"
+            raise AssertionError(
+                "Program must be initialized before validating its distributed attributes"
+            )
         for block in self.serial_main_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
@@ -988,13 +995,13 @@ class DistributedContext:
                 if (dist_tensor is not None) and (
                     not dist_tensor.validate_dist_attr()
                 ):
-                    assert (
-                        False
-                    ), "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name,
-                        dist_tensor.serial_tensor.desc.id(),
-                        dist_tensor.serial_tensor.desc.original_id(),
-                        dist_tensor.dist_attr,
+                    raise AssertionError(
+                        "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
+                            dist_tensor.serial_tensor.name,
+                            dist_tensor.serial_tensor.desc.id(),
+                            dist_tensor.serial_tensor.desc.original_id(),
+                            dist_tensor.dist_attr,
+                        )
                     )
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
@@ -1004,13 +1011,13 @@ class DistributedContext:
                     dist_op.serial_op.type
                 )
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
-                    assert (
-                        False
-                    ), "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
-                        dist_op.serial_op.type,
-                        dist_op.serial_op.desc.id(),
-                        dist_op.serial_op.desc.original_id(),
-                        dist_op.dist_attr,
+                    raise AssertionError(
+                        "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
+                            dist_op.serial_op.type,
+                            dist_op.serial_op.desc.id(),
+                            dist_op.serial_op.desc.original_id(),
+                            dist_op.dist_attr,
+                        )
                     )
         return True
 

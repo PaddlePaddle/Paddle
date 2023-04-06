@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 np.random.seed(1024)
@@ -27,6 +27,7 @@ np.random.seed(1024)
 class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
+        self.public_python_api = paddle.index_select
         self.op_type = "index_select"
         self.prim_op_type = "comp"
         self.init_dtype_type()
@@ -59,10 +60,10 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -95,6 +96,9 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
 
 
 # no scatter op (the backward op of index_select/gather) for bf16
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "paddle is not compiled with cuda"
+)
 class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
@@ -128,10 +132,10 @@ class TestIndexSelectBF16Op(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestIndexSelectAPI(unittest.TestCase):

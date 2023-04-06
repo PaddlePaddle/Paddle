@@ -33,6 +33,7 @@ class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
+        self.public_python_api = paddle.divide
         self.prim_op_type = "prim"
         self.init_args()
         self.init_dtype()
@@ -459,7 +460,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(*check_args, **check_kwargs)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestElementwiseDivFP16Op.__name__ = cls_name
     globals()[cls_name] = TestElementwiseDivFP16Op
 
@@ -484,7 +485,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
         with fluid.program_guard(fluid.Program()):
-            x_var = fluid.data(
+            x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
@@ -498,8 +499,8 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)

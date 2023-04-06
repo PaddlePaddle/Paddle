@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
@@ -136,7 +135,7 @@ class TestCase6(TestCropOp):
 
 class TestCropNoneOffset(unittest.TestCase):
     def test_crop_none_offset(self):
-        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        x = paddle.static.data(name="input1", shape=[3, 6, 6], dtype="float32")
         crop_shape = [2, 2, 2]
         crop = paddle.crop(x, crop_shape, None)
         self.assertEqual(crop.shape, (2, 2, 2))
@@ -144,7 +143,7 @@ class TestCropNoneOffset(unittest.TestCase):
 
 class TestCropNoneShape(unittest.TestCase):
     def test_crop_none_shape(self):
-        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        x = paddle.static.data(name="input1", shape=[3, 6, 6], dtype="float32")
         crop = paddle.crop(x)
         self.assertEqual(crop.shape, (3, 6, 6))
 
@@ -152,7 +151,7 @@ class TestCropNoneShape(unittest.TestCase):
 class TestCropError(unittest.TestCase):
     def test_neg_offset_error(self):
         with self.assertRaises(ValueError):
-            x = fluid.data(name='input2', shape=[1], dtype="float32")
+            x = paddle.static.data(name='input2', shape=[1], dtype="float32")
             out = paddle.crop(x, offsets=[-1])
 
 
