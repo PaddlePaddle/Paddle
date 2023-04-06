@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+from test.rnn.rnn_numpy import LSTMCell
+from test.rnn.rnn_numpy import rnn as numpy_rnn
 
 import numpy
 import numpy as np
-from test.rnn.rnn_numpy import LSTMCell
-from test.rnn.rnn_numpy import rnn as numpy_rnn
 
 import paddle
 from paddle import fluid
