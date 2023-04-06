@@ -345,16 +345,46 @@ class TestExponentialAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestExponentialFP16Op(TestExponentialOp1):
+class TestExponentialFP16Op(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
+        self.config()
+        self.attrs = {"lambda": self.lam}
+        self.inputs = {'X': np.empty([1024, 1024], dtype=self.dtype)}
+        self.outputs = {'Out': np.ones([1024, 1024], dtype=self.dtype)}
+
     def config(self):
         self.lam = 0.5
-        self.dtype = "float16"
+        self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_customized(self.verify_output)
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+    def verify_output(self, outs):
+        hist1, _ = np.histogram(outs[0], range=(0, 5))
+        hist1 = hist1.astype("float16")
+        hist1 = hist1 / float(outs[0].size)
+
+        data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
+        hist2, _ = np.histogram(data_np, range=(0, 5))
+        hist2 = hist2.astype("float16")
+        hist2 = hist2 / float(data_np.size)
+
+        np.testing.assert_allclose(hist1, hist2, rtol=0.03)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
+            user_defined_grad_outputs=[
+                np.random.rand(1024, 1024).astype(self.dtype)
+            ],
+            check_dygraph=False,  # inplace can not call paddle.grad
+        )
 
 
 @unittest.skipIf(
