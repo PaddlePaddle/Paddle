@@ -105,6 +105,7 @@ op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
 
+
 if (WITH_GPU OR WITH_ROCM)
     op_library(activation_op SRCS activation_op.cc activation_op.kps soft_relu_op.cu DEPS ${OP_HEADER_DEPS})
 elseif (WITH_XPU_KP)
