@@ -38,7 +38,7 @@ def enable_auto_rand_ctrl():
     _enable_random_control = True
 
 
-def auto_parallel_random_seed(seed):
+def paralle_manual_seed(seed):
     """Enable auto parallel random control.
     Random control maintain the randomness when tensor is distributed across devices on a Mesh(any order).
         * Independency: If tensor is **Sharded** on a Mesh dimension, Devices along that Mesh dimension should have Different randomness.
