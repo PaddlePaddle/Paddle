@@ -265,14 +265,6 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
-bool IsCompiledWithAscend() {
-#ifndef PADDLE_WITH_ASCEND
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -280,8 +272,6 @@ bool IsCompiledWithXPU() {
   return true;
 #endif
 }
-
-bool IsCompiledWithNPU() { return false; }
 
 bool IsCompiledWithCustomDevice(std::string device_type) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -1592,14 +1582,6 @@ All parameter, weight, gradient are variables in Paddle.
       return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](paddle::platform::NPUPlace &place)
-              -> paddle::platform::DeviceContext * {
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with NPU support."));
-          })
       .def_static("create",
                   [](paddle::platform::CustomPlace &place)
                       -> paddle::platform::DeviceContext * {
@@ -1766,13 +1748,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const platform::XPUPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::NPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -1985,9 +1960,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
-  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
-  m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
