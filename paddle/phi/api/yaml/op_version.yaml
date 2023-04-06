@@ -138,6 +138,27 @@
           comment : In order to change output data type
           default : 5
 
+- op : momentum
+  version :
+    - checkpoint : Upgrade momentum add 4 attributes [regularization_method, regularization_coeff, multi_precision, rescale_grad].
+      action :
+        - add_input : MasterParam
+          comment : FP32 master weight for AMP.
+        - add_output : MasterParamOut
+          comment : The updated FP32 master weight for AMP. It shared memory with Input(MasterParam).
+        - add_attr : regularization_method
+          comment : (string) regularization_method, right now only support l2decay or none
+          default : std::string("")
+        - add_attr : regularization_coeff
+          comment : (float) regularization_coeff
+          default : 0.0
+        - add_attr : multi_precision
+          comment : (bool) Whether to use multi-precision during weight updating.
+          default : "false"
+        - add_attr : rescale_grad
+          comment : (float) Multiply the gradient with `rescale_grad` before updating. Often choose to be `1.0/batch_size`.
+          default : 1.0
+
 - op : not_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]

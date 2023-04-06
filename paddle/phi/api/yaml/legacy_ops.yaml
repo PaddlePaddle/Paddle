@@ -1007,17 +1007,6 @@
     func : mish
   backward : mish_grad
 
-- op : momentum_
-  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
-  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
-  infer_meta:
-    func : MomentumInferMeta
-  kernel :
-    func : momentum
-    data_type : param
-  optional : master_param
-  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
-
 - op : multiclass_nms3
   args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
   output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
