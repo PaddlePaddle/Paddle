@@ -626,7 +626,11 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
@@ -1902,7 +1906,11 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
@@ -2206,7 +2214,11 @@ class OpTest(unittest.TestCase):
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
