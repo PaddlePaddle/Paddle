@@ -53,14 +53,15 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
     @staticmethod
     def forward(ctx, *args, **kwargs):
 
-        if is_enable_auto_rand_ctrl():
-            dist_op_context = ctx.dist_op_context
-            main_block = dist_op_context.work_block
-            startup_block = dist_op_context.startup_block
-            src_op = dist_op_context.cur_src_op
-            rank_id = dist_op_context.rank_id
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
 
-            op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
+
             assert (
                 op_dist_attr is not None
             ), f"forward op [{str(src_op)}] don't have dist attribute !"
