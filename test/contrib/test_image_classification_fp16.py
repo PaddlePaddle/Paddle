@@ -24,9 +24,8 @@ import numpy
 
 import paddle
 from paddle import fluid
+from paddle.fluid.tests.unittests import nets
 from paddle.static.amp import decorate
-
-from ..book import nets
 
 paddle.enable_static()
 
