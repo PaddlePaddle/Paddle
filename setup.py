@@ -1457,10 +1457,12 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
-        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
 
     for dependency in python_dependcies_module:
-        if dependency not in installed_packages:
+        if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 

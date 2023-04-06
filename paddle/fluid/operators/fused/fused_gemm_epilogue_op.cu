@@ -61,10 +61,15 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
   return fused_type;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDA_VERSION < 11060
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_gemm_epilogue operator only support CUDA 11.6 "
+        "or higher version."));
+#endif
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
@@ -119,10 +124,15 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDA_VERSION < 11060
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_gemm_epilogue operator only support CUDA 11.6 "
+        "or higher version."));
+#endif
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     const phi::DenseTensor* dout = ctx.Input<phi::DenseTensor>("DOut");
@@ -172,21 +182,21 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-#if CUDA_VERSION >= 11060
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fused_gemm_epilogue,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
-
-REGISTER_OP_CUDA_KERNEL(
-    fused_gemm_epilogue_grad,
-    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
-    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
-    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
-                                     paddle::platform::float16>,
-    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
-                                     paddle::platform::bfloat16>);
-#endif
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGemmEpilogueKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGemmEpilogueGradKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}

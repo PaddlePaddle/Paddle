@@ -5,6 +5,15 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : accuracy
+  args : (Tensor x, Tensor indices, Tensor label)
+  output : Tensor(accuracy), Tensor(correct), Tensor(total)
+  infer_meta :
+    func : AccuracyInferMeta
+  kernel :
+    func : accuracy
+    data_type : x
+
 - op : acos
   args : (Tensor x)
   output : Tensor
@@ -123,6 +132,27 @@
   kernel :
     func : atanh
   backward : atanh_grad
+
+- op : auc
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve = "ROC", int num_thresholds = (2 << 12) - 1, int slide_steps = 1)
+  output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
+  infer_meta :
+    func : AucInferMeta
+  kernel :
+    func : auc
+    data_type : x
+  optional : ins_tag_weight
+
+- op : bce_loss
+  args : (Tensor input, Tensor label)
+  output : Tensor
+  infer_meta :
+    func : BCELossInferMeta
+  kernel :
+    func : bce_loss
+    data_type : input
+  inplace : (input -> out)
+  backward : bce_loss_grad
 
 - op : bernoulli
   args : (Tensor x)
@@ -533,7 +563,7 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta
@@ -545,7 +575,7 @@
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   infer_meta :
     func : FlashAttnInferMeta
@@ -932,6 +962,42 @@
     func : log_softmax
     data_type : x
   backward : log_softmax_grad
+
+- op : logical_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_and
+    data_type : x
+
+- op : logical_not
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : logical_not
+    data_type : x
+
+- op : logical_or
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_or
+    data_type : x
+
+- op : logical_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_xor
+    data_type : x
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)

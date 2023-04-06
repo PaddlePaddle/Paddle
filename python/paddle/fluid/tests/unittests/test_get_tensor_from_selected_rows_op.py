@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 import paddle
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 from paddle.nn import clip
 
 

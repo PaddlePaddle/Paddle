@@ -13,10 +13,7 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 if(WITH_DISTRIBUTE)
-  if(WITH_GPU
-     OR WITH_XPU
-     OR WITH_ASCEND
-     OR WITH_ASCEND_CL)
+  if(WITH_GPU OR WITH_XPU)
     py_test_modules(test_fleet_with_asp_dynamic MODULES
                     test_fleet_with_asp_dynamic ENVS ${dist_ENVS})
     py_test_modules(test_fleet_with_asp_static MODULES
