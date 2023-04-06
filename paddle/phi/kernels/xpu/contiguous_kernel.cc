@@ -13,6 +13,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+
 namespace phi {
 
 template <typename T, typename Context>
