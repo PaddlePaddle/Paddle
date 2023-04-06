@@ -466,7 +466,6 @@ class TestScatterOp6(OpTest):
         self.python_api = paddle.scatter
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 50)).astype(target_dtype)
