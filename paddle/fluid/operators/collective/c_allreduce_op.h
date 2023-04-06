@@ -375,7 +375,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
+    void* recvbuff = ctx.cuda_device_context().template Alloc<T>(out);
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {

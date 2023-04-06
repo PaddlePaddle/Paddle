@@ -187,7 +187,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out = &out_array->at(idx);
         auto out_dims = out->dims();
-        out->mutable_data<T>(out_dims, place, 0);
+        ctx.cuda_device_context().template Alloc<T>(out);
         auto numel = out->numel();
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
             out->data<T>(), numel, dtype, peer, comm->comm(), stream));
@@ -199,7 +199,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    auto out_dims = out->dims();
     auto numel = out->numel();
 
     if (dynamic_shape) {
@@ -213,7 +212,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       numel = out->numel();
       out->mutable_data<T>(new_dim, place);
     } else {
-      out->mutable_data<T>(out_dims, place);
+      ctx.cuda_device_context().template Alloc<T>(out);
     }
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
