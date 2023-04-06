@@ -19,8 +19,9 @@ import parameterized as param
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.nn.functional as F
+from paddle import fluid, nn
+from paddle.fluid import Program, core, framework, program_guard
 from paddle.fluid.dygraph import to_variable
 
 
@@ -201,6 +202,59 @@ class TestInstanceNormFP64(TestInstanceNormOp):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(
                 core.CUDAPlace(0), atol=1e-14, check_prim=True
+            )
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
+        self.instance_norm = nn.InstanceNorm2D(4)
+
+    def forward(self, x):
+        y = self.conv(x)
+        out = self.instance_norm(y)
+        res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
+        return res
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimeNet with @to_static + prim forward + prim backward v.s Dygraph
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_prim, data_layout="NCHW"):
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = PrimeNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+
+        net = paddle.amp.decorate(models=net, level='O2')
+
+        with paddle.amp.auto_cast(level='O2'):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+            return loss
+
+    def test_amp_nchw(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
             )
 
 
