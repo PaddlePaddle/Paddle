@@ -92,7 +92,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(bilinear_tensor_product,
                             BilinearTensorProductInferShapeFunctor,
-                            PD_INFER_META(phi::BilinearTensorProductInferMeta));
+                            PD_INFER_META(phi::BilinearInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
     bilinear_tensor_product_grad,
     BilinearTensorProductGradInferShapeFunctor,

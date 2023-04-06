@@ -29,7 +29,7 @@ from xpu.get_test_cover_info import (
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 
 paddle.enable_static()
 

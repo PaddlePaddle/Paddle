@@ -54,10 +54,6 @@
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
-#endif
-
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
@@ -198,12 +194,6 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
-        }
-        InitNaiveBestFitNPUPinnedAllocator();
-#endif
 #ifdef PADDLE_WITH_MLU
         for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
@@ -253,12 +243,6 @@ class AllocatorFacadePrivate {
         }
 
         InitNaiveBestFitCUDAPinnedAllocator();
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
-        }
-        InitNaiveBestFitNPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_XPU
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
@@ -823,17 +807,6 @@ class AllocatorFacadePrivate {
   }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
-    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
-  }
-
-  void InitNaiveBestFitNPUPinnedAllocator() {
-    allocators_[platform::NPUPinnedPlace()] =
-        std::make_shared<paddle::memory::allocation::NPUPinnedAllocator>();
-  }
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
@@ -913,12 +886,6 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetXPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::XPUPlace(dev_id));
-    }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    int device_count = platform::GetNPUDeviceCount();
-    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
-      places.emplace_back(platform::NPUPlace(dev_id));
     }
 #endif
 #ifdef PADDLE_WITH_IPU
@@ -1107,7 +1074,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_ASCEND_CL)
+#elif defined(PADDLE_WITH_XPU)
   return GetAllocator(place)->Allocate(size);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(

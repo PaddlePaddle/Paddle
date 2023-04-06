@@ -323,6 +323,15 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  (void)x;
+  if (weight) {
+    out->share_dims(weight);
+  }
+}
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,

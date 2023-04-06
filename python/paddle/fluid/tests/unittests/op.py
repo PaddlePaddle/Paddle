@@ -14,8 +14,9 @@
 
 import numpy as np
 
-import paddle.fluid.core as core
-import paddle.fluid.proto.framework_pb2 as framework_pb2
+from paddle.fluid import core
+from paddle.fluid.proto import framework_pb2
+
 
 # NOTE: this is added to support creating a Scalar message
 # from a python number
@@ -256,13 +257,13 @@ def create_op_creation_method(op_proto):
         inputs=[(var.name, var.duplicable) for var in op_proto.inputs],
         outputs=[(var.name, var.duplicable) for var in op_proto.outputs],
         attrs=[attr.name for attr in op_proto.attrs],
-        extra_attrs=[item for item in extra_attrs_map.keys()],
+        extra_attrs=list(extra_attrs_map.keys()),
     )
 
 
 class OperatorFactory:
     def __init__(self):
-        self.op_methods = dict()
+        self.op_methods = {}
 
         for op_proto in get_all_op_protos():
             method = create_op_creation_method(op_proto)
@@ -313,70 +314,4 @@ class OperatorFactory:
         return self.get_op_info(type).extra_attrs
 
 
-class __RecurrentOp__:
-    __proto__ = None
-    type = "recurrent"
-
-    def __init__(self):
-        # cache recurrent_op's proto
-        if self.__proto__ is None:
-            for op_proto in get_all_op_protos():
-                if op_proto.type == self.type:
-                    self.__proto__ = op_proto
-
-    def __call__(self, *args, **kwargs):
-        if self.type not in args and "type" not in kwargs:
-            kwargs["type"] = self.type
-        # create proto
-        create_method = OpDescCreationMethod(self.__proto__)
-        proto = create_method(*args, **kwargs)
-        # create rnnop
-        return core.RecurrentOp.create(proto.SerializeToString())
-
-
-class __DynamicRecurrentOp__:
-    __proto__ = None
-    type = "dynamic_recurrent"
-
-    def __init__(self):
-        # cache recurrent_op's proto
-        if self.__proto__ is None:
-            for op_proto in get_all_op_protos():
-                if op_proto.type == self.type:
-                    self.__proto__ = op_proto
-
-    def __call__(self, *args, **kwargs):
-        if self.type not in args and "type" not in kwargs:
-            kwargs["type"] = self.type
-        # create proto
-        create_method = OpDescCreationMethod(self.__proto__)
-        proto = create_method(*args, **kwargs)
-        # create rnnop
-        return core.DynamicRecurrentOp.create(proto.SerializeToString())
-
-
-class __CondOp__:
-    __proto__ = None
-    type = "cond"
-
-    def __init__(self):
-        # cache recurrent_op's proto
-        if self.__proto__ is None:
-            for op_proto in get_all_op_protos():
-                if op_proto.type == self.type:
-                    self.__proto__ = op_proto
-
-    def __call__(self, *args, **kwargs):
-        if self.type not in args and "type" not in kwargs:
-            kwargs["type"] = self.type
-        # create proto
-        create_method = OpDescCreationMethod(self.__proto__)
-        proto = create_method(*args, **kwargs)
-        # create condop
-        return core.CondOp.create(proto.SerializeToString())
-
-
 Operator = OperatorFactory()  # The default global factory
-RecurrentOp = __RecurrentOp__()
-DynamicRecurrentOp = __DynamicRecurrentOp__()
-CondOp = __CondOp__()
