@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/load_combine_op.h"
 
 namespace ops = paddle::operators;
+using NPUCtx = paddle::platform::NPUDeviceContext;
 
-REGISTER_OP_NPU_KERNEL(
-    load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::LoadCombineOpKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::LoadCombineOpKernel<paddle::platform::NPUDeviceContext, int64_t>);
+REGISTER_OP_NPU_KERNEL(load_combine,
+                       ops::LoadCombineOpKernel<float, NPUCtx>,
+                       ops::LoadCombineOpKernel<double, NPUCtx>,
+                       ops::LoadCombineOpKernel<int, NPUCtx>,
+                       ops::LoadCombineOpKernel<int8_t, NPUCtx>,
+                       ops::LoadCombineOpKernel<int64_t, NPUCtx>);
