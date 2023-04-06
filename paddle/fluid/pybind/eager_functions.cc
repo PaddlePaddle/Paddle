@@ -681,11 +681,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     bool require_any_grad = false;
     bool trace_backward = true;
     for (size_t i = 0; i < ins_auto_grad_metas.size(); ++i) {
-      require_any_grad = egr::EagerUtils::ComputeRequireGrad(
-          trace_backward, ins_auto_grad_metas[i]);
-      if (require_any_grad) {
-        break;
-      }
+      require_any_grad =
+          require_any_grad || egr::EagerUtils::ComputeRequireGrad(
+                                  trace_backward, ins_auto_grad_metas[i]);
     }
 
     // handle inplace map
@@ -750,7 +748,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         const std::vector<paddle::Tensor>& out_tensors =
             ctx.OutputsBetweeen(size_pair.first, size_pair.second);
         for (size_t j = size_pair.first; j < size_pair.second; j++) {
-          egr::EagerUtils::SetOutRankWithSlot(outs_auto_grad_metas[j], i);
+          // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
+          outs_auto_grad_metas[j]->SetSingleOutRankWithSlot(
+              i, j - size_pair.first);
           egr::EagerUtils::SetHistory(outs_auto_grad_metas[j], grad_node);
         }
         grad_node->SetGradInMeta(out_tensors, i);
@@ -776,10 +776,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   ctx.InputRangeAt(it->first).second));
       }
 
-      const auto& attrs_names =
-          paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[1]);
       const std::vector<paddle::any>& res_attrs = ctx.Attrs();
-      std::vector<paddle::any> attrs(attrs_names.size());
+      std::vector<paddle::any> attrs(res_attrs.size());
       // Prepare attrs for Grad node
       for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
         VLOG(7) << "Prepare fwd attrs: " << it->first
