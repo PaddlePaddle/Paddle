@@ -23,8 +23,8 @@ import paddle
 from paddle.fluid import core
 
 sys.path.append("./rnn")
-from rnn.convert import get_params_for_net
-from rnn.rnn_numpy import SimpleRNN
+from test.rnn.convert import get_params_for_net
+from test.rnn.rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)

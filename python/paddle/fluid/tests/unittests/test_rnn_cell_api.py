@@ -16,8 +16,8 @@ import unittest
 
 import numpy
 import numpy as np
-from rnn.rnn_numpy import LSTMCell
-from rnn.rnn_numpy import rnn as numpy_rnn
+from test.rnn.rnn_numpy import LSTMCell
+from test.rnn.rnn_numpy import rnn as numpy_rnn
 
 import paddle
 from paddle import fluid
