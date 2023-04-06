@@ -177,6 +177,10 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
       if (compute_scale) {
         CalculateSingleScale(
             op->Type(), output.first, var_name, *var_tensor, is_unsigned);
+        VLOG(6) << "CalculateScalesForOpOutputs --> var_name: " << var_name
+                << ", var_tensor data ptr: " << var_tensor->data<float>()
+                << ", is unsigned: " << is_unsigned
+                << ", scales: " << scales_[var_name].second.data<double>()[0];
       }
     }
   }

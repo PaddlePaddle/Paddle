@@ -45,6 +45,7 @@ class ConvOneDNNHandlerT
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
                      const phi::DenseTensor* bias,
+                     const phi::DenseTensor* residual_param,
                      const std::vector<int>& strides_in,
                      const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
@@ -184,6 +185,7 @@ class ConvOneDNNHandlerT
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
       const dnnl::primitive_attr conv_attr = CreateConvAttrs(filter,
+                                                             residual_param,
                                                              groups,
                                                              force_fp32_output,
                                                              fuse_residual_conn,
@@ -502,6 +504,7 @@ class ConvOneDNNHandlerT
   }
 
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,
+                                       const DenseTensor* residual_param,
                                        int groups,
                                        bool force_fp32_output,
                                        bool fuse_residual_conn,
@@ -542,13 +545,28 @@ class ConvOneDNNHandlerT
       }
     }
 
-    // Fusion with Elementwise layer relies on adding a sum post-operation with
-    // the scale parameter. It is assumed that when fuse_residual_connection is
-    // true, the output tensor contains the data coming from residual
-    // connection. The result of this post_op is:
-    // Output = scale * Output + Conv_Out.
+    // We use the post binary_add to perform the fused elementwise add.
     if (fuse_residual_conn) {
-      post_operations.append_sum(sum_scale);
+      auto residual_md = residual_param->mem_desc();
+      if (sum_scale == 1.0f) {
+        post_operations.append_binary(dnnl::algorithm::binary_add, residual_md);
+      } else {
+        // dst = conv + sum_scale * residual ==> dst = sum_scale * ((conv /
+        // sum_scale) + residual).
+
+        // The conv / sum_scale operation can be folded to output scales, so we
+        // need to update the output scales.
+        for (size_t i = 0; i < output_shift_scale.size(); i++) {
+          output_shift_scale[i] *= (1.f / sum_scale);
+        }
+        if (output_shift_scale.size() > 0) {
+          int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
+          conv_attr.set_output_scales(mask, output_shift_scale);
+        }
+        post_operations.append_binary(dnnl::algorithm::binary_add, residual_md);
+        post_operations.append_eltwise(
+            1.f, dnnl::algorithm::eltwise_linear, sum_scale, 0.f);
+      }
     }
 
     funcs::AppendActivation(this->dev_ctx_, post_operations, activation_scale);
@@ -725,10 +743,7 @@ class ConvOneDNNHandlerT
 
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual_param) {
-    void* residual_data =
-        residual_param->dtype() == phi::CppTypeToDataType<T_out>::Type()
-            ? funcs::to_void_cast<T_out>(residual_param->data<T_out>())
-            : funcs::to_void_cast<T>(residual_param->data<T>());
+    void* residual_data = const_cast<void*>(residual_param->data());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");
     if (residual_mem_p) {
       residual_mem_p->set_data_handle(residual_data);

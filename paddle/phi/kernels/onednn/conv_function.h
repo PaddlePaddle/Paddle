@@ -37,10 +37,6 @@ static dnnl::memory::data_type GetDstType(
     if (force_fp32_output) {
       dst_dt = dnnl::memory::data_type::f32;
     }
-    if (fuse_residual_conn && residual_param) {
-      auto residual_dt = funcs::ToOneDNNDataType(residual_param->dtype());
-      if (dst_dt != residual_dt) dst_dt = residual_dt;
-    }
   } else {
     if (!force_fp32_output && is_bfloat16) {
       dst_dt = dnnl::memory::data_type::bf16;
@@ -97,6 +93,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                                                              input,
                                                              filter,
                                                              bias,
+                                                             residual_param,
                                                              strides,
                                                              paddings,
                                                              padding_algorithm,
@@ -113,13 +110,8 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, is_conv3d, is_test);
-        std::shared_ptr<dnnl::memory> dst_memory_p;
-        if (fuse_residual_conn) {
-          dst_memory_p =
-              handler.AcquireDstMemoryWithResidual(output, residual_param);
-        } else {
-          dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
-        }
+        std::shared_ptr<dnnl::memory> dst_memory_p =
+            handler.template AcquireDstMemory<T_out>(output);
 
         auto conv_p = handler.AcquireForwardPrimitive();
         std::unordered_map<int, dnnl::memory> args = {
@@ -131,6 +123,13 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
           auto bias_memory_p =
               handler.AcquireBiasMemoryWithReorder(bias, is_test);
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+        }
+
+        if (fuse_residual_conn) {
+          auto residual_memory_p =
+              handler.AcquireResidualMemory(residual_param);
+          args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP((int)0) | DNNL_ARG_SRC_1,
+                       *residual_memory_p});
         }
 
         auto& astream = OneDNNContext::tls().get_stream();
@@ -161,10 +160,6 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
   const bool is_conv3d = strides.size() == 3U;
 
-  bool unsigned_output =
-      (fuse_activation == "relu" || fuse_activation == "relu6");
-  bool need_s8_to_u8 = false;
-
   PADDLE_ENFORCE_NE(
       is_conv3d,
       true,
@@ -185,6 +180,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                              input,
                                                              filter,
                                                              bias,
+                                                             residual_param,
                                                              strides,
                                                              paddings,
                                                              padding_algorithm,
@@ -213,25 +209,8 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, false, true, scale_weights_data, mask_reorder);
 
-        std::shared_ptr<dnnl::memory> dst_memory_p;
-        if (fuse_residual_conn) {
-          PADDLE_ENFORCE_EQ(
-              output->dims(),
-              residual_param->dims(),
-              phi::errors::InvalidArgument(
-                  "Output and elementwise parameter need to have the "
-                  "same dimension sizes, but got output's dimension = %d"
-                  " and residual param's dimension =%d .",
-                  output->dims().size(),
-                  residual_param->dims().size()));
-          dst_memory_p =
-              handler.AcquireDstMemoryWithResidual(output, residual_param);
-          need_s8_to_u8 = (funcs::OneDNNGetDataType<T_out>() ==
-                           dnnl::memory::data_type::s8) &&
-                          unsigned_output;
-        } else {
-          dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
-        }
+        std::shared_ptr<dnnl::memory> dst_memory_p =
+            handler.template AcquireDstMemory<T_out>(output);
 
         auto conv_p = handler.AcquireForwardPrimitive();
 
@@ -265,13 +244,25 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
         }
 
+        if (fuse_residual_conn) {
+          PADDLE_ENFORCE_EQ(
+              output->dims(),
+              residual_param->dims(),
+              phi::errors::InvalidArgument(
+                  "Output and elementwise parameter need to have the "
+                  "same dimension sizes, but got output's dimension = %d"
+                  " and residual param's dimension =%d .",
+                  output->dims().size(),
+                  residual_param->dims().size()));
+          auto residual_memory_p =
+              handler.AcquireResidualMemory(residual_param);
+          args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP((int)0) | DNNL_ARG_SRC_1,
+                       *residual_memory_p});
+        }
+
         auto& astream = OneDNNContext::tls().get_stream();
         conv_p->execute(astream, args);
         astream.wait();
-
-        if (need_s8_to_u8) {
-          dev_ctx.Alloc<uint8_t>(output);
-        }
 
         output->set_mem_desc(dst_memory_p->get_desc());
       }));
