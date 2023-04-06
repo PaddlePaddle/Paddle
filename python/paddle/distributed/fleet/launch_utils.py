@@ -598,7 +598,7 @@ def start_local_trainers(
         if log_dir is not None:
             os.makedirs(log_dir, exist_ok=True)
             if os.path.exists("%s/endpoints.log" % log_dir):
-                os.system(f"rm -f {log_dir}/endpoints.log")
+                os.remove(f"{log_dir}/endpoints.log")
             with open("%s/endpoints.log" % log_dir, "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
