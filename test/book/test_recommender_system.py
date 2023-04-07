@@ -17,8 +17,10 @@ import os
 import sys
 import tempfile
 
-import nets
 import numpy as np
+
+sys.path.append("../legacy_test")
+import nets
 
 import paddle
 from paddle import fluid

@@ -22,9 +22,11 @@ import unittest
 
 import numpy
 
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
-from paddle.fluid.tests.unittests import nets
 from paddle.static.amp import decorate
 
 paddle.enable_static()

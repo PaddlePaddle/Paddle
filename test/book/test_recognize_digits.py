@@ -17,8 +17,10 @@ import os
 import sys
 import unittest
 
-import nets
 import numpy
+
+sys.path.append("../legacy_test")
+import nets
 
 import paddle
 from paddle import fluid

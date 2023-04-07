@@ -20,9 +20,11 @@ import unittest
 
 import numpy as np
 
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
-from paddle.fluid.tests.unittests import nets
 
 
 def convolution_net(
