@@ -351,6 +351,8 @@ class PRChecker:
                     filterFiles.append(filename)
                 else:
                     file_list.append(filename)
+            elif filename.startswith(PADDLE_ROOT + 'test/'):
+                file_list.append(filename)
             else:
                 if file_dict[filename] == 'added':
                     file_list.append(filename)

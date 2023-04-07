@@ -334,9 +334,7 @@ from .framework import ParamAttr  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
-from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
-from .framework import MLUPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
@@ -364,9 +362,7 @@ from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
-from .device import is_compiled_with_npu  # noqa: F401
 from .device import is_compiled_with_ipu  # noqa: F401
-from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
@@ -514,7 +510,6 @@ __all__ = [  # noqa
     'histogram',
     'multiplex',
     'CUDAPlace',
-    'NPUPlace',
     'empty',
     'shape',
     'real',

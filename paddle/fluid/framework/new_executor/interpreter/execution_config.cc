@@ -62,11 +62,6 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
         device_count = phi::backends::xpu::GetXPUDeviceCount();
 #endif
       }
-      if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-        device_count = platform::GetNPUDeviceCount();
-#endif
-      }
       if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
         device_count = platform::GetIPUDeviceCount();

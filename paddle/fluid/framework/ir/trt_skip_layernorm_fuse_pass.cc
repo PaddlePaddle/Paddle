@@ -181,6 +181,11 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                        layer_norm->Op()->GetAttr("out_threshold"));
     }
 
+    if (layer_norm->Op()->HasAttr("smooth_scale")) {
+      new_desc.SetAttr("smooth_scale",
+                       layer_norm->Op()->GetAttr("smooth_scale"));
+    }
+
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
 
