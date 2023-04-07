@@ -1416,18 +1416,8 @@ class TestCeil(TestActivation):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.ceil(x)
 
-        if self.dtype == np.uint16:
-            self.inputs = {
-                'X': convert_float_to_uint16(
-                    OpTest.np_dtype_to_fluid_dtype(x).astype('float32')
-                )
-            }
-            self.outputs = {
-                'Out': convert_float_to_uint16(out.astype('float32'))
-            }
-        else:
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-            self.outputs = {'Out': out}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
         self.convert_input_output()
 
     def init_shape(self):
@@ -1840,20 +1830,14 @@ class TestRelu(TestActivation):
         self.skip_cinn()
 
         np.random.seed(1024)
-        if self.dtype == np.uint16:
-            x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
-            # The same reason with TestAbs
-            x[np.abs(x) < 0.005] = 0.02
-            out = convert_float_to_uint16(np.maximum(x, 0))
-            self.inputs = {'X': convert_float_to_uint16(x)}
-        else:
-            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            # The same reason with TestAbs
-            x[np.abs(x) < 0.005] = 0.02
-            out = np.maximum(x, 0)
-            self.inputs = {'X': x}
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+        self.inputs = {'X': x}
 
         self.outputs = {'Out': out}
+        self.convert_input_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1962,6 +1946,7 @@ class TestLeakyRelu(TestActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {'alpha': alpha}
+        self.convert_input_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -4046,6 +4031,12 @@ create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True)
 create_test_act_fp16_class(TestMish)
+create_test_act_fp16_class(TestLeakyRelu)
+create_test_act_fp16_class(TestLeakyReluAlpha1)
+create_test_act_fp16_class(TestLeakyReluAlpha2)
+create_test_act_fp16_class(TestLeakyReluAlpha3)
+create_test_act_fp16_class(TestLeakyRelu_ZeroDim)
+create_test_act_fp16_class(TestRsqrt)
 
 
 def create_test_act_bf16_class(
@@ -4144,7 +4135,12 @@ create_test_act_bf16_class(TestHardSigmoid)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
-
+create_test_act_bf16_class(TestLeakyRelu)
+create_test_act_bf16_class(TestLeakyReluAlpha1)
+create_test_act_bf16_class(TestLeakyReluAlpha2)
+create_test_act_bf16_class(TestLeakyReluAlpha3)
+create_test_act_bf16_class(TestLeakyRelu_ZeroDim)
+create_test_act_bf16_class(TestRsqrt)
 
 if __name__ == "__main__":
     unittest.main()
