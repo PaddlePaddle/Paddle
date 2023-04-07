@@ -78,22 +78,94 @@ class TestRandomControl(unittest.TestCase):
             ),
         )
 
+    def test_random_ctrl_vanilla(self):
+        # mp2 recompute training
+        rc_engine = self.get_engine(False)
+        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc_losses = np.array(history.history["loss"])
+
+        # check program
+        ops = rc_engine.main_program.global_block().ops
+        rng_names = []
+        seed_var_names = []
+        for op in ops:
+            if op.type == "seed":
+                rng_names.append(op.attr('rng_name'))
+            if op.type == "dropout":
+                seed_var_names.append(op.input("Seed")[0])
+
+        self.assertEqual(
+            rng_names,
+            [
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:0',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:0',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:-1',
+            ],
+        )
+        self.assertEqual(
+            seed_var_names,
+            [
+                'rc_seed_0.tmp_0',
+                'rc_seed_1.tmp_0',
+                'rc_seed_2.tmp_0',
+                'rc_seed_3.tmp_0',
+                'rc_seed_4.tmp_0',
+                'rc_seed_5.tmp_0',
+                'rc_seed_6.tmp_0',
+            ],
+        )
+
     def test_random_ctrl_with_recompute(self):
         # mp2 recompute training
         rc_engine = self.get_engine(True)
         history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         rc_losses = np.array(history.history["loss"])
-        # self.check_results(mp_losses, rc_losses)
 
-        with open(
-            f"./main_program.txt.{paddle.distributed.get_rank()}", "w+"
-        ) as f:
-            f.write(str(rc_engine.main_program))
-        with open(
-            f"./startup_program.txt.{paddle.distributed.get_rank()}",
-            "w+",
-        ) as f:
-            f.write(str(rc_engine.startup_program))
+        # check program
+        ops = rc_engine.main_program.global_block().ops
+        rng_names = []
+        seed_var_names = []
+        for op in ops:
+            if op.type == "seed":
+                rng_names.append(op.attr('rng_name'))
+            if op.type == "dropout":
+                seed_var_names.append(op.input("Seed")[0])
+
+        self.assertEqual(
+            rng_names,
+            [
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:0',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:0',
+                'mesh:1_dim0:-1',
+                'mesh:1_dim0:-1',
+            ],
+        )
+        self.assertEqual(
+            seed_var_names,
+            [
+                'rc_seed_0.tmp_0',
+                'rc_seed_1.tmp_0',
+                'rc_seed_2.tmp_0',
+                'rc_seed_3.tmp_0',
+                'rc_seed_4.tmp_0',
+                'rc_seed_5.tmp_0',
+                'rc_seed_6.tmp_0',
+                'rc_seed_4.tmp_0',
+                'rc_seed_5.tmp_0',
+                'rc_seed_6.tmp_0',
+                'rc_seed_0.tmp_0',
+                'rc_seed_1.tmp_0',
+                'rc_seed_2.tmp_0',
+                'rc_seed_3.tmp_0',
+            ],
+        )
 
 
 if __name__ == "__main__":
