@@ -307,20 +307,24 @@ class HybridParallelOptimizer:
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
         params = None
+        mp_configs = None
 
-        mp_configs = fleet.fleet._user_defined_strategy.mp_configs
+        if mp_group.nranks > 1:
+            mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+                "mp_configs"
+            ]
 
         if (
-            mp_configs["sync_param"]
-            or mp_configs["sync_grad"]
-            or mp_configs["sync_moment"]
+            mp_configs.sync_param
+            or mp_configs.sync_grad
+            or mp_configs.sync_moment
         ):
             params = sorted(
                 [p for p in parameters_list if self._filter_fn(p)],
                 key=lambda p: p.name,
             )
 
-        if mp_group.nranks > 1 and mp_configs["sync_grad"]:
+        if mp_group.nranks > 1 and mp_configs.sync_grad:
             for p in params:
                 if p.grad is None:
                     continue
@@ -330,13 +334,13 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-        if mp_group.nranks > 1 and mp_configs["sync_param"]:
+        if mp_group.nranks > 1 and mp_configs.sync_param:
             for p in params:
                 paddle.distributed.broadcast(
                     p, src=src_rank, group=mp_group, sync_op=True
                 )
 
-        if mp_group.nranks > 1 and mp_configs["sync_moment"]:
+        if mp_group.nranks > 1 and mp_configs.sync_moment:
             for p in params:
                 # support opt state of adam and adamw to broadcast now.
                 if isinstance(

@@ -191,7 +191,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
             "mp_degree": self.model_parallel_size,
             "pp_degree": 1,
         }
-        strategy.mp_configs = {
+        strategy.hybrid_configs["mp_configs"] = {
             "sync_param": False,
             "sync_grad": False,
             "sync_moment": False,
@@ -233,7 +233,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
         strategy = fleet.fleet._user_defined_strategy
-        strategy.mp_configs = {
+        strategy.hybrid_configs["mp_configs"] = {
             "sync_param": mp_sync_param,
             "sync_grad": mp_sync_grad,
             "sync_moment": mp_sync_moment,
