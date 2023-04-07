@@ -122,6 +122,20 @@ NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place)) {{
+     pybind11::gil_scoped_acquire gil;
+     PyObject* mod = PyImport_ImportModule("traceback");
+     PyObject *traceback_list= PyObject_CallMethod(mod, "format_stack", "");
+     std::string str ="";
+    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {{
+        PyObject* line = PyList_GetItem(traceback_list, i);
+        str += py::str(PyUnicode_AsUTF8(line));
+    }}
+    std::cout << str << std::endl;
+    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {{
+        PyObject* line = PyList_GetItem(traceback_list, i);
+        const char* line_str = PyUnicode_AsUTF8(line);
+        std::cout << line_str << std::endl;
+    }}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;

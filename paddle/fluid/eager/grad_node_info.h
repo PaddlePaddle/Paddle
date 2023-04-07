@@ -292,6 +292,18 @@ class GradNodeBase {
     is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
   }
 
+  void SetForwardTrace(std::string backward_trace) {
+    backward_trace_ = backward_trace;
+  }
+
+  std::string GetForwardTrace() {
+    if (backward_trace_.size()) {
+      std::cout << " GetForwardOpBlock is false"
+                << std::endl;  // <<backward_trace_<<std::endl;
+    }
+    return backward_trace_;
+  }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -317,6 +329,8 @@ class GradNodeBase {
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
+  // The trace of backward function
+  std::string backward_trace_ = "";
 };
 
 }  // namespace egr
