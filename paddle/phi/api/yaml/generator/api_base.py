@@ -1196,6 +1196,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             code_indent,
             inplace_flag,
         )
+        pre_save_strides = ""
+        transdata2strided = ""
+        if inplace_flag:
+            i = 0
+            for kernel_out in outputs_args:
+                pre_save_strides += f"""{code_indent}  auto backup{i} = ProcessStridesBackup(&{kernel_out});"""
+                transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});"""
+                i = i + 1
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
@@ -1212,6 +1220,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
+{pre_save_strides}
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
@@ -1230,6 +1239,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
+{transdata2strided}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
