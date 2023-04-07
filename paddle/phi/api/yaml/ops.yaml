@@ -61,6 +61,24 @@
     func : angle
   backward : angle_grad
 
+- op : argmax
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  output : Tensor(out)
+  infer_meta :
+    func : ArgMinMaxInferMeta
+  kernel :
+    func : argmax
+    data_type : x
+
+- op : argmin
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  output : Tensor(out)
+  infer_meta :
+    func : ArgMinMaxInferMeta
+  kernel :
+    func : argmin
+    data_type : x
+
 - op : argsort
   args : (Tensor x, int axis=-1, bool descending=false)
   output : Tensor(out), Tensor(indices)
@@ -1808,6 +1826,18 @@
   kernel :
     func : viterbi_decode
     data_type : potentials
+
+- op : warpctc
+  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false)
+  output :  Tensor(loss), Tensor(warpctcgrad)
+  infer_meta :
+    func : WarpctcInferMeta
+  kernel :
+    func : warpctc
+    data_type: logits
+  optional: logits_length, labels_length
+  intermediate: warpctcgrad
+  backward : warpctc_grad
 
 - op : warprnnt
   args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)

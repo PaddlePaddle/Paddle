@@ -31,10 +31,21 @@ class NCCLCommContext final : public CommContext {
  public:
   NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
 
+  ncclComm_t GetNcclComm();
+
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  int root,
                  gpuStream_t stream);
+  void Send(const phi::DenseTensor& in_tensor,
+            const int& peer,
+            gpuStream_t stream);
+
+  void Recv(phi::DenseTensor* out_tensor, const int& peer, gpuStream_t stream);
+
+  void ReduceScatter(phi::DenseTensor* out_tensor,
+                     const phi::DenseTensor& in_tensor,
+                     gpuStream_t stream);
 
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,

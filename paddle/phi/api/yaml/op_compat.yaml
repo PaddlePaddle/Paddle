@@ -109,6 +109,26 @@
   outputs :
     out : Out
 
+- op : argmax(arg_max)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
+- op : argmin(arg_min)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
 - op : argsort
   inputs :
     x : X
@@ -2172,6 +2192,13 @@
     {potentials : Input, transition_params : Transition, lengths : Length}
   outputs :
     {scores : Scores, path : Path}
+
+- op : warpctc
+  backward : warpctc_grad
+  inputs :
+    {logits : Logits, label : Label, logits_length : LogitsLength, labels_length : LabelLength}
+  outputs :
+    {warpctcgrad : WarpCTCGrad, loss : Loss}
 
 - op : where
   backward : where_grad
