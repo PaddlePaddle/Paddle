@@ -229,7 +229,7 @@ class PReluTest(OpTest):
 
 
 class TestPReluFP16OP(PReluTest):
-    def setUp(self):
+    def init_dtype(self):
         self.dtype = np.float16
 
 
