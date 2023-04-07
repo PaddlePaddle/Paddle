@@ -2128,12 +2128,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // CPUKernel will be executed and a warning will be given at the same
       // time.
       expected_kernel_key.place_ = platform::CPUPlace();
-#ifdef PADDLE_WITH_ASCEND_CL
-      if (SupportNPU()) {
-        auto& dev_ctx = ctx.device_context();
-        expected_kernel_key.place_ = dev_ctx.GetPlace();
-      }
-#endif
+
       if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
@@ -2305,16 +2300,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_iter == kernels.end() &&
-      platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing NPU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
+
 #ifdef PADDLE_WITH_MLU
   if (kernel_iter == kernels.end() &&
       platform::is_mlu_place(expected_kernel_key.place_)) {

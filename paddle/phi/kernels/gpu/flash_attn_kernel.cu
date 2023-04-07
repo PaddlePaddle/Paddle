@@ -43,11 +43,14 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
                              float dropout,
                              bool causal,
                              bool return_softmax,
+                             bool is_test,
                              DenseTensor* out,
                              DenseTensor* softmax,
                              DenseTensor* softmax_lse,
                              DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
+  if (is_test) dropout = 0.0f;
+
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
@@ -187,6 +190,7 @@ void FlashAttnKernel(const Context& ctx,
                      float dropout,
                      bool causal,
                      bool return_softmax,
+                     bool is_test,
                      DenseTensor* out,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
@@ -237,6 +241,7 @@ void FlashAttnKernel(const Context& ctx,
                                       dropout,
                                       causal,
                                       return_softmax,
+                                      is_test,
                                       out,
                                       softmax,
                                       softmax_lse,
