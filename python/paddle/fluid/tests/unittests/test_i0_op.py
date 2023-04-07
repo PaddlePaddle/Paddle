@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+import scipy.special as special
 
 import paddle
 import paddle.fluid.core as core
@@ -23,8 +24,8 @@ np.random.seed(100)
 paddle.seed(100)
 
 
-def output_numpy_i0(x):
-    return np.i0(x)
+def output_i0(x):
+    return special.i0(x)
 
 
 class TestI0API(unittest.TestCase):
@@ -48,9 +49,10 @@ class TestI0API(unittest.TestCase):
                     feed={"x": paddle.to_tensor(self.x)},
                     fetch_list=[out],
                 )
-                out_ref = output_numpy_i0(self.x)
+                out_ref = output_i0(self.x)
                 np.testing.assert_allclose(res[0], out_ref, rtol=1e-5)
             paddle.disable_static()
+
         for place in self.place:
             run(place)
 
@@ -60,7 +62,7 @@ class TestI0API(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.i0(x)
 
-            out_ref = output_numpy_i0(self.x)
+            out_ref = output_i0(self.x)
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-5)
             paddle.enable_static()
 

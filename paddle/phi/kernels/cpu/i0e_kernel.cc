@@ -18,14 +18,5 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/i0e_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void I0eKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  CalcI0e<T, Context>(ctx, x, out);
-}
-
-}  // namespace phi
-
 PD_REGISTER_KERNEL(
     i0e, CPU, ALL_LAYOUT, phi::I0eKernel, float, double) {}

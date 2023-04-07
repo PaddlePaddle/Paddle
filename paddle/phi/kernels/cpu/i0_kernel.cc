@@ -16,24 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/i0e_kernel_impl.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
-  int64_t size = x.numel();
-
-  CalcI0e<T, Context>(ctx, x, out);
-  for (int64_t i = 0; i < size; ++i) {
-    auto x = std::abs(x_data[i]);
-    out_data[i] = std::exp(x) * out_data[i];
-  }
-}
-
-}  // namespace phi
+#include "paddle/phi/kernels/impl/i0_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     i0, CPU, ALL_LAYOUT, phi::I0Kernel, float, double) {}
