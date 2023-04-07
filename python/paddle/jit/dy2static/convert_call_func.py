@@ -184,9 +184,7 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    translator_logger.log(
-        1, "Convert callable object: convert {}.".format(func)
-    )
+    translator_logger.log(1, f"Convert callable object: convert {func}.")
     func_self = None
     converted_call = None
 
@@ -329,7 +327,7 @@ def convert_call(func):
                 func_self = None if func_self else func_self
     else:
         raise NotImplementedError(
-            "Callable {} can not be transformed at present.".format(func)
+            f"Callable {func} can not be transformed at present."
         )
 
     if converted_call is None:

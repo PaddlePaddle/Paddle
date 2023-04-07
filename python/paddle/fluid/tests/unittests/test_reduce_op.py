@@ -407,6 +407,9 @@ class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
+        self.prim_op_type = "prim"
+
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -420,16 +423,26 @@ class TestProdOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestProdOpFp64(TestProdOp):
+    def init_data_type(self):
+        self.data_type = "float64"
 
 
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
-        self.python_api = paddle.prod
+        self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.op_type = "reduce_prod"
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].prod()}
         self.attrs = {'dim': [], 'reduce_all': True}
+
+        # 0-D tensor doesn't support in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
@@ -442,6 +455,8 @@ class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
+        self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -460,13 +475,14 @@ class TestProd6DOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.public_python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
@@ -1178,15 +1194,16 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of reduce_sum_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, paddle.sum, x1)
-            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.sum, x2)
+        with paddle.fluid.framework._static_guard():
+            with program_guard(Program(), Program()):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([[-1]]), [[1]], fluid.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.sum, x1)
+                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
+                self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):

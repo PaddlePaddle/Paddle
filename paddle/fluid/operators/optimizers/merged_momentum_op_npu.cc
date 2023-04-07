@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"

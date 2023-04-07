@@ -55,7 +55,7 @@ def get_var_with_recursion(var_name, block, program):
         # parent_block = program.blocks[block.parent_idx]
         # if var_name in parent_block.vars:
         #     var = parent_block.vars[var_name]
-    assert var is not None, "{} is not found".format(var.name)
+    assert var is not None, f"{var.name} is not found"
 
     return var
 
