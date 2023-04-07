@@ -58,20 +58,38 @@ KernelSignature AttentionFuseOpArgumentMapping(
                           "CacheKVOut",     "Y"});
 }
 
-KernelSignature AttentionFuseOpArgumentMapping(
+KernelSignature AttentionGradFuseOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fused_attention",
-                         {"X",
-                          "LnScale",
-                          "LnBias",
+  return KernelSignature("fused_attention_grad",
+                         {"Y@GRAD",
+                          "X",
                           "QKVW",
                           "QKVBias",
-                          "CacheKV",
+                          "QKVBiasOut",
                           "SrcMask",
+                          "SrcMaskOut",
                           "OutLinearW",
                           "OutLinearBias",
+                          "LnScale",
+                          "LnBias",
                           "Ln2Scale",
-                          "Ln2Bias"},
+                          "Ln2Bias",
+                          "LnOut",
+                          "LnMean",
+                          "LnVariance",
+                          "Ln2Mean",
+                          "Ln2Variance",
+                          "BiasDropoutResidualOut",
+                          "QKVOut",
+                          "TransposeOut2",
+                          "QKOut",
+                          "QKTVOut",
+                          "SoftmaxOut",
+                          "AttnDropoutMaskOut",
+                          "AttnDropoutOut",
+                          "FMHAOut",
+                          "OutLinearOut",
+                          "DropoutMaskOut"},
                          {"num_heads",
                           "transpose_qkv_wb",
                           "pre_layer_norm",
@@ -88,16 +106,29 @@ KernelSignature AttentionFuseOpArgumentMapping(
                           "ln_epsilon",
                           "add_residual",
                           "ring_id"},
-                         {"LnMean",         "LnVariance",
-                          "LnOut",          "QKVOut",
-                          "QKVBiasOut",     "TransposeOut2",
-                          "QKOut",          "QKTVOut",
-                          "SoftmaxOut",     "AttnDropoutMaskOut",
-                          "AttnDropoutOut", "SrcMaskOut",
-                          "FMHAOut",        "OutLinearOut",
-                          "DropoutMaskOut", "Ln2Mean",
-                          "Ln2Variance",    "BiasDropoutResidualOut",
-                          "CacheKVOut",     "Y"});
+                         {
+                             "QKVBias@GRAD",
+                             "QKVBiasOut@GRAD",
+                             "SrcMaskOut@GRAD",
+                             "OutLinearBias@GRAD",
+                             "LnScale@GRAD",
+                             "LnBias@GRAD",
+                             "Ln2Scale@GRAD",
+                             "Ln2Bias@GRAD",
+                             "X@GRAD",
+                             "QKVW@GRAD",
+                             "OutLinearW@GRAD",
+                             "LnOut@GRAD",
+                             "BiasDropoutResidualOut@GRAD",
+                             "QKVOut@GRAD",
+                             "QKTVOut@GRAD",
+                             "TransposeOut2@GRAD",
+                             "QKOut@GRAD",
+                             "SoftmaxOut@GRAD",
+                             "AttnDropoutOut@GRAD",
+                             "FMHAOut@GRAD",
+                             "OutLinearOut@GRAD",
+                         });
 }
 
 }  // namespace phi
@@ -105,5 +136,5 @@ KernelSignature AttentionFuseOpArgumentMapping(
 PD_REGISTER_ARG_MAPPING_FN(fused_attention,
                            phi::AttentionFuseOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(fused_attention,
-                           phi::AttentionFuseOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_attention_grad,
+                           phi::AttentionGradFuseOpArgumentMapping);
