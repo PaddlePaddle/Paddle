@@ -934,15 +934,6 @@
   kernel :
     func : matrix_nms
 
-- op : matrix_rank
-  args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
-  output : Tensor(out)
-  infer_meta :
-    func : MatrixRankInferMeta
-    param : [x, hermitian, use_default_tol]
-  kernel :
-    func : matrix_rank
-
 - op : matrix_rank_tol
   args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
   output : Tensor(out)
