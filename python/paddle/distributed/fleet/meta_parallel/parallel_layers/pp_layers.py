@@ -639,7 +639,9 @@ class PipelineLayer(nn.Layer):
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
 
-            # NOTE(shenliang03): need set different seeds for pipeline parameters initialization
+            # NOTE(shenliang03): need set different seeds for pipeline parameters initialization.
+            # Since the parameters of model_parallel are controlled by its own RNG_STATE_TRACKER,
+            # only non-mp parameters in pp are controlled here.
             paddle.seed(self._base_seed + layer_index)
 
             if isinstance(layer, nn.Layer):
