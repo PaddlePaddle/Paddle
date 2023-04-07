@@ -225,6 +225,11 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._acc_steps = 1
+        if self._strategy.gradient_merge.enable:
+            self._acc_steps = self._strategy.gradient_merge.k_steps
+        elif self._strategy.pipeline.enable:
+            self._acc_steps = self._strategy.pipeline.accumulate_steps
 
         self.history = None
 
@@ -898,6 +903,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             train_data, train_sample_split, batch_size
         )
+        batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -926,7 +932,7 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._k_steps,
+            acc_step=self._acc_steps,
         )
 
         cbks.on_begin('train')
@@ -960,7 +966,7 @@ class Engine:
                 val_logs = self.evaluate(
                     valid_data,
                     valid_sample_split,
-                    batch_size,
+                    batch_size * self._acc_steps,
                     valid_steps,
                     log_freq,
                     collate_fn,
@@ -1041,6 +1047,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             valid_data, valid_sample_split, batch_size
         )
+        batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1147,6 +1154,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             test_data, test_sample_split, batch_size
         )
+        batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1209,6 +1217,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size
         )
+        batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1251,6 +1260,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size
         )
+        batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1366,14 +1376,6 @@ class Engine:
         steps_per_epoch=None,
     ):
 
-        if self._strategy.gradient_merge and batch_size is not None:
-            assert (
-                batch_size % self._k_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
-                batch_size, self._k_steps
-            )
-            batch_size //= self._k_steps
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1435,14 +1437,6 @@ class Engine:
         collate_fn=None,
     ):
 
-        if self._strategy.gradient_merge and batch_size is not None:
-            assert (
-                batch_size % self._k_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
-                batch_size, self._k_steps
-            )
-            batch_size //= self._k_steps
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1482,6 +1476,9 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
+                acc_steps=1
+                if not self._strategy.pipeline.enable
+                else self._acc_steps,
             )
         self._prepare_reader(feed_list)
         return dataloader
@@ -1493,9 +1490,16 @@ class Engine:
         )
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
+    def _validate_batch_size(self, batch_size):
+        assert (
+            batch_size % self._acc_steps == 0
+        ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
+            batch_size, self._acc_steps
+        )
+        return batch_size // self._acc_steps
+
     def _validate_spec(self, specs):
         specs = to_list(specs)
-        self._k_steps = self._strategy.gradient_merge.k_steps
         if specs is not None:
             for i, spec in enumerate(specs):
                 if not isinstance(spec, InputSpec):
@@ -1508,14 +1512,14 @@ class Engine:
                             i, spec
                         )
                     )
-                if self._k_steps > 1:
+                if self._acc_steps > 1:
                     shape = list(spec.shape)
                     assert (
-                        shape[0] % self._k_steps == 0
+                        shape[0] % self._acc_steps == 0
                     ), "Requires batch_size[{}] to be divisible by k_steps[{}].".format(
-                        spec.shape[0], self._k_steps
+                        spec.shape[0], self._acc_steps
                     )
-                    shape[0] //= self._k_steps
+                    shape[0] //= self._acc_steps
                     spec.shape = shape
         return specs or []
 
