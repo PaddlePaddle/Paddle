@@ -144,6 +144,12 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
+        N,
+        0.0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
