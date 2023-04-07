@@ -30,6 +30,16 @@ def get_tensor(varname, scope):
     return scope.find_var(varname).get_tensor()
 
 
+def persist_vars(program, var_list):
+
+    block = program.global_block()
+    for varnme in var_list:
+        var = block.var(varnme)
+        var.persistable(True)
+
+        print(str(var))
+
+
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
@@ -88,19 +98,32 @@ class TestRandomControl(unittest.TestCase):
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
-        fetch_list = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
-        rc_engine = self.get_engine(False)
+        # fetch_list = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
+        # rc_engine = self.get_engine(False)
 
-        train_dataloader = rc_engine.dataloader(
-            self.dataset,
-            batch_size=self.batch_size,
-            mode="train",
-            sample_split=3,
-        )
-        rc_engine.prepare(mode="train")
-        for data in train_dataloader:
-            outs = rc_engine.run(data, fetch_list=fetch_list, mode="train")
-        print("2222222222 out:", outs)
+        # train_dataloader = rc_engine.dataloader(
+        #     self.dataset,
+        #     batch_size=self.batch_size,
+        #     mode="train",
+        #     sample_split=3,
+        # )
+        # rc_engine.prepare(mode="train")
+        # for data in train_dataloader:
+        #     outs = rc_engine.run(data, fetch_list=fetch_list, mode="train")
+        # print("2222222222 out:", outs)
+
+        # mp2 recompute training
+        rc_engine = self.get_engine(False)
+        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc_losses = np.array(history.history["loss"])
+        var_list = [
+            'dropout_0.tmp_1',
+            'dropout_2.tmp_1',
+            'dropout_3.tmp_1',
+            'dropout_5.tmp_1',
+            'dropout_6.tmp_1',
+        ]
+        persist_vars(rc_engine, var_list)
 
         # check program
         ops = rc_engine.main_program.global_block().ops
