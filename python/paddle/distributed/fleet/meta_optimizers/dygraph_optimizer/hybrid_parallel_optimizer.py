@@ -314,7 +314,7 @@ class HybridParallelOptimizer:
                 "mp_configs"
             ]
 
-        if (
+        if mp_configs and (
             mp_configs.sync_param
             or mp_configs.sync_grad
             or mp_configs.sync_moment
@@ -324,7 +324,7 @@ class HybridParallelOptimizer:
                 key=lambda p: p.name,
             )
 
-        if mp_group.nranks > 1 and mp_configs.sync_grad:
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
                 if p.grad is None:
                     continue
@@ -334,13 +334,13 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-        if mp_group.nranks > 1 and mp_configs.sync_param:
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
                 paddle.distributed.broadcast(
                     p, src=src_rank, group=mp_group, sync_op=True
                 )
 
-        if mp_group.nranks > 1 and mp_configs.sync_moment:
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 # support opt state of adam and adamw to broadcast now.
                 if isinstance(
