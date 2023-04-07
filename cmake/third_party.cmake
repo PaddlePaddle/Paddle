@@ -356,11 +356,6 @@ if(WITH_XPU)
   list(APPEND third_party_deps extern_xpu)
 endif()
 
-if(WITH_MLU)
-  include(external/concurrentqueue) # download, build, install concurrentqueue
-  list(APPEND third_party_deps extern_concurrentqueue)
-endif()
-
 if(WITH_PSLIB)
   include(external/pslib) # download, build, install pslib
   list(APPEND third_party_deps extern_pslib)
