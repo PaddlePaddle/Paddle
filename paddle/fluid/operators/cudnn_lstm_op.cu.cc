@@ -199,7 +199,7 @@ void LSTMInferece(const bool &has_seq_length,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -436,7 +436,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -727,13 +727,17 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm, ops::CudnnLSTMGPUKernel<float>);
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm_grad, ops::CudnnLSTMGPUGradKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    cudnn_lstm, GPU, ALL_LAYOUT, ops::CudnnLSTMGPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    cudnn_lstm_grad, GPU, ALL_LAYOUT, ops::CudnnLSTMGPUGradKernel, float) {}
 #else
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm,
-                        ops::CudnnLSTMGPUKernel<float>,
-                        ops::CudnnLSTMGPUKernel<double>);
-REGISTER_OP_CUDA_KERNEL(cudnn_lstm_grad,
-                        ops::CudnnLSTMGPUGradKernel<float>,
-                        ops::CudnnLSTMGPUGradKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    cudnn_lstm, GPU, ALL_LAYOUT, ops::CudnnLSTMGPUKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(cudnn_lstm_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CudnnLSTMGPUGradKernel,
+                          float,
+                          double) {}
 #endif

@@ -146,13 +146,17 @@ PD_REGISTER_GENERAL_KERNEL(memcpy_d2h,
                            CPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_GENERAL_KERNEL(memcpy_d2h_multi_io,
                            CPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HMultiIOKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_GENERAL_KERNEL(
     memcpy, CPU, ALL_LAYOUT, phi::MemcpyKernel<phi::CPUContext>, ALL_DTYPE) {
@@ -170,13 +174,17 @@ PD_REGISTER_GENERAL_KERNEL(memcpy_d2h,
                            GPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_GENERAL_KERNEL(memcpy_d2h_multi_io,
                            GPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HMultiIOKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_GENERAL_KERNEL(
     memcpy, GPU, ALL_LAYOUT, phi::MemcpyKernel<phi::GPUContext>, ALL_DTYPE) {
@@ -196,12 +204,16 @@ PD_REGISTER_GENERAL_KERNEL(memcpy_d2h,
                            XPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_GENERAL_KERNEL(memcpy_d2h_multi_io,
                            XPU,
                            ALL_LAYOUT,
                            phi::MemcpyD2HMultiIOKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 #endif
