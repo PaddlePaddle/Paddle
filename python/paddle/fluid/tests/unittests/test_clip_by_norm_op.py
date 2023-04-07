@@ -87,13 +87,18 @@ class TestClipByNormFP16Op(OpTest):
         self.dtype = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestClipByNormBF16(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
         self.python_api = clip.clip_by_norm
         self.init_dtype()
         self.initTestCase()
-        input = np.random.random(self.shape).astype(self.dtype)
+        input = np.random.random(self.shape).astype(self.float32)
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
         self.inputs = {
@@ -109,7 +114,8 @@ class TestClipByNormBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-2)
 
     def initTestCase(self):
         self.shape = (100,)
