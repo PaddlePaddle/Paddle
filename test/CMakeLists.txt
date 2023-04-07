@@ -170,9 +170,6 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
       endif()
-      if(WITH_MLU)
-        target_link_libraries(${test_name} neuware_lib)
-      endif()
       if(NOT
          ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
           OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
