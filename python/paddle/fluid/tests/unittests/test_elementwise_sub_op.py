@@ -91,8 +91,8 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -151,8 +151,8 @@ class TestElementwiseBF16OP_ZeroDim1(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype('float32'),
-            'Y': np.random.uniform(0.1, 1, []).astype('float32'),
+            'X': np.random.uniform(0.1, 1, []).astype(np.float32),
+            'Y': np.random.uniform(0.1, 1, []).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -219,8 +219,8 @@ class TestElementwiseBF16OP_ZeroDim2(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
-            'Y': np.random.uniform(0.1, 1, []).astype('float32'),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
+            'Y': np.random.uniform(0.1, 1, []).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -287,8 +287,8 @@ class TestElementwiseBF16OP_ZeroDim3(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, []).astype('float32'),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype('float32'),
+            'X': np.random.uniform(0.1, 1, []).astype(np.float32),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -398,8 +398,8 @@ class TestElementwiseBF16OP_scalar(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.rand(10, 3, 4).astype('float32'),
-            'Y': np.random.rand(1).astype('float32'),
+            'X': np.random.rand(10, 3, 4).astype(np.float32),
+            'Y': np.random.rand(1).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -455,8 +455,8 @@ class TestElementwiseBF16OP_Vector(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.random((100,)).astype('float32'),
-            'Y': np.random.random((100,)).astype('float32'),
+            'X': np.random.random((100,)).astype(np.float32),
+            'Y': np.random.random((100,)).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -535,8 +535,8 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseOp):
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(100, 3, 2).astype('float32'),
-            'Y': np.random.rand(100).astype('float32'),
+            'X': np.random.rand(100, 3, 2).astype(np.float32),
+            'Y': np.random.rand(100).astype(np.float32),
         }
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
@@ -593,8 +593,8 @@ class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(2, 100, 3).astype('float32'),
-            'Y': np.random.rand(100).astype('float32'),
+            'X': np.random.rand(2, 100, 3).astype(np.float32),
+            'Y': np.random.rand(100).astype(np.float32),
         }
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
@@ -656,8 +656,8 @@ class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype('float32'),
-            'Y': np.random.rand(100).astype('float32'),
+            'X': np.random.rand(2, 3, 100).astype(np.float32),
+            'Y': np.random.rand(100).astype(np.float32),
         }
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
@@ -696,8 +696,8 @@ class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(2, 10, 12, 3).astype('float32'),
-            'Y': np.random.rand(10, 12).astype('float32'),
+            'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
+            'Y': np.random.rand(10, 12).astype(np.float32),
         }
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
@@ -760,8 +760,8 @@ class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.inputs = {
-            'X': np.random.rand(2, 5, 3, 12).astype('float32'),
-            'Y': np.random.rand(2, 5, 1, 12).astype('float32'),
+            'X': np.random.rand(2, 5, 3, 12).astype(np.float32),
+            'Y': np.random.rand(2, 5, 1, 12).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -816,8 +816,8 @@ class TestElementwiseBF16OP_commonuse_1(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.rand(2, 3, 100).astype('float32'),
-            'Y': np.random.rand(1, 1, 100).astype('float32'),
+            'X': np.random.rand(2, 3, 100).astype(np.float32),
+            'Y': np.random.rand(1, 1, 100).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -867,8 +867,8 @@ class TestElementwiseBF16OP_commonuse_2(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.rand(10, 3, 1, 4).astype('float32'),
-            'Y': np.random.rand(10, 1, 12, 1).astype('float32'),
+            'X': np.random.rand(10, 3, 1, 4).astype(np.float32),
+            'Y': np.random.rand(10, 1, 12, 1).astype(np.float32),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.inputs = {
@@ -922,8 +922,8 @@ class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseOp):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.inputs = {
-            'X': np.random.rand(10, 12).astype('float32'),
-            'Y': np.random.rand(2, 3, 10, 12).astype('float32'),
+            'X': np.random.rand(10, 12).astype(np.float32),
+            'Y': np.random.rand(2, 3, 10, 12).astype(np.float32),
         }
         self.attrs = {'axis': 2}
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
@@ -1045,7 +1045,7 @@ class TestSubtractApi(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+            y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
 
             y_1 = self._executed_api(x, y, name='subtract_res')
             self.assertEqual(('subtract_res' in y_1.name), True)
@@ -1055,12 +1055,12 @@ class TestSubtractApi(unittest.TestCase):
 
             def gen_data():
                 return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32'),
+                    "x": np.array([2, 3, 4]).astype(np.float32),
+                    "y": np.array([1, 5, 2]).astype(np.float32),
                 }
 
-            x = paddle.static.data(name="x", shape=[3], dtype='float32')
-            y = paddle.static.data(name="y", shape=[3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[3], dtype=np.float32)
+            y = paddle.static.data(name="y", shape=[3], dtype=np.float32)
             z = self._executed_api(x, y)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1212,7 +1212,7 @@ class TestTensorSubAPIWarnings(unittest.TestCase):
             paddle.enable_static()
             helper = LayerHelper("elementwise_sub")
             data = paddle.static.data(
-                name='data', shape=[None, 3, 32, 32], dtype='float32'
+                name='data', shape=[None, 3, 32, 32], dtype=np.float32
             )
             out = helper.create_variable_for_type_inference(dtype=data.dtype)
             os.environ['FLAGS_print_extra_attrs'] = "1"
