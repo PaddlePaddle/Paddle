@@ -60,17 +60,19 @@ void AdadeltaKernel(const Context& dev_ctx,
   auto eigen_avg_squared_update_out =
       EigenVector<MPDType>::Flatten(*avg_squared_update_out);
   auto& place = *dev_ctx.eigen_device();
+  auto eigen_grad_cast = eigen_grad.template cast<MPDType>();
   eigen_avg_squared_grad_out.device(place) =
-      rho_ * eigen_avg_squared_grad + (1 - rho_) * eigen_grad.square();
+      rho_ * eigen_avg_squared_grad + (1 - rho_) * eigen_grad_cast.square();
   auto update =
       -(((eigen_avg_squared_update + epsilon_).sqrt()) /
-        ((eigen_avg_squared_grad_out + epsilon_).sqrt()) * eigen_grad);
+        ((eigen_avg_squared_grad_out + epsilon_).sqrt()) * eigen_grad_cast);
   Eigen::DSizes<int, 1> m_dsize(avg_squared_update_out->numel());
   if (paddle::platform::is_cpu_place(dev_ctx.GetPlace())) {
     auto* lr = learning_rate.data<T>();
-    eigen_param_out.device(place) = eigen_param + lr[0] * update;
+    eigen_param_out.device(place) =
+        eigen_param + lr[0] * update.template cast<T>();
   } else {
-    auto lr = EigenVector<T>::Flatten(learning_rate);
+    auto lr = EigenVector<MPDType>::Flatten(learning_rate);
     if (multi_precision) {
       auto eigen_master_param_out =
           EigenVector<MPDType>::Flatten(*master_param_outs);
@@ -82,7 +84,7 @@ void AdadeltaKernel(const Context& dev_ctx,
                                           .template cast<T>();
     } else {
       eigen_param_out.device(place) =
-          eigen_param + lr.broadcast(m_dsize) * update.template cast<T>();
+          eigen_param + (lr.broadcast(m_dsize) * update).template cast<T>();
     }
   }
   eigen_avg_squared_update_out.device(place) =
