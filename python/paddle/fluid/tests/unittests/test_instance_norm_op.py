@@ -205,7 +205,7 @@ class TestInstanceNormFP64(TestInstanceNormOp):
             )
 
 
-class PrimeNet(paddle.nn.Layer):
+class PrimNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
@@ -218,6 +218,18 @@ class PrimeNet(paddle.nn.Layer):
         return res
 
 
+class PrimGroupNorm(paddle.nn.Layer):
+    def __init__(self, num_channels, scale, bias):
+        super().__init__()
+        self.func = nn.InstanceNorm2D(num_channels)
+        paddle.assign(scale, self.func.scale)
+        paddle.assign(bias, self.func.bias)
+
+    def forward(self, x):
+        out = self.func(x)
+        return out
+
+
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -226,7 +238,7 @@ def apply_to_static(net, use_cinn):
 
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
-    Test PrimeNet with @to_static + prim forward + prim backward v.s Dygraph
+    Test PrimNet with @to_static + prim forward + prim backward v.s Dygraph
     """
 
     def setUp(self):
@@ -237,7 +249,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def train(self, use_prim, data_layout="NCHW"):
         core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
-        net = PrimeNet()
+        net = PrimNet()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
@@ -289,8 +301,8 @@ if paddle.is_compiled_with_cuda():
             places,
             'float32',
             [
-                [1e-5],  # cpu thresholds for static
-                [1e-5],  # gpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
             ],
             None,
         ),
@@ -302,8 +314,8 @@ if paddle.is_compiled_with_cuda():
             places,
             'float32',
             [
-                [1e-5],  # cpu thresholds for static
-                [1e-5],  # gpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
             ],
             None,
         ),
@@ -315,10 +327,10 @@ if paddle.is_compiled_with_cuda():
             places,
             'float32',
             [
-                [1e-5],  # cpu thresholds for static
-                [1e-5],  # gpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
             ],  # gpu thresholds
-            [2e-2, 2e-2],  # special grad threshold for scale
+            [2e-2, 2e-2, 2e-2],  # special grad threshold for scale
         ),
         (
             'test0_fp64',
@@ -328,12 +340,10 @@ if paddle.is_compiled_with_cuda():
             places,
             'float64',
             [
-                [
-                    1e-14,
-                ],  # cpu thresholds for static
-                [1e-14],  # gpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # gpu thresholds for static
             ],
-            [1e-13, 1e-13],
+            [1e-13, 1e-13, 1e-13],
         ),
         (
             'test1_fp64',
@@ -343,12 +353,10 @@ if paddle.is_compiled_with_cuda():
             places,
             'float64',
             [
-                [
-                    1e-14,
-                ],  # cpu thresholds for static
-                [1e-14],  # gpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # gpu thresholds for static
             ],
-            [1e-13, 1e-13],
+            [1e-13, 1e-13, 1e-13],
         ),
         (
             'testbigdata_fp64',
@@ -358,10 +366,10 @@ if paddle.is_compiled_with_cuda():
             places,
             'float64',
             [
-                [1e-14],  # cpu thresholds
-                [1e-14],
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds
+                [1e-14, 1e-14, 1e-14],
             ],  # gpu thresholds
-            [5e-11, 5e-11],  # for X_grad
+            [5e-11, 5e-11, 5e-11],  # for X_grad
         ),
     ),
 )
@@ -676,6 +684,107 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             )
 
         paddle.disable_static()
+
+    def test_jit_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimGroupNorm(self.num_channels, scale_, bias_)
+            net = apply_to_static(net, False)
+            output = net(input_)
+
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+
+        for i in range(len(self.places)):
+            atol = self.threshold_list[i][1]
+            rtol = self.threshold_list[i][1]
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg='%s jit fwd' % self.places[i],
+            )
+
+            # TODO: fix the diff between cpu and gpu grad is large in original op
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg='%s jit rev' % self.places[i],
+            )
+
+    def test_jit_comp_with_cinn(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimGroupNorm(self.num_channels, scale_, bias_)
+            net = apply_to_static(net, False)
+            output = net(input_)
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+
+        for i in range(len(self.places)):
+            atol = self.threshold_list[i][2]
+            rtol = self.threshold_list[i][2]
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=atol,
+                err_msg='%s jit_cinn fwd' % self.places[i],
+            )
+            # TODO: fix the diff between cpu and gpu grad is large in original op
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=atol,
+                err_msg='%s jit_cinn rev' % self.places[i],
+            )
 
 
 class TestInstanceNormCase1(TestInstanceNormOp):
