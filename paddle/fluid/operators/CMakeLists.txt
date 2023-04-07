@@ -55,10 +55,6 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
-if (WITH_MLU)
-    add_subdirectory(mlu)
-endif()
-
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
@@ -129,10 +125,6 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-endif()
-
-if (WITH_MLU)
-  op_library(sync_batch_norm_op)
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)

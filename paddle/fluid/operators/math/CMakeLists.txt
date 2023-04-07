@@ -6,11 +6,7 @@ if(WITH_XPU)
 endif()
 
 # please add new math_library in alphabetical order
-if(WITH_MLU)
-  math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
-else()
-  math_library(concat_and_split DEPS concat_and_split_functor)
-endif()
+math_library(concat_and_split DEPS concat_and_split_functor)
 math_library(context_project DEPS im2col math_function)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)

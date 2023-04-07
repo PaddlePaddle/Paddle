@@ -165,10 +165,6 @@ if(WITH_GLOO)
   endif()
 endif()
 
-if(WITH_MLU)
-  set(MLU_DEPS mlu_baseop)
-endif()
-
 cc_library(
   gradient_accumulator
   SRCS gradient_accumulator.cc

@@ -74,17 +74,6 @@ else()
   set(IPU_CTX_DEPS)
 endif()
 
-if(WITH_MLU)
-  set(MLU_CTX_DEPS mlu_device_context)
-endif()
-
-if(WITH_MLU)
-  cc_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
-endif()
-
 if(WITH_GPU)
   nv_library(
     stream_callback_manager
@@ -160,10 +149,6 @@ endif()
 
 if(WITH_XPU)
   target_link_libraries(device_context xpu_resource_pool)
-endif()
-
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
