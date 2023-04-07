@@ -42,6 +42,7 @@ inline size_t Alignment(size_t size,
       alignment = phi::backends::gpu::GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
       alignment = alignment;
+      // alignment = phi::backends::xpu::XPUMinChunkSize();
 #elif defined(PADDLE_WITH_MLU)
       alignment = phi::backends::mlu::MLUMinChunkSize();
 #else

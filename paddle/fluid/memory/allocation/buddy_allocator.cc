@@ -59,6 +59,9 @@ BuddyAllocator::BuddyAllocator(
 #elif defined(PADDLE_WITH_MLU)
     init_allocate_size_func_ = &platform::MLUInitAllocSize;
     re_allocate_size_func_ = &platform::MLUReallocSize;
+#elif defined(PADDLE_WITH_XPU)
+    init_allocate_size_func_ = &platform::XPUInitAllocSize;
+    re_allocate_size_func_ = &platform::XPUReallocSize;
 #endif
   }
 #endif
@@ -256,6 +259,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #elif defined(PADDLE_WITH_MLU)
   allocate_bytes = DeviceAllocateSize(
       &platform::MLUInitAllocSize, &platform::MLUReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_XPU)
+  allocate_bytes = DeviceAllocateSize(
+      &platform::XPUInitAllocSize, &platform::XPUReallocSize, request_bytes);
 #endif
 #endif
 
