@@ -116,7 +116,7 @@ class ProcessGroup:
             return self.ranks.index(global_rank)
         else:
             raise AssertionError(
-                "Rank {} doesn't belong to this group".format(global_rank)
+                f"Rank {global_rank} doesn't belong to this group"
             )
 
     def is_instantiate(self):

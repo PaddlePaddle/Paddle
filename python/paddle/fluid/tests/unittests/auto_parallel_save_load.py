@@ -162,7 +162,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_dp{}".format(paddle.distributed.get_rank())
+                path = f"./output_dp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -196,7 +196,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             )
 
         self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_dp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_dp{paddle.distributed.get_rank()}")
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
@@ -214,7 +214,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_mp{}".format(paddle.distributed.get_rank())
+                path = f"./output_mp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -248,7 +248,7 @@ class TestMLPSaveLoad(unittest.TestCase):
             )
 
         self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_mp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_mp{paddle.distributed.get_rank()}")
 
     def test_mlp_pp(self):
         global _global_parallel_strategy
@@ -270,7 +270,7 @@ class TestMLPSaveLoad(unittest.TestCase):
         label = np.random.random(size=(80, 1)).astype('float32')
         for step in range(20):
             if step == 10:
-                path = "./output_pp{}".format(paddle.distributed.get_rank())
+                path = f"./output_pp{paddle.distributed.get_rank()}"
                 os.makedirs(path, exist_ok=True)
                 save_distributed_checkpoint(dist_main_prog, path, path)
 
@@ -325,7 +325,7 @@ class TestMLPSaveLoad(unittest.TestCase):
 
         if paddle.distributed.get_rank() in [1]:
             self.assertEqual(last_res, res[0])
-        shutil.rmtree("./output_pp{}".format(paddle.distributed.get_rank()))
+        shutil.rmtree(f"./output_pp{paddle.distributed.get_rank()}")
 
 
 if __name__ == "__main__":

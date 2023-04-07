@@ -1,7 +1,18 @@
 # This file is designed for fusion C++ farward operators, which manages the
-# generated code for dynamic mode and static mode.
-# The operators in the file have extra configuration item "support_dygraph_mode".
-# If one operator have "support_dygraph_mode : True", it supports dygraph mode.
+# generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
+# "support_dygraph_mode" is and extra configuration item in this file,
+# if one operator have "support_dygraph_mode : true", it supports dygraph mode,
+# otherwise the operator only could be used in static mode.
+
+- op : conv2d_xpu
+  args : (Tensor input, Tensor input_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
+  output : Tensor(output), Tensor(output_max)
+  infer_meta :
+    func : Conv2dXPUInferMeta
+  kernel :
+    func : conv2d_xpu
+    data_type : input
+  optional : bias, branch, input_max
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)

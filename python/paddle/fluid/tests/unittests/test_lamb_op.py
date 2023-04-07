@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
 

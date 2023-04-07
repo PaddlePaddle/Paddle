@@ -47,6 +47,17 @@
   inplace : (x -> out)
   backward : assign_grad
 
+- op : assign_value
+  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    data_type : dtype
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
@@ -56,6 +67,40 @@
   kernel :
     func : broadcast
     param: [x, root]
+
+- op : decode_jpeg
+  args : (Tensor x, str mode = "unchanged")
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+    param : [x, mode]
+  kernel :
+    func : decode_jpeg
+    param : [x, mode]
+
+- op : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
+  backward : embedding_grad
+
+- op : empty
+  args : (IntArray shape = {}, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : empty
+    param : [shape, dtype]
+    data_type : dtype
 
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -69,6 +114,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : eye
+  args : (Scalar(int64_t) num_rows, Scalar(int64_t) num_columns = -1, DataType dtype = DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
+  kernel :
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
+
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
@@ -78,6 +134,17 @@
     func : frobenius_norm
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
+
+- op : gaussian
+  args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : GaussianInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
 
 - op : greater_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -161,6 +228,17 @@
     func : one_hot_raw
     data_type : x
 
+- op : randint
+  args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : RandintInferMeta
+    param : [low, high, shape, dtype]
+  kernel :
+    func : randint
+    param : [low, high, shape, dtype]
+    data_type : dtype
+
 - op : reduce
   args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
   output : Tensor(out)
@@ -178,3 +256,14 @@
     func : ShareBufferInferMeta
   kernel :
     func : share_buffer
+
+- op : uniform
+  args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype]
+  kernel :
+    func : uniform
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype

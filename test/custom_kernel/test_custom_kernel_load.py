@@ -81,7 +81,7 @@ class TestCustomKernelLoad(unittest.TestCase):
         )
 
     def tearDown(self):
-        cmd = 'rm -rf {}'.format(self.default_path)
+        cmd = f'rm -rf {self.default_path}'
         os.system(cmd)
 
 

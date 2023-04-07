@@ -25,7 +25,7 @@ def get_ut_mem(rootPath):
                 continue
             ut = f.replace('^', '').replace('$.log', '')
             case_dic[ut] = {}
-            filename = '%s/%s' % (parent, f)
+            filename = f'{parent}/{f}'
             fi = open(filename, mode='rb')
             lines = fi.readlines()
             mem_reserved1 = -1

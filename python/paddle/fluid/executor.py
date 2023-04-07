@@ -1585,9 +1585,6 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu():
-                return False
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
@@ -1606,28 +1603,6 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 2: async mode
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.async_mode
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for async mode",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 3: CUDA Graph
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.allow_cuda_graph_capture
-                    and not _is_cuda_graph_enable_standalone_executor()
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
-                        UserWarning,
-                    )
-                    return False
             return True
 
         if self._enable_interpreter_core and _can_use_interpreter_core(
@@ -2132,7 +2107,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
+            if core.is_compiled_with_custom_device('npu'):
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'InMemoryDataset'
                 )
@@ -2309,7 +2284,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
+            if core.is_compiled_with_custom_device('npu'):
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'InMemoryDataset'
                 )

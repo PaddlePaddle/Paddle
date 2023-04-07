@@ -703,7 +703,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
     if isinstance(padding, (list, tuple)) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a "
-            + "{} element tuple".format(len(padding))
+            + f"{len(padding)} element tuple"
         )
 
     assert padding_mode in [
@@ -772,7 +772,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         isinstance(size, int)
         or (isinstance(size, (tuple, list)) and len(size) == 2)
     ):
-        raise TypeError('Got inappropriate size arg: {}'.format(size))
+        raise TypeError(f'Got inappropriate size arg: {size}')
 
     if isinstance(size, int):
         w, h = _get_image_size(img, data_format)

@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 DECLARE_int32(min_loss_scaling);
 

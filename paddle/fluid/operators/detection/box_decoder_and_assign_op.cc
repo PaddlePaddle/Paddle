@@ -225,6 +225,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(box_decoder_and_assign,
-                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, float>,
-                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(box_decoder_and_assign,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BoxDecoderAndAssignKernel,
+                          float,
+                          double) {}
