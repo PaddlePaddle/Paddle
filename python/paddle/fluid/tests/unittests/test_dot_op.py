@@ -416,14 +416,23 @@ class TestDotBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+                self.check_grad_with_place(
+                    place,
+                    ['X', 'Y'],
+                    'Out',
+                    user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                )
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, ['Y'], 'Out', no_grad_set=set("X")
+                    place,
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                    user_defined_grads=[self.inputs['X']],
                 )
 
     def test_check_grad_ingore_y(self):
@@ -431,13 +440,17 @@ class TestDotBF16Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, ['X'], 'Out', no_grad_set=set("Y")
+                    place,
+                    ['X'],
+                    'Out',
+                    no_grad_set=set("Y"),
+                    user_defined_grads=[self.inputs['Y']],
                 )
 
     def init_input_output(self):
-        self.x = np.random.uniform(0.1, 1, [121]).astype(self.dtype)
-        self.y = np.random.uniform(1, 3, [121]).astype(self.dtype)
-        self.out = np.dot(self.x, self.y).astype(np.float32)
+        self.x = np.random.uniform(0.1, 1, [121]).astype(np.float32)
+        self.y = np.random.uniform(1, 3, [121]).astype(np.float32)
+        self.out = np.dot(self.x, self.y)
 
 
 @unittest.skipIf(
@@ -447,17 +460,50 @@ class TestDotBF16Op(OpTest):
 )
 class DotBF16OpBatch(TestDotBF16Op):
     def init_input_output(self):
-        self.x = convert_float_to_uint16(
+        self.x = (
             np.random.uniform(0.1, 1, [132])
-            .astype(self.dtype)
+            .astype(np.float32)
             .reshape([11, 12])
         )
-        self.y = convert_float_to_uint16(
-            np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
+        self.y = (
+            np.random.uniform(1, 3, [132]).astype(np.float32).reshape([11, 12])
         )
-        self.out = convert_float_to_uint16(
-            np.sum(self.x * self.y, axis=1).reshape([11, 1]).astype(np.float32)
-        )
+        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+
+    def test_check_grad_normal(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X', 'Y'],
+                    'Out',
+                    user_defined_grads=[self.y / 11.0, self.x / 11.0],
+                )
+
+    def test_check_grad_ingore_x(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['Y'],
+                    'Out',
+                    no_grad_set=set("X"),
+                    user_defined_grads=[self.x / 11.0],
+                )
+
+    def test_check_grad_ingore_y(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    no_grad_set=set("Y"),
+                    user_defined_grads=[self.y / 11.0],
+                )
 
 
 if __name__ == '__main__':

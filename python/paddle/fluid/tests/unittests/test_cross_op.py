@@ -90,13 +90,11 @@ class TestCrossBF16Op(OpTest):
         self.op_type = "cross"
         self.python_api = paddle.cross
         self.initTestCase()
+        self.x = np.random.random(self.shape).astype(np.float32)
+        self.y = np.random.random(self.shape).astype(np.float32)
         self.inputs = {
-            'X': convert_float_to_uint16(
-                np.random.random(self.shape).astype(self.dtype)
-            ),
-            'Y': convert_float_to_uint16(
-                np.random.random(self.shape).astype(self.dtype)
-            ),
+            'X': convert_float_to_uint16(self.x),
+            'Y': convert_float_to_uint16(self.y),
         }
         self.init_output()
 
@@ -106,8 +104,8 @@ class TestCrossBF16Op(OpTest):
         self.shape = (1024, 3, 1)
 
     def init_output(self):
-        x = np.squeeze(self.inputs['X'], 2)
-        y = np.squeeze(self.inputs['Y'], 2)
+        x = np.squeeze(self.x, 2)
+        y = np.squeeze(self.y, 2)
         z_list = []
         for i in range(1024):
             z_list.append(np.cross(x[i], y[i]))
