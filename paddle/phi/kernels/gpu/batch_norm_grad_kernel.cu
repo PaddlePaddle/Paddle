@@ -1385,10 +1385,10 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    float,
                    double) {}
 #else
-PD_REGISTER_KERNEL(batch_norm_double_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormDoubleGradKernel,
-                   float,
-                   double) {}
+  PD_REGISTER_KERNEL(batch_norm_double_grad,
+                     GPU,
+                     ALL_LAYOUT,
+                     phi::BatchNormDoubleGradKernel,
+                     float,
+                     double) {}
 #endif
