@@ -1599,7 +1599,7 @@ void tile_grad(const Tensor& x,
         auto split_arr = split<T>(result, IntArray(sections), i);
         auto zero_tensor =
             full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
-        for (int j = 0; j < static_cast<int> split_arr.size(); j++) {
+        for (int j = 0; j < (static_cast<int>)split_arr.size(); j++) {
           zero_tensor = split_arr[j] + zero_tensor;
         }
         result = zero_tensor;
