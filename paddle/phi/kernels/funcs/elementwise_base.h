@@ -35,6 +35,7 @@ namespace kps = phi::kps;
 
 namespace phi {
 
+// FIXME: delete this enum
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
@@ -527,12 +528,12 @@ struct UnrollerWithoutVecSize<Func, End, End> {
 template <int Index, int VecSize>
 struct Loader {
   template <typename Array, typename ArgsT>
-  static __device__ void Apply(const Array &in,
-                               ArgsT *args,
-                               kps::IndexType offset,
-                               int num,
-                               int read_lens,
-                               bool is_boundary) {
+  static __device__ __forceinline__ void Apply(const Array &in,
+                                               ArgsT *args,
+                                               kps::IndexType offset,
+                                               int num,
+                                               int read_lens,
+                                               bool is_boundary) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     kps::Init<Type, ArgsT, Index, VecSize>(
         args, static_cast<Type>(1.0f), read_lens);
@@ -594,73 +595,6 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
 #endif
   return vec_size;
 }
-
-template <typename InT,
-          typename OutT,
-          int VecSize,
-          typename Functor,
-          int Arity,
-          bool CallElementwiseAny = false>
-struct ElementwisePrimitiveCaller {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens);
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens) {
-    kps::ElementwiseAny<InT, OutT, VecSize, 1, Arity, Functor>(
-        result, args, func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens) {
-    kps::ElementwiseConstant<InT, OutT, VecSize, 1, Functor>(result, func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens) {
-    kps::ElementwiseUnary<InT, OutT, VecSize, 1, Functor>(
-        result, args[0], func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens) {
-    kps::ElementwiseBinary<InT, OutT, VecSize, 1, Functor>(
-        result, args[0], args[1], func, read_lens);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result,
-                                    int read_lens) {
-    kps::ElementwiseTernary<InT, OutT, VecSize, 1, Functor>(
-        result, args[0], args[1], args[2], func);
-  }
-};
 
 namespace detail {
 template <class F, class Tuple, std::size_t... Index>
