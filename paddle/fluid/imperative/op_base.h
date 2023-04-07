@@ -190,23 +190,20 @@ class OpBase {
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place,
-                  const std::map<std::string, std::string>& inplace_map);
+                  const platform::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place,
-                  const std::map<std::string, std::string>& inplace_map);
+                  const platform::Place& place);
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<egr::EagerVariable>& ins,
                   const NameVarMap<egr::EagerVariable>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
-                  const platform::Place& place,
-                  const std::map<std::string, std::string>& inplace_map);
+                  const platform::Place& place);
 
   bool HasVoidFunctionPostHook() const {
     return !void_function_post_hooks_.empty();

@@ -28,7 +28,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/phi/api/lib/api_gen_utils.h"
 
 DECLARE_bool(use_mkldnn);
 namespace paddle {
@@ -471,14 +470,12 @@ void OpBase::ClearBackwardTrace() {
 }
 
 template <typename VarType>
-static void OpBaseRunImpl(
-    const framework::OperatorBase& op,
-    const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs,
-    const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
-    const std::map<std::string, std::string>& inplace_map) {
+static void OpBaseRunImpl(const framework::OperatorBase& op,
+                          const NameVarMap<VarType>& ins,
+                          const NameVarMap<VarType>& outs,
+                          const framework::AttributeMap& attrs,
+                          const framework::AttributeMap& default_attrs,
+                          const platform::Place& place) {
   auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel,
@@ -522,31 +519,12 @@ static void OpBaseRunImpl(
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
-  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  for (auto& iter : inplace_map) {
-    for (size_t i = 0; i < ins[iter.first].size(); i++) {
-      auto var = ins[iter.first][i]->MutableVar();
-      if (var->IsType<phi::DenseTensor>) {
-        auto dense_tensor = var->GetMutable<phi::DenseTensor>;
-        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
-          outs[iter.second]->MutableVar()->Clear();
-          need_backup_inputs2outputs[dense_tensor] =
-              outs[iter.second]->MutableVar()->GetMutable<phi::DenseTensor>();
-        }
-      }
-    }
-  }
   auto tmp_ins_ptr = PrepareData<VarType>(
       *op_kernel, ins, prepared_op.kernel_key(), prepared_op.place());
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
-  }
-
-  auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-  for (auto& iter : need_backup_inputs2outputs) {
-    TransStride(dev_ctx, iter.second, iter.first);
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
@@ -560,10 +538,8 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place,
-                 const std::map<std::string, std::string>& inplace_map) {
-  OpBaseRunImpl<VarBase>(
-      op, ins, outs, attrs, default_attrs, place, inplace_map);
+                 const platform::Place& place) {
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -571,10 +547,8 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place,
-                 const std::map<std::string, std::string>& inplace_map) {
-  OpBaseRunImpl<VariableWrapper>(
-      op, ins, outs, attrs, default_attrs, place, inplace_map);
+                 const platform::Place& place) {
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -582,10 +556,8 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<egr::EagerVariable>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
-                 const platform::Place& place,
-                 const std::map<std::string, std::string>& inplace_map) {
-  OpBaseRunImpl<egr::EagerVariable>(
-      op, ins, outs, attrs, default_attrs, place, inplace_map);
+                 const platform::Place& place) {
+  OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

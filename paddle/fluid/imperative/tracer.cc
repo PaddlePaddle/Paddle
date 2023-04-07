@@ -29,6 +29,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(use_mkldnn);
@@ -337,7 +338,7 @@ void Tracer::TraceOpImpl(const std::string& type,
         // TODO(jiabin): Update this without copy
         *passed_default_attrs_ = default_attrs;
       }
-      OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place, inplace_map);
+      OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
     }
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
@@ -429,6 +430,21 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
+  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
+  for (auto& iter : inplace_map) {
+    for (size_t i = 0; i < ins[iter.first].size(); i++) {
+      auto var = ins[iter.first][i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>) {
+        auto dense_tensor = var->GetMutable<phi::DenseTensor>;
+        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+          outs[iter.second]->MutableVar()->Clear();
+          need_backup_inputs2outputs[dense_tensor] =
+              outs[iter.second]->MutableVar()->GetMutable<phi::DenseTensor>();
+        }
+      }
+    }
+  }
+
   TraceOpImpl<egr::EagerVariable>(type,
                                   ins,
                                   outs,
@@ -438,6 +454,11 @@ void Tracer::TraceOp(const std::string& type,
                                   inplace_map,
                                   default_attrs,
                                   use_default_attr_map);
+
+  auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  for (auto& iter : need_backup_inputs2outputs) {
+    paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
+  }
 }
 
 void Tracer::TraceOp(const std::string& type,
