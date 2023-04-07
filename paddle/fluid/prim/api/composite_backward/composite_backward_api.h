@@ -967,6 +967,7 @@ void group_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
+  std::cout << "gn_vjp===============" << std::endl;
   // scale.shape=[C]
   // mean.shape=[N, groups]
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
@@ -1035,8 +1036,9 @@ void group_norm_grad(const Tensor& x,
                   reshape<T>(sum_y_grad_mul_x, shape_group) *
                       unsqueeze<T>(mean, std::vector<int64_t>({2})) *
                       unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
-      auto scale_grad_tmp = reshape<T>(
-          tmp1.sum(std::vector<int64_t>({0}), dtype, false), scale.shape());
+      auto scale_grad_tmp =
+          reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
+                     IntArray(std::vector<int64_t>({C})));
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
       scale_grad = nullptr;
