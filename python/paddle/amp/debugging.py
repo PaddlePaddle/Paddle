@@ -884,25 +884,8 @@ def compare_accuracy(
                 filename
             )
         )
-        print(
-            "fp32_tensor_info_list[0] num_zero:",
-            fp32_tensor_info_list[0].num_zero,
-        )
-        print(
-            "fp16_tensor_info_list[0] num_zero:",
-            fp16_tensor_info_list[0].num_zero,
-        )
         mp_tensor_info_list = merge_tensor_info_list(
             fp32_tensor_info_list, fp16_tensor_info_list, grad_scale
-        )
-        print("mp_tensor_info_list:", mp_tensor_info_list)
-        print(
-            "mp_tensor_info_list[0] fp32_num_zero:",
-            mp_tensor_info_list[0].fp32_num_zero,
-        )
-        print(
-            "mp_tensor_info_list[0] fp16_num_zero:",
-            mp_tensor_info_list[0].fp16_num_zero,
         )
         print(
             "-- [Step 4/4] Add worksheet for mixed precision tensor info of {}".format(
