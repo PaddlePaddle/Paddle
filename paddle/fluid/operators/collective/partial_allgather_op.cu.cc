@@ -104,6 +104,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(partial_allgather,
                         ops::PartialAllGatherOpCUDAKernel<float>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::PartialAllGatherOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::PartialAllGatherOpCUDAKernel<double>,
                         ops::PartialAllGatherOpCUDAKernel<int>,
                         ops::PartialAllGatherOpCUDAKernel<int64_t>,

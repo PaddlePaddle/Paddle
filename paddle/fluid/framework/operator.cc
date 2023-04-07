@@ -57,10 +57,6 @@ class DenseTensor;
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
@@ -771,16 +767,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#ifndef PADDLE_WITH_MLU
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with MLU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetMLUDeviceId(dev_id);
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -2302,16 +2288,6 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   }
 #endif
 
-#ifdef PADDLE_WITH_MLU
-  if (kernel_iter == kernels.end() &&
-      platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing MLU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       platform::is_custom_place(expected_kernel_key.place_)) {

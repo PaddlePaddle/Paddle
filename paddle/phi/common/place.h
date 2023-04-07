@@ -193,16 +193,6 @@ class IPUPlace : public Place {
       : Place(AllocationType::IPU, place.GetDeviceId()) {}
 };
 
-class MLUPlace : public Place {
- public:
-  MLUPlace() : Place(AllocationType::MLU, 0) {}
-  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
-
-  MLUPlace(const MLUPlace&) = default;
-  MLUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::MLU, place.GetDeviceId()) {}
-};
-
 class CustomPlace : public Place {
  public:
   CustomPlace() : Place(AllocationType::CUSTOM, 0, "") {}
