@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -41,19 +42,34 @@ void InstanceNormKernel(const Context& dev_ctx,
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
-  int r = xpu::instance_norm(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(y->data<T>()),
-                             n,
-                             c,
-                             h,
-                             w,
-                             epsilon,
-                             scale_ptr->data<float>(),
-                             bias_ptr->data<float>(),
-                             saved_mean->data<float>(),
-                             saved_var->data<float>(),
-                             true);
+  DenseTensor scale_data;
+  if (!scale_ptr) {
+    scale_data.Resize({c});
+    dev_ctx.template Alloc<T>(&scale_data);
+    phi::funcs::set_constant(dev_ctx, &scale_data, static_cast<T>(1));
+  }
+
+  DenseTensor bias_data;
+  if (!bias_ptr) {
+    bias_data.Resize({c});
+    dev_ctx.template Alloc<T>(&bias_data);
+    phi::funcs::set_constant(dev_ctx, &bias_data, static_cast<T>(0));
+  }
+
+  int r = xpu::instance_norm(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(x.data<T>()),
+      reinterpret_cast<XPUType*>(y->data<T>()),
+      n,
+      c,
+      h,
+      w,
+      epsilon,
+      scale_ptr == nullptr ? scale_data.data<T>() : scale_ptr->data<float>(),
+      bias_ptr == nullptr ? bias_data.data<T>() : bias_ptr->data<float>(),
+      saved_mean->data<float>(),
+      saved_var->data<float>(),
+      true);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "instance_norm");
 }

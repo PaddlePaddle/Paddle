@@ -509,8 +509,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     // set fusion_bias input node
     if (has_bias) {
       conv2d_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
-      conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
     }
+    conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
     // set ew_branch_add input node
     if (ew_branch_add_in != nullptr) {
       conv2d_xpu_op_desc.SetInput("branch", {ew_branch_add_in->Name()});
