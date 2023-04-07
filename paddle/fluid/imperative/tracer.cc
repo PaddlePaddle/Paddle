@@ -31,6 +31,7 @@
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
@@ -432,14 +433,18 @@ void Tracer::TraceOp(const std::string& type,
           << use_default_attr_map;
   std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
   for (auto& iter : inplace_map) {
-    for (size_t i = 0; i < ins[iter.first].size(); i++) {
-      auto var = ins[iter.first][i]->MutableVar();
-      if (var->IsType<phi::DenseTensor>) {
-        auto dense_tensor = var->GetMutable<phi::DenseTensor>;
+    auto inputs_iter = ins.find(iter.first);
+    for (size_t i = 0; i < inputs_iter->second.size(); i++) {
+      auto var = inputs_iter->second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto dense_tensor = var->GetMutable<phi::DenseTensor>();
         if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
-          outs[iter.second]->MutableVar()->Clear();
+          auto outputs_iter = outs.find(iter.first);
+          outputs_iter->second[i]->MutableVar()->Clear();
           need_backup_inputs2outputs[dense_tensor] =
-              outs[iter.second]->MutableVar()->GetMutable<phi::DenseTensor>();
+              outputs_iter->second[i]
+                  ->MutableVar()
+                  ->GetMutable<phi::DenseTensor>();
         }
       }
     }
