@@ -19,13 +19,7 @@ import sys
 
 from paddle.utils.deprecated import deprecated
 
-__all__ = [
-    'cuda_profiler',
-    'reset_profiler',
-    'profiler',
-    'start_profiler',
-    'stop_profiler',
-]
+__all__ = []
 
 NVPROF_CONFIG = [
     "gpustarttimestamp",

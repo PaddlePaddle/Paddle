@@ -21,16 +21,7 @@ from ..fluid.profiler import profiler  # noqa: F401
 from ..fluid.profiler import reset_profiler, start_profiler, stop_profiler
 from .deprecated import deprecated
 
-__all__ = [  # noqa
-    'Profiler',
-    'get_profiler',
-    'ProfilerOptions',
-    'cuda_profiler',
-    'start_profiler',
-    'profiler',
-    'stop_profiler',
-    'reset_profiler',
-]
+__all__ = []
 
 
 @deprecated(
