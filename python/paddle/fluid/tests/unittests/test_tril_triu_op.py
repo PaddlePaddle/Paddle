@@ -85,6 +85,12 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
         self.diagonal = None
         self.X = np.arange(1, 101, dtype="float32").reshape([10, -1])
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+
 
 def case_generator(op_type, Xshape, diagonal, expected, dtype):
     """
