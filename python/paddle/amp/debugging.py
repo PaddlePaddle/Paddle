@@ -262,9 +262,9 @@ class TensorInfo:
                     self.min_value = np.float32(words[1])
                 elif words[0] == "mean":
                     self.mean_value = np.float32(words[1])
-                elif words[0] == "find_inf":
+                elif words[0] == "num_inf":
                     self.has_inf = int(words[1])
-                elif words[0] == "find_nan":
+                elif words[0] == "num_nan":
                     self.has_nan = int(words[1])
                 elif words[0] == "num_zero":
                     self.num_zero = np.int64(words[1])
