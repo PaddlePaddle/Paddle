@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace fusion {
@@ -73,6 +74,42 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
     }                                                                        \
     __dst = __src;                                                           \
   } while (0)
+
+inline DenseTensor *MemEffAttnReshape4D(DenseTensor *t, int64_t num_head) {
+  if (t == nullptr) return nullptr;
+
+  const auto &dims = t->dims();
+  PADDLE_ENFORCE_EQ(
+      dims.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "Invalid tensor rank when calling MemEffAttnReshape4D."));
+  PADDLE_ENFORCE_EQ(
+      dims[2] % num_head,
+      0,
+      phi::errors::InvalidArgument(
+          "Invalid tensor dims(%s) and num_head(%d).", dims, num_head));
+  t->Resize({dims[0], dims[1], num_head, dims[2] / num_head});
+  return t;
+}
+
+inline DenseTensor MemEffAttnReshape4D(const DenseTensor &t, int64_t num_head) {
+  auto x = t;
+  MemEffAttnReshape4D(&x, num_head);
+  return x;
+}
+
+inline void MemEffAttnReshape3D(DenseTensor *t) {
+  if (t != nullptr) {
+    const auto &dims = t->dims();
+    PADDLE_ENFORCE_EQ(
+        dims.size(),
+        4,
+        phi::errors::InvalidArgument(
+            "Invalid tensor rank when calling MemEffAttnReshape3D."));
+    t->Resize({dims[0], dims[1], dims[2] * dims[3]});
+  }
+}
 
 }  // namespace cutlass_internal
 }  // namespace fusion

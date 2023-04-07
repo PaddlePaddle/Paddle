@@ -69,7 +69,14 @@ def _get_tensor_bias(attn_bias):
 
 
 def memory_efficient_attention(
-    query, key, value, attn_bias=None, p=0.0, scale=None, training=True
+    query,
+    key,
+    value,
+    attn_bias=None,
+    p=0.0,
+    scale=None,
+    num_head=None,
+    training=True,
 ):
     assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
     causal = isinstance(
@@ -115,6 +122,7 @@ def memory_efficient_attention(
             causal,
             p,
             scale,
+            num_head if num_head is not None else -1,
             is_test,
         )
         return output
@@ -141,6 +149,7 @@ def memory_efficient_attention(
             "causal": causal,
             "dropout_p": p,
             "scale": scale,
+            "num_head": num_head if num_head is not None else -1,
             "is_test": is_test,
         },
         outputs={

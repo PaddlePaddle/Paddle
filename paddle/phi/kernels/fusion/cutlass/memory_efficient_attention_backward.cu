@@ -50,12 +50,42 @@ void MemoryEfficientAttentionBackwardKernel(
     const Scalar& max_seqlen_q,
     const Scalar& max_seqlen_k,
     const bool causal,
-    const double dropout_p,
+    double dropout_p,
     const float scale,
+    const int64_t num_head,
     DenseTensor* query_grad,
     DenseTensor* key_grad,
     DenseTensor* value_grad,
     DenseTensor* bias_grad) {
+  if (query.dims().size() == 3) {
+    MemoryEfficientAttentionBackwardKernel<T, Context>(
+        ctx,
+        MemEffAttnReshape4D(query, num_head),
+        MemEffAttnReshape4D(key, num_head),
+        MemEffAttnReshape4D(value, num_head),
+        bias,
+        cu_seqlens_q,
+        cu_seqlens_k,
+        MemEffAttnReshape4D(output, num_head),
+        logsumexp,
+        seed_and_offset,
+        MemEffAttnReshape4D(output_grad, num_head),
+        max_seqlen_q,
+        max_seqlen_k,
+        causal,
+        dropout_p,
+        scale,
+        num_head,
+        MemEffAttnReshape4D(query_grad, num_head),
+        MemEffAttnReshape4D(key_grad, num_head),
+        MemEffAttnReshape4D(value_grad, num_head),
+        bias_grad);
+    MemEffAttnReshape3D(query_grad);
+    MemEffAttnReshape3D(key_grad);
+    MemEffAttnReshape3D(value_grad);
+    return;
+  }
+
   bool kernel_launched = false;
 
   auto launchKernel = [&](auto k_, auto kernel_fn) {

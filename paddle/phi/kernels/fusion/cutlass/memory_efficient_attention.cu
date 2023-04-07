@@ -37,12 +37,40 @@ void MemoryEfficientAttentionForwardKernel(
     const Scalar& max_seqlen_q,
     const Scalar& max_seqlen_k,
     const bool causal,
-    const double dropout_p,
+    double dropout_p,
     const float scale,
+    const int64_t num_head,
     const bool is_test,
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
+  if (query.dims().size() == 3) {
+    MemoryEfficientAttentionForwardKernel<T, Context>(
+        ctx,
+        MemEffAttnReshape4D(query, num_head),
+        MemEffAttnReshape4D(key, num_head),
+        MemEffAttnReshape4D(value, num_head),
+        bias,
+        cu_seqlens_q,
+        cu_seqlens_k,
+        causal_diagonal,
+        seqlen_k,
+        max_seqlen_q,
+        max_seqlen_k,
+        causal,
+        dropout_p,
+        scale,
+        num_head,
+        is_test,
+        MemEffAttnReshape4D(output, num_head),
+        logsumexp,
+        seed_and_offset);
+    MemEffAttnReshape3D(output);
+    return;
+  }
+
+  if (is_test) dropout_p = 0.0;
+
   int compute_capacity = ctx.GetComputeCapability();
   const auto max_shmem =
       getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;

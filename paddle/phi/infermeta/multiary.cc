@@ -1988,43 +1988,91 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        const bool causal,
                                        const double dropout_p,
                                        const float scale,
+                                       const int64_t num_head,
                                        const bool is_test,
                                        MetaTensor* output,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset) {
-  PADDLE_ENFORCE_EQ(
-      query.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Query should be a 4-D tensor"
-                                   "But received Query dimension(%s)",
-                                   query.dims().size()));
+  int64_t rank = query.dims().size();
+
+  if (rank != 3) {
+    PADDLE_ENFORCE_EQ(
+        query.dims().size(),
+        4,
+        phi::errors::InvalidArgument("Query should be a 3-D or 4-D tensor"
+                                     "But received Query dimension(%s)",
+                                     query.dims().size()));
+  }
+
   PADDLE_ENFORCE_EQ(
       key.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+      rank,
+      phi::errors::InvalidArgument("Key should be a 3-D or 4-D tensor"
                                    "But received Key dimension(%s)",
                                    key.dims().size()));
   PADDLE_ENFORCE_EQ(
       value.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Value should be a 4-D tensor"
+      rank,
+      phi::errors::InvalidArgument("Value should be a 3-D or 4-D tensor"
                                    "But received Value dimension(%s)",
                                    value.dims().size()));
 
+  if (rank == 3) {
+    PADDLE_ENFORCE_GT(num_head,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The attribute(num_head) should be provided if the "
+                          "input tensor is 3-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        query.dims()[2] % num_head,
+        0,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 3-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        key.dims()[2] % num_head,
+        0,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 3-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        value.dims()[2] % num_head,
+        0,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 3-D tensor."));
+  } else if (num_head > 0) {
+    PADDLE_ENFORCE_EQ(
+        query.dims()[2],
+        num_head,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 4-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        key.dims()[2],
+        num_head,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 4-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        value.dims()[2],
+        num_head,
+        phi::errors::InvalidArgument("Invalid attribute(num_head) when the "
+                                     "input tensor is 4-D tensor."));
+  }
+
   const int64_t query_batch_size = query.dims()[0];
   const int64_t query_seq_length = query.dims()[1];
-  const int64_t query_num_head = query.dims()[2];
-  const int64_t query_head_size = query.dims()[3];
+  const int64_t query_num_head = (rank == 3 ? num_head : query.dims()[2]);
+  const int64_t query_head_size =
+      (rank == 3 ? query.dims()[2] / num_head : query.dims()[3]);
 
   const int64_t key_batch_size = key.dims()[0];
   const int64_t key_seq_length = key.dims()[1];
-  const int64_t key_num_head = key.dims()[2];
-  const int64_t key_head_size = key.dims()[3];
+  const int64_t key_num_head = (rank == 3 ? num_head : key.dims()[2]);
+  const int64_t key_head_size =
+      (rank == 3 ? key.dims()[2] / num_head : key.dims()[3]);
 
   const int64_t value_batch_size = value.dims()[0];
   const int64_t value_seq_length = value.dims()[1];
-  const int64_t value_num_head = value.dims()[2];
-  const int64_t value_head_size = value.dims()[3];
+  const int64_t value_num_head = (rank == 3 ? num_head : value.dims()[2]);
+  const int64_t value_head_size =
+      (rank == 3 ? value.dims()[2] / num_head : value.dims()[3]);
 
   PADDLE_ENFORCE_EQ(((query_batch_size == key_batch_size) &&
                      (key_batch_size == value_batch_size)),
@@ -2046,8 +2094,16 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                     true,
                     phi::errors::InvalidArgument(
                         "The seq length of Key, Value should be equal."));
-  std::vector<int64_t> out_dims(
-      {query_batch_size, query_seq_length, query_num_head, value_head_size});
+  std::vector<int64_t> out_dims(rank);
+  out_dims[0] = query_batch_size;
+  out_dims[1] = query_seq_length;
+  if (rank == 3) {
+    out_dims[2] = query_num_head * value_head_size;
+  } else {
+    out_dims[2] = query_num_head;
+    out_dims[3] = value_head_size;
+  }
+
   std::vector<int64_t> logsumexp_dims({query_num_head, query_batch_size});
   std::vector<int64_t> seed_and_offset_dims({2});
 
