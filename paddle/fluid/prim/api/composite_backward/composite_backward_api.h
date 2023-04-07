@@ -1566,7 +1566,6 @@ void gelu_grad(const Tensor& x,
   }
 }
 
-
 // minimum grad
 template <typename T>
 void minimum_grad(const Tensor& x,
@@ -1613,7 +1612,6 @@ void minimum_grad(const Tensor& x,
     }
   }
 }
-
 
 template <typename T>
 void roll_grad(const Tensor& x,
