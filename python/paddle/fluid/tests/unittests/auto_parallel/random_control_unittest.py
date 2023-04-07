@@ -88,11 +88,16 @@ class TestRandomControl(unittest.TestCase):
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
-        auto.fetch('dropout_0.tmp_1')
+        fetch_list = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
         rc_engine = self.get_engine(False)
-        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc_losses = np.array(history.history["loss"])
-        print("test" * 8, history.history["dropout_0.tmp_1"])
+
+        train_dataloader = rc_engine.dataloader(
+            self.dataset, batch_size=self.batch_size, mode="train"
+        )
+        rc_engine.prepare(mode="train")
+        for data in train_dataloader:
+            outs = rc_engine.run(data, fetch_list=fetch_list, mode="train")
+        print(outs)
 
         # check program
         ops = rc_engine.main_program.global_block().ops
