@@ -16,6 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, dnnl::algorithm BINARY_OP>
 void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
@@ -153,12 +154,13 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedMultiply, dnnl::algorithm::binary_mul)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_elementwise_mul,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedMultiplyKernel,
+                   phi::fusion::FusedMultiplyKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
@@ -167,7 +169,7 @@ PD_REGISTER_KERNEL(fused_elementwise_mul,
 PD_REGISTER_KERNEL(fused_elementwise_div,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedDivideKernel,
+                   phi::fusion::FusedDivideKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,

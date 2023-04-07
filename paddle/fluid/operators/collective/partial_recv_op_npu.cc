@@ -22,57 +22,8 @@ template <typename T>
 class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-    out->mutable_data<T>(out->dims(), ctx.GetPlace());
-    int num = ctx.Attr<int>("num");
-    int id = ctx.Attr<int>("id");
-    int recv_numel = out->numel() / num;
-    int offset = recv_numel * id;
-
-    void* ptr =
-        reinterpret_cast<void*>(const_cast<T*>(out->data<T>()) + offset);
-    int numel = recv_numel;
-    HcclDataType dtype =
-        platform::ToHCCLDataType(framework::TransToProtoVarType(out->dtype()));
-
-    int ring_id = ctx.Attr<int>("ring_id");
-
-    auto place = ctx.GetPlace();
-    auto comm =
-        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
-
-    aclrtStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    int nranks = comm->nranks();
-    int peer = ctx.Attr<int>("peer");
-
-    PADDLE_ENFORCE_EQ(nranks,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The nranks must be 2, but (%d)", nranks));
-
-    int root = peer;
-
-    VLOG(3) << "begin hccl recv, parameter is: "
-            << "ring_id:" << ring_id << ", nranks:" << nranks
-            << ", peer:" << peer << ", numel:" << numel << ", ptr:" << ptr
-            << ", dtype:" << dtype << ", root:" << root
-            << ", comm: " << comm->comm() << ", stream: " << stream;
-
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
-
-#else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
-#endif
   }
 };
 

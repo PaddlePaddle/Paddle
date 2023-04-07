@@ -852,8 +852,6 @@ endif()
 
 add_subdirectory(ir)
 
-add_subdirectory(standalone_executor)
-
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
@@ -1152,25 +1150,6 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
 endif()
 
-if($ENV{USE_STANDALONE_EXECUTOR})
-  # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-  set_tests_properties(test_apply_pass_to_program
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_buffer_shared_memory_reuse_pass
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(
-    test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-    PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_optimizer
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_star_gan_with_gradient_penalty
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_switch_autotune
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_mnist_sorted_gradient
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-endif()
-
 set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
@@ -1201,7 +1180,8 @@ set(TEST_CINN_OPS
     test_layer_norm_op
     test_cast_op
     test_dropout_op
-    test_group_norm_op)
+    test_group_norm_op
+    test_roll_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
