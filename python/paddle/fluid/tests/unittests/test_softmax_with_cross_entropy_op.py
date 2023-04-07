@@ -509,12 +509,12 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_output(self):
         if self.python_api is not None:
-            self.check_output(atol=1e-2)
+            self.check_output()
         self.check_output(atol=1e-2)
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+            self.check_grad(["Logits"], "Loss")
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
@@ -925,7 +925,7 @@ class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
         self.dtype = np.uint16
 
         # NOTE: numpy bf16 have very low accuracy, use float32 for numpy check.
-        date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
+        date_type = np.float32
         logits = getattr(
             self,
             "logits",
@@ -956,12 +956,12 @@ class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_output(self):
         if self.python_api is not None:
-            self.check_output(atol=1e-2)
+            self.check_output()
         self.check_output(atol=1e-2)
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+            self.check_grad(["Logits"], "Loss")
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
