@@ -271,18 +271,19 @@ class WhileOp : public framework::OperatorBase {
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
     } else {
-      auto &current_scope = scope.NewScope();
-
-      if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForControlFlowOp(*core_, *block, &current_scope);
-        core_->reset_scope(&current_scope);
-      } else {
-        executor_->CreateVariables(*program, &current_scope, block->ID());
+      if (inference_scope_ == nullptr) {
+        inference_scope_ = &(scope.NewScope());
+        if (FLAGS_control_flow_use_new_executor) {
+          BuildScopeForControlFlowOp(*core_, *block, inference_scope_);
+          core_->reset_scope(inference_scope_);
+        } else {
+          executor_->CreateVariables(*program, inference_scope_, block->ID());
+        }
       }
 
       while (cond_data) {
-        for (auto &name : current_scope.LocalVarNames()) {
-          auto *var = current_scope.Var(name);
+        for (auto &name : inference_scope_->LocalVarNames()) {
+          auto *var = inference_scope_->Var(name);
           if (var->IsType<phi::DenseTensor>()) {
             // Clear all lod information for all lod_tensors.
             auto *t = var->GetMutable<phi::DenseTensor>();
@@ -299,14 +300,12 @@ class WhileOp : public framework::OperatorBase {
           core_->Run({}, false);
         } else {
           executor_->RunPreparedContext(
-              ctx_.get(), &current_scope, false, false, false);
+              ctx_.get(), inference_scope_, false, false, false);
         }
 
         cond_data = GetCondData(
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
-
-      scope.DeleteScope(&current_scope);
     }
   }
 
@@ -314,6 +313,7 @@ class WhileOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::Executor> executor_{nullptr};
   mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
+  mutable framework::Scope *inference_scope_{nullptr};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
