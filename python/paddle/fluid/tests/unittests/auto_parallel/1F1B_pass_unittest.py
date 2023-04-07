@@ -24,16 +24,16 @@ from get_gpt_model import generate_model, FakeDataset
 paddle.enable_static()
 
 
-def apply_pass(use_gradient_merge=False):
+def apply_pass(use_1f1b=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
 
-    if use_gradient_merge:
-        gradient_merge = strategy.gradient_merge
-        gradient_merge.enable = True
-        gradient_merge.k_steps = 2
-        gradient_merge.avg = True
+    if use_1f1b:
+        pipeline = strategy.pipeline
+        pipeline.enable = True
+        pipeline.schedule_mode = "1F1B"
+        pipeline.accumulate_steps = 2
 
     amp = strategy.amp
     amp.enable = True
@@ -55,7 +55,7 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestGradientMergePass(unittest.TestCase):
+class Test1F1BPass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -72,13 +72,13 @@ class TestGradientMergePass(unittest.TestCase):
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_gradient_merge=False):
+    def get_engine(self, use_1f1b=False):
         reset_prog()
 
-        strategy = apply_pass(use_gradient_merge)
+        strategy = apply_pass(use_1f1b)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("dp")
+        model, loss = generate_model("pp")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
@@ -95,35 +95,26 @@ class TestGradientMergePass(unittest.TestCase):
             ),
         )
 
-    def test_gradient_merge_pass(self):
-        # dp2 training
-        dp_engine = self.get_engine()
-        history = dp_engine.fit(
+    def test_1f1b_pass(self):
+        # pp2 training
+        engine_pp = self.get_engine()
+        history = engine_pp.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-        assert dp_engine._strategy.gradient_merge.enable == False
-        dp_losses = np.array(history.history["loss"])
+        assert engine_pp._strategy.pipeline.enable == False
 
-        # dp2 gradient merge training
-        gm_engine = self.get_engine(True)
-        history = gm_engine.fit(
+        # pp2 1f1b merge training
+        engine_1f1b = self.get_engine(True)
+        history = engine_1f1b.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-        assert gm_engine._strategy.gradient_merge.enable == True
-        gm_losses = np.array(history.history["loss"])
-
-        # avg_loss = 0
-        # pass_avg_ret_list = []
-        # for i, pass_ret in enumerate(gm_losses):
-        #     if (i + 1) % 4 == 0:
-        #         avg_loss += pass_ret
-        #         pass_avg_ret_list.append(avg_loss / 4)
-        #         avg_loss = 0
-        #     else:
-        #         avg_loss += pass_ret
+        assert engine_1f1b._strategy.pipeline.enable == True
 
         # NOTE: every sample data from dataset is all the same
-        self.check_results(dp_losses, gm_losses)
+        if paddle.distributed.get_rank() == 1:
+            losses_pp = np.array(history.history["loss"])
+            losses_1f1b = np.array(history.history["loss"])
+            self.check_results(losses_pp, losses_1f1b)
 
 
 if __name__ == "__main__":
