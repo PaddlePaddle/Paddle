@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.linalg import multi_dot
 
 import paddle
@@ -47,6 +47,66 @@ class TestMultiDotOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
         self.check_grad(['x1'], 'Out')
+
+
+class TestMultiDotFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
+        self.dtype = self.get_dtype()
+        self.get_inputs_and_outputs()
+
+    def get_dtype(self):
+        return "float16"
+
+    def get_inputs_and_outputs(self):
+        self.A = np.random.random((2, 8)).astype(self.dtype)
+        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.inputs = {
+            'X': [
+                ('x0', self.A.astype(self.dtype)),
+                ('x1', self.B.astype(self.dtype)),
+            ]
+        }
+        self.outputs = {'Out': multi_dot([self.A, self.B])}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+
+
+class TestMultiDotBF16(OpTest):
+    def setUp(self):
+        self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
+        self.dtype = self.get_dtype()
+        self.get_inputs_and_outputs()
+
+    def get_dtype(self):
+        return np.uint16
+
+    def get_inputs_and_outputs(self):
+        self.A = np.random.random((2, 8)).astype(self.dtype)
+        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.inputs = {
+            'X': [
+                ('x0', convert_float_to_uint16(self.A)),
+                ('x1', convert_float_to_uint16(self.B)),
+            ]
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(multi_dot([self.A, self.B]))
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
 
 
 # (A*B)*C

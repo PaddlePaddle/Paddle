@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
-from op import Operator
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle import fluid
 from paddle.fluid import core
 from paddle.nn import clip
 
@@ -53,6 +53,70 @@ class TestClipByNormOp(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+
+class TestClipByNormFP16Op(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = clip.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': input.astype(self.dtype),
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestClipByNormBF16(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = clip.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
 
 
 class TestCase1(TestClipByNormOp):
@@ -119,7 +183,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         out_selected_rows = scope.var('Out').get_selected_rows()
 
         # run clip_by_norm_op
-        clip_by_norm_op = Operator(
+        clip_by_norm_op = fluid.op.Operator(
             "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
         )
         clip_by_norm_op.run(scope, place)
