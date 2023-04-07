@@ -89,7 +89,9 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
         self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', numeric_grad_delta=0.05
+        )
 
 
 def case_generator(op_type, Xshape, diagonal, expected, dtype):
@@ -160,7 +162,6 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
         raise ValueError(f"Not supported dtype {dtype}")
     CLASS.__name__ = cls_name
     globals()[cls_name] = CLASS
-    print(cls_name, globals()[cls_name])
 
 
 # NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
