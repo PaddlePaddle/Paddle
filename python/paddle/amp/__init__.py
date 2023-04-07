@@ -45,12 +45,12 @@ __all__ = [
 
 def is_float16_supported(device=None):
     """
-    Determine whether the current place supports float16 in the auto-mixed-precision training.
+    Determine whether the place supports float16 in the auto-mixed-precision training.
 
     Args:
-        device (str, optional): Specify the running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
 
     Examples:
 
@@ -71,12 +71,12 @@ def is_float16_supported(device=None):
 
 def is_bfloat16_supported(device=None):
     """
-    Determine whether the current place supports bfloat16 in the auto-mixed-precision training.
+    Determine whether the place supports bfloat16 in the auto-mixed-precision training.
 
     Args:
-        device (str, optional): Specify the running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``mlu``, ``gpu:x``, ``xpu:x``, ``npu:x``, ``mlu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs, NPUs or MLUs.
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
 
     Examples:
 

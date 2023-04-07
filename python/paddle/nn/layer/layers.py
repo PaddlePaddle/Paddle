@@ -2159,7 +2159,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: None.
+            excluded_layers(nn.Layer|list|None optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2204,10 +2204,14 @@ class Layer:
     def float16(self, excluded_layers=None):
         '''
         Casts all floating point parameters and buffers to ``float16`` data type.
-        Note: `nn.BatchNorm` does not support ``float16`` weights, so it would not be converted by default.
+
+
+        .. note::
+            ``nn.BatchNorm`` does not support ``bfloat16`` weights, so it would not be converted by default.
+
 
         Parameters:
-           excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+           excluded_layers(nn.Layer|list|None optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2229,9 +2233,14 @@ class Layer:
                         return out
 
                 model = Model()
-                if paddle.amp.is_float16_supported():
-                    model.float16()
+                model.float16()
         '''
+
+        if paddle.amp.is_float16_supported() is False:
+            warnings.warn(
+                "Paddle compiled by the user does not support float16, so keep original data type."
+            )
+            return self
 
         excluded_layers = (
             [nn.BatchNorm] if excluded_layers is None else excluded_layers
@@ -2255,10 +2264,14 @@ class Layer:
     def bfloat16(self, excluded_layers=None):
         '''
         Casts all floating point parameters and buffers to ``bfloat16`` data type.
-        Note: `nn.BatchNorm` does not support ``bfloat16`` weights, so it would not be converted by default.
+
+
+        .. note::
+            ``nn.BatchNorm`` does not support ``bfloat16`` weights, so it would not be converted by default.
+
 
         Parameters:
-            excluded_layers(nn.Layer|list, optional): Specify the layers that need to be kept original data type. Default: nn.BatchNorm.
+            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2280,9 +2293,14 @@ class Layer:
                         return out
 
                 model = Model()
-                if paddle.amp.is_bfloat16_supported():
-                    model.bfloat16()
+                model.bfloat16()
         '''
+
+        if paddle.amp.is_bfloat16_supported() is False:
+            warnings.warn(
+                "Paddle compiled by the user does not support bfloat16, so keep original data type."
+            )
+            return self
 
         excluded_layers = (
             [nn.BatchNorm] if excluded_layers is None else excluded_layers

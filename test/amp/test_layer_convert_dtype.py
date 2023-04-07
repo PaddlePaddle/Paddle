@@ -83,7 +83,23 @@ class TestDtypeConvert(unittest.TestCase):
             corrected_dtype=paddle.float16,
         )
 
-    def test_bfloat16(self):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] >= 8.0,
+        "run test when maximum gpu's compute capability is 8.0.",
+    )
+    def test_unsupported_bfloat16(self):
+        self.verify_trans_dtype(
+            test_type='bfloat16',
+            corrected_dtype=paddle.float32,
+        )
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 8.0,
+        "run test when gpu's compute capability is at least 8.0.",
+    )
+    def test_supported_bfloat16(self):
         self.verify_trans_dtype(
             test_type='bfloat16',
             corrected_dtype=paddle.bfloat16,
