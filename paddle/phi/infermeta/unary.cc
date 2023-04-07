@@ -2821,6 +2821,23 @@ void Pool2DInferMeta(const MetaTensor& x,
   }
 }
 
+void PSendInferMeta(const MetaTensor& x, int peer) {
+  LOG(INFO) << "SendBaseInferMeta begin";
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for p_send op must be non-negative.", peer));
+}
+
+void PSendArrayInferMeta(const MetaTensor& x, int peer) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for p_send op must be non-negative.", peer));
+}
+
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,
@@ -3129,6 +3146,20 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
     reduce_all = true;
   }
   ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+}
+
+void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  if (dim[0] > 0 || dim[0] < -1) {
+    PADDLE_ENFORCE_EQ(
+        dim[0] % nranks,
+        0,
+        errors::InvalidArgument(
+            "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
+    dim[0] /= nranks;
+  }
+  out->set_dims(dim);
+  out->set_dtype(x.dtype());
 }
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
