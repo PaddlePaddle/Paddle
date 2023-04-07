@@ -757,7 +757,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 stop_gradient=False,
             )
             net = PrimGroupNorm(self.num_channels, scale_, bias_)
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, True)
             output = net(input_)
             grad = paddle.grad(output, input_)
             fwd_actual.append(output.numpy())
