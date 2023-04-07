@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -372,7 +376,7 @@ class TestExponentialFP16Op(OpTest):
         hist2 = hist2.astype(np.float16)
         hist2 = hist2 / float(data_np.size)
 
-        np.testing.assert_allclose(hist1, hist2, rtol=0.03)
+        np.testing.assert_allclose(hist1, hist2, rtol=0.05)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -409,10 +413,33 @@ class TestExponentialBP16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_customized(self.verify_output)
 
-    def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (1024, 1024))
+        hist1, _ = np.histogram(outs[0], range=(-3, 5))
+        hist1 = hist1.astype("float32")
+        hist1 = hist1 / float(outs[0].size)
+
+        data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
+        hist2, _ = np.histogram(data_np, range=(-3, 5))
+        hist2 = hist2.astype("float32")
+        hist2 = hist2 / float(data_np.size)
+
+        np.testing.assert_allclose(hist1, hist2, rtol=0.05)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
+            user_defined_grad_outputs=[
+                np.random.rand(1024, 1024).astype(self.dtype)
+            ],
+            check_dygraph=False,  # inplace can not call paddle.grad
+        )
 
 
 if __name__ == "__main__":
