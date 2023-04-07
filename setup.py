@@ -1120,6 +1120,7 @@ def get_package_data_and_package_dir():
                 'libmkldnn.so.0',
                 'libdnnl.so.1',
                 'libdnnl.so.2',
+                'libdnnl.so.3',
             ]
         else:
             package_data['paddle.libs'] += ['mkldnn.dll']
