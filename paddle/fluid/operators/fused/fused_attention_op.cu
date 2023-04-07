@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cuda_fp16.h>
+
+#include <cub/cub.cuh>
+
 #include "paddle/fluid/operators/fused/fused_attention_utils.h"
 
 #include "paddle/phi/api/include/tensor.h"
