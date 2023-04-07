@@ -26,9 +26,8 @@ void AMaxRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<int64_t>& dims,
                    bool keep_dim,
-                   bool reduce_all,
                    DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::MaxFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);

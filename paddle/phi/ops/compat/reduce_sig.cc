@@ -85,15 +85,6 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceAMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
-    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
-    // InferShape, so we must return the "max_raw" KernelSignature.
-    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
-    // the "max_raw" KernelSignature
-    if (ctx.IsForInferShape() || reduce_all) {
-      return KernelSignature(
-          "amax_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
-    }
     return KernelSignature("amax", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});
@@ -117,15 +108,6 @@ KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceAMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
-    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
-    // InferShape, so we must return the "min_raw" KernelSignature.
-    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
-    // the "min_raw" KernelSignature
-    if (ctx.IsForInferShape() || reduce_all) {
-      return KernelSignature(
-          "amin_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
-    }
     return KernelSignature("amin", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});
