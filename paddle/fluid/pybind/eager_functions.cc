@@ -44,6 +44,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -579,7 +580,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       } else if (attr_type_str == "float") {
         ctx.EmplaceBackAttr(CastPyArg2AttrFloat(obj, attr_start_idx + i));
       } else if (attr_type_str == "int64_t") {
-        ctx.EmplaceBackAttr(CastPyArg2AttrLong(obj, attr_start_idx + i));
+        ctx.EmplaceBackAttr(CastPyArg2Long(obj, op_type, attr_start_idx + i));
       } else if (attr_type_str == "std::string") {
         ctx.EmplaceBackAttr(CastPyArg2AttrString(obj, attr_start_idx + i));
       } else if (attr_type_str == "std::vector<int>") {
@@ -587,7 +588,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       } else if (attr_type_str == "std::vector<float>") {
         ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
       } else if (attr_type_str == "std::vector<int64_t>") {
-        ctx.EmplaceBackAttr(CastPyArg2VectorOfInt64(obj, attr_start_idx + i));
+        ctx.EmplaceBackAttr(CastPyArg2Longs(obj, op_type, attr_start_idx + i));
       } else if (attr_type_str == "std::vector<std::string>") {
         ctx.EmplaceBackAttr(CastPyArg2VectorOfString(obj, attr_start_idx + i));
       } else {
