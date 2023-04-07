@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace paddle {
 namespace experimental {
 
@@ -292,8 +294,8 @@ phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
 }
 
 phi::DenseTensor* ProcessStridesBackup(phi::DenseTensor** tensor) {
-  if (*tensor == nullptr || !(*tensor)->IsInitialized() ||
-      (*tensor)->meta().is_contiguous()) {
+  if (!FLAGS_use_stride_kernel || *tensor == nullptr ||
+      !(*tensor)->IsInitialized() || (*tensor)->meta().is_contiguous()) {
     return nullptr;
   } else {
     phi::DenseTensor* backup = *tensor;
@@ -307,7 +309,8 @@ std::vector<phi::DenseTensor*> ProcessStridesBackup(
   std::vector<phi::DenseTensor*> backup;
   backup.reserve(tensor->size());
   for (auto& t : *tensor) {
-    if (t == nullptr || !t->IsInitialized() || t->meta().is_contiguous()) {
+    if (!FLAGS_use_stride_kernel || t == nullptr || !t->IsInitialized() ||
+        t->meta().is_contiguous()) {
       backup.emplace_back(nullptr);
     } else {
       backup.emplace_back(t);
