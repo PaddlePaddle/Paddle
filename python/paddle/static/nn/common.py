@@ -2533,9 +2533,7 @@ def deform_conv2d(
         )
 
 
-def bilinear_tensor_product(
-    x, y, size, act=None, name=None, param_attr=None, bias_attr=None
-):
+def bilinear(x, y, size, act=None, name=None, param_attr=None, bias_attr=None):
     r"""
     This layer performs bilinear tensor product on two inputs.
 
@@ -2577,10 +2575,10 @@ def bilinear_tensor_product(
 
             x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
             y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
-            tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
+            tensor = paddle.static.nn.bilinear(x, y, size=1000)
 
     """
-    helper = LayerHelper('bilinear_tensor_product', **locals())
+    helper = LayerHelper('bilinear', **locals())
     dtype = helper.input_dtype('x')
     if len(x.shape) != 2 or len(y.shape) != 2:
         raise ValueError(
@@ -2602,9 +2600,7 @@ def bilinear_tensor_product(
             attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
         )
         inputs["Bias"] = bias
-    helper.append_op(
-        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
-    )
+    helper.append_op(type="bilinear", inputs=inputs, outputs={"Out": out})
 
     # add activation
     return helper.append_activation(out)

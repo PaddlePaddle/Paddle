@@ -111,8 +111,8 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
 
 
 # 1. test Apis that inherit from layers.Layer
-def dyfunc_BilinearTensorProduct(layer1, layer2):
-    bilinearTensorProduct = paddle.nn.Bilinear(
+def dyfunc_Bilinear(layer1, layer2):
+    bilinear = paddle.nn.Bilinear(
         5,
         4,
         1000,
@@ -124,7 +124,7 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         ),
     )
 
-    res = bilinearTensorProduct(
+    res = bilinear(
         fluid.dygraph.base.to_variable(layer1),
         fluid.dygraph.base.to_variable(layer2),
     )
@@ -265,11 +265,11 @@ class TestDygraphBasicApi(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
+class TestDygraphBasicApi_Bilinear(TestDygraphBasicApi):
     def setUp(self):
         self.input1 = np.random.random((5, 5)).astype('float32')
         self.input2 = np.random.random((5, 4)).astype('float32')
-        self.dygraph_func = dyfunc_BilinearTensorProduct
+        self.dygraph_func = dyfunc_Bilinear
 
     def get_dygraph_output(self):
         with fluid.dygraph.guard():

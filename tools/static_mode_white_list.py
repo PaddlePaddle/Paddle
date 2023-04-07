@@ -81,7 +81,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_bilateral_slice_op',
     'test_bilinear_api',
     'test_bilinear_interp_v2_op',
-    'test_bilinear_tensor_product_op',
+    'test_bilinear_op',
     'test_bipartite_match_op',
     'test_bmm_op',
     'test_box_clip_op',

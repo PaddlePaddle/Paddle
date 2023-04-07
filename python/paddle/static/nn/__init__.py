@@ -28,7 +28,7 @@ from .control_flow import (
     while_loop,
     switch_case,
 )
-from .common import bilinear_tensor_product  # noqa: F401
+from .common import bilinear  # noqa: F401
 from .common import py_func  # noqa: F401
 from .common import row_conv  # noqa: F401
 from .common import spectral_norm  # noqa: F401
@@ -63,7 +63,7 @@ from .control_flow import cond
 __all__ = [  # noqa
     'fc',
     'batch_norm',
-    'bilinear_tensor_product',
+    'bilinear',
     'embedding',
     'case',
     'cond',

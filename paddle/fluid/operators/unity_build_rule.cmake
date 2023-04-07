@@ -26,7 +26,7 @@ register_unity_group(
   bilateral_slice_op.cc)
 register_unity_group(
   cc
-  bilinear_tensor_product_op.cc
+  bilinear_op.cc
   bmm_op.cc
   bpr_loss_op.cc
   cast_op.cc
@@ -372,7 +372,7 @@ register_unity_group(
   batch_norm_op.cu)
 register_unity_group(
   cu
-  bilinear_tensor_product_op.cu
+  bilinear_op.cu
   bmm_op.cu
   cast_op.cu
   cholesky_op.cu

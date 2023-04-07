@@ -341,7 +341,7 @@ def _add_keywords_to(node, dygraph_api_name):
             )
         )
 
-    if dygraph_api_name == "BilinearTensorProduct":
+    if dygraph_api_name == "Bilinear":
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "output_dim":
                 ast_keyword.arg = "size"

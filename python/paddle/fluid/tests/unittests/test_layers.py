@@ -492,14 +492,14 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
-    def test_bilinear_tensor_product(self):
+    def test_bilinear(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
         inp_np_y = np.array([[4, 5, 6]]).astype('float32')
 
         with self.static_graph():
             data_x = paddle.static.data(name='x', shape=[1, 3], dtype="float32")
             data_y = paddle.static.data(name='y', shape=[1, 3], dtype="float32")
-            out = paddle.static.nn.common.bilinear_tensor_product(
+            out = paddle.static.nn.common.bilinear(
                 data_x,
                 data_y,
                 6,
@@ -551,7 +551,7 @@ class TestLayer(LayerTest):
             data_y2 = paddle.static.data(
                 name='y', shape=[1, 3], dtype="float32"
             )
-            out2 = paddle.static.nn.common.bilinear_tensor_product(
+            out2 = paddle.static.nn.common.bilinear(
                 data_x2, data_y2, 6, act='sigmoid'
             )
 
@@ -1978,16 +1978,14 @@ class TestBook(LayerTest):
             out = paddle.scale(input, scale=scale_var)
             return out
 
-    def make_bilinear_tensor_product_layer(self):
+    def make_bilinear_layer(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name='data', shape=[4], dtype="float32")
 
             theta = self._get_data(name="theta", shape=[5], dtype="float32")
-            out = paddle.static.nn.common.bilinear_tensor_product(
-                data, theta, 6
-            )
+            out = paddle.static.nn.common.bilinear(data, theta, 6)
             return out
 
     def make_batch_norm(self):

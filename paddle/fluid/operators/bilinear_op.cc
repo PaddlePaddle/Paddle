@@ -21,21 +21,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class BilinearTensorProductOp : public framework::OperatorWithKernel {
+class BilinearOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
-class BilinearTensorProductOpMaker : public framework::OpProtoAndCheckerMaker {
+class BilinearOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The first input of bilinear_tensor_product operator.");
-    AddInput("Y", "The second input of bilinear_tensor_product operator.");
-    AddInput("Weight",
-             "The learnable parameters of bilinear_tensor_product operator.");
-    AddInput("Bias", "The learnable bias of bilinear_tensor_product operator.")
+    AddInput("X", "The first input of bilinear operator.");
+    AddInput("Y", "The second input of bilinear operator.");
+    AddInput("Weight", "The learnable parameters of bilinear operator.");
+    AddInput("Bias", "The learnable bias of bilinear operator.")
         .AsDispensable();
-    AddOutput("Out", "The output of bilinear_tensor_product operator.");
+    AddOutput("Out", "The output of bilinear operator.");
     AddComment(R"DOC(
 Bilinear Tensor Product operator.
 Given input X and Y, a 3D tensor Weight and a Bias. Each column of the
@@ -56,20 +55,19 @@ Where $W_i$ is the $i$-th slice of Input(Weight);
   }
 };
 
-class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
+class BilinearOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
 template <typename T>
-class BilinearTensorProductGradOpMaker
-    : public framework::SingleGradOpMaker<T> {
+class BilinearGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("bilinear_tensor_product_grad");
+    op->SetType("bilinear_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
@@ -90,21 +88,19 @@ class BilinearTensorProductGradOpMaker
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(bilinear_tensor_product,
-                            BilinearTensorProductInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(bilinear,
+                            BilinearInferShapeFunctor,
                             PD_INFER_META(phi::BilinearInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(
-    bilinear_tensor_product_grad,
-    BilinearTensorProductGradInferShapeFunctor,
-    PD_INFER_META(phi::BilinearTensorProductGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bilinear_grad,
+                            BilinearGradInferShapeFunctor,
+                            PD_INFER_META(phi::BilinearGradInferMeta));
 
-REGISTER_OPERATOR(
-    bilinear_tensor_product,
-    ops::BilinearTensorProductOp,
-    ops::BilinearTensorProductOpMaker,
-    ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
-    ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>,
-    BilinearTensorProductInferShapeFunctor);
-REGISTER_OPERATOR(bilinear_tensor_product_grad,
-                  ops::BilinearTensorProductOpGrad,
-                  BilinearTensorProductGradInferShapeFunctor);
+REGISTER_OPERATOR(bilinear,
+                  ops::BilinearOp,
+                  ops::BilinearOpMaker,
+                  ops::BilinearGradOpMaker<paddle::framework::OpDesc>,
+                  ops::BilinearGradOpMaker<paddle::imperative::OpBase>,
+                  BilinearInferShapeFunctor);
+REGISTER_OPERATOR(bilinear_grad,
+                  ops::BilinearOpGrad,
+                  BilinearGradInferShapeFunctor);

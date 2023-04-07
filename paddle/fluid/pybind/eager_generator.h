@@ -119,7 +119,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
     {"smooth_l1_loss", {"X", "Y", "InsideWeight", "OutsideWeight"}},
-    {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
+    {"bilinear", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
     {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},

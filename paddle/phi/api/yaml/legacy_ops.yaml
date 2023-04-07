@@ -214,7 +214,7 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
-- op : bilinear_tensor_product
+- op : bilinear
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
   output : Tensor
   infer_meta :
@@ -222,7 +222,7 @@
   kernel :
     func : bilinear
   optional : bias
-  backward : bilinear_tensor_product_grad
+  backward : bilinear_grad
 
 - op : bincount
   args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)

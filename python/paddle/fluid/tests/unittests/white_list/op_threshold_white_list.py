@@ -16,7 +16,7 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'affine_channel',
     'bilinear_interp',
     'bilinear_interp_v2',
-    'bilinear_tensor_product',
+    'bilinear',
     'conv2d',
     'conv3d',
     'cross_entropy',

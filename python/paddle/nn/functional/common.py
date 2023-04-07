@@ -942,7 +942,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
         check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -954,9 +954,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         helper = LayerHelper("bilinear", **locals())
         out = helper.create_variable_for_type_inference(dtype=x1.dtype)
 
-        helper.append_op(
-            type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
-        )
+        helper.append_op(type="bilinear", inputs=inputs, outputs={"Out": out})
 
         return out
 

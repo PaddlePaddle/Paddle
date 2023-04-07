@@ -21,7 +21,7 @@ import paddle
 from paddle import fluid
 
 
-class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
+class TestDygraphBilinearAPIError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -45,16 +45,16 @@ class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
                 x4 = paddle.static.data("", shape=[0], dtype="float32")
                 self.assertRaises(
                     ValueError,
-                    paddle.static.nn.bilinear_tensor_product,
+                    paddle.static.nn.bilinear,
                     x3,
                     x4,
                     1000,
                 )
 
 
-class TestBilinearTensorProductOp(OpTest):
+class TestBilinearOp(OpTest):
     def setUp(self):
-        self.op_type = "bilinear_tensor_product"
+        self.op_type = "bilinear"
         self.python_api = paddle.nn.functional.bilinear
         batch_size = 6
         size0 = 5
