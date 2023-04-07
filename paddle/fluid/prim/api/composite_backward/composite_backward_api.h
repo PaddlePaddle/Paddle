@@ -1593,7 +1593,7 @@ void tile_grad(const Tensor& x,
     auto _repeat_times = repeat_times.GetData();
     if (out_dims != x.dims()) {
       auto result = out_grad;
-      for (int i = 0; i < repeat_times.size(); i++) {
+      for (int i = 0; i < static_cast<int>(repeat_times.size()); i++) {
         int size = out_grad.shape()[i] / repeat_times[i];
         std::vector<int> sections(repeat_times[i], size);
         auto split_arr = split<T>(result, IntArray(sections), i);
