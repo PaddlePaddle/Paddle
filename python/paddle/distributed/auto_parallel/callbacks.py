@@ -53,7 +53,7 @@ def config_callbacks(
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
         cbks = cbks + [ModelCheckpointAuto(save_freq, save_dir)]
 
-    if not any(isinstance(k, Profiler) for k in cbks) and verbose == 3:
+    if not any(isinstance(k, Profiler) for k in cbks) and verbose == 4:
         cbks = cbks + [Profiler(timer_only=True)]
 
     if not any(isinstance(k, History) for k in cbks):
