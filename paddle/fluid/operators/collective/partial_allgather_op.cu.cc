@@ -113,4 +113,5 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16) {
+}

@@ -128,4 +128,5 @@ PD_REGISTER_STRUCT_KERNEL(partial_send,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16) {
+}
