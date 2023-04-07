@@ -93,15 +93,16 @@ class TestRandomControl(unittest.TestCase):
                 rng_names.append(op.attr('rng_name'))
             if op.type == "dropout":
                 seed_var_names.append(op.input("Seed")[0])
+        rank = paddle.distributed.get_rank()
 
         self.assertEqual(
             rng_names,
             [
                 'mesh:1_dim0:-1',
-                'mesh:1_dim0:0',
+                f'mesh:1_dim0:{rank}',
                 'mesh:1_dim0:-1',
                 'mesh:1_dim0:-1',
-                'mesh:1_dim0:0',
+                f'mesh:1_dim0:{rank}',
                 'mesh:1_dim0:-1',
                 'mesh:1_dim0:-1',
             ],
@@ -126,6 +127,7 @@ class TestRandomControl(unittest.TestCase):
         rc_losses = np.array(history.history["loss"])
 
         # check program
+        rank = paddle.distributed.get_rank()
         ops = rc_engine.main_program.global_block().ops
         rng_names = []
         seed_var_names = []
@@ -139,10 +141,10 @@ class TestRandomControl(unittest.TestCase):
             rng_names,
             [
                 'mesh:1_dim0:-1',
-                'mesh:1_dim0:0',
+                f'mesh:1_dim0:{rank}',
                 'mesh:1_dim0:-1',
                 'mesh:1_dim0:-1',
-                'mesh:1_dim0:0',
+                f'mesh:1_dim0:{rank}',
                 'mesh:1_dim0:-1',
                 'mesh:1_dim0:-1',
             ],
