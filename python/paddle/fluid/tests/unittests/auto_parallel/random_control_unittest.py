@@ -92,7 +92,10 @@ class TestRandomControl(unittest.TestCase):
         rc_engine = self.get_engine(False)
 
         train_dataloader = rc_engine.dataloader(
-            self.dataset, batch_size=self.batch_size, mode="train"
+            self.dataset,
+            batch_size=self.batch_size,
+            mode="train",
+            sample_split=3,
         )
         rc_engine.prepare(mode="train")
         for data in train_dataloader:
