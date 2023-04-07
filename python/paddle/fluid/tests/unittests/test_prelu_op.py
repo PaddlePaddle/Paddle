@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F
@@ -226,6 +226,83 @@ class PReluTest(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Alpha'], 'Out')
+
+
+class TestPReluFP16OP(PReluTest):
+    def setUp(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestPReluBF16(OpTest):
+    def setUp(self):
+        self.init_dtype()
+        self.init_input_shape()
+        self.init_attr()
+        self.op_type = "prelu"
+        self.python_api = prelu_api_wrapper
+
+        x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        # Since zero point in prelu is not differentiable, avoid randomize
+        # zero.
+        x_np[np.abs(x_np) < 0.005] = 0.02
+
+        if self.attrs == {
+            'mode': "all",
+            "data_format": "NCHW",
+        } or self.attrs == {'mode': "all", "data_format": "NHWC"}:
+            alpha_np = np.random.uniform(-1, -0.5, (1))
+        elif self.attrs == {'mode': "channel", "data_format": "NCHW"}:
+            alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
+            alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
+        else:
+            alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+        alpha_np = alpha_np.astype(self.dtype)
+
+        self.inputs = {
+            'X': convert_float_to_uint16(x_np),
+            'Alpha': convert_float_to_uint16(alpha_np),
+        }
+
+        # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
+        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
+        reshaped_alpha = self.inputs['Alpha']
+        if self.attrs == {'mode': "channel", "data_format": "NCHW"}:
+            reshaped_alpha = np.reshape(
+                self.inputs['Alpha'],
+                [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]),
+            )
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
+            reshaped_alpha = np.reshape(
+                self.inputs['Alpha'],
+                [1] + [1] * len(self.x_shape[1:-1]) + [self.x_shape[-1]],
+            )
+        out_np = np.maximum(self.inputs['X'], 0.0)
+        out_np = out_np + np.minimum(self.inputs['X'], 0.0) * reshaped_alpha
+        assert out_np is not self.inputs['X']
+        self.outputs = {'Out': convert_float_to_uint16(out_np)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_input_shape(self):
+        self.x_shape = [2, 100, 3, 4]
+
+    def init_attr(self):
+        self.attrs = {'mode': "channel", "data_format": "NCHW"}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
 
 
 @skip_check_grad_ci(
