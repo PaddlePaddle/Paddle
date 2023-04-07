@@ -15,7 +15,7 @@
 import paddle.distributed as dist
 
 
-class StrategyGroupBase():
+class StrategyGroupBase:
     """
     The base class of communication group with distributed strategy.
 
@@ -39,7 +39,8 @@ class StrategyGroupBase():
     """
 
     def __init__(self, list_of_ranks):
-        assert dist.is_initialized(
+        assert (
+            dist.is_initialized()
         ), "The global communication group need to be initialized."
         assert len(list_of_ranks), "The list_of_ranks can not be empty."
         self._rank = dist.get_rank()
@@ -57,8 +58,9 @@ class StrategyGroupBase():
         world_size_list = []
         for ranks in self._list_of_ranks:
             world_size_list.append(len(ranks))
-        is_value = all(world_size == world_size_list[0]
-                       for world_size in world_size_list)
+        is_value = all(
+            world_size == world_size_list[0] for world_size in world_size_list
+        )
         return world_size_list[0] if is_value else world_size_list
 
     @property
@@ -77,10 +79,11 @@ class StrategyGroupBase():
             group = dist.new_group(ranks=ranks)
             if self._rank in ranks:
                 list_of_group.append(group)
-        assert len(
-            list_of_group
-        ) > 0, "Rank {} does not belong to the list_of_ranks {}.".format(
-            self._rank, self._list_of_ranks)
+        assert (
+            len(list_of_group) > 0
+        ), "Rank {} does not belong to the list_of_ranks {}.".format(
+            self._rank, self._list_of_ranks
+        )
         return list_of_group if len(list_of_group) > 1 else list_of_group[0]
 
 
@@ -99,8 +102,8 @@ class DPGroup(StrategyGroupBase):
     def __init__(self, list_of_ranks):
         super(DPGroup, self).__init__(list_of_ranks)
         assert not isinstance(
-            self.group, list), "Rank {} belongs to multi dp groups".format(
-                self._rank)
+            self.group, list
+        ), "Rank {} belongs to multi dp groups".format(self._rank)
 
 
 class MPGroup(StrategyGroupBase):
@@ -118,8 +121,8 @@ class MPGroup(StrategyGroupBase):
     def __init__(self, list_of_ranks):
         super(MPGroup, self).__init__(list_of_ranks)
         assert not isinstance(
-            self.group, list), "Rank {} belongs to multi mp groups".format(
-                self._rank)
+            self.group, list
+        ), "Rank {} belongs to multi mp groups".format(self._rank)
 
 
 class ShardingGroup(StrategyGroupBase):
@@ -137,8 +140,8 @@ class ShardingGroup(StrategyGroupBase):
     def __init__(self, list_of_ranks):
         super(ShardingGroup, self).__init__(list_of_ranks)
         assert not isinstance(
-            self.group,
-            list), "Rank {} belongs to multi sharding groups".format(self._rank)
+            self.group, list
+        ), "Rank {} belongs to multi sharding groups".format(self._rank)
 
 
 class PPGroup(StrategyGroupBase):
@@ -156,8 +159,8 @@ class PPGroup(StrategyGroupBase):
     def __init__(self, list_of_ranks):
         super(PPGroup, self).__init__(list_of_ranks)
         assert not isinstance(
-            self.group, list), "Rank {} belongs to multi pp groups".format(
-                self._rank)
+            self.group, list
+        ), "Rank {} belongs to multi pp groups".format(self._rank)
 
         self._send_next_group = None
         self._send_prev_group = None
@@ -197,7 +200,12 @@ class PPGroup(StrategyGroupBase):
         Returns:
             Four subgroups including send/recv to/from prev/next.
         """
-        return self._send_next_group, self._send_prev_group, self._recv_next_group, self._recv_prev_group
+        return (
+            self._send_next_group,
+            self._send_prev_group,
+            self._recv_next_group,
+            self._recv_prev_group,
+        )
 
     def _create_p2p_group(self):
         degree = self.world_size
@@ -223,5 +231,11 @@ class PPGroup(StrategyGroupBase):
                 elif self._rank == prev_rank:
                     self._recv_next_group = prev_group
 
-        assert self._send_next_group and self._send_prev_group and self._recv_next_group and self._recv_prev_group,\
-                "Error occurs while creating p2p group for rank {}.".format(self._rank)
+        assert (
+            self._send_next_group
+            and self._send_prev_group
+            and self._recv_next_group
+            and self._recv_prev_group
+        ), "Error occurs while creating p2p group for rank {}.".format(
+            self._rank
+        )

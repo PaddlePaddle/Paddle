@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+
 set -e
 
 CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --gpus=0,1 strategy_group.py
