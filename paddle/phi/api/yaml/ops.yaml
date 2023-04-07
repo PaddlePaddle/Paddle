@@ -1128,7 +1128,8 @@
   infer_meta:
     func : MomentumInferMeta
   kernel :
-    func : momentum
+    func : momentum {dense, dense, dense, dense, dense -> dense, dense, dense},
+           momentum_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense -> dense, dense, dense}
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)

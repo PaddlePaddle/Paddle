@@ -1391,7 +1391,6 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
-  manual_signature : [momentum_]
 
 - op : multi_dot
   backward : multi_dot_grad
