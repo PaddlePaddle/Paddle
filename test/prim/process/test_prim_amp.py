@@ -25,12 +25,6 @@ from paddle.nn import BatchNorm
 np.random.seed(2023)
 
 
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False)
-
-
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -44,7 +38,7 @@ class PrimeNet(paddle.nn.Layer):
         return res
 
 
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimAMPO1(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim v.s Dygraph in AMPO1.
     """
@@ -63,7 +57,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         )
 
         if use_prim:
-            net = apply_to_static(net, False)
+            net = paddle.jit.to_static(net, build_strategy=False)
         with paddle.amp.auto_cast(level='O1'):
             out = net(self.x)
             loss = paddle.mean(out)
@@ -79,6 +73,28 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             np.testing.assert_allclose(
                 expected,
                 actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
+
+    def test_amp_O1_infer(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            net = PrimeNet()
+            core._set_prim_all_enabled(False)
+            net.eval()
+            static_net = paddle.jit.to_static(net, build_strategy=False)
+            res = static_net(self.x)
+
+            # set prim all enabled
+            core._set_prim_all_enabled(True)
+            net.eval()
+            static_net = paddle.jit.to_static(net, build_strategy=False)
+            with paddle.amp.auto_cast(level='O1'):
+                res_amp = static_net(self.x)
+
+            np.testing.assert_allclose(
+                res,
+                res_amp,
                 rtol=1e-3,
                 atol=1e-3,
             )
