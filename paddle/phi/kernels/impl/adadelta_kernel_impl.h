@@ -78,7 +78,8 @@ void AdadeltaKernel(const Context& dev_ctx,
           EigenVector<MPDType>::Flatten(*master_param_outs);
       auto eigen_master_param = EigenVector<MPDType>::Flatten(*master_param);
 
-      eigen_master_param_out.device(place) = eigen_master_param + update;
+      eigen_master_param_out.device(place) =
+          eigen_master_param + lr.broadcast(m_dsize) * update;
       eigen_param_out.device(place) = (eigen_param.template cast<MPDType>() +
                                        lr.broadcast(m_dsize) * update)
                                           .template cast<T>();
