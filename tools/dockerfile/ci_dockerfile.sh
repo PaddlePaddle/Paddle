@@ -44,6 +44,7 @@ function make_ubuntu_dockerfile(){
 function make_ubuntu_trt7_dockerfile(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
   sed "s/<baseimg>/10.2-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
+  sed -i 's###g'
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
@@ -93,7 +94,7 @@ function make_centos_dockerfile(){
     RUN ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/" ${dockerfile_name}
   sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q  https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \\
     RUN tar -xzf hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" ${dockerfile_name}
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" ${dockerfile_name}
 }
 
 
