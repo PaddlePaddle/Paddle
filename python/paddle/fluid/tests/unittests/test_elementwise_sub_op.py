@@ -41,7 +41,7 @@ class TestElementwiseOp(OpTest):
         self.if_enable_cinn()
 
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = "float64"
 
     def test_check_output(self):
         self.check_output()
