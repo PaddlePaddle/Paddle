@@ -88,9 +88,11 @@ class TestRandomControl(unittest.TestCase):
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
+        auto.fetch('dropout_0.tmp_1')
         rc_engine = self.get_engine(False)
         history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         rc_losses = np.array(history.history["loss"])
+        print("test" * 8, history.history["dropout_0.tmp_1"])
 
         # check program
         ops = rc_engine.main_program.global_block().ops
@@ -140,7 +142,6 @@ class TestRandomControl(unittest.TestCase):
         ]
         for i in range(len(local_mask)):
             if rank == 0:
-
                 ref_mask = get_tensor(local_mask[i], var_scope)
                 mask_1 = paddle.ones_like(ref_mask)
                 print(np.array(ref_mask))
