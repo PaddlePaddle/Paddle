@@ -132,6 +132,50 @@ def instance_norm_warpper(
     )
 
 
+def _reference_instance_norm(x, scale, bias, epsilon):
+    N, C, H, W = x.shape
+    mean = np.mean(x, axis=(2, 3), keepdims=True)
+    variance = np.var(x, axis=(2, 3), keepdims=True)
+    std = np.sqrt(variance) + epsilon
+    x_norm = (x - mean) / std
+    scale = scale.reshape([1, C, 1, 1])
+    bias = bias.reshape([1, C, 1, 1])
+    x_norm = scale * x_norm + bias
+    return x_norm, mean.reshape(N * C), std.reshape(N * C)
+
+
+def _reference_instance_norm_grad(x, scale, mean, var):
+    n, c, h, w = x.shape
+    d_y = np.ones(x.shape) / (np.prod(x.shape))
+    d_bias = np.ones((c,)) / c
+
+    mean_tile = np.reshape(mean, (n, c, 1, 1))
+    mean_tile = np.tile(mean_tile, (1, 1, h, w))
+    var_tile = np.reshape(var, (n, c, 1, 1))
+    var_tile = np.tile(var_tile, (1, 1, h, w))
+
+    d_scale = np.sum(d_y * (x - mean_tile) * var_tile, axis=(0, 2, 3))
+    var_inv = var_tile
+    scale_tile = np.reshape(scale, (1, c, 1, 1))
+    scale_tile = np.tile(scale_tile, (n, 1, h, w))
+
+    d_x = (
+        scale_tile
+        * var_inv
+        * (
+            d_y
+            - np.mean(d_y, axis=(2, 3), keepdims=True)
+            - (x - mean_tile)
+            * var_inv
+            * np.mean(
+                d_y * (x - mean_tile) * var_inv, axis=(2, 3), keepdims=True
+            )
+        )
+    )
+
+    return d_x, d_scale, d_bias
+
+
 class TestInstanceNormFP32OP(OpTest):
     def setUp(self):
         '''Test instance_norm op with default value'''
@@ -150,7 +194,7 @@ class TestInstanceNormFP32OP(OpTest):
             'momentum': 0.9,
             'data_format': self.data_format,
         }
-        y, mean, variance = self.compute_output(
+        y, mean, variance = _reference_instance_norm(
             self.value, self.scale, self.bias, self.eps
         )
         self.python_out_sig = ['Y']
@@ -159,17 +203,6 @@ class TestInstanceNormFP32OP(OpTest):
             'SavedMean': mean,
             'SavedVariance': 1.0 / variance,
         }
-
-    def compute_output(self, x, scale, bias, epsilon):
-        N, C, H, W = x.shape
-        mean = np.mean(x, axis=(2, 3), keepdims=True)
-        variance = np.var(x, axis=(2, 3), keepdims=True)
-        std = np.sqrt(variance) + epsilon
-        x_norm = (x - mean) / std
-        scale = scale.reshape([1, C, 1, 1])
-        bias = bias.reshape([1, C, 1, 1])
-        x_norm = scale * x_norm + bias
-        return x_norm, mean.reshape(N * C), std.reshape(N * C)
 
     def test_check_output(self):
         self.check_output(atol=self.atol)
@@ -228,7 +261,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
+class TestInstanceNormBF16OP(OpTest):
     def setUp(self):
         self.op_type = "instance_norm"
         self.__class__.op_type = self.op_type
@@ -238,6 +271,20 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
         self.dtype = np.uint16
         self.init_shape()
         self.init_value()
+
+        y, mean, variance = _reference_instance_norm(
+            self.value, self.scale, self.bias, self.eps
+        )
+        var_inv = 1.0 / variance
+        self.user_defined_grads = _reference_instance_norm_grad(
+            self.value, self.scale, mean, var_inv
+        )
+        self.python_out_sig = ['Y']
+        self.outputs = {
+            'Y': convert_float_to_uint16(y),
+            'SavedMean': mean,
+            'SavedVariance': var_inv,
+        }
         self.inputs = {
             'X': convert_float_to_uint16(self.value),
             'Scale': self.scale,
@@ -248,21 +295,15 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             'momentum': 0.9,
             'data_format': self.data_format,
         }
-        y, mean, variance = self.compute_output(
-            self.value, self.scale, self.bias, self.eps
-        )
-        self.python_out_sig = ['Y']
-        self.outputs = {
-            'Y': convert_float_to_uint16(y),
-            'SavedMean': mean,
-            'SavedVariance': 1.0 / variance,
-        }
 
     def init_value(self):
         np.random.seed(0)
         self.value = np.random.random(self.shape).astype(np.float32)
         self.scale = np.random.random([self.shape[1]]).astype(np.float32)
         self.bias = np.random.random([self.shape[1]]).astype(np.float32)
+
+    def init_shape(self):
+        self.shape = [4, 100, 4, 4]
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -274,6 +315,7 @@ class TestInstanceNormBF16OP(TestInstanceNormFP32OP):
             place,
             ['X', 'Scale', 'Bias'],
             'Y',
+            user_defined_grads=self.user_defined_grads,
         )
 
 
