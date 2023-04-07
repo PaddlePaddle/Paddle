@@ -69,6 +69,7 @@ class TestScatterNdAddSimpleOp(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self.public_python_api = paddle.scatter_nd_add
         self.prim_op_type = "prim"
         self._set_dtype()
         if self.dtype == np.float64:
