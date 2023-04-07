@@ -1210,7 +1210,9 @@ inference_analysis_test(
   ARGS
   --infer_model=${OCR_INSTALL_DIR}/model)
 
-if(WITH_DISTRIBUTE AND WITH_PSCORE)
+if(WITH_DISTRIBUTE
+   AND WITH_PSCORE
+   AND NOT (WITH_ASCEND))
   inference_analysis_test(
     test_analyzer_dist_model
     SRCS

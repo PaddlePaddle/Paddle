@@ -24,7 +24,9 @@ endif()
 if((WITH_DISTRIBUTE)
    AND (NOT WIN32)
    AND (NOT APPLE))
-  if(WITH_GPU OR WITH_XPU)
+  if(WITH_GPU
+     OR WITH_XPU
+     OR WITH_ASCEND)
     py_test_modules(test_fleet_with_asp_sharding MODULES
                     test_fleet_with_asp_sharding ENVS ${dist_ENVS})
   endif()

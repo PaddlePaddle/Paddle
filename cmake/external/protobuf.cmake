@@ -234,7 +234,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
   endif()
 
-  if(NOT WITH_ASCEND_CXX11)
+  if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
     set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
     set(PROTOBUF_TAG v21.12)
   elseif(WITH_IPU)
