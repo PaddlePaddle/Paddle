@@ -337,7 +337,7 @@ void Tracer::TraceOpImpl(const std::string& type,
         // TODO(jiabin): Update this without copy
         *passed_default_attrs_ = default_attrs;
       }
-      OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
+      OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place, inplace_map);
     }
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
