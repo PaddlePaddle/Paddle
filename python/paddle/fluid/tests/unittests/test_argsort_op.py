@@ -540,15 +540,6 @@ class TestArgsortBF16OP(OpTest):
             'Out',
         )
 
-    def test_check_grad_ingore_order(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            no_grad_set=set(),
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

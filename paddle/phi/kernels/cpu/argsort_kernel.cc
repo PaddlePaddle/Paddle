@@ -152,14 +152,7 @@ void ArgsortKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(argsort,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ArgsortKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    argsort, CPU, ALL_LAYOUT, phi::ArgsortKernel, float, double, int, int64_t) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
