@@ -392,6 +392,14 @@ class RReluTestBF16OP(RReluTest):
         }
         self.dtype = np.uint16
 
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, no_check_set=['Noise'])
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
 
 class RReluTrainingTestFP16OP(RReluTrainingTest):
     def init_dtype(self):
@@ -414,6 +422,14 @@ class RReluTrainingTestBF16OP(RReluTrainingTest):
             'Noise': convert_float_to_uint16(self.outputs['Noise']),
         }
         self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, no_check_set=['Noise'])
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
