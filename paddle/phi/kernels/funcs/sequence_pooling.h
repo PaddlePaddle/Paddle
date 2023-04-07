@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
