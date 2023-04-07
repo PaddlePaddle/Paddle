@@ -424,7 +424,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
@@ -732,17 +731,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-# profiler will random hang in linux cuda 10.1 or 10.2
-# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in linux cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
-if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
-  py_test_modules(test_parallel_executor_profiler MODULES
-                  test_parallel_executor_profiler)
-  set_tests_properties(test_parallel_executor_profiler
-                       PROPERTIES LABELS "RUN_TYPE=DIST")
-  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
-endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
