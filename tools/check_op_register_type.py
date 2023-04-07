@@ -25,8 +25,8 @@ import sys
 
 from paddle import fluid
 
-INTS = set(['int', 'int64_t'])
-FLOATS = set(['float', 'double'])
+INTS = {'int', 'int64_t'}
+FLOATS = {'float', 'double'}
 
 
 def get_all_kernels():

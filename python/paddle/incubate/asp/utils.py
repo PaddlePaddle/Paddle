@@ -398,7 +398,7 @@ def _compute_valid_2d_patterns(n, m):
     global _valid_2d_patterns_lock
     global _valid_2d_patterns
 
-    valid_key = '{}_{}'.format(m, n)
+    valid_key = f'{m}_{n}'
     if valid_key in _valid_2d_patterns:
         return _valid_2d_patterns[valid_key]
     else:

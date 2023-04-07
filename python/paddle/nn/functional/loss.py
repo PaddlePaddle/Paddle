@@ -981,9 +981,7 @@ def hsigmoid_loss(
             #  [1.92374969]]
     """
     if num_classes < 2:
-        raise ValueError(
-            'Expected num_classes >= 2 (got {})'.format(num_classes)
-        )
+        raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
@@ -1104,7 +1102,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        out, residual = _C_ops.huber_loss(input, label, delta)
+        out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
@@ -1416,9 +1414,7 @@ def nll_loss(
         )
 
     if input_dims < 2:
-        raise ValueError(
-            'Expected 2 or more dimensions (got {})'.format(input_dims)
-        )
+        raise ValueError(f'Expected 2 or more dimensions (got {input_dims})')
 
     if input_shape[1] < 1:
         raise ValueError(

@@ -268,7 +268,7 @@ class TestMeshGrid_ZeroDim(TestMeshgridOp):
         self.shape = self.get_x_shape()
         ins = []
         outs = []
-        ins.append(np.random.random(([])).astype(self.dtype))
+        ins.append(np.random.random([]).astype(self.dtype))
         ins.append(np.random.random([2]).astype(self.dtype))
         ins.append(np.random.random([3]).astype(self.dtype))
         for i in range(len(self.shape)):

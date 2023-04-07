@@ -14,19 +14,27 @@
 
 import unittest
 
+import eager_op_test
 import numpy as np
-import op_test
 
 import paddle
 from paddle import fluid
 from paddle.fluid import framework
 
-paddle.enable_static()
+
+def assign_value_wrapper(
+    shape=[], dtype=fluid.core.VarDesc.VarType.FP32, values=0.0
+):
+    tensor = paddle.Tensor()
+    return paddle._C_ops.assign_value_(
+        tensor, shape, dtype, values, framework._current_expected_place()
+    )
 
 
-class TestAssignValueOp(op_test.OpTest):
+class TestAssignValueOp(eager_op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
+        self.python_api = assign_value_wrapper
         self.inputs = {}
         self.attrs = {}
         self.init_data()
@@ -66,29 +74,31 @@ class TestAssignValueOp4(TestAssignValueOp):
 
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
-        self.init_dtype()
-        self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
-            self.dtype
-        )
-        self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
+        with eager_op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
+                self.dtype
+            )
+            self.place = (
+                fluid.CUDAPlace(0)
+                if fluid.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
 
     def init_dtype(self):
         self.dtype = "float32"
 
     def test_assign(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x = paddle.tensor.create_tensor(dtype=self.dtype)
-            paddle.assign(self.value, output=x)
+        with eager_op_test.paddle_static_guard():
+            main_program = fluid.Program()
+            with fluid.program_guard(main_program):
+                x = paddle.tensor.create_tensor(dtype=self.dtype)
+                paddle.assign(self.value, output=x)
 
-        exe = fluid.Executor(self.place)
-        [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-        np.testing.assert_array_equal(fetched_x, self.value)
-        self.assertEqual(fetched_x.dtype, self.value.dtype)
+            exe = fluid.Executor(self.place)
+            [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
+            np.testing.assert_array_equal(fetched_x, self.value)
+            self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
 class TestAssignApi2(TestAssignApi):
@@ -103,15 +113,16 @@ class TestAssignApi3(TestAssignApi):
 
 class TestAssignApi4(TestAssignApi):
     def setUp(self):
-        self.init_dtype()
-        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool_
-        )
-        self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
+        with eager_op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+                np.bool_
+            )
+            self.place = (
+                fluid.CUDAPlace(0)
+                if fluid.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
 
     def init_dtype(self):
         self.dtype = "bool"

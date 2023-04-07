@@ -18,7 +18,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import IrGraph, Program, program_guard
-from paddle.fluid.tests.unittests.op_test import OpTestTool
+from paddle.fluid.tests.unittests.eager_op_test import OpTestTool
 from paddle.static.quantization import QuantizationTransformPass
 
 paddle.enable_static()

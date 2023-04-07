@@ -187,16 +187,14 @@ class TestBackward(unittest.TestCase):
 class SimpleNet(BackwardNet):
     def __init__(self):
         super().__init__()
-        self.stop_gradient_grad_vars = set(
-            [
-                'x_no_grad@GRAD',
-                'x2_no_grad@GRAD',
-                'x3_no_grad@GRAD',
-                'label_no_grad@GRAD',
-            ]
-        )
+        self.stop_gradient_grad_vars = {
+            'x_no_grad@GRAD',
+            'x2_no_grad@GRAD',
+            'x3_no_grad@GRAD',
+            'label_no_grad@GRAD',
+        }
         self.no_grad_vars = set()
-        self.params_names = set(['w2v', 'fc_predict.b_0', 'fc_w'])
+        self.params_names = {'w2v', 'fc_predict.b_0', 'fc_w'}
         self.op_path = [
             'lookup_table_v2',
             'lookup_table_v2',  # embedding

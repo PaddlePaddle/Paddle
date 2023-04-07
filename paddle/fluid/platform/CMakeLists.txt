@@ -78,11 +78,7 @@ if(WITH_ASCEND_CL)
   set(NPU_CTX_DEPS npu_stream npu_info)
 endif()
 
-if(WITH_MLU)
-  set(MLU_CTX_DEPS mlu_device_context)
-endif()
-
-if(WITH_ASCEND_CL OR WITH_MLU)
+if(WITH_ASCEND_CL)
   cc_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
@@ -175,10 +171,6 @@ if(WITH_XPU)
   target_link_libraries(device_context xpu_resource_pool)
 endif()
 
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
-endif()
-
 if(WITH_CUSTOM_DEVICE)
   target_link_libraries(device_context custom_device_resource_pool)
 endif()
@@ -227,10 +219,18 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  if(WITH_CUSTOM_DEVICE)
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
+           allocator phi_backends)
+  else()
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu

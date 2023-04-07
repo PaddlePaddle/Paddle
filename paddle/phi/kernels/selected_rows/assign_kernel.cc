@@ -38,14 +38,18 @@ PD_REGISTER_GENERAL_KERNEL(assign_sr,
                            CPU,
                            ALL_LAYOUT,
                            phi::sr::AssignKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_GENERAL_KERNEL(assign_sr,
                            GPU,
                            ALL_LAYOUT,
                            phi::sr::AssignKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -53,5 +57,7 @@ PD_REGISTER_GENERAL_KERNEL(assign_sr,
                            XPU,
                            ALL_LAYOUT,
                            phi::sr::AssignKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif

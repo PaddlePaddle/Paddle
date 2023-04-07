@@ -61,7 +61,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
-    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(
+    cls_name = "{}_{}_shape_{}_diag_{}".format(
         expected, op_type, Xshape, diagonal
     )
     errmsg = {
@@ -122,14 +122,10 @@ cases = {
 for _op_type in ['tril', 'triu']:
     for _expected, _params in cases.items():
         for _Xshape, _diaglist in _params.items():
-            list(
-                map(
-                    lambda _diagonal: case_generator(
-                        _op_type, _Xshape, _diagonal, _expected
-                    ),
-                    _diaglist,
-                )
-            )
+            [
+                case_generator(_op_type, _Xshape, _diagonal, _expected)
+                for _diagonal in _diaglist
+            ]
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):

@@ -120,7 +120,7 @@ class TestRnnError(unittest.TestCase):
             self.assertRaises(TypeError, test_initial_states_type)
 
             def test_sequence_length_type():
-                np_sequence_length = np.random.random((batch_size)).astype(
+                np_sequence_length = np.random.random(batch_size).astype(
                     "float32"
                 )
                 dynamic_rnn(

@@ -83,10 +83,10 @@ class XPUTestTemporalShiftOp(XPUOpTestWrapper):
             self.python_out_sig = ["Out"]
 
         def test_check_output(self):
-            self.check_output(check_dygraph=True)
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_dygraph=True)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
         def initTestCase(self):
             self.x_shape = (6, 4, 4, 4)

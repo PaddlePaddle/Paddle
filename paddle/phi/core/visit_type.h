@@ -335,4 +335,20 @@ namespace phi {
     }                                                                         \
   }()
 
+#define PD_VISIT_XPU_REDUCE_TYPES(TYPE, NAME, ...)                             \
+  [&] {                                                                        \
+    const auto& __dtype__ = TYPE;                                              \
+    switch (__dtype__) {                                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT8, int8_t, __VA_ARGS__)   \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT32, int32_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::FLOAT16, phi::float16, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
+      default:                                                                 \
+        PADDLE_THROW(phi::errors::InvalidArgument(                             \
+            "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \
+    }                                                                          \
+  }()
+
 }  // namespace phi

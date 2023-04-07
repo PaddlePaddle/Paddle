@@ -284,7 +284,7 @@ class Partitioner:
                         for varname_not_in_block in __varname_not_in_block__:
                             assert (
                                 varname_not_in_block in serial_input_varname
-                            ), "{} is not found".format(serial_input_varname)
+                            ), f"{serial_input_varname} is not found"
 
                     self._serial2dist_varname_mapping[
                         serial_input_varname
@@ -334,7 +334,7 @@ class Partitioner:
                     self._dist_context,
                     **kinputs,
                     **koutputs,
-                    **{"grad_var_to_var": grad_var_to_var}
+                    **{"grad_var_to_var": grad_var_to_var},
                 )
             elif is_optimize_op(op):
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
@@ -346,7 +346,7 @@ class Partitioner:
                     self._dist_context,
                     **kinputs,
                     **koutputs,
-                    **{"grad_var_to_var": {}}
+                    **{"grad_var_to_var": {}},
                 )
             else:
                 raise NotImplementedError(
@@ -443,7 +443,7 @@ def _partition_parameter(
         stop_gradient=src_var.stop_gradient,
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer,
-        **copied_kwargs
+        **copied_kwargs,
     )
 
     return param

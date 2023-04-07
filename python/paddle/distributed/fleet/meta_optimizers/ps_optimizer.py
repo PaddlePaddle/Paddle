@@ -208,7 +208,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             return False
 
         free = get_sys_free_mem()
-        processed_var_names = set(["@EMPTY@"])
+        processed_var_names = {"@EMPTY@"}
         param_memory_size = 0
         for varname in program.global_block().vars:
             var = program.global_block().vars[varname]

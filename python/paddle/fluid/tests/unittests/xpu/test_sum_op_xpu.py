@@ -96,7 +96,7 @@ def create_test_sum_fp16_class(parent):
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "SumFp16Test")
+    cls_name = "{}_{}".format(parent.__name__, "SumFp16Test")
     TestSumFp16Case.__name__ = cls_name
     globals()[cls_name] = TestSumFp16Case
 
@@ -250,7 +250,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel)
+            self._get_array(list(range(self.height)), self.row_numel)
             * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
         )
 
@@ -281,9 +281,7 @@ class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
         return var
 
     def create_lod_tensor(self, place):
-        w_array = self._get_array(
-            [i for i in range(self.height)], self.row_numel
-        )
+        w_array = self._get_array(list(range(self.height)), self.row_numel)
         return paddle.to_tensor(w_array)
 
     def test_w_is_selected_rows(self):

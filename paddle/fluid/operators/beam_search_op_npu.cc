@@ -16,9 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/beam_search_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::NPUDeviceContext, int64_t>);
+using NPUCtx = paddle::platform::NPUDeviceContext;
+
+REGISTER_OP_NPU_KERNEL(beam_search,
+                       ops::BeamSearchOpKernel<float, NPUCtx>,
+                       ops::BeamSearchOpKernel<double, NPUCtx>,
+                       ops::BeamSearchOpKernel<int, NPUCtx>,
+                       ops::BeamSearchOpKernel<int64_t, NPUCtx>);
