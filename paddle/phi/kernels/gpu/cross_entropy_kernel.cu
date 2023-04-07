@@ -252,7 +252,7 @@ __device__ __forceinline__ AccT ThreadReduce(const T* input,
     input -= offset;
     size += offset;
     if (tid >= offset) {
-      val = reducer(val, input[tid]);
+      val = reducer(val, static_cast<AccT>(input[tid]));
     }
     size -= blockDim.x;
     input += blockDim.x;
@@ -268,14 +268,14 @@ __device__ __forceinline__ AccT ThreadReduce(const T* input,
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      val = reducer(val, ins[i]);
+      val = reducer(val, static_cast<AccT>(ins[i]));
     }
   }
 
   // scalar part
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
-    val = reducer(val, input[tid]);
+    val = reducer(val, static_cast<AccT>(input[tid]));
   }
   return val;
 }
