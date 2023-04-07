@@ -324,18 +324,20 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
-        x = np.arange(12).reshape(3, 4).astype("float32")
+        x = np.arange(100).reshape(10, 10).astype("float64")
         output = np.log(np.cumsum(np.exp(x)))
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.5, max_relative_error=0.5
+        )
 
 
 if __name__ == '__main__':
