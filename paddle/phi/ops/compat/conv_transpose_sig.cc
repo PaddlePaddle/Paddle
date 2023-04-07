@@ -48,7 +48,7 @@ KernelSignature Conv2dTransposeGradOpArgumentMapping(
 
 KernelSignature Conv2dTransposeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_transpose_grad_grad",
+  return KernelSignature("conv2d_transpose_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
@@ -122,6 +122,9 @@ KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(conv2d_transpose_grad_grad,
+                             conv2d_transpose_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d_transpose,
                            phi::Conv2dTransposeOpArgumentMapping);

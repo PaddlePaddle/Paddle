@@ -360,8 +360,8 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
     const auto& var_name = var_scope_.GetNameById(i);
     var_list[i] = new_scope->FindVar(var_name);
   }
-  // The index should assured valid, cause the InterpreterCore may not be fully
-  // built, but was still cached and used. For example, see unit test
+  // The index should be assured valid, cause the InterpreterCore may not be
+  // fully built, but was still cached and used. For example, see unit test
   // `test_assert.py`, it may exit before `InterpreterCore::Convert`, but still
   // was cached and used by later tests.
   for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {

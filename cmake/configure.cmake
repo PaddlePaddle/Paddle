@@ -116,11 +116,6 @@ if(WITH_IPU)
   add_definitions(-DPADDLE_WITH_IPU)
 endif()
 
-if(WITH_MLU)
-  message(STATUS "Compile with MLU!")
-  add_definitions(-DPADDLE_WITH_MLU)
-endif()
-
 if(WITH_GPU)
   add_definitions(-DPADDLE_WITH_CUDA)
   add_definitions(-DEIGEN_USE_GPU)
