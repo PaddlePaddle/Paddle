@@ -70,7 +70,7 @@ class TestLbfgs(unittest.TestCase):
 
         net = Net(np_w, func)
         opt = LBFGS(
-            lr=1,
+            learning_rate=1,
             max_iter=10,
             max_eval=None,
             tolerance_grad=1e-07,
@@ -117,7 +117,7 @@ class TestLbfgs(unittest.TestCase):
         net1 = Net(extream_point, func1)
         # converge of old_sk.pop()
         opt1 = LBFGS(
-            lr=1,
+            learning_rate=1,
             max_iter=10,
             max_eval=None,
             tolerance_grad=1e-07,
@@ -130,7 +130,7 @@ class TestLbfgs(unittest.TestCase):
         net2 = Net(extream_point, func2)
         # converge of line_search = None
         opt2 = LBFGS(
-            lr=1,
+            learning_rate=1,
             max_iter=50,
             max_eval=None,
             tolerance_grad=1e-07,
@@ -156,7 +156,7 @@ class TestLbfgs(unittest.TestCase):
             extream_point = np.array([-1, 2]).astype('float32')
             extream_point = paddle.to_tensor(extream_point)
             return LBFGS(
-                lr=1,
+                learning_rate=1,
                 max_iter=10,
                 max_eval=None,
                 tolerance_grad=1e-07,
@@ -186,7 +186,7 @@ class TestLbfgs(unittest.TestCase):
         net2 = Net(extream_point, func2)
         # converge of line_search = None
         opt2 = LBFGS(
-            lr=1,
+            learning_rate=1,
             max_iter=50,
             max_eval=None,
             tolerance_grad=1e-07,
@@ -284,7 +284,7 @@ class TestLbfgs(unittest.TestCase):
                 dtype=net.w.dtype,
             )
             opt = LBFGS(
-                lr=1,
+                learning_rate=1,
                 max_iter=10,
                 max_eval=None,
                 tolerance_grad=1e-07,
