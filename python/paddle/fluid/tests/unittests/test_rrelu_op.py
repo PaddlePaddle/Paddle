@@ -375,6 +375,11 @@ class RReluTestFP16OP(RReluTest):
         self.dtype = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class RReluTestBF16OP(RReluTest):
     def init_dtype(self):
         self.dtype = np.float32
@@ -393,6 +398,11 @@ class RReluTrainingTestFP16OP(RReluTrainingTest):
         self.dtype = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class RReluTrainingTestBF16OP(RReluTrainingTest):
     def init_dtype(self):
         self.dtype = np.float32

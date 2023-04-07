@@ -4050,9 +4050,16 @@ def create_test_act_bf16_class(
     **kwargs
 ):
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestActBF16(parent):
+        def setUp(self):
+            super().setUp()
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
         def init_dtype(self):
             self.dtype = np.float32
 
