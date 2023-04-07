@@ -26,9 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/device_context.h"
-#endif
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -142,11 +139,6 @@ void TensorFromArray(const T* src,
                  reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
@@ -191,11 +183,6 @@ void TensorFromVector(const std::vector<T>& src,
                  src_ptr,
                  size,
                  reinterpret_cast<const phi::GPUContext&>(ctx).stream());
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -332,17 +319,6 @@ void TensorToVector(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
@@ -383,11 +359,6 @@ inline void TensorToVector(const phi::DenseTensor& src,
 #if defined(PADDLE_WITH_XPU)
   else if (platform::is_xpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
