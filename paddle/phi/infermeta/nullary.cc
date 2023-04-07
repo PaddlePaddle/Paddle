@@ -86,13 +86,6 @@ void GaussianInferMeta(const IntArray& shape,
 }
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
-  PADDLE_ENFORCE_GT(
-      n,
-      0,
-      phi::errors::InvalidArgument(
-          "The input 'n' of randperm op should be greater than 0. "
-          "But received %d.",
-          n));
   out->set_dims(phi::make_ddim({n}));
   out->set_dtype(dtype);
 }
