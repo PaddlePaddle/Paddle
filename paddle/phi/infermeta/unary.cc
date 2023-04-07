@@ -841,9 +841,9 @@ void EighInferMeta(const MetaTensor& x,
     values_dim.emplace_back(input_dim[i]);
   }
   out_w->set_dims(phi::make_ddim(values_dim));
-  out_w->set_tpye(dtype::ToReal(x.dtype()));
+  out_w->set_dtpye(dtype::ToReal(x.dtype()));
   out_v->set_dims(input_dim);
-  out_v->set_tpye(dtype::ToReal(x.dtype()));
+  out_v->set_dtpye(dtype::ToReal(x.dtype()));
 }
 
 void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {

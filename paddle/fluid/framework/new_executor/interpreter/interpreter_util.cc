@@ -48,24 +48,6 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-// These Op needs set output dtype when register phi kernel, but they didn't
-static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "abs",
-    "adam",
-    "adamw",
-    "any_raw",
-    "eig_grad",
-    "lamb",
-    "layer_norm",
-    "layer_norm_grad",
-    "less_equal",
-    "less_than",
-    "merged_adam",
-    "sync_batch_norm_grad",
-    "unique",
-    "unique_consecutive_flattened_tensor",
-    "unique_raw"};
-
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
     "abs", "adam", "adamw", "layer_norm", "layer_norm_grad", "merged_adam"};
