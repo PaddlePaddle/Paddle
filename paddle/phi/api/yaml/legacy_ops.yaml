@@ -143,22 +143,6 @@
   data_transform :
     support_trans_dtype : start, end, step
 
-- op : argmax
-  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : ArgMinMaxInferMeta
-  kernel :
-    func : argmax
-
-- op : argmin
-  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : ArgMinMaxInferMeta
-  kernel :
-    func : argmin
-
 - op : assign
   args : (Tensor x)
   output : Tensor
