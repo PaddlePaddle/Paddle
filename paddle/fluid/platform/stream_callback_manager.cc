@@ -32,10 +32,6 @@ static void StreamCallbackFunc(gpuStream_t stream,
     StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void *user_data)
 #endif
 #endif
-
-#if PADDLE_WITH_MLU
-        static void StreamCallbackFunc(void *user_data)
-#endif
 {
   std::unique_ptr<std::function<void()>> func(
       reinterpret_cast<std::function<void()> *>(user_data));
@@ -71,20 +67,12 @@ void StreamCallbackManager<Stream>::AddCallback(
       cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
 #endif
 #endif
-
-#if PADDLE_WITH_MLU
-  VLOG(3) << "MLULaunchCallback at stream: " << stream_;
-  cnrtInvokeHostFunc(stream_, StreamCallbackFunc, func);
-#endif
 }
 
 template <typename Stream>
 void StreamCallbackManager<Stream>::Wait() const {
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   platform::GpuStreamSync(stream_);
-#endif
-#ifdef PADDLE_WITH_MLU
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -100,10 +88,5 @@ template struct StreamCallbackManager<gpuStream_t>;
 #ifdef PADDLE_WITH_HIP
 template struct StreamCallbackManager<hipStream_t>;
 #endif
-
-#ifdef PADDLE_WITH_MLU
-template struct StreamCallbackManager<mluStream>;
-#endif
-
 }  // namespace platform
 }  // namespace paddle

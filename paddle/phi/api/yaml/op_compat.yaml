@@ -109,6 +109,26 @@
   outputs :
     out : Out
 
+- op : argmax(arg_max)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
+- op : argmin(arg_min)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
 - op : argsort
   inputs :
     x : X
