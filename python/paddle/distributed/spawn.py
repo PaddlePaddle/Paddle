@@ -331,7 +331,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     # get cluster and pod config
     if options['backend'] == 'gloo':
-        devices_per_proc = [x for x in range(0, nprocs)]
+        devices_per_proc = list(range(0, nprocs))
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )

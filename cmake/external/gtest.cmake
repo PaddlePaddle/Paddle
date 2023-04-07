@@ -39,7 +39,7 @@ if(WIN32)
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib"
       CACHE FILEPATH "gtest main libraries." FORCE)
   set(GMOCK_LIBRARIES
-      "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgmock.lib"
+      "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gmock.lib"
       CACHE FILEPATH "gmock libraries." FORCE)
   string(REPLACE "/w " "" GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   string(REPLACE "/w " "" GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")

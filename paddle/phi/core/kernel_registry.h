@@ -777,7 +777,7 @@ struct KernelRegistrar {
       #kernel_name,                                                            \
       #backend,                                                                \
       DATA_LAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::CppTypeToDataType<cpp_dtype>::Type(),                             \
       arg_parse_functor_macro(meta_kernel_fn, cpp_dtype, context),             \
       args_def_fn,                                                             \
       kernel_unfold_macro(meta_kernel_fn<cpp_dtype, context>),                 \

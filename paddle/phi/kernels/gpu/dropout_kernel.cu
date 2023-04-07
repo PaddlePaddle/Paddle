@@ -45,8 +45,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                                           x,
                                           seed_tensor.get_ptr(),
                                           mask,
-                                          out,
-                                          false);
+                                          out);
 }
 
 template <typename T, typename Context>
@@ -76,7 +75,8 @@ void DropoutNdKernel(const Context& dev_ctx,
                                           seed_tensor.get_ptr(),
                                           mask,
                                           out,
-                                          true);
+                                          true,
+                                          axis);
 }
 
 }  // namespace phi

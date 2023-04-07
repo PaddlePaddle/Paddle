@@ -44,7 +44,7 @@ class cus_tanh(PyLayer):
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, train_id, model_id):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
         self.linear = paddle.nn.Linear(in_dim, out_dim)
         self.tanh = paddle.tanh

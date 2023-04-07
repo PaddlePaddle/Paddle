@@ -113,11 +113,9 @@ class TestWeightQuantization(unittest.TestCase):
         print("finish weight quantization for " + model_name + "\n")
 
         try:
-            os.system("rm -rf {}".format(save_model_dir))
+            os.system(f"rm -rf {save_model_dir}")
         except Exception as e:
-            print(
-                "Failed to delete {} due to {}".format(save_model_dir, str(e))
-            )
+            print(f"Failed to delete {save_model_dir} due to {str(e)}")
 
     def convert_to_fp16(
         self,
@@ -167,11 +165,9 @@ class TestWeightQuantization(unittest.TestCase):
         )
 
         try:
-            os.system("rm -rf {}".format(save_model_dir))
+            os.system(f"rm -rf {save_model_dir}")
         except Exception as e:
-            print(
-                "Failed to delete {} due to {}".format(save_model_dir, str(e))
-            )
+            print(f"Failed to delete {save_model_dir} due to {str(e)}")
 
     def run_models(
         self,

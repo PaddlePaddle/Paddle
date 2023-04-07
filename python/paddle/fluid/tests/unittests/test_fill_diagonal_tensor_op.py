@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -102,10 +102,10 @@ class TensorFillDiagTensor_Test(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):

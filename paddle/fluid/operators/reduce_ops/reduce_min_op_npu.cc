@@ -74,7 +74,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    if (x->dtype() == experimental::DataType::INT64) {
+    if (x->dtype() == phi::DataType::INT64) {
       auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
                         const std::vector<phi::DenseTensor>& outputs,
                         const NPUAttributeMap& attrs,

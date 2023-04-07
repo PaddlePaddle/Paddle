@@ -241,14 +241,12 @@ using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 using CustomDeviceContext = phi::CustomContext;
 #endif
 
-void EmplaceExternalContext(
+void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const platform::Place& place,
+    const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
-
-using phi::EmplaceDeviceContexts;
 
 using DeviceContextPool = phi::DeviceContextPool;
 

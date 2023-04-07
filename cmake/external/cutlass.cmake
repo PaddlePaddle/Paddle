@@ -38,17 +38,27 @@ ExternalProject_Add(
   PREFIX ${CUTLASS_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND
-    mkdir -p
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm
-    && ${PYTHON_EXECUTABLE} -B
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/gather_gemm_scatter_generator.py
-    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
-    "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build"
-    "${CMAKE_CUDA_COMPILER_VERSION}"
+  BUILD_COMMAND ""
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
+add_custom_target(
+  cutlass_codegen
+  COMMAND
+    rm -rf
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build
+  COMMAND
+    mkdir -p
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build/generated/gemm
+  COMMAND
+    ${PYTHON_EXECUTABLE} -B
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/gather_gemm_scatter_generator.py
+    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
+    "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build"
+    "${CMAKE_CUDA_COMPILER_VERSION}"
+  VERBATIM)
+
 add_library(cutlass INTERFACE)
 
+add_dependencies(cutlass_codegen extern_cutlass)
 add_dependencies(cutlass extern_cutlass)

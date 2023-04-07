@@ -83,12 +83,12 @@ void CalculateGrad(const Context& ctx,
           }
         }
       }
-      DenseTensor x_grad_out = phi::Sum<T, Context>(
-          ctx,
-          x_grad_v2,
-          phi::IntArray(reduce_idx),
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          true);
+      DenseTensor x_grad_out =
+          phi::Sum<T, Context>(ctx,
+                               x_grad_v2,
+                               phi::IntArray(reduce_idx),
+                               phi::CppTypeToDataType<T>::Type(),
+                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   } else if (message_op == "MUL") {
@@ -145,12 +145,12 @@ void CalculateGrad(const Context& ctx,
           }
         }
       }
-      DenseTensor x_grad_out = phi::Sum<T, Context>(
-          ctx,
-          x_grad_v2,
-          phi::IntArray(reduce_idx),
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          true);
+      DenseTensor x_grad_out =
+          phi::Sum<T, Context>(ctx,
+                               x_grad_v2,
+                               phi::IntArray(reduce_idx),
+                               phi::CppTypeToDataType<T>::Type(),
+                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   }

@@ -153,7 +153,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 
-    auto i_dims = in->dims();
+    auto i_dims = phi::vectorize<int>(in->dims());
     const auto& w_dims = weights[0]->dims();
     phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];

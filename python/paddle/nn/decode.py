@@ -706,13 +706,13 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = paddle.logical_not((paddle.all(initial_finished)))
+    cond = paddle.logical_not(paddle.all(initial_finished))
     sequence_lengths = paddle.cast(paddle.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
     step_idx_tensor = paddle.full(shape=[1], fill_value=step_idx, dtype="int64")
-    while cond.numpy():
+    while cond.item():
         (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
             step_idx_tensor, inputs, states, **kwargs
         )
@@ -812,7 +812,7 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = paddle.full(shape=[1], fill_value=0, dtype="int64")
 
-    cond = paddle.logical_not((paddle.all(initial_finished)))
+    cond = paddle.logical_not(paddle.all(initial_finished))
     if max_step_num is not None:
         max_step_num = paddle.full(
             shape=[1], fill_value=max_step_num, dtype="int64"

@@ -58,7 +58,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
-    phi::DenseTensor indices_int32(experimental::DataType::INT32);
+    phi::DenseTensor indices_int32(phi::DataType::INT32);
     indices_int32.Resize(output_dims);
     indices_int32.mutable_data<int32_t>(context.GetPlace());
 

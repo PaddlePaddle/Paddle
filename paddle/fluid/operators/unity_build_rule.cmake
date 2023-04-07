@@ -15,7 +15,6 @@ register_unity_group(
   argsort_op.cc
   array_to_lod_tensor_op.cc
   assert_op.cc
-  assign_op.cc
   assign_value_op.cc
   attention_lstm_op.cc
   average_accumulates_op.cc

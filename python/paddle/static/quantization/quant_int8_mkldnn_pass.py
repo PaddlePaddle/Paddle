@@ -280,11 +280,10 @@ class QuantInt8MkldnnPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)

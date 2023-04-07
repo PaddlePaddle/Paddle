@@ -21,9 +21,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core, layers
 from paddle.fluid.executor import Executor
 
 paddle.enable_static()
@@ -73,14 +72,18 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
-        array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        array_len = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=1
+        )
         array_len.stop_gradient = True
         cond = paddle.less_than(x=i, y=array_len)
 
-        j = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        j = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
         j.stop_gradient = True
 
-        array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+        array_len2 = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=3
+        )
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
 

@@ -64,6 +64,7 @@ option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
+option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -297,6 +298,7 @@ option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
+option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
 option(WITH_MUSL "Compile with musl libc instead of gblic" OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode" OFF)
 option(WITH_STRIP "Strip so files of Whl packages" OFF)
@@ -658,6 +660,16 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_LOONGARCH)
+  set(WITH_XBYAK
+      OFF
+      CACHE STRING "Disable XBYAK when compiling WITH_LOONGARCH=ON" FORCE)
+  set(WITH_MKL
+      OFF
+      CACHE STRING "Disable MKL when compiling WITH_LOONGARCH=ON." FORCE)
+  add_definitions(-DPADDLE_WITH_LOONGARCH)
+endif()
+
 if(WITH_ONEMKL)
   add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
@@ -702,6 +714,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
+add_subdirectory(test)
 
 get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
 list(JOIN all_inc_dirs "\r\n" all_inc_dirs)

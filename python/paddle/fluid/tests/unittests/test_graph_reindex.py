@@ -212,6 +212,20 @@ class TestGraphReindex(unittest.TestCase):
             )
             np.testing.assert_allclose(self.out_nodes, out_nodes_2, rtol=1e-05)
 
+    def test_reindex_div_zero(self):
+        paddle.disable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+        with self.assertRaises(ValueError):
+            paddle.incubate.graph_reindex(
+                x=x,
+                neighbors=x,
+                count=x,
+                value_buffer=x,
+                index_buffer=x,
+                flag_buffer_hashtable=False,
+            )
+
 
 class TestGeometricGraphReindex(unittest.TestCase):
     def setUp(self):

@@ -260,9 +260,12 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -273,6 +276,7 @@ class Adam(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -303,17 +307,15 @@ class Adam(Optimizer):
         # create the adam optimize op
 
         if framework.in_dygraph_mode():
-            found_inf = self._get_auxiliary_var('found_inf')
-
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
 
             _, _, _, _, _, _ = _C_ops.adam_(
@@ -325,7 +327,7 @@ class Adam(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 _beta1,
                 _beta2,
                 self._epsilon,
@@ -446,7 +448,7 @@ class Adam(Optimizer):
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
@@ -586,7 +588,7 @@ class Adam(Optimizer):
                 if param_and_grad[1] is None:
                     continue
                 if param_and_grad[0].stop_gradient is False:
-                    param_grad_dict = dict()
+                    param_grad_dict = {}
                     param_grad_dict['params'] = param_and_grad
                     param_grad_dict.update(
                         {
@@ -621,12 +623,12 @@ class Adam(Optimizer):
                 _beta1 = (
                     self._beta1
                     if not isinstance(self._beta1, Variable)
-                    else self._beta1.numpy().item(0)
+                    else self._beta1.item(0)
                 )
                 _beta2 = (
                     self._beta2
                     if not isinstance(self._beta2, Variable)
-                    else self._beta2.numpy().item(0)
+                    else self._beta2.item(0)
                 )
 
                 if framework.in_dygraph_mode():
@@ -636,21 +638,28 @@ class Adam(Optimizer):
                         if master_weight is not None
                         else None
                     )
-                    _, _, _, _, _, _ = _C_ops.merged_adam_(
-                        self._param_dict[key][param_group_idx],
-                        grad_dict[key],
-                        lr_dict[key],
-                        self._moment1_dict[key][param_group_idx],
-                        self._moment2_dict[key][param_group_idx],
-                        self._beta1_pow_acc_dict[key][param_group_idx],
-                        self._beta2_pow_acc_dict[key][param_group_idx],
-                        master_weight,
-                        _beta1,
-                        _beta2,
-                        self._epsilon,
-                        find_master,
-                        False,
-                    )
+                    found_inf = self._get_auxiliary_var('found_inf')
+                    if found_inf:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', True)
+                    else:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', False)
+                        _, _, _, _, _, _ = _C_ops.merged_adam_(
+                            self._param_dict[key][param_group_idx],
+                            grad_dict[key],
+                            lr_dict[key],
+                            self._moment1_dict[key][param_group_idx],
+                            self._moment2_dict[key][param_group_idx],
+                            self._beta1_pow_acc_dict[key][param_group_idx],
+                            self._beta2_pow_acc_dict[key][param_group_idx],
+                            master_weight,
+                            _beta1,
+                            _beta2,
+                            self._epsilon,
+                            find_master,
+                            False,
+                        )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

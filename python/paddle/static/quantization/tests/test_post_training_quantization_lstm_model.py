@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -66,7 +66,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         download(data_url, self.download_path, data_md5)
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
-        print('Data is downloaded at {0}'.format(zip_path))
+        print(f'Data is downloaded at {zip_path}')
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         self.cache_unzipping(data_cache_folder, zip_path)
@@ -254,7 +254,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         data_path = os.path.join(data_path, data_name)
 
         print(
-            "Start FP32 inference for {0} on {1} samples ...".format(
+            "Start FP32 inference for {} on {} samples ...".format(
                 model_name, infer_iterations
             )
         )
@@ -267,7 +267,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start post training quantization for {0} on {1} samples ...".format(
+            "Start post training quantization for {} on {} samples ...".format(
                 model_name, quant_iterations
             )
         )
@@ -288,7 +288,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {0} on {1} samples ...".format(
+            "Start INT8 inference for {} on {} samples ...".format(
                 model_name, infer_iterations
             )
         )
@@ -300,14 +300,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
             infer_iterations,
         )
 
-        print("---Post training quantization of {} method---".format(algo))
+        print(f"---Post training quantization of {algo} method---")
         print(
-            "FP32 {0}: batch_size {1}, latency {2} s, acc {3}.".format(
+            "FP32 {}: batch_size {}, latency {} s, acc {}.".format(
                 model_name, 1, fp32_latency, fp32_acc
             )
         )
         print(
-            "INT8 {0}: batch_size {1}, latency {2} s, acc1 {3}.\n".format(
+            "INT8 {}: batch_size {}, latency {} s, acc1 {}.\n".format(
                 model_name, 1, int8_latency, int8_acc
             )
         )

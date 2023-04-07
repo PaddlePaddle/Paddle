@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import fluid, nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import (
@@ -117,11 +115,11 @@ def get_program():
     with fluid.program_guard(train_program, start_program):
 
         # 循环计数器
-        i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
         auto.shard_tensor(i, _g_process_mesh, [None])
 
         # 循环次数
-        loop_len = fluid.layers.fill_constant(
+        loop_len = paddle.tensor.fill_constant(
             shape=[1], dtype='int64', value=epoch_num
         )
         auto.shard_tensor(loop_len, _g_process_mesh, [None])

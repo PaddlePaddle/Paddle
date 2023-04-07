@@ -60,27 +60,6 @@ size_t GenKey(Args&&... args) {
   return seed;
 }
 
-struct MatmulCacheKey {
- public:
-  MatmulCacheKey() {}
-  MatmulCacheKey(const std::vector<int64_t>& x_dims,
-                 const std::vector<int64_t>& y_dims,
-                 const bool trans_x,
-                 const bool trans_y,
-                 phi::DataType dtype) {
-    key = GenKey(x_dims,
-                 y_dims,
-                 static_cast<int64_t>(trans_x),
-                 static_cast<int64_t>(trans_y),
-                 static_cast<int64_t>(dtype));
-  }
-  size_t GetKey() const { return key; }
-  size_t GenSubKey(int64_t idx) const { return GenKey(key, idx); }
-
- private:
-  size_t key;
-};
-
 struct ConvCacheKey {
   ConvCacheKey() {}
   ConvCacheKey(const std::vector<int64_t>& arg_x_dims,

@@ -74,3 +74,18 @@ PD_REGISTER_KERNEL(flatten_grad,
                    int64_t) {}
 
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(flatten_grad,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+#endif

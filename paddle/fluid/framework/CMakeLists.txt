@@ -362,7 +362,10 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-
+cc_test(
+  op_desc_test
+  SRCS op_desc_test.cc
+  DEPS proto_desc)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -431,13 +434,14 @@ if(WITH_XPU)
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
          xpu_op_list
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 else()
   cc_library(
     phi_utils
@@ -445,12 +449,13 @@ else()
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 endif()
 
 if(WITH_XPU)
@@ -536,7 +541,8 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr)
+       dist_attr
+       scalar)
 
 cc_library(
   op_registry

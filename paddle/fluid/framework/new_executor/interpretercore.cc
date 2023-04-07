@@ -545,7 +545,7 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
       platform::IsCUDAGraphCapturing(),
       false,
       platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
+                                         "before prepare."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -684,8 +684,16 @@ void InterpreterCore::Convert(
       if (op_type == interpreter::kMemcpyD2H ||
           op_type == interpreter::kMemcpyH2D) {
         PADDLE_THROW(paddle::platform::errors::Fatal(
-            "op_type can't be memcpy d2h or h2d while using cuda graph."));
+            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
       }
+      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Device context of op %s must be [%s] while using "
+                            "cuda graph, but got [%s].",
+                            op_type,
+                            typeid(phi::GPUContext).name(),
+                            typeid(*dev_ctx_).name()));
       // cuda graph needs to record all stream
       phi::backends::gpu::CUDAGraphContextManager::Instance()
           .RecordCapturingDeviceContext(dev_ctx_);
@@ -939,23 +947,28 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
-    if (op_with_kernel == nullptr) {
+    if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      // fit for phi
-      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
-        VLOG(4) << "Run phi kernel: " << op->Type();
-        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
-                << &instr_node.DeviceContext();
-        phi::KernelContext phi_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(
-            *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &phi_kernel_context);
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          VLOG(4) << "Run function kernel: " << op->Type();
+          VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                  << &instr_node.DeviceContext();
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&phi_kernel_context);
-
-      } else {
+          (*kernel)(&phi_kernel_context);
+        } else {
+          VLOG(4) << "Run structure kernel: " << op->Type();
+          (*kernel)(instr_node.InnerExecutionContext().get());
+        }
+      } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
     }

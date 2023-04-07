@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -110,7 +110,7 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
             repeat_times_tensor = []
             for index, ele in enumerate(self.repeat_times):
                 repeat_times_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {

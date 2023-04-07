@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 
 def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):

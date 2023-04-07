@@ -318,7 +318,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     if not ignore_flag:
                         status = False
@@ -351,7 +351,7 @@ class PassAutoScanTest(AutoScanTest):
             if pass_name not in self.available_passes_in_framework:
                 continue
             if not PassVersionChecker.IsCompatible(pass_name):
-                self.fail_log('{} version check failed.'.format(pass_name))
+                self.fail_log(f'{pass_name} version check failed.')
                 status = False
         return status
 
@@ -375,7 +375,7 @@ class PassAutoScanTest(AutoScanTest):
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
-        after_op_list = list()
+        after_op_list = []
         for i in range(main_block.op_size()):
             if main_block.op(i).type() in ["feed", "fetch"]:
                 continue
@@ -429,7 +429,7 @@ class PassAutoScanTest(AutoScanTest):
         loop_func = given(generator())(run_test)
         if reproduce is not None:
             loop_func = reproduce(loop_func)
-        logging.info("Start to running test of {}".format(type(self)))
+        logging.info(f"Start to running test of {type(self)}")
         loop_func()
         logging.info(
             "===================Statistical Information==================="
@@ -439,11 +439,9 @@ class PassAutoScanTest(AutoScanTest):
                 self.num_ran_programs + self.num_invalid_programs
             )
         )
-        logging.info(
-            "Number of Invalid Programs: {}".format(self.num_invalid_programs)
-        )
-        logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
-        logging.info("Number of Ignore Tests: {}".format(self.num_ignore_tests))
+        logging.info(f"Number of Invalid Programs: {self.num_invalid_programs}")
+        logging.info(f"Number of Ran Programs: {self.num_ran_programs}")
+        logging.info(f"Number of Ignore Tests: {self.num_ignore_tests}")
         successful_ran_programs = int(
             self.num_ran_programs
             - self.num_ignore_tests / max(self.num_predictor_kinds, 1)
@@ -462,7 +460,7 @@ class PassAutoScanTest(AutoScanTest):
                     min_success_num, successful_ran_programs
                 )
             )
-            assert False
+            raise AssertionError()
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
@@ -470,7 +468,7 @@ class PassAutoScanTest(AutoScanTest):
                     max_duration
                 )
             )
-            assert False
+            raise AssertionError()
 
     def run_test(self, quant=False, prog_configs=None):
         status = True
@@ -554,7 +552,7 @@ class PassAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     if not ignore_flag:
                         status = False
@@ -795,9 +793,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if isinstance(threshold, float):
                     atol = threshold
                     rtol = 1e-8
-                elif isinstance(threshold, list) or isinstance(
-                    threshold, tuple
-                ):
+                elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:
@@ -870,7 +866,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     all_passes = False
 
@@ -959,7 +955,7 @@ class CutlassAutoScanTest(AutoScanTest):
                 except Exception as e:
                     self.fail_log(
                         self.inference_config_str(pred_config)
-                        + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
+                        + f'\033[1;31m \nERROR INFO: {str(e)}\033[0m'
                     )
                     if not ignore_flag:
                         status = False

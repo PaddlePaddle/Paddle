@@ -51,7 +51,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.system("rm -rf {}".format(self.int8_model_path))
+            os.system(f"rm -rf {self.int8_model_path}")
         except Exception as e:
             print(
                 "Failed to delete {} due to {}".format(
@@ -60,14 +60,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
 
     def cache_unzipping(self, target_folder, zip_path):
-        cmd = 'tar xf {0} -C {1}'.format(zip_path, target_folder)
+        cmd = f'tar xf {zip_path} -C {target_folder}'
         os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
         download(data_url, self.download_path, data_md5)
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
-        print('Data is downloaded at {0}'.format(zip_path))
+        print(f'Data is downloaded at {zip_path}')
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         self.cache_unzipping(self.cache_folder, zip_path)
@@ -190,7 +190,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         origin_model_path = self.download_model(data_url, data_md5, model_name)
 
         print(
-            "Start FP32 inference for {0} on {1} images ...".format(
+            "Start FP32 inference for {} on {} images ...".format(
                 model_name, infer_iterations * batch_size
             )
         )
@@ -199,7 +199,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 post training quantization for {0} on {1} images ...".format(
+            "Start INT8 post training quantization for {} on {} images ...".format(
                 model_name, quant_iterations * batch_size
             )
         )
@@ -216,7 +216,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {0} on {1} images ...".format(
+            "Start INT8 inference for {} on {} images ...".format(
                 model_name, infer_iterations * batch_size
             )
         )
@@ -224,14 +224,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
             self.int8_model_path, batch_size, infer_iterations
         )
 
-        print("---Post training quantization of {} method---".format(algo))
+        print(f"---Post training quantization of {algo} method---")
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.".format(
+            "FP32 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.".format(
                 model_name, batch_size, fp32_throughput, fp32_latency, fp32_acc1
             )
         )
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n".format(
+            "INT8 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.\n".format(
                 model_name, batch_size, int8_throughput, int8_latency, int8_acc1
             )
         )

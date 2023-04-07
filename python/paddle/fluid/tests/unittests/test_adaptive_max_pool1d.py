@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import check_out_dtype, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -95,7 +95,7 @@ class TestPool1D_API(unittest.TestCase):
     def check_adaptive_max_static_results(self, place):
         with paddle_static_guard():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                input = fluid.data(
+                input = paddle.static.data(
                     name="input", shape=[2, 3, 32], dtype="float32"
                 )
                 result = F.adaptive_max_pool1d(input, output_size=16)

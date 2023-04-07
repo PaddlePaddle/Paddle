@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -80,10 +80,10 @@ class TestCenterLossOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Loss')
+        self.check_grad(['X'], 'Loss', check_dygraph=False)
 
 
 class TestCenterLossOpNoUpdate(TestCenterLossOp):

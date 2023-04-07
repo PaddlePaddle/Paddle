@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def npairloss(anchor, positive, labels, l2_reg=0.002):
@@ -129,14 +128,16 @@ class TestNpairLossOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             anchor_np = np.random.random((2, 4)).astype("float32")
             positive_np = np.random.random((2, 4)).astype("float32")
-            labels_np = np.random.random((2)).astype("float32")
-            anchor_data = fluid.data(
+            labels_np = np.random.random(2).astype("float32")
+            anchor_data = paddle.static.data(
                 name='anchor', shape=[2, 4], dtype='float32'
             )
-            positive_data = fluid.data(
+            positive_data = paddle.static.data(
                 name='positive', shape=[2, 4], dtype='float32'
             )
-            labels_data = fluid.data(name='labels', shape=[2], dtype='float32')
+            labels_data = paddle.static.data(
+                name='labels', shape=[2], dtype='float32'
+            )
 
             def test_anchor_Variable():
                 # the anchor type must be Variable
@@ -162,7 +163,7 @@ class TestNpairLossOpError(unittest.TestCase):
 
             def test_anchor_type():
                 # dtype must be float32 or float64
-                anchor_data1 = fluid.data(
+                anchor_data1 = paddle.static.data(
                     name='anchor1', shape=[2, 4], dtype='int32'
                 )
                 paddle.nn.functional.npair_loss(
@@ -171,7 +172,7 @@ class TestNpairLossOpError(unittest.TestCase):
 
             def test_positive_type():
                 # dtype must be float32 or float64
-                positive_data1 = fluid.data(
+                positive_data1 = paddle.static.data(
                     name='positive1', shape=[2, 4], dtype='int32'
                 )
                 paddle.nn.functional.npair_loss(
@@ -182,7 +183,7 @@ class TestNpairLossOpError(unittest.TestCase):
 
             def test_labels_type():
                 # dtype must be float32 or float64
-                labels_data1 = fluid.data(
+                labels_data1 = paddle.static.data(
                     name='labels1', shape=[2], dtype='int32'
                 )
                 paddle.nn.functional.npair_loss(

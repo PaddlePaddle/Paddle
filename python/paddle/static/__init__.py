@@ -68,7 +68,6 @@ from ..fluid.framework import Parameter  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
-from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401
@@ -96,7 +95,6 @@ __all__ = [  # noqa
     'py_func',
     'ExecutionStrategy',
     'name_scope',
-    'ParallelExecutor',
     'program_guard',
     'WeightNormParamAttr',
     'ExponentialMovingAverage',

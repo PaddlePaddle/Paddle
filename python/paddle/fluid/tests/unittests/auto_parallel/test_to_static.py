@@ -17,14 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import LazyGuard
+from paddle import LazyGuard, nn
 from paddle.distributed.auto_parallel.helper import ProgramHelper, ProxyLayer
 from paddle.distributed.fleet import auto
 from paddle.fluid.framework import _non_static_mode
 from paddle.io import Dataset
 from paddle.jit.dy2static.utils import is_paddle_func
+from paddle.nn import Sequential
 from paddle.static import InputSpec
 
 batch_size = 4
@@ -199,6 +199,9 @@ class TestIgnoreProxyLayer(unittest.TestCase):
         self.assertFalse(is_paddle_func(proxy_layer._train))
         self.assertFalse(is_paddle_func(proxy_layer._eval))
         self.assertFalse(is_paddle_func(proxy_layer._predict))
+        # test for nn.Sequential
+        net = Sequential(('mlp', mlp))
+        self.assertFalse(is_paddle_func(net))
 
 
 if __name__ == "__main__":

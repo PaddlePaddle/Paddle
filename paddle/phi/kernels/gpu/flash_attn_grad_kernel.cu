@@ -28,24 +28,24 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FlashAttnRawGradKernel(const Context& ctx,
-                            const DenseTensor& q,
-                            const DenseTensor& k,
-                            const DenseTensor& v,
-                            const DenseTensor& cu_seqlens_q,
-                            const DenseTensor& cu_seqlens_k,
-                            const DenseTensor& out,
-                            const DenseTensor& softmax_lse,
-                            const DenseTensor& seed_offset,
-                            const DenseTensor& dout,
-                            int64_t max_seqlen_q,
-                            int64_t max_seqlen_k,
-                            float scale,
-                            float dropout,
-                            bool causal,
-                            DenseTensor* dq,
-                            DenseTensor* dk,
-                            DenseTensor* dv) {
+void FlashAttnUnpaddedGradKernel(const Context& ctx,
+                                 const DenseTensor& q,
+                                 const DenseTensor& k,
+                                 const DenseTensor& v,
+                                 const DenseTensor& cu_seqlens_q,
+                                 const DenseTensor& cu_seqlens_k,
+                                 const DenseTensor& out,
+                                 const DenseTensor& softmax_lse,
+                                 const DenseTensor& seed_offset,
+                                 const DenseTensor& dout,
+                                 int64_t max_seqlen_q,
+                                 int64_t max_seqlen_k,
+                                 float scale,
+                                 float dropout,
+                                 bool causal,
+                                 DenseTensor* dq,
+                                 DenseTensor* dk,
+                                 DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
@@ -67,10 +67,9 @@ void FlashAttnRawGradKernel(const Context& ctx,
   int num_splits = 0;  // 0 for an internal heuristic, which is optimal
   bool zero_tensors = false;
 
-  std::vector<int64_t> seed_offset_vec;
-  phi::TensorToVector<int64_t>(seed_offset, ctx, &seed_offset_vec);
-  uint64_t seed = seed_offset_vec[0];
-  uint64_t offset = seed_offset_vec[1];
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
+  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
 
   int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
   DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
@@ -188,12 +187,10 @@ void FlashAttnGradKernel(const Context& ctx,
 
   float scale = 1.0f / std::sqrt(head_size);
 
-  DenseTensor q_t_s =
-      Reshape<T, Context>(ctx, q, {total_q, num_heads, head_size});
-  DenseTensor k_t_s =
-      Reshape<T, Context>(ctx, k, {total_k, num_heads, head_size});
-  DenseTensor v_t_s =
-      Reshape<T, Context>(ctx, v, {total_k, num_heads, head_size});
+  DenseTensor q_t_s, k_t_s, v_t_s;
+  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
+  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
 
   DenseTensor cu_seqlens_q;
   DenseTensor cu_seqlens_k;
@@ -202,34 +199,34 @@ void FlashAttnGradKernel(const Context& ctx,
   ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
-  FlashAttnRawGradKernel<T, Context>(ctx,
-                                     q_t_s,
-                                     k_t_s,
-                                     v_t_s,
-                                     cu_seqlens_q,
-                                     cu_seqlens_k,
-                                     out,
-                                     softmax_lse,
-                                     seed_offset,
-                                     dout,
-                                     seq_len_q,
-                                     seq_len_k,
-                                     scale,
-                                     dropout,
-                                     causal,
-                                     dq,
-                                     dk,
-                                     dv);
+  FlashAttnUnpaddedGradKernel<T, Context>(ctx,
+                                          q_t_s,
+                                          k_t_s,
+                                          v_t_s,
+                                          cu_seqlens_q,
+                                          cu_seqlens_k,
+                                          out,
+                                          softmax_lse,
+                                          seed_offset,
+                                          dout,
+                                          seq_len_q,
+                                          seq_len_k,
+                                          scale,
+                                          dropout,
+                                          causal,
+                                          dq,
+                                          dk,
+                                          dv);
 
 #endif
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(flash_attn_raw_grad,
+PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlashAttnRawGradKernel,
+                   phi::FlashAttnUnpaddedGradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(7).SetBackend(phi::Backend::CPU);  // seed_offset

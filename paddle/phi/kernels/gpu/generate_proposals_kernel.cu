@@ -580,4 +580,6 @@ void GenerateProposalsKernel(const Context &ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {}
+    generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
