@@ -42,6 +42,7 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 namespace paddle {
@@ -170,6 +171,10 @@ template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst) {
   phi::DenseTensor* dst_tensor = GetInnerMutableTensor<phi::DenseTensor>(dst);
   const phi::DenseTensor& src_tensor = GetInnerTensor<phi::DenseTensor>(src);
+
+  paddle::experimental::CheckAndTrans2Contiguous(
+      const_cast<phi::DenseTensor*>(&src_tensor));
+  paddle::experimental::CheckAndTrans2Contiguous(dst_tensor);
 
   auto numel = src_tensor.numel();
 
