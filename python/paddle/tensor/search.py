@@ -105,6 +105,7 @@ def argsort(x, axis=-1, descending=False, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int16',
                 'int32',
                 'int64',
