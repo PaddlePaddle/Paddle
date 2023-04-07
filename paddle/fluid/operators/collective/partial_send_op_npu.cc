@@ -22,52 +22,8 @@ template <typename T>
 class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Input<phi::DenseTensor>("X");
-    int num = ctx.Attr<int>("num");
-    int id = ctx.Attr<int>("id");
-    int send_numel = x->numel() / num;
-    int offset = send_numel * id;
-
-    void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) + offset);
-    int numel = send_numel;
-    HcclDataType dtype =
-        platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
-
-    int ring_id = ctx.Attr<int>("ring_id");
-    auto place = ctx.GetPlace();
-    auto comm =
-        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
-
-    aclrtStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    int nranks = comm->nranks();
-    int rank = comm->rank();
-
-    PADDLE_ENFORCE_EQ(nranks,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The nranks must be 2, but (%d)", nranks));
-
-    int root = rank;
-
-    VLOG(3) << "begin hccl send, parameter is: "
-            << "root " << root << ", comm: " << comm->comm()
-            << ", stream: " << stream;
-
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
-
-#else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
-#endif
   }
 };
 

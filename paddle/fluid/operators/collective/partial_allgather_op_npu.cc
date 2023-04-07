@@ -24,67 +24,8 @@ template <typename T>
 class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-    int64_t numel = in->numel();
-    HcclDataType dtype =
-        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
-
-    int rank = ctx.Attr<int>("rank");
-    int ring_id = ctx.Attr<int>("ring_id");
-    std::string group =
-        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
-    int nranks = comm->nranks();
-
-    PADDLE_ENFORCE_EQ(rank,
-                      comm->rank(),
-                      platform::errors::InvalidArgument(
-                          "rank: %s should equal to %s", rank, comm->rank()));
-    PADDLE_ENFORCE_EQ(
-        (numel % nranks),
-        0,
-        platform::errors::InvalidArgument(
-            "The input numel (%d) must be divisible by nranks(%d)",
-            numel,
-            nranks));
-
-    framework::DDim dims = in->dims();
-    out->mutable_data<T>(dims, place);
-
-    int64_t send_numel = numel / nranks;
-    int offset = send_numel * rank;
-
-    void *send_buff =
-        reinterpret_cast<void *>(const_cast<T *>(in->data<T>()) + offset);
-    void *recv_buff = reinterpret_cast<void *>(out->data<T>());
-
-    aclrtStream stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::NPUDeviceContext *>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    VLOG(3) << "begin hccl allgather, parameter is: "
-            << ", group is " << group << ", ring_id is " << ring_id
-            << ", nranks is " << nranks << ", rankid is " << rank;
-
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        platform::dynload::HcclAllGather(send_buff,
-                                         recv_buff,
-                                         send_numel,
-                                         dtype,
-                                         comm->comm(),
-                                         reinterpret_cast<void *>(stream)));
-
-#else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
-#endif
   }
 };
 

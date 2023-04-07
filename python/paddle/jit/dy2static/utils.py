@@ -1454,16 +1454,19 @@ def _param_grad_names(program_desc, params):
     # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
     for param in params:
-        candidate = [
-            var.name()
-            for var in program_desc.block(0).all_vars()
-            if var.name().endswith(param.name + '@GRAD')
-        ]
+        candidate = []
+        suffix = param.name + '@GRAD'
+        for var in program_desc.block(0).all_vars():
+            var_name = var.name()
+            if var_name.endswith(suffix):
+                prefix_count = var_name.count('grad/')
+                if 'grad/' * prefix_count + suffix == var_name:
+                    candidate.append(var_name)
+
         if candidate:
             names.append(max(candidate, key=lambda name: name.count('grad/')))
         else:
-            names.append(param.name + '@GRAD')
-
+            names.append(suffix)
     return names
 
 

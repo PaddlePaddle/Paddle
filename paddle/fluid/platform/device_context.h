@@ -135,10 +135,6 @@ class IPUDeviceContext
 };
 #endif
 
-#ifdef PADDLE_WITH_MLU
-class MLUDeviceContext;
-#endif
-
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
 using XPUDeviceContext = phi::XPUContext;
@@ -171,11 +167,6 @@ template <>
 struct DefaultDeviceContextType<phi::IPUPlace> {
   using TYPE = paddle::platform::IPUDeviceContext;
 };
-#endif
-
-#ifdef PADDLE_WITH_MLU
-template <>
-struct DefaultDeviceContextType<phi::MLUPlace>;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
