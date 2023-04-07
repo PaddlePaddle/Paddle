@@ -220,7 +220,7 @@ def _alltoall_single_in_dygraph(
     sync_op,
     use_calc_stream,
 ):
-    world_size = dist.get_world_size()
+    world_size = dist.get_world_size(group)
     if out_split_sizes is None:
         out_split_sizes = [
             out_tensor.shape[0] // world_size for _ in range(world_size)
