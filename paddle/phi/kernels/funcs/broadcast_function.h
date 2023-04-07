@@ -100,8 +100,6 @@ struct LoaderTypeClassifier {
   }
 };
 
-#ifndef PADDLE_WITH_XPU_KP
-
 // Common broadcast/elementwise Loader.
 template <int Index, int VecSize, bool IsBoundary, int LoadType>
 struct BroadcastDataLoader {
@@ -133,8 +131,9 @@ struct BroadcastDataLoader {
     }
   }
 };
-// FIXME: add BroadcastDataLoaders Partial specialization here
 
+#ifndef PADDLE_WITH_XPU_KP
+// FIXME: add BroadcastDataLoaders Partial specialization here
 #endif
 
 // static broadcast unroller
@@ -166,8 +165,7 @@ struct BcUnroller<Func, IsBoundary, LoadType, VecSize, End, End> {
   static HOSTDEVICE inline void step(Args &&...args) {}
 };
 
-template <typename InT,
-          typename OutT,
+template <typename OutT,
           typename Functor,
           int Arity,
           int NumOuts,
@@ -189,50 +187,20 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
-// FIXME: rm xpu InT
-#ifdef PADDLE_WITH_XPU_KP
-  __simd__ InT args[Arity][VecSize];
-#pragma unroll
-  for (int i = 0; i < Arity; ++i) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
-    if (use_broadcast[i]) {
-      kps::ReadDataBc<InT, VecSize, 1, IsBoundary>(
-          args[i], ins[i], block_offset, configs[i], numel, read_lens);
-    } else {
-      kps::ReadData<InT, VecSize, 1, IsBoundary>(
-          args[i], ins[i] + block_offset, num, read_lens);
-    }
-  }
-#else
-
   BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
       ins, args, configs, use_broadcast, block_offset, num, numel);
-#endif
-
-  // constexpr bool kCallElementwiseAny =
-  //     phi::funcs::FunctionTraits<Functor>::has_pointer_args;
 
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
                                      Functor,
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
-
-  // FIXME: clean this
-  // phi::funcs::ElementwisePrimitiveCaller<InT,
-  //                                        ConditionalT<OutT, NumOuts>,
-  //                                        VecSize,
-  //                                        Functor,
-  //                                        Arity,
-  //                                        kCallElementwiseAny>()(
-  //     func, args, result, read_lens);
   phi::funcs::
       ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
           outs, result, block_offset, num, read_lens);
 }
 
 template <typename Functor,
-          typename InT,
           typename OutT,
           int Arity,
           int NumOuts,
@@ -252,8 +220,7 @@ __global__ void VectorizedBroadcastKernel(
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
   for (; block_offset < main_offset; block_offset += stride) {
-    VectorizedBroadcastKernelImpl<InT,
-                                  OutT,
+    VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   Arity,
                                   NumOuts,
@@ -271,8 +238,7 @@ __global__ void VectorizedBroadcastKernel(
   }
   int num = numel - block_offset;
   if (num > 0) {
-    VectorizedBroadcastKernelImpl<InT,
-                                  OutT,
+    VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   Arity,
                                   NumOuts,
@@ -291,8 +257,7 @@ __global__ void VectorizedBroadcastKernel(
 #else
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   if (block_offset < main_offset) {
-    VectorizedBroadcastKernelImpl<InT,
-                                  OutT,
+    VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   Arity,
                                   NumOuts,
@@ -308,8 +273,7 @@ __global__ void VectorizedBroadcastKernel(
                                             read_lens,
                                             func);
   } else {
-    VectorizedBroadcastKernelImpl<InT,
-                                  OutT,
+    VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   Arity,
                                   NumOuts,
@@ -328,12 +292,7 @@ __global__ void VectorizedBroadcastKernel(
 #endif
 }
 
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
+template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchBroadcastKernel(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -355,7 +314,7 @@ void LaunchBroadcastKernel(
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
 
-  VectorizedBroadcastKernel<Functor, InT, OutT, Arity, NumOuts, VecSize, false>
+  VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
       <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                        outs_data,
                                        loader_classifier.use_broadcast,
@@ -377,7 +336,6 @@ void LaunchBroadcastKernel(
 
   if (loader_classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
-                              InT,
                               OutT,
                               Arity,
                               NumOuts,
@@ -394,13 +352,7 @@ void LaunchBroadcastKernel(
                                          func);
   } else if (loader_classifier.broadcast_num > (Arity >> 1)) {
     constexpr BroadcastLoadType type_ = (Arity > 1) ? kBroadcast : kMixed;
-    VectorizedBroadcastKernel<Functor,
-                              InT,
-                              OutT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              type_>
+    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
         <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
                                          loader_classifier.use_broadcast,
@@ -411,13 +363,7 @@ void LaunchBroadcastKernel(
                                          VecSize,
                                          func);
   } else {
-    VectorizedBroadcastKernel<Functor,
-                              InT,
-                              OutT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              kMixed>
+    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, kMixed>
         <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
                                          loader_classifier.use_broadcast,
@@ -944,17 +890,17 @@ void BroadcastKernelForDifferentVecSize(
 #endif
   switch (loader_classifier.vec_size) {
     case VecSizeL: {
-      LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeL>(
+      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
           ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeM: {
-      LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeM>(
+      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
           ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeS: {
-      LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeS>(
+      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
           ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
