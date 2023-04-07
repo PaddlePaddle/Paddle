@@ -76,7 +76,12 @@ class TestFlipOp(OpTest):
         self.init_test_case()
         self.init_attrs()
         self.init_dtype()
-        self.input = np.random.random(self.in_shape).astype(self.dtype)
+
+        if self.is_bfloat16_op():
+            self.input = np.random.random(self.in_shape).astype(np.float32)
+        else:
+            self.input = np.random.random(self.in_shape).astype(self.dtype)
+
         output = self.calc_ref_res()
 
         if self.is_bfloat16_op():
