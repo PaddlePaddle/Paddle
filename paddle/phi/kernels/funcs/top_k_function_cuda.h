@@ -587,14 +587,9 @@ struct RadixTypeConfig<phi::dtype::bfloat16> {
   typedef uint32_t RadixType;
 
   static inline __device__ RadixType Convert(phi::dtype::bfloat16 v) {
-#if defined(PADDLE_CUDA_BF16)
     RadixType x = v.x;
     RadixType mask = (x & 0x00008000) ? 0x0000ffff : 0x00008000;
     return (v == v) ? (x ^ mask) : 0xffff;
-#else
-    assert(false);
-    return 0u;
-#endif
   }
 
   static inline __device__ phi::dtype::bfloat16 Deconvert(RadixType v) {
