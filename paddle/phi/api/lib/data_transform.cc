@@ -251,6 +251,13 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
   return tensor;
 }
 
+void CheckAndTrans2Contiguous(phi::DenseTensor* tensor) {
+  if (!tensor->meta().is_contiguous(tensor->layout())) {
+    phi::DenseTensor tmp = Trans2Contiguous(*tensor);
+    tensor->ShareDataWith(tmp);
+  }
+}
+
 phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag,
