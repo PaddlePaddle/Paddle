@@ -846,11 +846,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (
-                        scale_var.astype(g.dtype)
-                        if scale_var.dtype != g.dtype
-                        else scale_var
-                    )
+                    if (
+                        new_g.dtype == core.VarDesc.VarType.FP16
+                        and scale_var.dtype != core.VarDesc.VarType.FP16
+                    ):
+                        scale_input = scale_var.astype('float16')
+                    elif (
+                        new_g.dtype == core.VarDesc.VarType.BF16
+                        and scale_var.dtype != core.VarDesc.VarType.BF16
+                    ):
+                        scale_input = scale_var.astype('bfloat16')
+                    else:
+                        scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
