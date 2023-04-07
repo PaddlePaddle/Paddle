@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -114,18 +115,15 @@ std::vector<phi::DenseTensor*> ProcessStridesBackup(
 
 phi::SelectedRows* ProcessStridesBackup(phi::SelectedRows** tensor);
 
-template <typename Context>
-void TransStride(const Context& dev_ctx,
+void TransStride(phi::DeviceContext* dev_ctx,
                  phi::DenseTensor* from,
                  phi::DenseTensor* to);
 
-template <typename Context>
-void TransStride(const Context& dev_ctx,
+void TransStride(phi::DeviceContext* dev_ctx,
                  const std::vector<phi::DenseTensor*>& from,
                  const std::vector<phi::DenseTensor*>& to);
 
-template <typename Context>
-void TransStride(const Context& dev_ctx,
+void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to);
 

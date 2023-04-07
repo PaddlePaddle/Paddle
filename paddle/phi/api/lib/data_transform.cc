@@ -232,11 +232,16 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
 
   if (paddle::platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
-    return TensorContiguous(*dev_ctx, tensor);
+    return TensorContiguous<phi::CPUContext>(*dev_ctx, tensor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (paddle::platform::is_gpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
-    return TensorContiguous(*dev_ctx, tensor);
+    return TensorContiguous<phi::GPUContext>(*dev_ctx, tensor);
+#endif
+#ifdef PADDLE_WITH_XPU
+  } else if (paddle::platform::is_xpu_place(tensor.place())) {
+    auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(tensor.place()));
+    return TensorContiguous<phi::XPUContext>(*dev_ctx, tensor);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(

@@ -1202,9 +1202,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             i = 0
             for kernel_out in outputs_args:
                 pre_save_strides += f"""{code_indent}  auto backup{i} = ProcessStridesBackup(&{kernel_out});"""
-                transdata2strided += (
-                    f"""{code_indent}  TransStride({kernel_out}, backup{i});"""
-                )
+                transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});"""
                 i = i + 1
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
