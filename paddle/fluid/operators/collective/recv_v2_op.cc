@@ -122,4 +122,4 @@ PD_REGISTER_STRUCT_KERNEL(recv_v2,
                           double,
                           int,
                           int64_t,
-                          plat::float16 >) {}
+                          plat::float16) {}
