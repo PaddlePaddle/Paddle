@@ -21,7 +21,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.layer_helper import LayerHelper
 
 from .attn_bias import (
@@ -35,6 +35,7 @@ from .attn_bias import (
 SUPPORTED_ATTN_BIAS_TYPES = {
     type(None),
     paddle.Tensor,
+    Variable,
     LowerTriangularMask,
     LowerTriangularMaskWithTensorBias,
     BlockDiagonalMask,

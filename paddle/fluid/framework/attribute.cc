@@ -40,6 +40,8 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(int64_t, attr);
     case proto::AttrType::LONGS:
       return PADDLE_GET_CONST(std::vector<int64_t>, attr);
+    case proto::AttrType::FLOAT64:
+      return PADDLE_GET_CONST(double, attr);
     case proto::AttrType::FLOAT64S:
       return PADDLE_GET_CONST(std::vector<double>, attr);
     case proto::AttrType::VAR:
@@ -108,6 +110,10 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
         val[i] = attr_desc.longs(i);
       }
       return val;
+    }
+
+    case proto::AttrType::FLOAT64: {
+      return attr_desc.float64();
     }
 
     case proto::AttrType::FLOAT64S: {

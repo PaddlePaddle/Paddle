@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/phi/api/include/tensor_operants.h"
+// #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
