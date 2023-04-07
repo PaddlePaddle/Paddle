@@ -100,7 +100,7 @@ class TestRandomControl(unittest.TestCase):
         rc_engine.prepare(mode="train")
         for data in train_dataloader:
             outs = rc_engine.run(data, fetch_list=fetch_list, mode="train")
-        print(outs)
+        print("2222222222 out:", outs)
 
         # check program
         ops = rc_engine.main_program.global_block().ops
