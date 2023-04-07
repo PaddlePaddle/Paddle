@@ -26,7 +26,7 @@ class ReduceAMaxOpMaker : public ops::ReduceBaseOpMaker {
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_amax,
                             ReduceAMaxInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+                            PD_INFER_META(phi::ReduceInferMeta));
 
 REGISTER_OPERATOR(
     reduce_amax,

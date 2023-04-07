@@ -26,7 +26,7 @@ class ReduceAMinOpMaker : public ops::ReduceBaseOpMaker {
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_amin,
                             ReduceAMinInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+                            PD_INFER_META(phi::ReduceInferMeta));
 
 REGISTER_OPERATOR(
     reduce_amin,
