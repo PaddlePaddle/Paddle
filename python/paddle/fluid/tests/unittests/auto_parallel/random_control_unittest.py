@@ -19,7 +19,15 @@ import numpy as np
 from get_gpt_model import FakeDataset, generate_model
 
 import paddle
+import paddle.distributed as dist
+from paddle.fluid import global_scope
+
+dist.init_parallel_env()
 from paddle.distributed.fleet import auto
+
+
+def get_tensor(varname, scope):
+    return scope.find_var(varname).get_tensor()
 
 
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
@@ -119,6 +127,28 @@ class TestRandomControl(unittest.TestCase):
                 'tensor_parallel_seed.tmp_6',
             ],
         )
+
+        # Check local regine different randomness, global region same randomness
+        var_scope = global_scope()
+        local_mask = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
+        global_mask = [
+            'dropout_0.tmp_1',
+            'dropout_2.tmp_1',
+            'dropout_3.tmp_1',
+            'dropout_5.tmp_1',
+            'dropout_6.tmp_1',
+        ]
+        for i in range(len(local_mask)):
+            if rank == 0:
+
+                ref_mask = get_tensor(local_mask[i], var_scope)
+                mask_1 = paddle.ones_like(ref_mask)
+                print(np.array(ref_mask))
+                print(np.array(mask_1))
+            else:
+                mask_tensor = get_tensor(local_mask[i], var_scope)
+                # dist.broadcast(data, src=1)
+                print(np.array(mask_tensor))
 
     def test_random_ctrl_with_recompute(self):
         # mp2 recompute training
