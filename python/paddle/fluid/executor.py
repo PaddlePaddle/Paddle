@@ -1619,6 +1619,24 @@ class Executor:
                 scope,
             )
 
+            stored_flag = {}
+            if isinstance(program, compiler.CompiledProgram) or isinstance(
+                program._graph, compiler.CompiledProgram
+            ):
+                compiled_program = (
+                    program
+                    if isinstance(program, compiler.CompiledProgram)
+                    else program._graph
+                )
+                build_strategy = compiled_program._build_strategy
+                if build_strategy.force_sequential_run:
+                    schedule_flag = [
+                        "FLAGS_new_executor_serial_run",
+                        "FLAGS_new_executor_sequential_run",
+                    ]
+                    stored_flag = {f: os.getenv(f, None) for f in schedule_flag}
+                    set_flags({f: "true" for f in schedule_flag})
+
             self._feed_data(program, feed, feed_var_name, scope)
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
@@ -1644,9 +1662,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            return new_exe.run(
+            ret = new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+            set_flags(stored_flag)
+            return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
