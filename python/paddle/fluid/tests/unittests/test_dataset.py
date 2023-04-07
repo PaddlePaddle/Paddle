@@ -784,6 +784,138 @@ class TestDataset(unittest.TestCase):
 
         temp_dir.cleanup()
 
+    def test_queue_dataset_run_uint16(self):
+        """
+        Testcase for QueueDataset from create to run.
+        Use CUDAPlace
+        Use float type id
+        """
+        temp_dir = tempfile.TemporaryDirectory()
+        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+
+        with open(filename1, "w") as f:
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+            f.write(data)
+        with open(filename2, "w") as f:
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.data(
+                name=slot, shape=[None, 1], dtype="uint16", lod_level=1
+            )
+            slots_vars.append(var)
+
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=1,
+            thread_num=2,
+            input_type=1,
+            pipe_command="cat",
+            use_var=slots_vars,
+        )
+        dataset.set_filelist([filename1, filename2])
+        dataset.load_into_memory()
+
+        exe = fluid.Executor(
+            fluid.CPUPlace()
+            if not core.is_compiled_with_cuda()
+            else fluid.CUDAPlace(0)
+        )
+        exe.run(fluid.default_startup_program())
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(
+                dataset, fluid.cpu_places(), self.drop_last
+            )
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(
+                        fluid.default_main_program(), dataset
+                    )
+                except Exception as e:
+                    self.assertTrue(False)
+
+        temp_dir.cleanup()
+
+    def test_queue_dataset_run_float16(self):
+        """
+        Testcase for QueueDataset from create to run.
+        Use CUDAPlace
+        Use float type id
+        """
+        temp_dir = tempfile.TemporaryDirectory()
+        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+
+        with open(filename1, "w") as f:
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+            f.write(data)
+        with open(filename2, "w") as f:
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.data(
+                name=slot, shape=[None, 1], dtype="float16", lod_level=1
+            )
+            slots_vars.append(var)
+
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=1,
+            thread_num=2,
+            input_type=1,
+            pipe_command="cat",
+            use_var=slots_vars,
+        )
+        dataset.set_filelist([filename1, filename2])
+        dataset.load_into_memory()
+
+        exe = fluid.Executor(
+            fluid.CPUPlace()
+            if not core.is_compiled_with_cuda()
+            else fluid.CUDAPlace(0)
+        )
+        exe.run(fluid.default_startup_program())
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(
+                dataset, fluid.cpu_places(), self.drop_last
+            )
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(
+                        fluid.default_main_program(), dataset
+                    )
+                except Exception as e:
+                    self.assertTrue(False)
+
+        temp_dir.cleanup()
+
     def test_run_with_inmemory_dataset_train_debug_mode(self):
         """
         Testcase for InMemoryDataset from create to run.
