@@ -199,6 +199,7 @@ class GroupNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     prim::group_norm_grad<prim::DescTensor>(x,
                                             scale,
                                             bias,
+                                            y,
                                             mean,
                                             variance,
                                             y_grad,

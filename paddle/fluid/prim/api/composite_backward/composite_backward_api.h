@@ -958,11 +958,12 @@ template <typename T>
 void group_norm_grad(const Tensor& x,
                      const paddle::optional<Tensor>& scale,
                      const paddle::optional<Tensor>& bias,
+                     const Tensor& y,
                      const Tensor& mean,
                      const Tensor& variance,
                      const Tensor& out_grad,
-                     const float epsilon,
-                     const int groups,
+                     float epsilon,
+                     int groups,
                      const std::string& data_layout,
                      Tensor* x_grad,
                      Tensor* scale_grad,
@@ -976,7 +977,7 @@ void group_norm_grad(const Tensor& x,
                                               data_layout));
   }
   Tensor x_data = x;
-  auto x_dims = x_data.dims();
+  auto x_dims = y.dims();
   auto add_axis = std::vector<int64_t>({-1});
   const int N = x_dims[0];
   const int C = x_dims[1];
