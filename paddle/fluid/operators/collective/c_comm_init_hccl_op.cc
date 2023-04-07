@@ -21,11 +21,6 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "hccl/hccl.h"
-#include "hccl/hccl_types.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -48,52 +43,9 @@ class CCommInitOpAscend : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
-#if defined(PADDLE_WITH_ASCEND_CL)
-    HcclRootInfo* hccl_id = var->GetMutable<HcclRootInfo>();
 
-    int rank_ids = Attr<int>("rank_ids");
-    int rank_id = Attr<int>("rank");
-    int rid = Attr<int>("ring_id");
-    int device_id = place.device;
-    if (Attr<int>("device_id") >= 0) {
-      device_id = Attr<int>("device_id");
-    }
-    platform::HCCLCommContext::Instance().CreateHCCLComm(
-        hccl_id, rank_ids, rank_id, device_id, rid);
-
-    //  Build comm
-    float* buff;
-    int32_t size = 20;
-    std::vector<float> input(size, 0);
-    for (int32_t idx = 0; idx < size; idx++) {
-      input[idx] = 1.0;
-    }
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::RecordedNPUMalloc(
-        reinterpret_cast<void**>(&buff), size * sizeof(float), device_id));
-    platform::NPUMemcpySync(reinterpret_cast<void*>(buff),
-                            input.data(),
-                            size * sizeof(float),
-                            ACL_MEMCPY_HOST_TO_DEVICE,
-                            size * sizeof(float));
-    VLOG(3) << "Build buff data successful.";
-
-    aclrtStream stream = nullptr;
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get(rid, place);
-    if (rank_id == 0) {
-      stream = comm->stream();
-    } else {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
-    }
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-        buff, size, HCCL_DATA_TYPE_FP32, 0, comm->comm(), stream));
-    // Synchronize stream to find hccl error in time.
-    platform::NPUStreamSync(stream);
-    VLOG(3) << "Build connection successful.";
-#else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
-#endif
   }
 };
 

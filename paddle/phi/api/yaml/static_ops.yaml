@@ -47,6 +47,17 @@
   inplace : (x -> out)
   backward : assign_grad
 
+- op : assign_value
+  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    data_type : dtype
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
@@ -56,6 +67,16 @@
   kernel :
     func : broadcast
     param: [x, root]
+
+- op : decode_jpeg
+  args : (Tensor x, str mode = "unchanged")
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+    param : [x, mode]
+  kernel :
+    func : decode_jpeg
+    param : [x, mode]
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
@@ -207,6 +228,27 @@
     func : one_hot_raw
     data_type : x
 
+- op : p_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta :
+    func : PRecvInferMeta
+    param : [peer, dtype]
+  kernel :
+    func : p_recv
+    param : [peer, dtype, dynamic_shape]
+    data_type : dtype
+
+- op : p_recv_array
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : PRecvArrayInferMeta
+    param : [peer, dtype, out_shape]
+  kernel :
+    func : p_recv_array
+    param : [peer, dtype, out_shape]
+
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
   output : Tensor(out)
@@ -228,6 +270,16 @@
     func : reduce
     param: [x, root_id, reduce_type]
 
+- op : reduce_scatter
+  args : (Tensor x, int ring_id = 0, int nranks = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceScatterInferMeta
+    param: [x, nranks]
+  kernel :
+    func : reduce_scatter
+    param: [x, nranks]
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
@@ -235,6 +287,28 @@
     func : ShareBufferInferMeta
   kernel :
     func : share_buffer
+
+- op : tril_indices
+  args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+
+- op : triu_indices
+  args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TriuIndicesInferMeta
+    param : [row, col, offset, dtype]
+  kernel :
+    func : triu_indices
+    param : [row, col, offset, dtype]
+    data_type : dtype
 
 - op : uniform
   args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)

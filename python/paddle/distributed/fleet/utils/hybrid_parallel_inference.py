@@ -201,11 +201,9 @@ class HybridParallelInferenceHelper:
         assert isinstance(main_program, Program)
 
         self._device = None
-        if core.is_compiled_with_npu():
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self._device = "gpu"
-        assert self._device, "Only gpu and npu are supported."
+        assert self._device, "Only gpu are supported."
 
         assert not in_dygraph_mode(), "Only static graph mode is supported."
 

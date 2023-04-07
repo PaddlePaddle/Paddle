@@ -69,9 +69,7 @@ from .core import (
     XPUPlace,
     CUDAPlace,
     CUDAPinnedPlace,
-    NPUPlace,
     IPUPlace,
-    MLUPlace,
     CustomPlace,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -125,9 +123,7 @@ __all__ = (
         'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
-        'NPUPlace',
         'IPUPlace',
-        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -218,10 +214,6 @@ monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
 
-# NOTE(zhiqiu): register npu_finalize on the exit of Python,
-# do some clean up manually.
-if core.is_compiled_with_npu():
-    atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
 

@@ -28,12 +28,6 @@ else()
       SRCS bkcl_context_test.cc
       DEPS bkcl_context)
   endif()
-  if(WITH_CNCL)
-    cc_test(
-      cncl_context_test
-      SRCS cncl_context_test.cc
-      DEPS cncl_context)
-  endif()
 endif()
 
 cc_test(
