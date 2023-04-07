@@ -685,6 +685,19 @@ def options_process(args, build_options):
 def get_cmake_generator():
     if os.getenv("GENERATOR"):
         cmake_generator = os.getenv("GENERATOR")
+        reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+        installed_packages = [
+            r.decode().split('==')[0].lower() for r in reqs.split()
+        ]
+        if 'ninja' in installed_packages:
+            print(
+                "The ninja package has been installed in your python environment. "
+            )
+        else:
+            print(
+                "The ninja package has not been installed in your python environment，install it now. "
+            )
+            os.system('python -m pip install ninja')
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
