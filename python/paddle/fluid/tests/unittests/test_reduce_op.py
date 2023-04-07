@@ -1396,7 +1396,7 @@ class TestAmaxOp(OpTest):
     """Remove Amax with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
-        self.op_type = "amax"
+        self.op_type = "reduce_amax"
         self.prim_op_type = "prim"
         self.python_api = paddle.amax
         self.public_python_api = paddle.amax
