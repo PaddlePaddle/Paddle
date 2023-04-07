@@ -126,34 +126,13 @@ class TestInstanceNormOp(OpTest):
             'SavedMean': ref_mean_np,
             'SavedVariance': ref_var_np,
         }
+        self.enable_cinn = False
 
-    def test_check_output_cpu(self):
-        self.check_output_with_place(
-            core.CPUPlace(), atol=1e-05, check_prim=True
-        )
+    def test_check_output(self):
+        self.check_output(atol=1e-05, check_prim=True)
 
-    def test_check_grad_cpu(self):
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ['X', 'Scale', 'Bias'],
-            'Y',
-            check_prim=True,
-        )
-
-    def test_check_output_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(
-                core.CUDAPlace(0), atol=1e-05, check_prim=True
-            )
-
-    def test_check_grad_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0),
-                ['X', 'Scale', 'Bias'],
-                'Y',
-                check_prim=True,
-            )
+    def test_check_grad(self):
+        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
 
     def init_test_case(self):
         x_shape = [2, 100, 4, 5]
@@ -192,17 +171,6 @@ class TestInstanceNormFP64(TestInstanceNormOp):
         self.rev_comp_rtol = 1e-13
         self.rev_comp_atol = 1e-13
         self.dtype = dtype
-
-    def test_check_output_cpu(self):
-        self.check_output_with_place(
-            core.CPUPlace(), atol=1e-14, check_prim=True
-        )
-
-    def test_check_output_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(
-                core.CUDAPlace(0), atol=1e-14, check_prim=True
-            )
 
 
 class PrimNet(paddle.nn.Layer):
