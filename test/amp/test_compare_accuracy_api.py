@@ -19,10 +19,7 @@ import paddle
 from paddle.fluid import core
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA and not support the bfloat16",
-)
+@unittest.skipIf(not core.is_compiled_with_cuda())
 class TestCompareAccuracyApi(unittest.TestCase):
     def test_num_nan_inf(self):
         path1 = "workerlog_fp32_log_dir"
