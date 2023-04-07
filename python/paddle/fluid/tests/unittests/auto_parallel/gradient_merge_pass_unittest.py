@@ -32,7 +32,7 @@ def apply_pass(use_gradient_merge=False):
     if use_gradient_merge:
         gradient_merge = strategy.gradient_merge
         gradient_merge.enable = True
-        gradient_merge.k_steps = 2
+        gradient_merge.k_steps = 4
         gradient_merge.avg = True
 
     amp = strategy.amp
