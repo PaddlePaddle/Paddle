@@ -136,8 +136,7 @@ class MatMulV1OneDNNHandler
     auto out_md = memory::desc(
         out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
-    dnnl::primitive_attr matmul_attrs;
-    std::tie(matmul_attrs, output_scale_) = CreateMatmulAttrs(ctx);
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
@@ -157,8 +156,7 @@ class MatMulV1OneDNNHandler
     return alpha;
   }
 
-  std::tuple<dnnl::primitive_attr, float> CreateMatmulAttrs(
-      const ExecutionContext &ctx) {
+  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext &ctx) {
     dnnl::primitive_attr matmul_attrs;
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
@@ -185,22 +183,6 @@ class MatMulV1OneDNNHandler
     OT *ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
-
-  paddle::optional<dnnl::memory> GetOutputScaleMem() {
-    if (output_scale_ != 1.0) {
-      auto scales_md = dnnl::memory::desc(
-          {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-
-      return dnnl::memory(scales_md,
-                          this->engine_,
-                          phi::funcs::to_void_cast<float>(&output_scale_));
-    } else {
-      return paddle::optional<dnnl::memory>();
-    }
-  }
-
- private:
-  float output_scale_ = 1.0f;
 };
 
 template <typename XT, typename YT, typename OT>
