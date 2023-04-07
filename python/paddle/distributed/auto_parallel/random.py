@@ -22,6 +22,7 @@ from .utils import _get_idx_in_axis
 _logger = get_logger(logging.INFO)
 
 _rng_name_to_seed = {}
+_inited_rng_name_to_seed = {}
 _enable_random_control = False
 _basic_seed = 42
 
@@ -123,7 +124,15 @@ def init_auto_parallel_rng():
         return
 
     global _rng_name_to_seed
+    # NOTE init rng maybe call multiple times, avoid init same rng twice
+    global _inited_rng_name_to_seed
 
     for rng_name, seed in _rng_name_to_seed.items():
-        _logger.info(f"Init Auto Parallel RNG: {rng_name}, with seed {seed}")
-        paddle.framework.random.set_random_seed_generator(rng_name, seed)
+        if rng_name in _inited_rng_name_to_seed:
+            assert _inited_rng_name_to_seed[rng_name] == seed
+        else:
+            _logger.info(
+                f"Init Auto Parallel RNG: {rng_name}, with seed {seed}"
+            )
+            paddle.framework.random.set_random_seed_generator(rng_name, seed)
+            _inited_rng_name_to_seed[rng_name] = seed
