@@ -3901,10 +3901,12 @@ def gaussian_nll_loss(
     r"""Gaussian negative log likelihood loss.
 
     Gaussian negative log likelihood loss among ``input``, ``variance`` and
-    ``label``. Note that the ``label`` is treated as samples from Gaussian distributions,
-    and ``input`` and ``variance`` are predicted by the neural network. This means
-    ``input`` and ``variance`` should be functions(the neural network) of some inputs. For a
-    ``label`` tensor modelled as having Gaussian distribution with a tensor
+    ``label``. Note that the ``label`` is treated as samples from Gaussian distributions.
+    One of the interpretations is that this class is used to train a neural network predicts
+    the ``input`` and ``variance`` of a gaussian distribution, which is ``label`` are supposed to
+    be coming from. This means ``input`` and ``variance`` should be functions(the neural network) of some inputs.
+
+    For a ``label`` tensor modelled as having Gaussian distribution with a tensor
     of expectations ``input`` and a tensor of positive  ``variance`` the loss is calculated as follows:
 
     .. math::
