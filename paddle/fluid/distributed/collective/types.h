@@ -48,6 +48,10 @@ struct ScatterOptions {
   int root_rank = 0;
 };
 
+struct GatherOptions {
+  int root_rank = 0;
+};
+
 struct ReduceScatterOptions {
   ReduceOp reduce_op = ReduceOp::SUM;
 };

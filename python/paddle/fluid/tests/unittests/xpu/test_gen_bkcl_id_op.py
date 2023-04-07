@@ -43,7 +43,7 @@ def run_gen_bkc_id(attr):
 
         for i in range(1, bkcl_comm_num):
             startup_program.global_block().create_var(
-                name="BKCLID_{}".format(i),
+                name=f"BKCLID_{i}",
                 persistable=True,
                 type=core.VarDesc.VarType.RAW,
             )
@@ -51,12 +51,12 @@ def run_gen_bkc_id(attr):
         if use_hallreduce:
             for i in range(0, bkcl_comm_num):
                 startup_program.global_block().create_var(
-                    name="Hierarchical_inter_BKCLID_{}".format(i),
+                    name=f"Hierarchical_inter_BKCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
                 startup_program.global_block().create_var(
-                    name="Hierarchical_exter_BKCLID_{}".format(i),
+                    name=f"Hierarchical_exter_BKCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
@@ -92,7 +92,7 @@ class TestGenBKCLIdOp(unittest.TestCase):
         port = self._dist_ut_port_0
         trainers = []
         for i in range(nranks):
-            trainers.append('127.0.0.1:{}'.format(port + i))
+            trainers.append(f'127.0.0.1:{port + i}')
 
         attr = {
             "trainers": trainers,

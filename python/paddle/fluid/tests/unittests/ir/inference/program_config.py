@@ -19,12 +19,13 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
+from paddle.fluid import core, framework
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import (
     IrGraph,
     IrNode,
     Operator,
+    OpProtoHolder,
     convert_np_dtype_to_dtype_,
 )
 from paddle.static.quantization import (
@@ -182,7 +183,15 @@ class BlockConfig:
             op_desc.set_type(op_config.type)
             for name, values in op_config.inputs.items():
                 op_desc.set_input(name, values)
-            for name, values in op_config.attrs.items():
+            # canonicalize scalar attrs
+            if OpProtoHolder.instance().has_op_proto(op_config.type):
+                proto = OpProtoHolder.instance().get_op_proto(op_config.type)
+                canonicalized_attrs = framework.canonicalize_attrs(
+                    op_config.attrs, proto
+                )
+            else:
+                canonicalized_attrs = op_config.attrs
+            for name, values in canonicalized_attrs.items():
                 op_desc._set_attr(name, values)
             for name, values in op_config.outputs.items():
                 op_desc.set_output(name, values)
@@ -323,9 +332,18 @@ def create_fake_model(program_config):
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
+        # canonicalize scalar attrs
+        if OpProtoHolder.instance().has_op_proto(op_config.type):
+            proto = OpProtoHolder.instance().get_op_proto(op_config.type)
+            canonicalized_attrs = framework.canonicalize_attrs(
+                op_config.attrs, proto
+            )
+        else:
+            canonicalized_attrs = op_config.attrs
+
         for name, values in op_config.inputs.items():
             op_desc.set_input(name, values)
-        for name, values in op_config.attrs.items():
+        for name, values in canonicalized_attrs.items():
             if name == 'sub_block':
                 sub_block_desc = main_program_desc.append_block(main_block_desc)
                 values.fill_block_desc(sub_block_desc)

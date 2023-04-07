@@ -39,7 +39,30 @@ enum AttrType {
   VAR = 13;
   VARS = 14;
   FLOAT64 = 15;
+  SCALAR = 16;
+  SCALARS = 17;
 }
+
+
+message Complex {
+  required double r = 1;
+  required double i = 2;
+};
+
+message Scalar {
+  enum Type {
+    BOOLEAN = 1;
+    LONG = 2;
+    FLOAT64 = 3;
+    COMPLEX128 = 4;
+  }
+  required Type type = 1;
+
+  optional bool b = 2;
+  optional int64 i = 3;
+  optional double r = 4;
+  optional Complex c = 5;
+};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -64,6 +87,8 @@ message OpDesc {
     optional string var_name = 17;
     repeated string vars_name = 18;
     optional double float64 = 19;
+    optional Scalar scalar = 20;
+    repeated Scalar scalars = 21;
   };
 
   message Var {

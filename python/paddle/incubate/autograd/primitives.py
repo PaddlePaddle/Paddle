@@ -132,5 +132,6 @@ others = [
     'uniform',
     'greater_equal',
     'zeros_like',
+    'transpose',
 ]
 """

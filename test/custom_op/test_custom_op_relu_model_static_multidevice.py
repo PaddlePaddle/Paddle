@@ -90,14 +90,12 @@ class TestCustomOpReluModelStaticMultiDevice(unittest.TestCase):
 
         for id in range(count):
             loss_custom = np.load(
-                os.path.join(
-                    self.output_log_dir.name, 'train_{}_{}.npz'.format(id, True)
-                )
+                os.path.join(self.output_log_dir.name, f'train_{id}_{True}.npz')
             )
             loss_origin = np.load(
                 os.path.join(
                     self.output_log_dir.name,
-                    'train_{}_{}.npz'.format(id, False),
+                    f'train_{id}_{False}.npz',
                 )
             )
             np.testing.assert_array_equal(
@@ -114,14 +112,10 @@ class TestCustomOpReluModelStaticMultiDevice(unittest.TestCase):
         self.eval(use_custom_op=False)
         for id in range(count):
             loss_custom = np.load(
-                os.path.join(
-                    self.output_log_dir.name, 'eval_{}_{}.npz'.format(id, True)
-                )
+                os.path.join(self.output_log_dir.name, f'eval_{id}_{True}.npz')
             )
             loss_origin = np.load(
-                os.path.join(
-                    self.output_log_dir.name, 'eval_{}_{}.npz'.format(id, False)
-                )
+                os.path.join(self.output_log_dir.name, f'eval_{id}_{False}.npz')
             )
             np.testing.assert_array_equal(
                 loss_custom['losses'], loss_origin['losses']

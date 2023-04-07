@@ -16,9 +16,9 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-from paddle import fluid
 from paddle.fluid import core
 from paddle.nn import clip
 
@@ -119,7 +119,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         out_selected_rows = scope.var('Out').get_selected_rows()
 
         # run clip_by_norm_op
-        clip_by_norm_op = fluid.op.Operator(
+        clip_by_norm_op = Operator(
             "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
         )
         clip_by_norm_op.run(scope, place)

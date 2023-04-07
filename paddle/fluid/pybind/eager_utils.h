@@ -110,6 +110,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);

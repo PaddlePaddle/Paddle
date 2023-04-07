@@ -57,13 +57,17 @@ black_ops_list = [
     "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
+    "sync_batch_norm_",
 ]
 
 
 # white ops list whose kernel can be deleted after performance analysis
 # original kernel and its derivative kernel can be deleted when composite_grad
 # kernel performs same to it.
-prim_white_list = ["matmul_double_grad"]
+prim_white_list = [
+    "matmul_double_grad",
+    "tanh_double_grad",
+]
 
 # dict of special api that forward api's output will affect bacward api's output
 # bacward api's output usually affected by backward api's input

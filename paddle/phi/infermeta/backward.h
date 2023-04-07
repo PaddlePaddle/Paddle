@@ -151,6 +151,10 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
                            bool is_test,
                            MetaTensor* x_grad);
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out);
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,
@@ -343,6 +347,11 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
                                  MetaTensor* x_grad);
+
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy);
 
 void OverlapAddGradInferMeta(const MetaTensor& x,
                              const MetaTensor& out_grad,

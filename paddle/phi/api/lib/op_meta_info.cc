@@ -25,6 +25,11 @@ limitations under the License. */
 namespace paddle {
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+  if (!src.initialized() || !dst->defined()) {
+    VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
+               "happens when handling inplace optional inputs & outputs.";
+    return;
+  }
   PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
                     true,
                     phi::errors::Unavailable(
@@ -96,6 +101,25 @@ std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
 
 Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
   return inputs_.at(idx);
+}
+
+paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
+  if (!inputs_.at(idx).is_initialized()) {
+    return paddle::none;
+  }
+  return paddle::make_optional<paddle::Tensor>(inputs_.at(idx));
+}
+
+paddle::optional<std::vector<Tensor>>
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    if (!inputs_.at(i).is_initialized()) {
+      return paddle::none;
+    }
+    rlt.emplace_back(inputs_.at(i));
+  }
+  return paddle::make_optional<std::vector<Tensor>>(rlt);
 }
 
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
@@ -187,8 +211,9 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
-    VLOG(4)
-        << "Custom opertor update inplace input-output tensor successfully.";
+    VLOG(4) << "Custom opertor update inplace input-output tensor "
+               "successfully. Update map size = "
+            << inplace_tensor_map_.size();
   }
 }
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {

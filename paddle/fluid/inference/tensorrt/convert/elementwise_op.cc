@@ -25,7 +25,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
+    VLOG(3) << "Convert a elementwise op to TensorRT IElementWiseLayer";
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::ITensor* Y = nullptr;

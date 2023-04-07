@@ -25,7 +25,7 @@ class IPUController(CollectiveController):
     @classmethod
     def enable(cls, ctx):
         if ctx.args.training_script == "ipu":
-            ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.logger.debug(f"{cls.__name__} enabled")
             ctx.args.run_mode = ControleMode.IPU
             return True
         else:
@@ -75,16 +75,12 @@ class IPUController(CollectiveController):
             num_ipus, poprun_args.ipus_per_replica
         )
         num_replicas = num_ipus // poprun_args.ipus_per_replica
-        self.ctx.logger.info(
-            "The number of total replicas is {}.".format(num_replicas)
-        )
+        self.ctx.logger.info(f"The number of total replicas is {num_replicas}.")
 
         # The number of processes
         num_nodes = len(poprun_args.hosts.split(','))
         num_procs = num_nodes * poprun_args.nproc_per_host
-        self.ctx.logger.info(
-            "The number of total processes is {}.".format(num_procs)
-        )
+        self.ctx.logger.info(f"The number of total processes is {num_procs}.")
         assert (
             num_replicas % num_procs
         ) == 0, "The number of replicas:{} mod the number of processes:{} must == 0".format(
@@ -98,18 +94,14 @@ class IPUController(CollectiveController):
         # args for poprun
         poprun_command = []
 
-        poprun_command.append('--num-instances={}'.format(num_procs))
-        poprun_command.append('--num-replicas={}'.format(num_replicas))
+        poprun_command.append(f'--num-instances={num_procs}')
+        poprun_command.append(f'--num-replicas={num_replicas}')
         poprun_command.append(
-            '--ipus-per-replica={}'.format(poprun_args.ipus_per_replica)
+            f'--ipus-per-replica={poprun_args.ipus_per_replica}'
         )
         poprun_command.append('--host={}'.format(','.join(hosts)))
-        poprun_command.append(
-            '--vipu-partition={}'.format(poprun_args.ipu_partition)
-        )
-        poprun_command.append(
-            '--vipu-server-host={}'.format(poprun_args.vipu_server)
-        )
+        poprun_command.append(f'--vipu-partition={poprun_args.ipu_partition}')
+        poprun_command.append(f'--vipu-server-host={poprun_args.vipu_server}')
 
         poprun_command.extend(
             [
@@ -124,7 +116,7 @@ class IPUController(CollectiveController):
         global_envs = '--mpi-local-args=\''
         log_level = os.getenv('POPART_LOG_LEVEL', None)
         if log_level:
-            global_envs += '-x POPART_LOG_LEVEL={} '.format(log_level)
+            global_envs += f'-x POPART_LOG_LEVEL={log_level} '
         global_envs += (
             '-x PADDLE_TRAINERS_NUM={} -x PADDLE_TRAINER_ENDPOINTS={}'.format(
                 num_procs, ','.join(endpoints)

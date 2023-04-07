@@ -23,6 +23,8 @@ from typing import Any, List
 
 import numpy
 
+from paddle.nn import Layer
+
 from .convert_operators import (
     convert_enumerate,
     convert_len,
@@ -182,9 +184,7 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    translator_logger.log(
-        1, "Convert callable object: convert {}.".format(func)
-    )
+    translator_logger.log(1, f"Convert callable object: convert {func}.")
     func_self = None
     converted_call = None
 
@@ -302,8 +302,6 @@ def convert_call(func):
             converted_call = None
 
     elif hasattr(func, '__class__') and callable(func.__class__):
-        from paddle.nn import Layer
-
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
@@ -329,7 +327,7 @@ def convert_call(func):
                 func_self = None if func_self else func_self
     else:
         raise NotImplementedError(
-            "Callable {} can not be transformed at present.".format(func)
+            f"Callable {func} can not be transformed at present."
         )
 
     if converted_call is None:

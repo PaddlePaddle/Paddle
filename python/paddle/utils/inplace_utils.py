@@ -31,7 +31,7 @@ def _inplace_apis_in_dygraph_only_(func):
                     func.__name__, origin_api_name
                 )
             )
-            origin_func = "{}.{}".format(func.__module__, origin_api_name)
+            origin_func = f"{func.__module__}.{origin_api_name}"
             return eval(origin_func)(*args, **kwargs)
         return func(*args, **kwargs)
 

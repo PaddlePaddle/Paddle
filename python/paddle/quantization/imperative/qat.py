@@ -530,6 +530,7 @@ class ImperativeQuantizeOutputs:
             model, paddle.nn.Layer
         ), "The model must be the instance of paddle.nn.Layer."
 
+        paddle.jit.to_static(model, input_spec=input_spec)
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False

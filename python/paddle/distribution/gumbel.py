@@ -61,7 +61,7 @@ class Gumbel(TransformedDistribution):
           dist.cdf(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.54523915])
           dist.entropy()
-          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
+          # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
           dist.rsample([2])
           # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [[0.80463481], [0.91893655]])
 

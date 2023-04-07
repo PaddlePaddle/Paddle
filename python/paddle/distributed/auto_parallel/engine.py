@@ -266,7 +266,7 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+            elif isinstance(item, (Variable, core.eager.Tensor)):
                 spec = InputSpec.from_tensor(item, name)
                 _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
@@ -309,7 +309,7 @@ class Engine:
             )
             assert isinstance(
                 inputs, list
-            ), "inputs should be list, but received {}".format(type(inputs))
+            ), f"inputs should be list, but received {type(inputs)}"
             assert len(inputs_spec) == len(
                 inputs
             ), "the number of `inputs_spec` should be equal to `inputs`'s."
@@ -324,7 +324,7 @@ class Engine:
             )
             assert isinstance(
                 labels, list
-            ), "labels should be list, but received {}".format(type(labels))
+            ), f"labels should be list, but received {type(labels)}"
             assert len(labels_spec) == len(
                 labels
             ), "the number of `labels_spec` should be equal to `labels`'s."
@@ -387,12 +387,12 @@ class Engine:
                     for name, value in data[0].items():
                         feeds[name] = value
                 else:
-                    raise ValueError("Unsupported data {}".format(data))
+                    raise ValueError(f"Unsupported data {data}")
             elif isinstance(data, dict):
                 for name, value in data.items():
                     feeds[name] = value
             else:
-                raise ValueError("Unsupported data {}".format(data))
+                raise ValueError(f"Unsupported data {data}")
         if user_feeds is not None:
             assert isinstance(
                 user_feeds, dict
@@ -1538,7 +1538,7 @@ class Engine:
     def _switch_mode(self, mode):
         assert (
             mode in self._dist_main_progs
-        ), "{} model is not ready, please call `prepare()` first.".format(mode)
+        ), f"{mode} model is not ready, please call `prepare()` first."
         self.to_mode(mode)
         self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
@@ -1547,7 +1547,7 @@ class Engine:
             "train",
             "eval",
             "predict",
-        ], "mode {} should be one of ['train', 'eval', 'predict']".format(mode)
+        ], f"mode {mode} should be one of ['train', 'eval', 'predict']"
         self._mode = mode
 
     def _set_state_dict(self, mode, strict, state_dict, dist_attr):
@@ -1637,7 +1637,7 @@ class Engine:
 
                 self._logger.info("export quantized model.")
                 self._logger.info(
-                    "convert config {}".format(self._strategy.qat.to_dict())
+                    f"convert config {self._strategy.qat.to_dict()}"
                 )
                 test_graph = IrGraph(
                     core.Graph(dist_main_prog.desc), for_test=True

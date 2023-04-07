@@ -2,8 +2,8 @@
 # Please don't modify this file manually.
 # If you need to change unittests in this file, please modify testslist.csv in the current directory
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
-set(LOCAL_ALL_PLAT ON)
 set(LOCAL_ALL_ARCH ON)
+set(LOCAL_ALL_PLAT ON)
 if((WITH_GPU
     OR WITH_XPU
     OR WITH_ASCEND
@@ -650,6 +650,18 @@ if((WITH_GPU
     "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=")
   set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT "120")
 endif()
+if((WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_fused_attention_pass_with_mp
+    START_BASH
+    test_fused_attention_pass_with_mp.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
+  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
+                                                                    "120")
+endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_ir_pass_pipeline
@@ -881,16 +893,4 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-endif()
-if(WITH_GPU)
-  bash_test_modules(
-    test_fused_attention_pass_with_mp
-    START_BASH
-    test_fused_attention_pass_with_mp.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
-  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
-                                                                    "120")
 endif()

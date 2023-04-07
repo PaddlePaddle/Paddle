@@ -25,7 +25,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
+    VLOG(3) << "convert a multihead_mamul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

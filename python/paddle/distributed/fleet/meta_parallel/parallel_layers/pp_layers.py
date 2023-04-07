@@ -81,7 +81,7 @@ class SharedLayerDesc(LayerDesc):
         forward_func=None,
         shared_weight_attr='weight',
         *inputs,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
@@ -581,26 +581,26 @@ class PipelineLayer(nn.Layer):
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
-                logger.info("{}: {}".format(index + start, str(layer)))
+                logger.info(f"{index + start}: {str(layer)}")
 
         if self._num_virtual_pipeline_stages > 1:
             for stage in range(self._num_stages):
                 stage_to_virtual_stage_info = (
-                    "stage {} contains virtual stages: ".format(stage)
+                    f"stage {stage} contains virtual stages: "
                 )
                 for i in range(
                     stage,
                     self._total_stages_with_virtual_stages,
                     self._num_stages,
                 ):
-                    stage_to_virtual_stage_info += " {},".format(i)
+                    stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
         if self._loss_fn:
             try:
-                logger.info("loss: {}".format(self._loss_fn.__name__))
+                logger.info(f"loss: {self._loss_fn.__name__}")
             except AttributeError:
-                logger.info("loss: {}".format(self._loss_fn.__class__.__name__))
+                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
         for i in range(len(self._start_poss)):
@@ -715,7 +715,7 @@ class PipelineLayer(nn.Layer):
                     input = recompute_hybrid(
                         self.recompute_ctx,
                         self.forward_function(start_idx, end_idx),
-                        *input
+                        *input,
                     )
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
@@ -746,17 +746,15 @@ class PipelineLayer(nn.Layer):
                 pos_offset = self._start_poss[local_chunk_id]
             idx = local_layer_idx + pos_offset
             model_rank = self._topo.get_coord(self.global_rank).model
-            rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
+            rank_message = "-tensor_" + f"{model_rank:0>2d}"
             virtual_pipeline_stage_message = ""
             if self._num_virtual_pipeline_stages > 1:
                 # add virtual pipeline info to the save path
                 assert local_chunk_id is not None
                 virtual_pipeline_stage_message = (
-                    "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                    f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                 )
-            layer_save_path = os.path.join(
-                ckpt_dir, 'layer_{:0>2d}'.format(idx)
-            )
+            layer_save_path = os.path.join(ckpt_dir, f'layer_{idx:0>2d}')
             layer_save_path = (
                 layer_save_path
                 + virtual_pipeline_stage_message
@@ -784,9 +782,7 @@ class PipelineLayer(nn.Layer):
         logger.info("save model state successfully...")
 
     def set_state_dir(self, path):
-        assert os.path.exists(
-            path
-        ), "{} not found, please check the path".format(path)
+        assert os.path.exists(path), f"{path} not found, please check the path"
 
         def _load_model(run_functions, local_chunk_id=None):
             for idx, layer in enumerate(run_functions):
@@ -799,15 +795,13 @@ class PipelineLayer(nn.Layer):
                     assert local_chunk_id < len(self._start_poss)
                     pos_offset = self._start_poss[local_chunk_id]
                 layer_idx = idx + pos_offset
-                layer_save_path = os.path.join(
-                    path, 'layer_{0:0>2d}'.format(layer_idx)
-                )
+                layer_save_path = os.path.join(path, f'layer_{layer_idx:0>2d}')
                 if self._num_virtual_pipeline_stages > 1:
                     # add virtual pipeline info to the path
                     assert local_chunk_id is not None
                     layer_save_path = (
                         layer_save_path
-                        + "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                        + f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                     )
                 model_files = glob.glob(
                     layer_save_path + "*model_states.pdparams"

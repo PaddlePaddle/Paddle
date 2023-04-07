@@ -110,8 +110,8 @@ class TestComplexMatMulLayer(unittest.TestCase):
             x = np.random.random((2, 1, 100)).astype(
                 dtype
             ) + 1j * np.random.random((2, 1, 100)).astype(dtype)
-            y = np.random.random((100)).astype(dtype) + 1j * np.random.random(
-                (100)
+            y = np.random.random(100).astype(dtype) + 1j * np.random.random(
+                100
             ).astype(dtype)
 
             np_result = np.matmul(x, y)
