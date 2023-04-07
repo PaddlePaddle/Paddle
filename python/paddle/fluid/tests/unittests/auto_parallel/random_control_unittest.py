@@ -109,13 +109,13 @@ class TestRandomControl(unittest.TestCase):
         self.assertEqual(
             seed_var_names,
             [
-                'rc_seed_0.tmp_0',
-                'rc_seed_1.tmp_0',
-                'rc_seed_2.tmp_0',
-                'rc_seed_3.tmp_0',
-                'rc_seed_4.tmp_0',
-                'rc_seed_5.tmp_0',
-                'rc_seed_6.tmp_0',
+                'tensor_parallel_seed.tmp_0',
+                'tensor_parallel_seed.tmp_1',
+                'tensor_parallel_seed.tmp_2',
+                'tensor_parallel_seed.tmp_3',
+                'tensor_parallel_seed.tmp_4',
+                'tensor_parallel_seed.tmp_5',
+                'tensor_parallel_seed.tmp_6',
             ],
         )
 
