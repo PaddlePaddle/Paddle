@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/collective/c_sync_calc_stream_op.h"
 
 namespace ops = paddle::operators;
@@ -24,4 +25,8 @@ PD_REGISTER_STRUCT_KERNEL(c_sync_calc_stream,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+#if NCCL_VERSION_CODE >= 21000
+                          plat::bfloat16,
+#endif
+                          plat::float16) {
+}
