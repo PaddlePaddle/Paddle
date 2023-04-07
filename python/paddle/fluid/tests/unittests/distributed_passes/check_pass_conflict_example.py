@@ -39,7 +39,7 @@ class CheckPassConflictTest2(PassConflictChecker):
         ]
 
     def test_resnet(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             self.check_main(resnet_model, batch_size=32)
 
 

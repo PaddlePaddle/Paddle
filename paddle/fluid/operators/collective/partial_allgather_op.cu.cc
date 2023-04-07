@@ -108,6 +108,9 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           ops::PartialAllGatherOpCUDAKernel,
                           float,
                           double,
+#if NCCL_VERSION_CODE >= 21000
+                          plat::bfloat16,
+#endif
                           int,
                           int64_t,
                           plat::float16) {}

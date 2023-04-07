@@ -4027,7 +4027,7 @@ def lgamma(x, name=None):
 
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4046,7 +4046,9 @@ def lgamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.lgamma(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'lgamma'
+        )
         helper = LayerHelper('lgamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})

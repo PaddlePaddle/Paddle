@@ -177,10 +177,6 @@ if(WITH_GLOO)
   endif()
 endif()
 
-if(WITH_MLU)
-  set(MLU_DEPS mlu_baseop)
-endif()
-
 if(NOT WITH_ASCEND_CL)
   cc_library(
     gradient_accumulator

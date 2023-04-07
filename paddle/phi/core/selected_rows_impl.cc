@@ -208,4 +208,13 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
     }
   }
 }
+
+void SelectedRowsImpl::set_type(const DataType dtype) {
+  value_->set_type(dtype);
+}
+
+void SelectedRowsImpl::set_layout(const DataLayout layout) {
+  value_->set_layout(layout);
+}
+
 }  // namespace phi
