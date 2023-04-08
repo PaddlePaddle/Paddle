@@ -51,7 +51,13 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
         self.atol = 1e-4
         self.rtol = 1e-4
 
-    def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+    def get_model(
+        self,
+        place,
+        batch_size=32,
+        image_shape=[224, 224, 3],
+        use_pure_fp16=True,
+    ):
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
@@ -68,6 +74,8 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
         dist_strategy.amp_configs = {
             "init_loss_scaling": 32768,
             "use_dynamic_loss_scaling": True,
+            "use_pure_fp16": True,
+            "use_fp16_guard": False,
         }
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
@@ -84,7 +92,7 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
 
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
-        return main_program, startup_program, [image], [loss], reader
+        return main_program, startup_program, [image], [loss], reader, optimizer
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager([new_pass("fuse_bn_add_act")])
@@ -98,7 +106,7 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
         self.assertTrue("fused_bn_add_activation_grad" in op_type)
 
     def test_fuse_bn_add_act(self):
-        self.check_main()
+        self.check_main(use_pure_fp16=True)
 
 
 if __name__ == "__main__":

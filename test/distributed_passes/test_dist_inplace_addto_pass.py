@@ -79,7 +79,7 @@ class TestInplaceAddtoPass(DistPassTestBase):
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
         print(main_program)
-        return main_program, startup_program, [image], [loss], reader
+        return main_program, startup_program, [image], [loss], reader, optimizer
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager(

@@ -57,6 +57,12 @@ def parse_args():
         type=str,
         help='The input model file which contains the dumped model function.',
     )
+    parser.add_argument(
+        '--use_pure_fp16',
+        default=False,
+        action="store_true",
+        help='If use amp-o2 level for training.',
+    )
     return parser.parse_args()
 
 

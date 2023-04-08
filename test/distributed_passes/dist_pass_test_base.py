@@ -138,9 +138,14 @@ class DistPassTestBase(unittest.TestCase):
         ):
             with paddle.static.scope_guard(scope):
                 with paddle.fluid.unique_name.guard():
-                    main_prog, startup_prog, inputs, outputs, reader = model(
-                        place, **kwargs
-                    )
+                    (
+                        main_prog,
+                        startup_prog,
+                        inputs,
+                        outputs,
+                        reader,
+                        optimizer,
+                    ) = model(place, **kwargs)
                     inputs = self._to_var_names(inputs)
                     outputs = self._to_var_names(outputs)
                     if apply_pass:
@@ -150,6 +155,8 @@ class DistPassTestBase(unittest.TestCase):
         exe = paddle.static.Executor(place)
         with paddle.static.scope_guard(scope):
             exe.run(startup_prog)
+            if "use_pure_fp16" in kwargs and kwargs["use_pure_fp16"]:
+                optimizer.amp_init(place)
             for batch_id, input_data in enumerate(reader()):
                 assert len(input_data) == len(inputs), "{} vs {}".format(
                     len(input_data), len(inputs)
@@ -239,6 +246,8 @@ class DistPassTestBase(unittest.TestCase):
                 cmd += ["--apply_pass"]
             if model is not None:
                 cmd += ["--model_file", model_dump_file]
+            if 'use_pure_fp16' in kwargs and kwargs['use_pure_fp16']:
+                cmd += ["--use_pure_fp16"]
             cmd = [shlex.quote(c) for c in cmd]
             prepare_python_path_and_return_module(__file__)
             exitcode = os.system(' '.join(cmd))

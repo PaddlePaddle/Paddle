@@ -238,10 +238,11 @@ class OptimizerWithMixedPrecision:
                     level='O2',
                 )
             else:
+                # use_fp16_guard is not support amp-o1.
                 cast_model_to_fp16(
                     self._train_program,
                     self._amp_lists,
-                    self._use_fp16_guard,
+                    use_fp16_guard=False,
                     level='O1',
                 )
                 # rewrite_program(self._train_program, self._amp_lists)

@@ -19,7 +19,11 @@ from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 
 _logger = get_logger(
+<<<<<<< HEAD
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+=======
+    __name__, logging.DEBUG, fmt='%(asctime)s-%(levelname)s: %(message)s'
+>>>>>>> fix unittests
 )
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
@@ -143,6 +147,9 @@ class AutoMixedPrecisionLists:
         """
         Update black and white list according to users' custom list.
         """
+        _logger.debug(f"---- custom_white_list {self._custom_white_list} ---- ")
+        _logger.debug(f"---- custom_black_list {self._custom_black_list} ---- ")
+        _logger.debug(f"---- custom_black_varnames {self.black_varnames} ---- ")
         if self._custom_white_list and self._custom_black_list:
             for op_name in self._custom_white_list:
                 if op_name in self._custom_black_list:
@@ -182,12 +189,16 @@ class AutoMixedPrecisionLists:
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-white_list = {
+_white_list = {
     'conv2d',
     'matmul',
     'matmul_v2',
     'mul',
 }
+
+_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
+
+white_list = _white_list | _only_supported_fp16_list
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
@@ -270,8 +281,6 @@ gray_list = {
     'fused_multi_transformer',
 }
 
-<<<<<<< HEAD
-=======
 # The set of ops that don't support fp16 calculation
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
 _sys_unsupported_fp16_list = []
