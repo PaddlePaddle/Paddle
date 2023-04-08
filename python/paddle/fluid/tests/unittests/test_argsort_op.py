@@ -501,17 +501,23 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestArgsortOpFp16(unittest.TestCase):
-    def test_fp16(self):
-        x_np = np.random.random((2, 8)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
-            out = paddle.argsort(x)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': x_np}, fetch_list=[out])
+class TestArgsortFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = 'argsort'
+        self.dtype = np.float16
+        x = np.random.randn(11, 17).astype(self.dtype)
+        out = np.argsort(x)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+        )
 
 
 @unittest.skipIf(
