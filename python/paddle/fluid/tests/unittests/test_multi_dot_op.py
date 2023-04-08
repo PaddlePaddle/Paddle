@@ -71,10 +71,13 @@ class TestMultiDotBF16(OpTest):
         return np.uint16
 
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((2, 8)).astype(self.dtype)
-        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.A = np.random.random((2, 8)).astype("float32")
+        self.B = np.random.random((8, 4)).astype("float32")
         self.inputs = {
-            'X': convert_float_to_uint16([('x0', self.A), ('x1', self.B)])
+            'X': [
+                ('x0', convert_float_to_uint16(self.A)),
+                ('x1', convert_float_to_uint16(self.B)),
+            ]
         }
         self.outputs = {
             'Out': convert_float_to_uint16(multi_dot([self.A, self.B]))

@@ -126,7 +126,7 @@ class TestOverlapAddBF16(OpTest):
         self.type = self.init_dype()
         self.inputs = {
             'X': convert_float_to_uint16(
-                np.random.random(size=self.shape).astype(self.type)
+                np.random.random(size=self.shape).astype("float32")
             ),
         }
         self.outputs = {

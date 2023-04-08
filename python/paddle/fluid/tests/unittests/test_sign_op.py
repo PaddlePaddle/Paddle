@@ -61,7 +61,7 @@ class TestSignBF16(OpTest):
         self.dtype = self.init_dtype()
         self.inputs = {
             'X': convert_float_to_uint16(
-                np.random.uniform(-10, 10, (10, 10)).astype(self.dtype)
+                np.random.uniform(-10, 10, (10, 10)).astype("float32")
             )
         }
         self.outputs = {

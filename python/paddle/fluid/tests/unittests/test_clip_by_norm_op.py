@@ -71,7 +71,7 @@ class TestClipByNormBF16(OpTest):
         self.python_api = clip.clip_by_norm
         self.init_dtype()
         self.initTestCase()
-        input = np.random.random(self.shape).astype(self.dtype)
+        input = np.random.random(self.shape).astype("float32")
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
         self.inputs = {
