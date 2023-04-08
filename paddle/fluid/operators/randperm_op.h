@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <ctime>
-#include <string>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>  #include <ctime>
+#include <string>  #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
