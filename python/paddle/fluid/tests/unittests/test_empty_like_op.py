@@ -221,9 +221,7 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPI_Static):
                 data_x = paddle.static.data(
                     name="x", shape=self.data_x_shape, dtype=self.dtype
                 )
-
                 out = paddle.empty_like(data_x)
-
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     paddle.static.default_main_program(),
