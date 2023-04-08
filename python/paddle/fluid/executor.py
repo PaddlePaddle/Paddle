@@ -1599,7 +1599,10 @@ class Executor:
                     else program._graph
                 )
                 build_strategy = compiled_program._build_strategy
-                if build_strategy.force_sequential_run:
+                if (
+                    build_strategy is not None
+                    and build_strategy.force_sequential_run
+                ):
                     schedule_flag = [
                         'FLAGS_new_executor_serial_run',
                         'FLAGS_new_executor_sequential_run',
