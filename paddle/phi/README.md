@@ -54,7 +54,7 @@ For a long time, because the Paddle and Paddle-Lite operators are maintained sep
 
 Therefore, this functional operator library will be jointly constructed by training and inference team, and will serve as an independent compilation component and underlying infrastructure (not yet independently split), which can serve training, server-inference, and -inference execution systems at the same time.
 
-### 1.6 Op and Kernel parameter normalization
+### 1.5 Op and Kernel parameter normalization
 
 The Python 2.0 API project in 2020 standardized the argument list of the Paddle Python-side API, making it concise, easy to use, and standard. However, due to cost considerations, the argument list at the Op level was not standardized, so there will be many early developed operators that differ greatly in arguments from the Python API. For example, `conv` op, the Python API has only 8 arguments, but the corresponding C++ `Conv` Op has 29 arguments. API and Op are essentially the same layer of concepts, both are descriptions of an operation, and the arguments should be consistent. In order to solve this problem, 'the operator definition enhancement project' was launched, and the declarations of 'AsExtra' and 'AsQuant' were added to some unnecessary arguments, but the problem was not fundamentally solved, which is what the construction of the PHI operator library hopes to solve.
 
