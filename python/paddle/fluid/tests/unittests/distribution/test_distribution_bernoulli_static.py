@@ -54,31 +54,17 @@ default_dtype = paddle.get_default_dtype()
                     0.7,
                     np.array([[0.0, 1.0], [1.0, 0.0]], dtype=default_dtype),
                 ),
-                (
-                    'probs_iterable',
-                    [
-                        0.3,
-                    ],
-                    [
-                        0.7,
-                    ],
-                    1.0,
-                ),
                 # N-D probs
                 (
                     'probs_tuple_0305',
                     (0.3, 0.5),
-                    [
-                        0.7,
-                    ],
+                    0.7,
                     1.0,
                 ),
                 (
                     'probs_tuple_03050104',
                     ((0.3, 0.5), (0.1, 0.4)),
-                    [
-                        0.7,
-                    ],
+                    0.7,
                     1.0,
                 ),
             ),
@@ -128,8 +114,10 @@ class BernoulliTestFeature(unittest.TestCase):
                 else:
                     value = paddle.to_tensor(value, place=self.place)
 
-                rv_paddles.append(Bernoulli(probs=probs))
-                rv_paddles_other.append(Bernoulli(probs=probs_other))
+                rv_paddles.append(Bernoulli(probs=paddle.to_tensor(probs)))
+                rv_paddles_other.append(
+                    Bernoulli(probs=paddle.to_tensor(probs_other))
+                )
                 values.append(value)
 
             results = self.executor.run(
@@ -259,9 +247,7 @@ class BernoulliTestFeature(unittest.TestCase):
         # 1-D probs
         (
             'probs_03',
-            [
-                0.3,
-            ],
+            (0.3,),
             [
                 100,
             ],
@@ -270,8 +256,8 @@ class BernoulliTestFeature(unittest.TestCase):
         ),
         # N-D probs
         (
-            'probs_tuple_0305',
-            [0.3, 0.5],
+            'probs_0305',
+            (0.3, 0.5),
             [
                 100,
             ],
@@ -295,7 +281,7 @@ class BernoulliTestSample(unittest.TestCase):
 
     def init_static_data(self, probs, shape, temperature):
         with paddle.static.program_guard(self.program):
-            self.rv_paddle = Bernoulli(probs=probs)
+            self.rv_paddle = Bernoulli(probs=paddle.to_tensor(probs))
 
             [self.sample_paddle, self.rsample_paddle] = self.executor.run(
                 self.program,
@@ -349,6 +335,19 @@ class BernoulliTestError(unittest.TestCase):
     @parameterize_func(
         [
             (0,),  # int
+            ((0.3,),),  # tuple
+            (
+                [
+                    0.3,
+                ],
+            ),  # list
+            (
+                np.array(
+                    [
+                        0.3,
+                    ]
+                ),
+            ),  # ndarray
             (-1j + 1,),  # complex
             ('0',),  # str
         ]
@@ -445,7 +444,7 @@ class BernoulliTestError(unittest.TestCase):
     )
     def test_bad_broadcast(self, value):
         with paddle.static.program_guard(self.program):
-            rv = Bernoulli([0.3, 0.5])
+            rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
 
             # `logits, value = paddle.broadcast_tensors([self.logits, value])`
             # raise ValueError in dygraph, raise TypeError in static.

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 
 import numpy as np
 
@@ -27,23 +26,25 @@ from paddle.nn.functional import (
     softplus,
 )
 
+# Smallest representable number
 EPS = {
-    'float32': 1e-03,
-    'float64': 1e-05,
+    'float32': paddle.finfo(paddle.float32).eps,
+    'float64': paddle.finfo(paddle.float64).eps,
 }
 
 
-def _clip_probs(probs):
-    """Clip probs from [0, 1] to (0, 1) with `eps=1e-3`(float32)/`eps=1e-5`(float64).
+def _clip_probs(probs, dtype):
+    """Clip probs from [0, 1] to (0, 1) with ``eps``.
 
     Args:
         probs (Tensor): probs of Bernoulli.
+        dtype (str): data type.
 
     Returns:
         Tensor: Clipped probs.
     """
-    eps = EPS.get(convert_dtype(probs.dtype))
-    return paddle.clip(probs, min=eps, max=1 - eps)
+    eps = EPS.get(dtype)
+    return paddle.clip(probs, min=eps, max=1 - eps).astype(dtype)
 
 
 class Bernoulli(exponential_family.ExponentialFamily):
@@ -64,7 +65,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         \end{cases}}
 
     Args:
-        probs (float|list|tuple|numpy.ndarray|Tensor): The ``probs`` input of Bernoulli distribution. The data type is float32 or float64. The range must be in [0, 1].
+        probs (float|Tensor): The ``probs`` input of Bernoulli distribution. The data type is float32 or float64. The range must be in [0, 1].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -96,39 +97,17 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 probs,
                 'probs',
-                (float, np.ndarray, tensor.Variable, list, tuple),
+                (float, tensor.Variable),
                 self.name,
             )
-
-        self.dtype = paddle.get_default_dtype()
-
-        # Convert dtype like `np.array(0) -> int` to default dtype.
-        if isinstance(probs, (np.ndarray, tensor.Variable)):
-            if convert_dtype(probs.dtype) not in ['float32', 'float64']:
-                warnings.warn(
-                    "data type of argument only support float32 and float64, your argument will be convert to {}.".format(
-                        self.dtype
-                    )
-                )
-                probs = probs.astype(self.dtype)
-            self.dtype = convert_dtype(probs.dtype)
 
         # Get/convert probs to tensor.
         if self._validate_args(probs):
             self.probs = probs
+            self.dtype = convert_dtype(probs.dtype)
         else:
             [self.probs] = self._to_tensor(probs)
-
-        # Ensure `self.probs` to `ndim>0`.
-        self.probs = (
-            self.probs
-            if self.probs.shape
-            else paddle.full(shape=[1], fill_value=self.probs)
-        )
-
-        # Convert dtype to float64/float32 from data or default dtype.
-        if self.dtype != convert_dtype(self.probs.dtype):
-            self.probs = paddle.cast(self.probs, dtype=self.dtype)
+            self.dtype = paddle.get_default_dtype()
 
         # Check probs range [0, 1].
         if _non_static_mode():
@@ -141,7 +120,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 raise ValueError("The arg of `probs` must be in range [0, 1].")
 
         # Clip probs from [0, 1] to (0, 1) with smallest representable number `eps`.
-        self.probs = _clip_probs(self.probs)
+        self.probs = _clip_probs(self.probs, self.dtype)
         self.logits = self._probs_to_logits(self.probs, is_binary=True)
 
         super().__init__(batch_shape=self.probs.shape, event_shape=())
@@ -172,23 +151,27 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
-            The shape of the sampled data have ndim lager than 1.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Bernoulli
 
-                rv = Bernoulli(0.3)
+                rv = Bernoulli(paddle.full((), 0.3))
+                print(rv.sample([100]).shape)
+                # [100]
+
+                rv = Bernoulli(paddle.to_tensor(0.3))
                 print(rv.sample([100]).shape)
                 # [100, 1]
 
-                rv = Bernoulli([0.3, 0.5])
+                rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 print(rv.sample([100]).shape)
                 # [100, 2]
 
-                rv = Bernoulli([0.3, 0.5])
+                rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 print(rv.sample([100, 2]).shape)
                 # [100, 2, 2]
         """
@@ -204,7 +187,8 @@ class Bernoulli(exponential_family.ExponentialFamily):
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         shape = self._extend_shape(shape)
 
-        return paddle.bernoulli(self.probs.expand(shape), name=name)
+        with paddle.no_grad():
+            return paddle.bernoulli(self.probs.expand(shape), name=name)
 
     def rsample(self, shape, temperature=1.0):
         """Sample from Bernoulli distribution (reparameterized).
@@ -222,9 +206,9 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
-            The shape of the sampled data have ndim lager than 1.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -232,15 +216,19 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 paddle.seed(2023)
 
+                rv = Bernoulli(paddle.full((), 0.3))
+                print(rv.sample([100]).shape)
+                # [100]
+
                 rv = Bernoulli(0.3)
                 print(rv.rsample([100]).shape)
                 # [100, 1]
 
-                rv = Bernoulli([0.3, 0.5])
+                rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 print(rv.rsample([100]).shape)
                 # [100, 2]
 
-                rv = Bernoulli([0.3, 0.5])
+                rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
                 print(rv.rsample([100, 2]).shape)
                 # [100, 2, 2]
 
@@ -284,10 +272,12 @@ class Bernoulli(exponential_family.ExponentialFamily):
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         shape = self._extend_shape(shape)
 
-        temperature = paddle.full(shape=[1], fill_value=temperature)
+        temperature = paddle.full(
+            shape=(), fill_value=temperature, dtype=self.dtype
+        )
 
         probs = self.probs.expand(shape)
-        uniforms = paddle.rand(shape, dtype=self.probs.dtype)
+        uniforms = paddle.rand(shape, dtype=self.dtype)
         return paddle.divide(
             paddle.add(
                 paddle.subtract(uniforms.log(), (-uniforms).log1p()),
@@ -315,6 +305,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             Tensor: CDF evaluated at value.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -352,6 +343,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             Tensor: Log of probability densitiy evaluated at value.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -390,6 +382,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             Tensor: PDF evaluated at value.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -419,6 +412,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             Tensor: Entropy of distribution.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
@@ -451,6 +445,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             Tensor: kl-divergence between two Bernoulli distributions.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle

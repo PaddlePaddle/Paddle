@@ -34,17 +34,17 @@ from paddle.fluid.data_feeder import convert_dtype
 np.random.seed(2023)
 paddle.seed(2023)
 
-# smallest representable number
+# Smallest representable number.
 EPS = {
-    'float32': 1e-03,
-    'float64': 1e-05,
+    'float32': np.finfo('float32').eps,
+    'float64': np.finfo('float64').eps,
 }
 
 
 def _clip_probs_ndarray(probs, dtype):
-    """Clip probs from [0, 1] to (0, 1) with `eps`"""
-    eps = EPS.get(dtype, 1e-05)
-    return np.clip(probs, a_min=eps, a_max=1 - eps)
+    """Clip probs from [0, 1] to (0, 1) with ``eps``"""
+    eps = EPS.get(dtype)
+    return np.clip(probs, a_min=eps, a_max=1 - eps).astype(dtype)
 
 
 def _sigmoid(z):
@@ -65,7 +65,7 @@ class BernoulliNumpy(DistributionNumpy):
         else:
             self.dtype = probs.dtype
 
-        self.batch_shape = np.shape(probs) or [1]
+        self.batch_shape = np.shape(probs)
 
         self.probs = _clip_probs_ndarray(
             np.array(probs, dtype=self.dtype), str(self.dtype)
@@ -83,9 +83,14 @@ class BernoulliNumpy(DistributionNumpy):
         return self.rv.var().astype(self.dtype)
 
     def sample(self, shape):
-        return self.rv.rvs(
-            size=np.array(shape).tolist() + list(self.batch_shape)
-        ).astype(self.dtype)
+        shape = np.array(shape, dtype='int')
+        if shape.ndim:
+            shape = shape.tolist()
+        else:
+            shape = [shape.tolist()]
+        return self.rv.rvs(size=shape + list(self.batch_shape)).astype(
+            self.dtype
+        )
 
     def log_prob(self, value):
         return self.rv.logpmf(value).astype(self.dtype)
@@ -97,7 +102,14 @@ class BernoulliNumpy(DistributionNumpy):
         return self.rv.cdf(value).astype(self.dtype)
 
     def entropy(self):
-        return self.rv.entropy().astype(self.dtype)
+        return (
+            np.maximum(
+                self.logits,
+                0,
+            )
+            - self.logits * self.probs
+            + np.log(1 + np.exp(-np.abs(self.logits)))
+        ).astype(self.dtype)
 
     def kl_divergence(self, other):
         """
@@ -135,95 +147,49 @@ class BernoulliTest(unittest.TestCase):
         self.rv_np = BernoulliNumpy(probs)
 
     def init_dynamic_data(self, probs, default_dtype, dtype):
-        if default_dtype.startswith('int'):
-            """Check `dtype` and convert from `int` to `float32` instead of `float64` what `Numpy` does.
-            ``` python
-                a = np.array(0.3)
-                b = paddle.to_tensor(0.3)
-                print(a.dtype, b.dtype)
-                # (dtype('float64'), paddle.float32)
-            ```
-            """
-            with self.assertWarns(UserWarning):
-                self.rv_paddle = Bernoulli(probs)
-                self.assertTrue(
-                    'float32' == convert_dtype(self.rv_paddle.probs.dtype),
-                    (dtype, self.rv_paddle.probs.dtype),
-                )
-        else:
-            self.rv_paddle = Bernoulli(probs)
-            self.assertTrue(
-                dtype == convert_dtype(self.rv_paddle.probs.dtype),
-                (dtype, self.rv_paddle.probs.dtype),
-            )
-
-        self.assertTrue(list(self.rv_paddle.batch_shape) != [])
+        self.rv_paddle = Bernoulli(probs)
+        self.assertTrue(
+            dtype == convert_dtype(self.rv_paddle.probs.dtype),
+            (dtype, self.rv_paddle.probs.dtype),
+        )
 
 
 @place(DEVICES)
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs', 'default_dtype', 'expected_dtype'),
     [
+        # 0-D probs
+        ('probs_00_32', paddle.full((), 0.0), 'float32', 'float32'),
+        ('probs_03_32', paddle.full((), 0.3), 'float32', 'float32'),
+        ('probs_10_32', paddle.full((), 1.0), 'float32', 'float32'),
+        (
+            'probs_00_64',
+            paddle.full((), 0.0, dtype='float64'),
+            'float64',
+            'float64',
+        ),
+        (
+            'probs_03_64',
+            paddle.full((), 0.3, dtype='float64'),
+            'float64',
+            'float64',
+        ),
+        (
+            'probs_10_64',
+            paddle.full((), 1.0, dtype='float64'),
+            'float64',
+            'float64',
+        ),
         # 1-D probs
         ('probs_00', 0.0, 'float64', 'float32'),
         ('probs_03', 0.3, 'float64', 'float32'),
         ('probs_10', 1.0, 'float64', 'float32'),
-        ('probs_03_tuple', (0.3,), 'float64', 'float32'),
-        ('probs_03_tuple_int', (0,), 'int64', 'float32'),
-        (
-            'probs_03_list',
-            [
-                0.3,
-            ],
-            'float64',
-            'float32',
-        ),
-        ('probs_ndarray_03_int', np.array(0), 'int64', 'float32'),
-        (
-            'probs_ndarray_03_32',
-            np.array(0.3, dtype='float32'),
-            'float32',
-            'float32',
-        ),
-        ('probs_ndarray_03_64', np.array(0.3), 'float64', 'float64'),
-        (
-            'probs_ndarray_03_list_32',
-            np.array(
-                [
-                    0.3,
-                ],
-                dtype='float32',
-            ),
-            'float32',
-            'float32',
-        ),
-        (
-            'probs_ndarray_03_list_64',
-            np.array(
-                [
-                    0.3,
-                ]
-            ),
-            'float64',
-            'float64',
-        ),
-        ('probs_tensor_03_int', paddle.to_tensor(0), 'int64', 'float32'),
         ('probs_tensor_03_32', paddle.to_tensor(0.3), 'float32', 'float32'),
         (
             'probs_tensor_03_64',
             paddle.to_tensor(0.3, dtype='float64'),
             'float64',
             'float64',
-        ),
-        (
-            'probs_tensor_03_list_int',
-            paddle.to_tensor(
-                [
-                    0,
-                ]
-            ),
-            'int64',
-            'float32',
         ),
         (
             'probs_tensor_03_list_32',
@@ -247,11 +213,16 @@ class BernoulliTest(unittest.TestCase):
             'float64',
         ),
         # N-D probs
-        ('probs_tuple_0305', (0.3, 0.5), 'float64', 'float32'),
         (
-            'probs_tuple_03050104',
-            ((0.3, 0.5), (0.1, 0.4)),
-            'float64',
+            'probs_tensor_0305',
+            paddle.to_tensor((0.3, 0.5)),
+            'float32',
+            'float32',
+        ),
+        (
+            'probs_tensor_03050104',
+            paddle.to_tensor(((0.3, 0.5), (0.1, 0.4))),
+            'float32',
             'float32',
         ),
     ],
@@ -388,7 +359,7 @@ class BernoulliTestFeature(BernoulliTest):
 
     def test_kl_divergence(self):
         with paddle.fluid.dygraph.guard(self.place):
-            other_probs = np.array(0.9, dtype=self.dtype)
+            other_probs = paddle.to_tensor(0.9, dtype=self.dtype)
 
             rv_paddle_other = Bernoulli(other_probs)
             rv_np_other = BernoulliNumpy(other_probs)
@@ -419,35 +390,51 @@ class BernoulliTestFeature(BernoulliTest):
         'expected_shape',
     ),
     [
+        # 0-D probs
+        (
+            'probs_0d_1d',
+            paddle.full((), 0.3),
+            'float32',
+            'float32',
+            [
+                100,
+            ],
+            [
+                100,
+            ],
+        ),
+        (
+            'probs_0d_2d',
+            paddle.full((), 0.3),
+            'float32',
+            'float32',
+            [100, 1],
+            [100, 1],
+        ),
+        (
+            'probs_0d_3d',
+            paddle.full((), 0.3),
+            'float32',
+            'float32',
+            [100, 2, 3],
+            [100, 2, 3],
+        ),
         # 1-D probs
         (
-            'probs_03',
-            (0.3,),
-            'float64',
+            'probs_1d_1d_32',
+            paddle.to_tensor(0.3),
+            'float32',
             'float32',
             [
                 100,
             ],
             [100, 1],
         ),
-        ('probs_03_tuple', (0.3,), 'float64', 'float32', (100,), [100, 1]),
         (
-            'probs_03_ndarray',
-            (0.3,),
+            'probs_1d_1d_64',
+            paddle.to_tensor(0.3, dtype='float64'),
             'float64',
-            'float32',
-            np.array(
-                [
-                    100,
-                ]
-            ),
-            [100, 1],
-        ),
-        (
-            'probs_03_tensor',
-            (0.3,),
             'float64',
-            'float32',
             paddle.to_tensor(
                 [
                     100,
@@ -455,20 +442,27 @@ class BernoulliTestFeature(BernoulliTest):
             ),
             [100, 1],
         ),
-        ('probs_03_2d', (0.3,), 'float64', 'float32', [100, 2], [100, 2, 1]),
         (
-            'probs_03_3d',
-            (0.3,),
-            'float64',
+            'probs_1d_2d',
+            paddle.to_tensor(0.3),
+            'float32',
+            'float32',
+            [100, 2],
+            [100, 2, 1],
+        ),
+        (
+            'probs_1d_3d',
+            paddle.to_tensor(0.3),
+            'float32',
             'float32',
             [100, 2, 3],
             [100, 2, 3, 1],
         ),
         # N-D probs
         (
-            'probs_tuple_0305',
-            (0.3, 0.5),
-            'float64',
+            'probs_2d_1d',
+            paddle.to_tensor((0.3, 0.5)),
+            'float32',
             'float32',
             [
                 100,
@@ -476,17 +470,17 @@ class BernoulliTestFeature(BernoulliTest):
             [100, 2],
         ),
         (
-            'probs_tuple_0305_2d',
-            (0.3, 0.5),
-            'float64',
+            'probs_2d_2d',
+            paddle.to_tensor((0.3, 0.5)),
+            'float32',
             'float32',
             [100, 3],
             [100, 3, 2],
         ),
         (
-            'probs_tuple_0305_3d',
-            (0.3, 0.5),
-            'float64',
+            'probs_2d_3d',
+            paddle.to_tensor((0.3, 0.5)),
+            'float32',
             'float32',
             [100, 4, 3],
             [100, 4, 3, 2],
@@ -502,11 +496,19 @@ class BernoulliTestSample(BernoulliTest):
             self.assertEqual(list(sample_paddle.shape), self.expected_shape)
             self.assertEqual(sample_paddle.dtype, self.rv_paddle.probs.dtype)
 
-            for i in range(len(self.probs)):
+            if self.probs.ndim:
+                for i in range(len(self.probs)):
+                    self.assertTrue(
+                        _kstest(
+                            sample_np[..., i].reshape(-1),
+                            sample_paddle.numpy()[..., i].reshape(-1),
+                        )
+                    )
+            else:
                 self.assertTrue(
                     _kstest(
-                        sample_np[..., i].reshape(-1),
-                        sample_paddle.numpy()[..., i].reshape(-1),
+                        sample_np.reshape(-1),
+                        sample_paddle.numpy().reshape(-1),
                     )
                 )
 
@@ -517,7 +519,7 @@ class BernoulliTestSample(BernoulliTest):
         ]
     )
     def test_rsample(self, temperature):
-        """Compare two samples from `rsample` method, one from scipy and another from paddle."""
+        """Compare two samples from `rsample` method, one from scipy `sample` and another from paddle `rsample`."""
         with paddle.fluid.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
             rsample_paddle = self.rv_paddle.rsample(self.shape, temperature)
@@ -525,16 +527,35 @@ class BernoulliTestSample(BernoulliTest):
             self.assertEqual(list(rsample_paddle.shape), self.expected_shape)
             self.assertEqual(rsample_paddle.dtype, self.rv_paddle.probs.dtype)
 
-            for i in range(len(self.probs)):
+            if self.probs.ndim:
+                for i in range(len(self.probs)):
+                    self.assertTrue(
+                        _kstest(
+                            sample_np[..., i].reshape(-1),
+                            (
+                                _sigmoid(rsample_paddle.numpy()[..., i]) > 0.5
+                            ).reshape(-1),
+                            temperature,
+                        )
+                    )
+            else:
                 self.assertTrue(
                     _kstest(
-                        sample_np[..., i].reshape(-1),
-                        (
-                            _sigmoid(rsample_paddle.numpy()[..., i]) > 0.5
-                        ).reshape(-1),
+                        sample_np.reshape(-1),
+                        (_sigmoid(rsample_paddle.numpy()) > 0.5).reshape(-1),
                         temperature,
                     )
                 )
+
+    def test_rsample_backpropagation(self):
+        with paddle.fluid.dygraph.guard(self.place):
+            self.rv_paddle.probs.stop_gradient = False
+            rsample_paddle = self.rv_paddle.rsample(self.shape)
+            rsample_paddle = paddle.nn.functional.sigmoid(rsample_paddle)
+            grads = paddle.grad([rsample_paddle], [self.rv_paddle.probs])
+            self.assertEqual(len(grads), 1)
+            self.assertEqual(grads[0].dtype, self.rv_paddle.probs.dtype)
+            self.assertEqual(grads[0].shape, self.rv_paddle.probs.shape)
 
 
 @place(DEVICES)
@@ -557,12 +578,15 @@ class BernoulliTestError(unittest.TestCase):
 
     @parameterize_func(
         [
-            (paddle.to_tensor([0.1, 0.2, 0.3]),),
+            (
+                [0.3, 0.5],
+                paddle.to_tensor([0.1, 0.2, 0.3]),
+            ),
         ]
     )
-    def test_bad_broadcast(self, value):
+    def test_bad_broadcast(self, probs, value):
         with paddle.fluid.dygraph.guard(self.place):
-            rv = Bernoulli([0.3, 0.5])
+            rv = Bernoulli(probs)
             self.assertRaises(ValueError, rv.cdf, value)
             self.assertRaises(ValueError, rv.log_prob, value)
             self.assertRaises(ValueError, rv.prob, value)
