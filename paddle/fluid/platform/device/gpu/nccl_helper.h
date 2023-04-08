@@ -69,25 +69,25 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
-inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+inline ncclDataType_t ToNCCLDataType(phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return ncclFloat;
-  } else if (type == experimental::DataType::FLOAT64) {
+  } else if (type == phi::DataType::FLOAT64) {
     return ncclDouble;
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return ncclInt;
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return ncclInt64;
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return ncclFloat16;
-  } else if (type == experimental::DataType::UINT8) {
+  } else if (type == phi::DataType::UINT8) {
     return ncclUint8;
-  } else if (type == experimental::DataType::INT8) {
+  } else if (type == phi::DataType::INT8) {
     return ncclInt8;
-  } else if (type == experimental::DataType::BOOL) {
+  } else if (type == phi::DataType::BOOL) {
     return ncclUint8;
 #if NCCL_VERSION_CODE >= 21000
-  } else if (type == experimental::DataType::BFLOAT16) {
+  } else if (type == phi::DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif
   } else {

@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -26,17 +27,21 @@ class TestDiagonalOp(OpTest):
     def setUp(self):
         self.op_type = "diagonal"
         self.python_api = paddle.diagonal
+        self.init_dtype()
         self.init_config()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out', check_eager=True)
+        self.check_grad(['Input'], 'Out')
+
+    def init_dtype(self):
+        self.dtype = 'float64'
 
     def init_config(self):
-        self.case = np.random.randn(10, 5, 2).astype('float64')
+        self.case = np.random.randn(10, 5, 2).astype(self.dtype)
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
         self.target = np.diagonal(
@@ -80,7 +85,6 @@ class TestDiagonalOpCase2(TestDiagonalOp):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
@@ -138,7 +142,7 @@ class TestDiagonalAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.diagonal(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -171,6 +175,44 @@ class TestDiagonalAPI(unittest.TestCase):
         np.testing.assert_allclose(out4.numpy(), out4_ref, rtol=1e-08)
 
         paddle.enable_static()
+
+
+class TestDiagonalFP16OP(TestDiagonalOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestDiagonalBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "diagonal"
+        self.python_api = paddle.diagonal
+        self.dtype = np.uint16
+        self.init_config()
+        self.outputs = {'Out': convert_float_to_uint16(self.target)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Input'], 'Out')
+
+    def init_config(self):
+        self.case = np.random.randn(10, 5, 2).astype(np.float32)
+        self.inputs = {'Input': convert_float_to_uint16(self.case)}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.diagonal(
+            self.case,
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        ).copy()
 
 
 if __name__ == '__main__':

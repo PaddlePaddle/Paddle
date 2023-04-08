@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import compiler
 
 dev_cnt = 2
@@ -89,7 +89,7 @@ def simple_fc_net(img, label, use_py_func_op):
                 fluid.default_main_program()
                 .current_block()
                 .create_var(
-                    name='hidden_{}'.format(idx),
+                    name=f'hidden_{idx}',
                     dtype='float32',
                     shape=hidden.shape,
                 )

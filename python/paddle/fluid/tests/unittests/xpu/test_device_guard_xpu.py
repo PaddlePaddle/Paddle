@@ -20,7 +20,7 @@ sys.path.append("..")
 import warnings
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 

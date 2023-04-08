@@ -17,7 +17,7 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -43,7 +43,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
@@ -77,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
@@ -208,7 +208,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
-  list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
 # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
@@ -273,47 +272,25 @@ function(py_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
     else()
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     if(py_test_modules_SERIAL)
@@ -443,7 +420,6 @@ list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS
      test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
@@ -519,8 +495,7 @@ endforeach()
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
+   AND NOT (WITH_ASCEND))
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -533,7 +508,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
-   OR WITH_ASCEND_CL
    OR APPLE)
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
@@ -593,10 +567,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -604,7 +574,6 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
 
   # TODO(sandyhouse): fix and add the ut back
@@ -617,7 +586,6 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
@@ -677,8 +645,7 @@ if(WITH_DISTRIBUTE)
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
        OR WITH_XPU
-       OR WITH_ASCEND
-       OR WITH_ASCEND_CL)
+       OR WITH_ASCEND)
       bash_test_modules(
         test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -692,7 +659,7 @@ if(WITH_DISTRIBUTE)
         test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-    if(WITH_ASCEND OR WITH_ASCEND_CL)
+    if(WITH_ASCEND)
       bash_test_modules(
         test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -830,11 +797,8 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(autograd)
 add_subdirectory(distribution)
-add_subdirectory(prim)
 
 if(NOT WIN32 OR NOT WITH_GPU)
   add_subdirectory(fft)
@@ -862,36 +826,12 @@ if(WIN32)
     DEPS python)
 endif()
 
-if(WITH_ASCEND_CL)
-  add_subdirectory(npu)
-endif()
-
-if(WITH_MKLDNN)
-  add_subdirectory(mkldnn)
-endif()
-
-if(WITH_IPU)
-  add_subdirectory(ipu)
-endif()
-
-if(WITH_MLU)
-  add_subdirectory(mlu)
-endif()
-
-add_subdirectory(asp)
-
 add_subdirectory(ir)
-
-add_subdirectory(standalone_executor)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  test_data_norm_op
-  test_dataloader_keep_order
-  test_dataloader_unkeep_order
-  test_parallel_ssa_graph_inference_feed_partial_data
-  test_buffer_shared_memory_reuse_pass
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
+  test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
   test_inplace_abn_op
@@ -947,6 +887,11 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
+
+  # NODE(Ruibiao): Remove it after static build is enabled by default.
+  set_tests_properties(
+    test_dist_mnist_fp16_allreduce test_dist_mnist_pg
+    PROPERTIES ENVIRONMENT FLAGS_new_executor_static_build=true)
 endif()
 
 # setting timeout value as 15S
@@ -986,7 +931,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1011,21 +956,19 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
@@ -1128,6 +1071,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1153,7 +1097,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
-    set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   endif()
@@ -1183,25 +1126,6 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
 endif()
 
-if($ENV{USE_STANDALONE_EXECUTOR})
-  # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-  set_tests_properties(test_apply_pass_to_program
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_buffer_shared_memory_reuse_pass
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(
-    test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-    PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_optimizer
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_star_gan_with_gradient_penalty
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_switch_autotune
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_mnist_sorted_gradient
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-endif()
-
 set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
@@ -1210,6 +1134,7 @@ set(TEST_CINN_OPS
     test_stack_op
     test_activation_op
     test_full_like_op
+    test_index_select_op
     test_fill_any_like_op
     test_concat_op
     test_top_k_v2_op
@@ -1218,10 +1143,21 @@ set(TEST_CINN_OPS
     test_elementwise_div_op
     test_elementwise_mul_op
     test_gather_nd_op
+    test_squeeze2_op
     test_elementwise_pow_op
+    test_elementwise_max_op
     test_transpose_op
     test_reshape_op
-    test_mean_op)
+    test_mean_op
+    test_unsqueeze2_op
+    test_meshgrid_op
+    test_scatter_op
+    test_gather_op
+    test_layer_norm_op
+    test_cast_op
+    test_dropout_op
+    test_group_norm_op
+    test_roll_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1248,13 +1184,58 @@ if(WITH_CINN AND WITH_TESTING)
   )
 endif()
 
-# ExecutionStrategy is deprecated in standalone executor
-set_tests_properties(test_parallel_executor_drop_scope
-                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
-
 set_tests_properties(
   test_cuda_graph_static_mode
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
 set_tests_properties(
   test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+
+# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
+set(STATIC_BUILD_TESTS
+    test_adagrad_op
+    test_adamw_op
+    test_arg_min_max_op
+    test_bincount_op
+    test_decoupled_py_reader
+    test_fake_quantize_op
+    test_fetch_lod_tensor_array
+    test_imperative_optimizer
+    test_lamb_op
+    test_layer_norm_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
+    test_matmul_op
+    test_matmul_v2_op
+    test_merged_adam_op
+    test_momentum_op
+    test_nce
+    test_paddle_save_load_binary
+    test_reduce_op
+    test_segment_ops
+    test_sparse_momentum_op
+    test_sgd_op_bf16
+    test_softmax_mask_fuse_upper_triangle_op
+    test_sparse_conv_op
+    test_sparse_norm_op
+    test_sparse_pooling_op
+    test_tensor_array_to_tensor
+    test_while_op
+    test_one_hot_v2_op)
+
+foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
+  py_test_modules(
+    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
+    FLAGS_new_executor_static_build=true)
+endforeach()
+
+set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
+                                                                      120)
+set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
+                                                                       250)
+set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_paddle_save_load_binary_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)

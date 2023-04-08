@@ -44,9 +44,10 @@ from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F40
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import ParamBase, _set_expected_place
+from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, layers, to_variable
+from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
@@ -157,16 +158,17 @@ def sync_params_buffers(
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+        if not isinstance(param, core.eager.Tensor):
             raise TypeError(
                 "The data type of '%s' must be Varbase or eager.Tensor"
                 % param.name
             )
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, (ParamBase, core.eager.Tensor)):
-            if is_model_parallel and param.is_distributed:
-                continue
+        if isinstance(param, core.eager.Tensor):
+            if is_model_parallel:
+                if hasattr(param, "is_distributed") and param.is_distributed:
+                    continue
 
             # NOTE(shenliang03): Support situations that do not require synchronization parameters,
             # such as moe's expert parameters
@@ -377,9 +379,7 @@ class DataParallel(layers.Layer):
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
         self.group = group
-        self.var_dtype = (
-            core.eager.Tensor if in_dygraph_mode() else core.VarBase
-        )
+        self.var_dtype = core.eager.Tensor
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy.
         # It just stores some environment variables, which can be constructed by
@@ -489,7 +489,7 @@ class DataParallel(layers.Layer):
             )
 
     def _find_varbase(self, obj):
-        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
+        var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
@@ -721,12 +721,6 @@ class ParallelEnv:
             elif core.is_compiled_with_xpu():
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
-            elif core.is_compiled_with_npu():
-                selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-                self._device_id = int(selected_npus[0])
-            elif core.is_compiled_with_mlu():
-                selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
-                self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv(
             "PADDLE_TRAINER_ENDPOINTS", ""
@@ -892,13 +886,8 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl']
-        and (
-            core.is_compiled_with_cuda()
-            or core.is_compiled_with_xpu()
-            or core.is_compiled_with_npu()
-            or core.is_compiled_with_mlu()
-        )
+        backend in ['auto', 'nccl', 'bkcl', 'heter', 'cncl']
+        and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
@@ -998,8 +987,6 @@ def init_parallel_env():
         is_cpu_only
         or core.is_compiled_with_cuda()
         or core.is_compiled_with_xpu()
-        or core.is_compiled_with_npu()
-        or core.is_compiled_with_mlu()
         or backend == "xccl"
     ):
         raise NotImplementedError(
@@ -1018,12 +1005,6 @@ def init_parallel_env():
         elif not is_cpu_only and core.is_compiled_with_xpu():
             _check_var_exists('FLAGS_selected_xpus')
             backend = "bkcl" if backend == "auto" else backend
-        elif not is_cpu_only and core.is_compiled_with_npu():
-            _check_var_exists('FLAGS_selected_npus')
-            backend = "hccl" if backend == "auto" else backend
-        elif not is_cpu_only and core.is_compiled_with_mlu():
-            _check_var_exists('FLAGS_selected_mlus')
-            backend = "cncl" if backend == "auto" else backend
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
@@ -1046,11 +1027,6 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_npu():
-        place = core.NPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_mlu():
-        place = core.MLUPlace(parallel_env.device_id)
-
     _set_expected_place(place)
 
     group = None
@@ -1114,7 +1090,7 @@ def init_parallel_env():
         paddle.distributed.barrier(group=group)
         return group
 
-    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
+    node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":
@@ -1146,7 +1122,7 @@ def init_parallel_env():
     strategy.current_endpoint = parallel_env.current_endpoint
     strategy.nrings = parallel_env.nrings
 
-    # init nccl or hccl or bkcl or heter context
+    # init nccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
             core.GLOOParallelContext(strategy, place)
@@ -1162,14 +1138,6 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place)
-        )
-    elif core.is_compiled_with_npu():
-        parallel_helper._set_parallel_ctx(
-            core.HCCLParallelContext(strategy, place)
-        )
-    elif core.is_compiled_with_mlu():
-        parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place)
         )
 
     if backend != "heter":

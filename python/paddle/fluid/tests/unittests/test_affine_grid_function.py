@@ -51,7 +51,7 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                theta_var = fluid.data(
+                theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
                 y_var = paddle.nn.functional.affine_grid(
@@ -69,7 +69,7 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                theta_var = fluid.data(
+                theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
                 y_var = F.affine_grid(

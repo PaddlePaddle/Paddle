@@ -17,10 +17,16 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
+
+template <typename T>
+IntArrayBase<T>::IntArrayBase(const phi::DDim& dims) {
+  AssignData(dims.Get(), dims.size());
+}
 
 template <>
 IntArrayBase<phi::DenseTensor>::IntArrayBase(

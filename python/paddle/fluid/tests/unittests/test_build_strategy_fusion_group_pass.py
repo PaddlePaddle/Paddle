@@ -16,8 +16,8 @@ import unittest
 
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):

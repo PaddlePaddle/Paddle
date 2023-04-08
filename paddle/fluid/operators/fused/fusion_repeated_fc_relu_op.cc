@@ -141,7 +141,7 @@ static void fc_relu(const T* x,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -153,7 +153,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 
-    auto i_dims = in->dims();
+    auto i_dims = phi::vectorize<int>(in->dims());
     const auto& w_dims = weights[0]->dims();
     phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];
@@ -201,6 +201,9 @@ REGISTER_OPERATOR(fusion_repeated_fc_relu,
                   ops::FusionRepeatedFCReluOp,
                   ops::FusionRepeatedFCReluOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_repeated_fc_relu,
-                       ops::FusionRepeatedFCReluKernel<float>,
-                       ops::FusionRepeatedFCReluKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_repeated_fc_relu,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionRepeatedFCReluKernel,
+                          float,
+                          double) {}

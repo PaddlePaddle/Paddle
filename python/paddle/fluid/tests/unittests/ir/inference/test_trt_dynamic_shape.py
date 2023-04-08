@@ -18,15 +18,15 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig
 
 
 class TRTDynamicShapeTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 16, 16], dtype="float32"
             )
             out = paddle.static.nn.conv2d(
@@ -72,7 +72,9 @@ class TRTDynamicShapeOutOfBound1Test(TRTDynamicShapeTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            with self.assertRaises(Exception):
+            with self.assertRaisesRegex(
+                ValueError, "The fed Variable 'data' should have dimensions"
+            ):
                 self.check_output_with_option(use_gpu)
 
 
@@ -99,7 +101,9 @@ class TRTDynamicShapeOutOfBound3Test(TRTDynamicShapeTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            with self.assertRaises(Exception):
+            with self.assertRaisesRegex(
+                ValueError, "The fed Variable 'data' should have dimensions"
+            ):
                 self.check_output_with_option(use_gpu)
 
 

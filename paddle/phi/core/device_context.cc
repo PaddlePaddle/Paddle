@@ -24,7 +24,7 @@
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;
@@ -146,15 +146,26 @@ struct DeviceContext::Impl {
     // NOTE(paddle-dev): In case of tensor has already hold allocation and
     // is going to allocate allocation on new place, we will clear its holder
     // firstly and then re-alloc it.
-    if (tensor->initialized() && tensor->place() != place) {
-      ClearHolder(tensor);
+    if (phi::DenseTensor::classof(tensor)) {
+      // NOTE(Ruibiao): The tensor hold zero-size allocation is not regarded as
+      // `initialized`. Fix other tensor class when needed.
+      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+          tensor->place() != place) {
+        ClearHolder(tensor);
+      }
+    } else {
+      if (tensor->initialized() && tensor->place() != place) {
+        ClearHolder(tensor);
+      }
     }
+
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
-    bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    bool must_cuda_graph_allocator =
+        (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
@@ -174,7 +185,7 @@ struct DeviceContext::Impl {
            const Place& place,
            size_t requested_size = 0,
            bool pinned = false) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(Alloc(tensor, place, dtype, requested_size, pinned));
   }
 
@@ -189,11 +200,22 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
-    if (tensor->initialized() && tensor->place() != CPUPlace()) {
-      ClearHolder(tensor);
+
+    if (phi::DenseTensor::classof(tensor)) {
+      // NOTE(Ruibiao): The tensor holds zero-size allocation is not regarded as
+      // `initialized`. Fix other tensor class when needed.
+      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+          tensor->place() != CPUPlace()) {
+        ClearHolder(tensor);
+      }
+    } else {
+      if (tensor->initialized() && tensor->place() != CPUPlace()) {
+        ClearHolder(tensor);
+      }
     }
+
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? host_zero_allocator_
             : host_allocator_;
     return tensor->AllocateFrom(
@@ -202,7 +224,7 @@ struct DeviceContext::Impl {
 
   template <typename T>
   T* HostAlloc(phi::TensorBase* tensor, size_t requested_size = 0) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
   }
 
@@ -246,8 +268,6 @@ struct DeviceContext::Impl {
 
  private:
   void ClearHolder(TensorBase* tensor) const {
-    if (!tensor->initialized()) return;
-
     if (DenseTensor::classof(tensor)) {
       static_cast<DenseTensor*>(tensor)->clear();
     } else if (SelectedRows::classof(tensor)) {
@@ -406,11 +426,11 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(float)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(double)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::bfloat16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::float16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::pstring)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::bfloat16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex64)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex128)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::pstring)
 
 #undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
 

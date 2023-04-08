@@ -28,18 +28,18 @@ void CopyTensorCpuToDevice(void* dst_ptr, void* src_ptr, int total_bytes) {
   cudaDeviceSynchronize();
 }
 
-std::string ConvertType(paddle::experimental::DataType type) {
+std::string ConvertType(phi::DataType type) {
   switch (type) {
-    case paddle::experimental::DataType::FLOAT32: {
+    case phi::DataType::FLOAT32: {
       return "float32";
     }
-    case paddle::experimental::DataType::INT64: {
+    case phi::DataType::INT64: {
       return "int64";
     }
-    case paddle::experimental::DataType::INT32: {
+    case phi::DataType::INT32: {
       return "int32";
     }
-    case paddle::experimental::DataType::FLOAT16: {
+    case phi::DataType::FLOAT16: {
       return "float16";
     }
     default: {
@@ -50,18 +50,18 @@ std::string ConvertType(paddle::experimental::DataType type) {
   }
 }
 
-int GetDataByte(paddle::experimental::DataType type) {
+int GetDataByte(phi::DataType type) {
   switch (type) {
-    case paddle::experimental::DataType::FLOAT32: {
+    case phi::DataType::FLOAT32: {
       return 4;
     }
-    case paddle::experimental::DataType::INT64: {
+    case phi::DataType::INT64: {
       return 8;
     }
-    case paddle::experimental::DataType::INT32: {
+    case phi::DataType::INT32: {
       return 4;
     }
-    case paddle::experimental::DataType::FLOAT16: {
+    case phi::DataType::FLOAT16: {
       return 2;
     }
     default: {

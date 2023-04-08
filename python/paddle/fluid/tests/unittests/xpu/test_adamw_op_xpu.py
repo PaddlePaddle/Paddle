@@ -28,7 +28,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def adamw_step(inputs, attributes):
@@ -196,7 +196,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             startup = fluid.Program()
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
-                    data = fluid.data(name="data", shape=shape)
+                    data = paddle.static.data(name="data", shape=shape)
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
@@ -453,8 +453,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             startup = fluid.Program()
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
-                    x = fluid.data(name='x', shape=[None, 10], dtype='float32')
-                    y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=[None, 1], dtype='float32'
+                    )
 
                     weight_attr1 = paddle.framework.ParamAttr(
                         name="linear_0.w_0"
@@ -480,30 +484,22 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                     out = linear1(x)
                     out = linear2(out)
 
-                    fc1_w_mon1 = np.zeros((linear1.weight.shape)).astype(
+                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
                         "float32"
                     )
-                    fc1_w_mon2 = np.zeros((linear1.weight.shape)).astype(
+                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
                         "float32"
                     )
-                    fc1_b_mon1 = np.zeros((linear1.bias.shape)).astype(
+                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
-                    fc1_b_mon2 = np.zeros((linear1.bias.shape)).astype(
+                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
                         "float32"
                     )
-                    fc2_w_mon1 = np.zeros((linear2.weight.shape)).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2 = np.zeros((linear2.weight.shape)).astype(
-                        "float32"
-                    )
-                    fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype(
-                        "float32"
-                    )
-                    fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype(
-                        "float32"
-                    )
+                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
 
                     cost = paddle.nn.functional.square_error_cost(
                         input=out, label=y

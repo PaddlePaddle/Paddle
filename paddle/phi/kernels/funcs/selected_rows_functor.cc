@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 #ifdef PADDLE_WITH_XPU

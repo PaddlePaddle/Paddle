@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import core
 
 
 def create_selected_rows_and_tensor(

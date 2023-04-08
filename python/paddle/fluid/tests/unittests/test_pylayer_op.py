@@ -20,11 +20,6 @@ import paddle
 from paddle.autograd.py_layer import PyLayer
 
 
-class FakeTensor(paddle.fluid.core.VarBase):
-    def __init__(self):
-        pass
-
-
 class TestPyLayer(unittest.TestCase):
     def test_simple_pylayer_multiple_output(self):
         class tanh(PyLayer):
@@ -55,7 +50,7 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_simple_pylayer_return_none_with_no_grad(self):
@@ -91,7 +86,7 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_simple_pylayer_single_output(self):
@@ -119,7 +114,37 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
+        )
+
+    def test_simple_pylayer_multi_output(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, func1, func2=paddle.split):
+                ctx.func = func2
+                y1 = func1(x1)
+                ctx.save_for_backward(y1)
+                return y1
+
+            @staticmethod
+            def backward(ctx, dy1):
+                (y1,) = ctx.saved_tensor()
+                re1 = ctx.func(dy1, 3)
+                return re1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input2 = paddle.randn([2, 3]).astype("float64")
+        input3 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        input3.stop_gradient = False
+        z = tanh.apply(x1=[input1, input2, input3], func1=paddle.concat)
+        z.mean().backward()
+        z2 = paddle.concat([input1, input2, input3])
+        z2.mean().backward()
+
+        self.assertTrue(
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_pylayer_num_output_match(self):
@@ -269,8 +294,8 @@ class TestPyLayer(unittest.TestCase):
         input2.stop_gradient = False
         z = Layer_bk_none1.apply(input2)
 
-        with self.assertRaises(ValueError):
-            z.sum().backward()
+        z.sum().backward()
+        self.assertEqual(input2.grad, None)
 
         class Layer_bk_none2(PyLayer):
             @staticmethod
@@ -285,8 +310,8 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_bk_none2.apply(input1, input1)
 
-        with self.assertRaises(ValueError):
-            z.mean().backward()
+        z.mean().backward()
+        self.assertIsNone(z.grad)
 
         class Layer_bk_one1(PyLayer):
             @staticmethod

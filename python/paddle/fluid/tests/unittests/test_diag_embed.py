@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+import paddle
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestDiagEmbedOp(OpTest):
@@ -30,7 +31,7 @@ class TestDiagEmbedOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
@@ -51,27 +52,30 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 class TestDiagEmbedAPICase(unittest.TestCase):
     def test_case1(self):
-        diag_embed = np.random.randn(2, 3, 4).astype('float32')
-        data1 = fluid.data(name='data1', shape=[2, 3, 4], dtype='float32')
-        out1 = F.diag_embed(data1)
-        out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
+        with paddle_static_guard():
+            diag_embed = np.random.randn(2, 3, 4).astype('float32')
+            data1 = paddle.static.data(
+                name='data1', shape=[2, 3, 4], dtype='float32'
+            )
+            out1 = F.diag_embed(data1)
+            out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={"data1": diag_embed},
-            fetch_list=[out1, out2],
-            return_numpy=True,
-        )
-        target1 = np.stack(
-            [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0
-        )
-        target2 = np.stack(
-            [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0
-        )
-        np.testing.assert_allclose(results[0], target1, rtol=1e-05)
-        np.testing.assert_allclose(results[1], target2, rtol=1e-05)
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(
+                fluid.default_main_program(),
+                feed={"data1": diag_embed},
+                fetch_list=[out1, out2],
+                return_numpy=True,
+            )
+            target1 = np.stack(
+                [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0
+            )
+            target2 = np.stack(
+                [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0
+            )
+            np.testing.assert_allclose(results[0], target1, rtol=1e-05)
+            np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
 if __name__ == "__main__":

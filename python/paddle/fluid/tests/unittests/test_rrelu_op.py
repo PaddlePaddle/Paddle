@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import dygraph
+from paddle import fluid
+from paddle.fluid import core, dygraph
 
 paddle.seed(102)
 np.random.seed(102)
@@ -59,7 +58,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
             res1 = F.rrelu(
@@ -97,10 +96,10 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
         for place in self.places:
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=self.x_np.shape, dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=self.x_np.shape, dtype="float64"
             )
             out_1 = F.rrelu(x_1, self.lower_0, self.upper_0, training=False)
@@ -140,10 +139,10 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
         for place in self.places:
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=self.x_np.shape, dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=self.x_np.shape, dtype="float64"
             )
             # init instance
@@ -223,7 +222,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 TypeError, F.rrelu, x=1, lower=self.lower_0, upper=self.upper_0
             )
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(
@@ -233,7 +232,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 lower=self.lower_0,
                 upper=self.upper_0,
             )
-            x_bool = paddle.fluid.data(
+            x_bool = paddle.static.data(
                 name='x_bool', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(
@@ -244,7 +243,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 upper=self.upper_0,
             )
             # lower and upper must be float
-            x_fp32 = paddle.fluid.data(
+            x_fp32 = paddle.static.data(
                 name='x_fp32', shape=[2, 3], dtype='float32'
             )
             self.assertRaises(TypeError, F.rrelu, x=x_fp32, lower=0, upper=0.5)
@@ -261,7 +260,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 ValueError, F.rrelu, x=x_fp32, lower=0.5, upper=0.2
             )
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[2, 3], dtype='float16'
             )
             F.rrelu(x=x_fp16, lower=self.lower_0, upper=self.upper_0)
@@ -345,10 +344,10 @@ class RReluTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Noise'], check_eager=True)
+        self.check_output(no_check_set=['Noise'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class RReluTrainingTest(RReluTest):

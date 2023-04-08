@@ -70,29 +70,99 @@ TEST(type_test, type_base) {
 }
 
 TEST(type_test, built_in_type) {
-  // Test 1: Test the built-in type of IrContext.
+  // Test the interfaces of class Type: judgment, type_id, abstract_type,
+  // classof.
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::Type fp32_1 = ir::Float32Type::get(ctx);
 
-  // Test 2: Test the interfaces of class Type: judgment, type_id,
-  // abstract_type, classof.
+  // Test 1: Test the parameterless built-in type of IrContext.
+  ir::Type fp16_1 = ir::Float16Type::get(ctx);
+  ir::Type fp16_2 = ir::Float16Type::get(ctx);
+  EXPECT_EQ(fp16_1, fp16_2);
+  EXPECT_EQ(fp16_1.type_id(), fp16_2.type_id());
+  EXPECT_EQ(&fp16_1.abstract_type(),
+            &ir::AbstractType::lookup(fp16_1.type_id(), ctx));
+  EXPECT_EQ(ir::Float16Type::classof(fp16_1), 1);
+
+  ir::Type fp32_1 = ir::Float32Type::get(ctx);
   ir::Type fp32_2 = ir::Float32Type::get(ctx);
-  EXPECT_EQ(fp32_1 == fp32_2, 1);
-  EXPECT_EQ(fp32_1 != fp32_2, 0);
-  EXPECT_EQ(fp32_1.type_id() == fp32_2.type_id(), 1);
-  EXPECT_EQ(&fp32_1.abstract_type() ==
-                &ir::AbstractType::lookup(fp32_1.type_id(), ctx),
-            1);
+  EXPECT_EQ(fp32_1, fp32_2);
+  EXPECT_EQ(fp32_1.type_id(), fp32_2.type_id());
+  EXPECT_EQ(&fp32_1.abstract_type(),
+            &ir::AbstractType::lookup(fp32_1.type_id(), ctx));
   EXPECT_EQ(ir::Float32Type::classof(fp32_1), 1);
+
+  ir::Type fp64_1 = ir::Float64Type::get(ctx);
+  ir::Type fp64_2 = ir::Float64Type::get(ctx);
+  EXPECT_EQ(fp64_1, fp64_2);
+  EXPECT_EQ(fp64_1.type_id(), fp64_2.type_id());
+  EXPECT_EQ(&fp64_1.abstract_type(),
+            &ir::AbstractType::lookup(fp64_1.type_id(), ctx));
+  EXPECT_EQ(ir::Float64Type::classof(fp64_1), 1);
+
+  ir::Type int16_1 = ir::Int16Type::get(ctx);
+  ir::Type int16_2 = ir::Int16Type::get(ctx);
+  EXPECT_EQ(int16_1, int16_2);
+  EXPECT_EQ(int16_1.type_id(), int16_2.type_id());
+  EXPECT_EQ(&int16_1.abstract_type(),
+            &ir::AbstractType::lookup(int16_1.type_id(), ctx));
+  EXPECT_EQ(ir::Int16Type::classof(int16_1), 1);
 
   ir::Type int32_1 = ir::Int32Type::get(ctx);
   ir::Type int32_2 = ir::Int32Type::get(ctx);
-  EXPECT_EQ(int32_1 == int32_2, 1);
-  EXPECT_EQ(int32_1.type_id() == int32_2.type_id(), 1);
-  EXPECT_EQ(&int32_1.abstract_type() ==
-                &ir::AbstractType::lookup(int32_1.type_id(), ctx),
-            1);
+  EXPECT_EQ(int32_1, int32_2);
+  EXPECT_EQ(int32_1.type_id(), int32_2.type_id());
+  EXPECT_EQ(&int32_1.abstract_type(),
+            &ir::AbstractType::lookup(int32_1.type_id(), ctx));
   EXPECT_EQ(ir::Int32Type::classof(int32_1), 1);
+
+  ir::Type int64_1 = ir::Int64Type::get(ctx);
+  ir::Type int64_2 = ir::Int64Type::get(ctx);
+  EXPECT_EQ(int64_1, int64_2);
+  EXPECT_EQ(int64_1.type_id(), int64_2.type_id());
+  EXPECT_EQ(&int64_1.abstract_type(),
+            &ir::AbstractType::lookup(int64_1.type_id(), ctx));
+  EXPECT_EQ(ir::Int64Type::classof(int64_1), 1);
+
+  // Test 2: Test the parameteric built-in type of IrContext.
+  ir::DenseTensorTypeStorage::Dim dims = {1, 2, 3};
+  ir::DenseTensorTypeStorage::DataLayout data_layout =
+      ir::DenseTensorTypeStorage::DataLayout::NCHW;
+  ir::DenseTensorTypeStorage::LoD lod = {{1, 2, 3}, {4, 5, 6}};
+  size_t offset = 0;
+
+  ir::Type dense_tensor_1 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, offset);
+  ir::Type dense_tensor_2 =
+      ir::DenseTensorType::get(ctx, fp32_2, dims, data_layout, lod, offset);
+  ir::Type dense_tensor_3 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
+
+  EXPECT_EQ(dense_tensor_1, dense_tensor_2);
+  EXPECT_NE(dense_tensor_1, dense_tensor_3);
+  EXPECT_EQ(dense_tensor_1.type_id(), dense_tensor_2.type_id());
+  EXPECT_EQ(ir::DenseTensorType::classof(dense_tensor_1), 1);
+
+  ir::DenseTensorType dense_tensor_4 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
+  EXPECT_EQ(dense_tensor_4.offset() == 2, 1);
+  EXPECT_EQ(dense_tensor_4.dtype().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(dense_tensor_4.data_layout(), data_layout);
+
+  // Test 3: Test isa and dyn_cast.
+  EXPECT_EQ(fp16_1.isa<ir::Float16Type>(), true);
+  EXPECT_EQ(fp16_1.isa<ir::Float32Type>(), false);
+  EXPECT_EQ(fp16_1.isa<ir::DenseTensorType>(), false);
+  EXPECT_EQ(fp16_1.isa<ir::Type>(), true);
+  EXPECT_EQ(dense_tensor_1.isa<ir::DenseTensorType>(), true);
+
+  ir::DenseTensorType dense_tensor_cast_1 =
+      dense_tensor_1.dyn_cast<ir::DenseTensorType>();
+  EXPECT_EQ(dense_tensor_cast_1.isa<ir::DenseTensorType>(), true);
+  EXPECT_EQ(dense_tensor_cast_1.offset() == 0, 1);
+  const ir::DenseTensorType dense_tensor_cast_2 =
+      ir::dyn_cast<ir::DenseTensorType>(dense_tensor_1);
+  EXPECT_EQ(dense_tensor_cast_2.isa<ir::DenseTensorType>(), true);
+  EXPECT_EQ(dense_tensor_cast_2.offset() == 0, 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.
@@ -150,15 +220,15 @@ TEST(type_test, custom_type_dialect) {
 
   ir::Type int1_1 = IntegerType::get(ctx, 1, 0);
   ir::Type int1_2 = IntegerType::get(ctx, 1, 0);
-  EXPECT_EQ(int1_1 == int1_2, 1);
+  EXPECT_EQ(int1_1, int1_2);
 
   ir::Type int8 = IntegerType::get(ctx, 8, 0);
-  EXPECT_EQ(int8 == int1_2, 0);
+  EXPECT_NE(int8, int1_2);
 
   //  Test 2: Test Dialect interfaces
-  EXPECT_EQ(ctx == int8.ir_context(), 1);
+  EXPECT_EQ(ctx, int8.ir_context());
 
-  EXPECT_EQ(int8.dialect().id() == ir::TypeId::get<IntegerDialect>(), 1);
+  EXPECT_EQ(int8.dialect().id(), ir::TypeId::get<IntegerDialect>());
 
   std::vector<ir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
   EXPECT_EQ(dialect_list.size() == 3, 1);  // integer, builtin, fake
@@ -166,9 +236,9 @@ TEST(type_test, custom_type_dialect) {
   ir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   ir::Dialect *dialect_builtin2 =
       ctx->GetRegisteredDialect<ir::BuiltinDialect>();
-  EXPECT_EQ(dialect_builtin1 == dialect_builtin2, 1);
+  EXPECT_EQ(dialect_builtin1, dialect_builtin2);
 
   ir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
   ir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
-  EXPECT_EQ(dialect_integer1 == dialect_integer2, 1);
+  EXPECT_EQ(dialect_integer1, dialect_integer2);
 }

@@ -15,8 +15,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_identity,
-                       ops::CIdentityOpKernel<float>,
-                       ops::CIdentityOpKernel<double>,
-                       ops::CIdentityOpKernel<int>,
-                       ops::CIdentityOpKernel<int64_t>,
-                       ops::CIdentityOpKernel<plat::float16>);
+                       ops::CIdentityOpKernel<float, plat::NPUPlace>,
+                       ops::CIdentityOpKernel<double, plat::NPUPlace>,
+                       ops::CIdentityOpKernel<int, plat::NPUPlace>,
+                       ops::CIdentityOpKernel<int64_t, plat::NPUPlace>,
+                       ops::CIdentityOpKernel<plat::float16, plat::NPUPlace>);

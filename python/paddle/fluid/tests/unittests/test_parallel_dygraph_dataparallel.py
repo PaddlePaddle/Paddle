@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -73,14 +73,14 @@ def start_local_trainers_cpu(
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         assert (
             os.getenv('WITH_COVERAGE', 'OFF') == 'OFF'
         ), "Gloo don't support WITH_COVERAGE."
         cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -102,7 +102,6 @@ def start_local_trainers(
     pod,
     training_script,
     training_script_args,
-    eager_mode=True,
     allocator_strategy="auto_growth",
     log_dir=None,
 ):
@@ -130,14 +129,14 @@ def start_local_trainers(
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -158,7 +157,6 @@ class TestMultipleGpus(unittest.TestCase):
     def run_mnist_2gpu(
         self,
         target_file_name,
-        eager_mode=True,
         allocator_strategy="auto_growth",
     ):
         if (
@@ -176,7 +174,6 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
-            eager_mode=eager_mode,
             allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],
@@ -186,7 +183,7 @@ class TestMultipleGpus(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 
@@ -208,7 +205,7 @@ class TestMultipleWithGloo(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 

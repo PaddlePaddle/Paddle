@@ -25,7 +25,7 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def affine_channel(x, scale, bias, layout):
@@ -79,7 +79,7 @@ class TestAffineChannelOp(XPUOpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['X'], 'Out', no_grad_set=set(['Scale', 'Bias'])
+                place, ['X'], 'Out', no_grad_set={'Scale', 'Bias'}
             )
 
     def init_test_case(self):

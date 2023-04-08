@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/ir/mkldnn/squeeze2_transpose2_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -59,6 +60,8 @@ void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
 
     std::vector<int> squeeze2_axes =
         PADDLE_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
+
+    ConvertToFusedOp(transpose2_op->Op());
     transpose2_op->Op()->SetAttr("fused_squeeze2_axes", squeeze2_axes);
     transpose2_op->Op()->SetInput("X", {squeeze2_op_in->Name()});
 
@@ -83,5 +86,5 @@ REGISTER_PASS(squeeze2_transpose2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(squeeze2_transpose2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("squeeze2", 0)
-            .GE("transpose2", 0));
+            .EQ("squeeze2", 0)
+            .EQ("transpose2", 0));

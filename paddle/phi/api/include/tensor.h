@@ -534,29 +534,23 @@ class PADDLE_API Tensor final {
    * @return Tensor
    */
   Tensor operator+(const Tensor& other) const;
-
   Tensor operator-(const Tensor& other) const;
-
   Tensor operator*(const Tensor& other) const;
-
   Tensor operator/(const Tensor& other) const;
-
   Tensor operator+(const Scalar& other) const;
-
   Tensor operator-(const Scalar& other) const;
-
   Tensor operator*(const Scalar& other) const;
-
   Tensor operator/(const Scalar& other) const;
-
+  Tensor operator<(const Tensor& other) const;
+  Tensor operator<=(const Tensor& other) const;
+  Tensor operator==(const Tensor& other) const;
+  Tensor operator!=(const Tensor& other) const;
+  Tensor operator>(const Tensor& other) const;
+  Tensor operator>=(const Tensor& other) const;
   Tensor operator-() const;
-
   Tensor operator~() const;
-
   Tensor operator&(const Tensor& other) const;
-
   Tensor operator|(const Tensor& other) const;
-
   Tensor operator^(const Tensor& other) const;
 
   /* Part 8: Autograd methods */
@@ -678,6 +672,12 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor less_equal(const Tensor& y) const;
+  Tensor less_than(const Tensor& y) const;
+  Tensor equal(const Tensor& y) const;
+  Tensor not_equal(const Tensor& y) const;
+  Tensor greater_equal(const Tensor& y) const;
+  Tensor greater_than(const Tensor& y) const;
   Tensor bitwise_and(const Tensor& y) const;
   Tensor bitwise_or(const Tensor& y) const;
   Tensor bitwise_xor(const Tensor& y) const;

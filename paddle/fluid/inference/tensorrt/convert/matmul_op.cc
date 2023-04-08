@@ -16,16 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/matmul_op_int8_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -37,7 +27,7 @@ class MatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid matmul op to tensorrt matmul layer ";
+    VLOG(3) << "convert a matmul op to tensorrt matmul layer ";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 

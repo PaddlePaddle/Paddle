@@ -4,9 +4,7 @@ exclude: |
         patches/.+|
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
-        python/paddle/utils/gast/.+|
-        python/paddle/fluid/tests/unittests/npu/.+|
-        python/paddle/fluid/tests/unittests/mlu/.+
+        python/paddle/utils/gast/.+
     )$
 repos:
 # Common hooks
@@ -40,7 +38,7 @@ repos:
             (?x)^(
                 python/paddle/fluid/(?!tests).+|
                 python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
+                test/dygraph_to_static/test_error.py
             )$
 -   repo: local
     hooks:
@@ -68,16 +66,11 @@ repos:
     hooks:
     -   id: flake8
         args: ["--config=.flake8"]
--   repo: https://github.com/PyCQA/autoflake
-    rev: v1.7.7
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.254
     hooks:
-    -   id: autoflake
-        args:
-            - --in-place
-            - --remove-all-unused-imports
-            - --ignore-pass-after-docstring
-            - --ignore-init-module-imports
-            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix, --no-cache]
 -   repo: local
     hooks:
     -   id: pylint-doc-string

@@ -1185,7 +1185,7 @@ class TestStickBreakingTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Variable))
 
-    @param.param_func(((np.random.random((10)),),))
+    @param.param_func(((np.random.random(10),),))
     def test_forward(self, input):
         np.testing.assert_allclose(
             self._t.inverse(self._t.forward(paddle.to_tensor(input))),
@@ -1202,7 +1202,7 @@ class TestStickBreakingTransform(unittest.TestCase):
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.inverse_shape(shape), expected_shape)
 
-    @param.param_func(((np.random.random((10)),),))
+    @param.param_func(((np.random.random(10),),))
     def test_forward_log_det_jacobian(self, x):
         self.assertEqual(
             self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, [1]

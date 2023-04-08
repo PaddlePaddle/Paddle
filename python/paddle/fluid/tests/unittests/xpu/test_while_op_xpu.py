@@ -17,8 +17,7 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 
@@ -30,23 +29,27 @@ class TestWhileOp(unittest.TestCase):
         d0 = paddle.static.data("d0", shape=[10], dtype='float32')
         d1 = paddle.static.data("d1", shape=[10], dtype='float32')
         d2 = paddle.static.data("d2", shape=[10], dtype='float32')
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        init = layers.zeros(shape=[10], dtype='float32')
+        init = paddle.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        array_len = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=1
+        )
         array_len.stop_gradient = True
         cond = paddle.less_than(x=i, y=array_len)
-        j = layers.fill_constant(shape=[1], dtype='int64', value=1)
+        j = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
         j.stop_gradient = True
-        array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+        array_len2 = paddle.tensor.fill_constant(
+            shape=[1], dtype='int64', value=3
+        )
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
         while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -111,8 +114,10 @@ class TestWhileOp(unittest.TestCase):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
     def test_exceptions(self):
-        i = layers.zeros(shape=[2], dtype='int64')
-        array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
+        i = paddle.zeros(shape=[2], dtype='int64')
+        array_len = paddle.tensor.fill_constant(
+            shape=[2], dtype='int64', value=1
+        )
         cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)

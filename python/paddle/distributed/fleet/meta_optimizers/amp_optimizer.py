@@ -28,7 +28,6 @@ class AMPOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
             "RecomputeOptimizer",
-            "GraphExecutionOptimizer",
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 

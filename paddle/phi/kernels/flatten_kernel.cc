@@ -128,3 +128,31 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(flatten_infer,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenInferKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(flatten,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+#endif
