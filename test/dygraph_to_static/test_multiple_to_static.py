@@ -33,7 +33,7 @@ def part2(x):
 def foo(x):
     x = to_static(part1)(x)
 
-    # It will enter a new unique_name guard, so before applying this fix,
+    # It will enter a new unique_name guard, so before applying this fix (#52692),
     # the name of x will be conflict with the name of x in part2 (they are
     # both `tmp_0`)
     paddle.enable_static()
