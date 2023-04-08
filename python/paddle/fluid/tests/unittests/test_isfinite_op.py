@@ -62,7 +62,7 @@ class TestInfBF16(OpTest):
         x[0] = np.inf
         x[-1] = np.inf
 
-        out = np.isinf(x)
+        out = np.array(True)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 
@@ -112,7 +112,7 @@ class TestNANBF16(OpTest):
         x[0] = np.nan
         x[-1] = np.nan
 
-        out = np.isnan(x)
+        out = np.array(True)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 
@@ -163,7 +163,7 @@ class TestIsfiniteBF16(OpTest):
         x[0] = np.inf
         x[-1] = np.nan
 
-        out = np.isfinite(x)
+        out = np.array(False)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 
