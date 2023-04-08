@@ -1,265 +1,520 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
-#include <curand_kernel.h>
-#endif
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#include <hiprand_kernel.h>
 #endif
 
-#include "paddle/phi/kernels/funcs/aligned_vector.h"
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#ifdef PADDLE_WITH_HIP
-#define WARP_SIZE 64
-#else
-#define WARP_SIZE 32
-#endif
-
-#define MASK 0xffffffff
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
 
 namespace phi {
 namespace fusion {
 
-__device__ __inline__ void load_data(dtype::float16* dst,
-                                     const dtype::float16* src) {
-  *(reinterpret_cast<float2*>(dst)) = *(reinterpret_cast<const float2*>(src));
-}
+/**
+ * @brief The fused function called by every thread
+ * VecSize can be 1, 2, 4 or 8
+ */
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          bool ComputeLayerNorm,
+          bool Activation,
+          typename Functor,
+          typename InType = T,
+          typename OutType = T,
+          bool HasDropout = true>
+__forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
+    const int row_id,
+    const int col_id,
+    const int cols,
+    curandStatePhilox4_32_10_t *state,
+    const float dropout_prob,
+    const T factor,
+    const InType *__restrict__ src,
+    const T *__restrict__ residual,
+    const T *__restrict__ bias,
+    OutType *dst,
+    MaskType *mask,
+    const bool is_test,
+    typename phi::dtype::MPTypeTrait<T>::Type *mean_val,
+    typename phi::dtype::MPTypeTrait<T>::Type *var_val,
+    Functor act_func,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
+    const float quant_next_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadInType = phi::AlignedVector<InType, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreOutType = phi::AlignedVector<OutType, VecSize>;
 
-__device__ __inline__ void load_data(float* dst, const float* src) {
-  *(reinterpret_cast<float4*>(dst)) = *(reinterpret_cast<const float4*>(src));
-}
+  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
+  using U = typename phi::dtype::MPTypeTrait<T>::Type;
 
-inline int get_pow2(int value) {
-  // get next pow2 index
-  int pow2_index = 0;
-  while ((1 << pow2_index) < value) {
-    ++pow2_index;
-  }
-  return pow2_index;
-}
-
-template <typename T>
-struct AddOP {
-  __device__ __forceinline__ T operator()(T a, T b) const { return a + b; }
-};
-
-template <typename T>
-struct MaxOP {
-  __device__ __forceinline__ T operator()(T a, T b) const {
-    return a < b ? b : a;
-  }
-};
-
-template <typename T>
-__device__ __forceinline__ T
-warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = MASK) {
-#if CUDA_VERSION >= 9000
-  return __shfl_xor_sync(mask, value, laneMask, width);
-#else
-  return __shfl_xor(value, laneMask, width);
-#endif
-}
-
-template <typename T, int batch, int width, template <typename> class ReduceOp>
-__device__ __forceinline__ void warp_reduce(T* sum) {
-  ReduceOp<T> r;
+  LoadInType src_vec;
+  LoadT residual_vec;
+  LoadT bias_vec;
+  LoadFloat quant_out_scale_vec;
 #pragma unroll
-  for (int offset = width / 2; offset > 0; offset /= 2) {
+  for (int ii = 0; ii < VecSize; ii++) {
+    bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
+  }
+  // vectorize load data from global
+  phi::Load<InType, VecSize>(&src[row_id * cols + col_id], &src_vec);
+  phi::Load<float, VecSize>(&dequant_out_scale_data[col_id],
+                            &quant_out_scale_vec);
+  if (residual) {
+    phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+  }
+
+  if (bias) {
+    phi::Load<T, VecSize>(&bias[col_id], &bias_vec);
+  }
+
+  MaskStoreT mask_vec;
+  if (!is_test && HasDropout) {
+    float rand[VecSize];
+    RandVec<VecSize>(state, rand);
 #pragma unroll
-    for (int i = 0; i < batch; ++i) {
-      T b = warp_shfl_xor(sum[i], offset, width);
-      sum[i] = r(sum[i], b);
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
+    }
+  } else {
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(1);
+    }
+  }
+
+  StoreT dest_vec;
+  StoreOutType dest_vec_out_type;
+
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    T tmp;
+    if (std::is_same<InType, int32_t>::value) {
+      T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
+                              quant_out_scale_vec[ii]);
+      tmp = tmp0 + bias_vec[ii];
+    } else {
+      tmp = static_cast<T>(src_vec[ii]) + bias_vec[ii];
+    }
+    if (Activation) {
+      tmp = act_func(tmp);
+    }
+    if (HasDropout) {
+      dest_vec[ii] =
+          tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+    } else {
+      dest_vec[ii] = tmp * factor + residual_vec[ii];
+    }
+    if (ComputeLayerNorm) {
+      U tmp = static_cast<U>(dest_vec[ii]);
+      *mean_val += tmp;
+      *var_val += (tmp * tmp);
+    }
+    if (std::is_same<OutType, int8_t>::value) {
+      dest_vec_out_type[ii] = phi::funcs::quant_helper(dest_vec[ii],
+                                                       quant_next_in_scale,
+                                                       quant_round_type,
+                                                       quant_max_bound,
+                                                       quant_min_bound);
+    }
+  }
+
+  // store result to global
+  if (std::is_same<OutType, int8_t>::value) {
+    phi::Store<OutType, VecSize>(dest_vec_out_type,
+                                 &dst[row_id * cols + col_id]);
+  } else {
+    phi::Store<T, VecSize>(dest_vec,
+                           reinterpret_cast<T *>(&dst[row_id * cols + col_id]));
+  }
+  if (!is_test && HasDropout) {
+    phi::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
+  }
+}
+
+/**
+ * blocks(128 * 8)
+ * 1. calculate the dx and reduce total rows to 128 rows
+ * 2. save 128*8 temporary sum in 8*128 shared memory
+ * 3. reduce the sum of 128 rows data by 8*VecSize warps
+ */
+template <typename T,
+          typename MaskType,
+          int BlockSizeX,
+          int BlockSizeY,
+          int VecSize,
+          bool HasDropout>
+__global__ void FusedResidualDropoutBiasGrad(const T *dout,
+                                             const MaskType *mask,
+                                             const T factor,
+                                             const int64_t rows,
+                                             const int64_t cols,
+                                             T *dx,
+                                             T *dbias) {
+  int64_t col_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+
+  T tmp_sum[VecSize] = {static_cast<T>(0)};
+  // calculate the dx and temporary sum
+  const bool not_need_dx = (dx == nullptr) || (dx == dout && !HasDropout &&
+                                               factor == static_cast<T>(1.0));
+
+  if (col_id * VecSize < cols) {
+    for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
+      int index = row_id * cols + col_id * VecSize;
+      LoadT out_vec;
+      MaskLoadT mask_vec;
+      StoreT dx_vec;
+      phi::Load<T, VecSize>(&dout[index], &out_vec);
+      if (HasDropout) {
+        phi::Load<MaskType, VecSize>(&mask[index], &mask_vec);
+      }
+
+      if (not_need_dx) {
+#pragma unroll
+        for (int i = 0; i < VecSize; i++) {
+          tmp_sum[i] += out_vec[i];
+        }
+      } else {
+#pragma unroll
+        for (int i = 0; i < VecSize; i++) {
+          if (HasDropout) {
+            dx_vec[i] = out_vec[i] * static_cast<T>(mask_vec[i]) * factor;
+          } else {
+            dx_vec[i] = out_vec[i] * factor;
+          }
+          tmp_sum[i] += out_vec[i];
+        }
+        phi::Store<T, VecSize>(dx_vec, &dx[index]);
+      }
+    }
+  }
+
+  CalculateDBias<T, VecSize, BlockSizeX, BlockSizeY>(tmp_sum, dbias, cols);
+}
+
+/*
+ * @brief calculate the grad of no bias
+ */
+template <typename T, typename MaskType, int VecSize>
+__global__ void FusedResidualDropoutGrad(const T *dout,
+                                         const MaskType *mask,
+                                         const T factor,
+                                         const int64_t size,
+                                         T *dx) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
+    LoadT dout_vec;
+    MaskLoadT mask_vec;
+    phi::Load<T, VecSize>(&dout[i], &dout_vec);
+    phi::Load<MaskType, VecSize>(&mask[i], &mask_vec);
+
+    StoreT dx_vec;
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
+    }
+    phi::Store<T, VecSize>(dx_vec, &dx[i]);
+  }
+}
+
+/**
+ * @brief dst = residual + dropout(src + bias);
+ * the src, residual, mask and dst shape is (rows, cols)
+ * the bias shape is (1, cols)
+ * is_test: only used in inference
+ * mask: can be null if is_test=true
+ */
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          typename InType = T,
+          typename OutType = T,
+          bool HasDropout = true>
+__global__ void FusedResidualDropoutBias(
+    const size_t rows,
+    const size_t cols,
+    uint64_t seed,
+    const float dropout_prob,
+    const bool is_upscale_in_train,
+    const InType *__restrict__ src,
+    const T *__restrict__ residual,
+    const T *__restrict__ bias,
+    MaskType *mask,
+    OutType *dst,
+    uint64_t increment,
+    const bool is_test,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
+    const float quant_next_in_scale = 1.0) {
+  int col_id = blockDim.x * blockIdx.x + threadIdx.x;
+  int row_id = blockIdx.y;
+  int idx = row_id * cols + col_id;
+  curandStatePhilox4_32_10_t state;
+  if (HasDropout) {
+    curand_init(seed, idx, increment, &state);
+  }
+  T factor;
+  if (HasDropout) {
+    factor =
+        phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  } else {
+    factor = static_cast<T>(1);
+  }
+  phi::funcs::ReluFunctor<T> relu;
+  for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
+    for (int i = col_id * VecSize; i < cols;
+         i += blockDim.x * gridDim.x * VecSize) {
+      FusedResidualDropoutBiasOneThread<T,
+                                        MaskType,
+                                        VecSize,
+                                        false,
+                                        false,
+                                        phi::funcs::ReluFunctor<T>,
+                                        InType,
+                                        OutType,
+                                        HasDropout>(r,
+                                                    i,
+                                                    cols,
+                                                    &state,
+                                                    dropout_prob,
+                                                    factor,
+                                                    src,
+                                                    residual,
+                                                    bias,
+                                                    dst,
+                                                    mask,
+                                                    is_test,
+                                                    nullptr,
+                                                    nullptr,
+                                                    relu,
+                                                    quant_last_in_scale,
+                                                    dequant_out_scale_data,
+                                                    quant_next_in_scale);
     }
   }
 }
 
-#if defined(PADDLE_WITH_CUDA)
-
-#define FINAL_MASK 0xffffffff
-#define DIV_UP(x, y) (((x) + (y)-1) / (y))
-
-template <typename T>
-__inline__ __device__ T warpReduceSum(T val) {
-#pragma unroll
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
-  return val;
-}
-
-template <typename T>
-__inline__ __device__ T warpReduceMax(T val) {
-#pragma unroll
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, 32));
-  return val;
-}
-
-inline int ElementsCeil(int seq_len) {
-  int elements = 1;
-  while (elements * 32 < seq_len) elements *= 2;
-  return elements;
-}
-
-template <typename T, int VEC_SIZE, int ELEMENTS_PER_THREADS>
-__global__ void FusedSoftmaxMaskVecKernel(T* dst,
-                                          const T* src,
-                                          const T* mask,
-                                          int seq_len) {
-  constexpr int block_size = 128;
-  constexpr int warp_size = 32;
-  constexpr int warps_per_block = block_size / warp_size;
-
-  // blockDim/threadIdx = (warp_size, warps_per_block)
-  // gridDim/blockIdx = (DIV_UP(seq_len, warps_per_block), batch_size, head_num)
-  // every block processes 4(warps_per_block) sequences
-  // seq_id = seq_id * 4 + warp_id, eg.seq_len=128, 127=31*4+3
-  int seq_id = blockIdx.x * warps_per_block + threadIdx.y;
-  if (seq_id >= seq_len) return;
-
-  // ((bid*head_num + hid)*seq_len + seq_id) * seq_len
-  int offset =
-      ((blockIdx.y * gridDim.z + blockIdx.z) * seq_len + seq_id) * seq_len;
-  // (bid * seq_len + seq_id) * seq_len
-  int mask_offset = (blockIdx.y * seq_len + seq_id) * seq_len;
-  src += offset;
-  dst += offset;
-  mask += mask_offset;
-
-  static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
-  constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
-  using VecT = phi::AlignedVector<T, VEC_SIZE>;
-
-  VecT elements[VEC_NUMS];
-  VecT tmp_mask;
-  float max_val = -std::numeric_limits<float>::infinity();
-
-  for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
-    phi::Load(src + (i * warp_size + threadIdx.x) * VEC_SIZE, &elements[i]);
-    phi::Load(mask + (i * warp_size + threadIdx.x) * VEC_SIZE, &tmp_mask);
-#pragma unroll
-    for (int j = 0; j < VEC_SIZE; ++j) {
-      // TODO(wangxi): vec add
-      elements[i][j] += tmp_mask[j];
-      max_val = max(max_val, static_cast<float>(elements[i][j]));
+/**
+ * @brief dst = residual + dropout(src + bias);
+ */
+template <typename T,
+          typename MaskType,
+          typename InType = T,
+          typename OutType = T>
+void LaunchResidualDropoutBias(const uint32_t rows,
+                               const uint32_t cols,
+                               const int increment,
+                               uint64_t seed,
+                               const float dropout_prob,
+                               const bool is_test,
+                               bool is_upscale_in_train,
+                               const InType *src,
+                               const T *residual,
+                               const T *bias,
+                               MaskType *mask_data,
+                               OutType *dst,
+                               const phi::GPUContext &ctx,
+                               const float quant_last_in_scale = 1.0,
+                               const float *dequant_out_scale_data = nullptr,
+                               const float quant_next_in_scale = 1.0) {
+  // dropout_prob == 1.0f
+  if (std::abs(dropout_prob - 1.0f) < 1e-5) {
+    // NOTE(minghaoBD): OutType should be T if dropout_prob == 1.0
+    if (residual == dst) return;
+    if (residual) {
+      phi::memory_utils::Copy(ctx.GetPlace(),
+                              dst,
+                              ctx.GetPlace(),
+                              residual,
+                              rows * cols * sizeof(T),
+                              ctx.stream());
+    } else {
+      SetZero<T>(ctx, dst, rows * cols);
     }
-  }
-  max_val = warpReduceMax(max_val);
-
-  float sum_val = 0;
-  for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
-#pragma unroll
-    for (int j = 0; j < VEC_SIZE; ++j) {
-      float tmp = __expf(static_cast<float>(elements[i][j]) - max_val);
-      sum_val += tmp;
-      elements[i][j] = static_cast<T>(tmp);
+    if (!is_test) {
+      SetZero<MaskType>(ctx, mask_data, rows * cols);
     }
+    return;
   }
-  sum_val = warpReduceSum(sum_val);
-  float mean_val = __fdividef(1.0f, sum_val + 1e-6f);
 
-  for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
-#pragma unroll
-    for (int j = 0; j < VEC_SIZE; ++j) {
-      float tmp = static_cast<float>(elements[i][j]) * mean_val;
-      elements[i][j] = static_cast<T>(tmp);
-    }
-    phi::Store(elements[i], dst + (i * warp_size + threadIdx.x) * VEC_SIZE);
-  }
-}
+  const int VecSize = MAX_CACHE_BYTES / sizeof(T);
+  const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+  auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
 
-#define SOFTMAX_MASK_KERNEL(VEC_SIZE, ELEMENTS)    \
-  FusedSoftmaxMaskVecKernel<T, VEC_SIZE, ELEMENTS> \
-      <<<grid, block, 0, stream>>>(dst, src, mask, seq_len);
-
-#define SELECT_SOFTMAX_MASK_KERNEL(ELEMENTS) \
-  do {                                       \
-    if (seq_len % 2 == 0) {                  \
-      SOFTMAX_MASK_KERNEL(2, ELEMENTS);      \
-    } else {                                 \
-      SOFTMAX_MASK_KERNEL(1, ELEMENTS);      \
-    }                                        \
+#define PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL(__has_dropout)           \
+  do {                                                                        \
+    if (cols % VecSize == 0) {                                                \
+      FusedResidualDropoutBias<T,                                             \
+                               uint8_t,                                       \
+                               VecSize,                                       \
+                               InType,                                        \
+                               OutType,                                       \
+                               __has_dropout>                                 \
+          <<<config.block_per_grid,                                           \
+             config.thread_per_block,                                         \
+             0,                                                               \
+             ctx.stream()>>>(rows,                                            \
+                             cols,                                            \
+                             seed,                                            \
+                             dropout_prob,                                    \
+                             is_upscale_in_train,                             \
+                             src,                                             \
+                             residual,                                        \
+                             bias,                                            \
+                             mask_data,                                       \
+                             dst,                                             \
+                             increment,                                       \
+                             is_test,                                         \
+                             quant_last_in_scale,                             \
+                             dequant_out_scale_data,                          \
+                             quant_next_in_scale);                            \
+    } else {                                                                  \
+      FusedResidualDropoutBias<T, uint8_t, 1, InType, OutType, __has_dropout> \
+          <<<config.block_per_grid,                                           \
+             config.thread_per_block,                                         \
+             0,                                                               \
+             ctx.stream()>>>(rows,                                            \
+                             cols,                                            \
+                             seed,                                            \
+                             dropout_prob,                                    \
+                             is_upscale_in_train,                             \
+                             src,                                             \
+                             residual,                                        \
+                             bias,                                            \
+                             mask_data,                                       \
+                             dst,                                             \
+                             increment,                                       \
+                             is_test,                                         \
+                             quant_last_in_scale,                             \
+                             dequant_out_scale_data,                          \
+                             quant_next_in_scale);                            \
+    }                                                                         \
   } while (0)
 
-#define CASE_SOFTMAX_MASK_KERNEL(ELEMENTS) \
-  case ELEMENTS: {                         \
-    SELECT_SOFTMAX_MASK_KERNEL(ELEMENTS);  \
-    break;                                 \
+  if (dropout_prob != 0.0f) {
+    PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL(true);
+  } else {
+    PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL(false);
   }
 
-// template <typename T, typename MaskT = T>
-template <typename T>
-void LaunchFusedSoftmaxMaskKernel(const T* src,
-                                  const T* mask,
-                                  T* dst,
-                                  const int batch_size,
-                                  const int head_num,
-                                  const int seq_len,
-                                  cudaStream_t stream) {
-  PADDLE_ENFORCE_EQ(seq_len > 0 && seq_len <= 4096,
-                    true,
-                    errors::InvalidArgument("seq_len must be between (0, 4096] "
-                                            "received the seq_len is %d",
-                                            seq_len));
-
-  constexpr int block_size = 128;
-  constexpr int warp_size = 32;
-  constexpr int warps_per_block = block_size / warp_size;
-
-  // put head_num to the outside for mask
-  dim3 block(warp_size, warps_per_block);
-  dim3 grid(DIV_UP(seq_len, warps_per_block), batch_size, head_num);
-
-  int elements = ElementsCeil(seq_len);
-  switch (elements) {
-    case 1: {  // <=32
-      SOFTMAX_MASK_KERNEL(1, 1);
-      break;
-    }
-    case 2: {  // <=64
-      // if (seq_len % 2 == 0) SOFTMAX_MASK_KERNEL(2, 2);
-      // else SOFTMAX_MASK_KERNEL(1, 2);
-      SELECT_SOFTMAX_MASK_KERNEL(2);
-      break;
-    }
-    case 4: {  // <=128
-      // if (seq_len % 4 == 0) SOFTMAX_MASK_KERNEL(4, 4);
-      // else if (seq_len % 2 == 0) SOFTMAX_MASK_KERNEL(2, 4);
-      // else SOFTMAX_MASK_KERNEL(1, 4);
-      SELECT_SOFTMAX_MASK_KERNEL(4);
-      break;
-    }
-      CASE_SOFTMAX_MASK_KERNEL(8);    // <=256
-      CASE_SOFTMAX_MASK_KERNEL(16);   // <=512
-      CASE_SOFTMAX_MASK_KERNEL(32);   // <=1024
-      CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
-      CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
-    default:
-      PADDLE_THROW(errors::InvalidArgument(
-          "seq_len must be between (0, 4096], received the seq_len is %d",
-          seq_len));
-  }
+#undef PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL
 }
-#endif
+
+/**
+ * @brief to launch kernel FusedResidualDropoutBiasGradVec
+ */
+template <typename T, typename MaskType>
+void LaunchResidualDropoutBiasGrad(const T *dout,
+                                   const MaskType *mask,
+                                   const float dropout_prob,
+                                   const bool is_upscale_in_train,
+                                   const uint32_t rows,
+                                   const uint32_t cols,
+                                   T *dx,
+                                   T *dbias,
+                                   const phi::GPUContext &ctx) {
+  const T zero = static_cast<T>(0.0f);
+  auto factor = dropout_prob == static_cast<float>(1.0f)
+                    ? zero
+                    : static_cast<T>(1.0f / (1.0f - dropout_prob));
+  if (!is_upscale_in_train) {
+    factor = static_cast<T>(1.0f);
+  }
+
+  const int VecSize = MAX_CACHE_BYTES / sizeof(T);
+  int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+
+#define PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL(__has_dropout)      \
+  do {                                                                        \
+    if (dbias != nullptr) {                                                   \
+      const auto threads = 8;                                                 \
+      auto blocks = std::max(static_cast<uint32_t>(1),                        \
+                             (cols / real_vec_size + threads - 1) / threads); \
+      dim3 block_dim(threads, 128, 1);                                        \
+      dim3 grid_dim(blocks, 1, 1);                                            \
+      if (cols % VecSize == 0) {                                              \
+        FusedResidualDropoutBiasGrad<T,                                       \
+                                     MaskType,                                \
+                                     8,                                       \
+                                     128,                                     \
+                                     VecSize,                                 \
+                                     __has_dropout>                           \
+            <<<grid_dim, block_dim, 0, ctx.stream()>>>(                       \
+                dout, mask, factor, rows, cols, dx, dbias);                   \
+      } else {                                                                \
+        FusedResidualDropoutBiasGrad<T, MaskType, 8, 128, 1, __has_dropout>   \
+            <<<grid_dim, block_dim, 0, ctx.stream()>>>(                       \
+                dout, mask, factor, rows, cols, dx, dbias);                   \
+      }                                                                       \
+    } else {                                                                  \
+      if (dropout_prob == 0.0f) {                                             \
+        if (dx == nullptr || dx == dout) {                                    \
+          return;                                                             \
+        }                                                                     \
+        phi::memory_utils::Copy(ctx.GetPlace(),                               \
+                                dx,                                           \
+                                ctx.GetPlace(),                               \
+                                dout,                                         \
+                                rows *cols * sizeof(T),                       \
+                                ctx.stream());                                \
+      } else {                                                                \
+        const uint64_t n = rows * cols;                                       \
+        phi::backends::gpu::GpuLaunchConfig config =                          \
+            phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n / real_vec_size); \
+        if (n % VecSize == 0) {                                               \
+          FusedResidualDropoutGrad<T, MaskType, VecSize>                      \
+              <<<config.block_per_grid,                                       \
+                 config.thread_per_block,                                     \
+                 0,                                                           \
+                 ctx.stream()>>>(dout, mask, factor, n, dx);                  \
+        } else {                                                              \
+          FusedResidualDropoutGrad<T, MaskType, 1>                            \
+              <<<config.block_per_grid,                                       \
+                 config.thread_per_block,                                     \
+                 0,                                                           \
+                 ctx.stream()>>>(dout, mask, factor, n, dx);                  \
+        }                                                                     \
+      }                                                                       \
+    }                                                                         \
+  } while (0)
+
+  if (dropout_prob != 0.0f) {
+    PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL(true);
+  } else {
+    PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL(false);
+  }
+
+#undef PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_GRAD_KERNEL
+}
 
 }  // namespace fusion
 }  // namespace phi
-
-#endif
