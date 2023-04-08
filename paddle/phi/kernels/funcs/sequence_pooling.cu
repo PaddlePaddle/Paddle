@@ -16,6 +16,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sequence_pooling.h"
