@@ -190,7 +190,7 @@ class GroupNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string dbias_name = this->GetOutputName(bias_grad);
 
     // attrs of group_norm
-    auto groups = this->Attr<float>("groups");
+    auto groups = this->Attr<int>("groups");
     auto epsilon = this->Attr<float>("epsilon");
     auto data_layout = this->Attr<std::string>("data_layout");
 
