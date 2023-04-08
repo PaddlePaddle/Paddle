@@ -1968,7 +1968,15 @@ def empty_like(x, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
