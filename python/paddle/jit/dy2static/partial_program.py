@@ -938,9 +938,9 @@ class PartialProgramLayer:
         """
 
         flatten_outputs = self._outputs.tolist()
-        self._clear_outputs_name(flatten_outputs)
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
+        self._clear_outputs_name(flatten_outputs)
         outs = self._outputs.restore(flatten_outputs)
         if outs is not None and len(outs) == 1:
             outs = outs[0]
