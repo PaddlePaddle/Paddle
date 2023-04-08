@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/randperm_kernel.h"
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
+
 #ifdef __NVCC__
 #include <curand_kernel.h>
 
@@ -113,11 +113,9 @@ void RandpermKernel(const Context& dev_ctx,
   // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to
   // improve performance of radix sort.
   double n_d = static_cast<double>(n);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const MT m_n_d = static_cast<MT>(n_d);
   int begin_bit = 0;
-  int end_bit = static_cast<T> std::ceil(
-      std::log2(m_n_d - (6 * m_n_d * m_n_d + 1) / (12 * std::log(0.9))));
+  int end_bit =
+      std::ceil(std::log2(n_d - (6 * n_d * n_d + 1) / (12 * std::log(0.9))));
 
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairs<int, T>(nullptr,
