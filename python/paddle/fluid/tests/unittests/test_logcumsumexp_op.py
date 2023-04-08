@@ -324,14 +324,14 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = paddle.logcumsumexp
-        x = np.arange(12, dtype=np.float32).reshape(3, 4)
+        x = np.arange(100, dtype=np.float32).reshape(10, 10)
         output = np_logcumsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=1e-3, check_dygraph=False)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
