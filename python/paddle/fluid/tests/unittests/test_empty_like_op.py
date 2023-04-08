@@ -204,6 +204,9 @@ class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
 
 
 class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPI_Static):
+    def setUp(self):
+        self.init_config()
+
     def init_config(self):
         self.x_shape = (3, 200, 3)
         self.data_x_shape = [-1, 200, 3]
@@ -211,28 +214,29 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPI_Static):
 
     def test_static_graph(self):
         paddle.enable_static()
+        train_program = Program()
+        startup_program = Program()
 
-        if paddle.fluid.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = np.random.random(self.x_shape).astype(self.dtype)
-                data_x = paddle.static.data(
-                    name="x", shape=self.data_x_shape, dtype=self.dtype
-                )
-                out = paddle.empty_like(data_x)
-            exe = paddle.static.Executor(place)
-            res = exe.run(
-                paddle.static.default_main_program(),
-                feed={
-                    "x": input,
-                },
-                fetch_list=[out],
+        with program_guard(train_program, startup_program):
+            x = np.random.random(self.x_shape).astype(self.dtype)
+            data_x = paddle.static.data(
+                'x', shape=self.data_x_shape, dtype=self.dtype
             )
-            self.dst_dtype = self.dtype
-            self.dst_shape = x.shape
-            self.__check_out__(res[0])
+
+            out = paddle.empty_like(data_x)
+
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
+        res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
+
+        self.dst_dtype = self.dtype
+        self.dst_shape = x.shape
+        self.__check_out__(res[0])
+
         paddle.disable_static()
 
 
@@ -244,32 +248,29 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPI_Static):
 
     def test_static_graph(self):
         paddle.enable_static()
-        if (
-            paddle.fluid.core.is_compiled_with_cuda()
-            and paddle.fluid.core.is_bfloat16_supported(core.CUDAPlace(0))
-        ):
-            place = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = np.random.random(self.x_shape).astype(self.dtype)
-                data_x = paddle.static.data(
-                    name="x", shape=self.data_x_shape, dtype=self.dtype
-                )
+        train_program = Program()
+        startup_program = Program()
 
-                out = paddle.empty_like(data_x)
-
-            exe = paddle.static.Executor(place)
-            res = exe.run(
-                paddle.static.default_main_program(),
-                feed={
-                    "x": input,
-                },
-                fetch_list=[out],
+        with program_guard(train_program, startup_program):
+            x = np.random.random(self.x_shape).astype(self.dtype)
+            data_x = paddle.static.data(
+                'x', shape=self.data_x_shape, dtype=self.dtype
             )
-            self.dst_dtype = self.dtype
-            self.dst_shape = x.shape
-            self.__check_out__(res[0])
+
+            out = paddle.empty_like(data_x)
+
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
+        res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
+
+        self.dst_dtype = self.dtype
+        self.dst_shape = x.shape
+        self.__check_out__(res[0])
+
         paddle.disable_static()
 
 
