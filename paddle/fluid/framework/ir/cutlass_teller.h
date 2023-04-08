@@ -27,12 +27,16 @@ class CutlassTeller {
   }
 
 #if defined(PADDLE_WITH_CUTLASS)
-  // Determine this NCHW conv2d_fusion can be computed by cutlass?
+  // Determine this NCHW conv2d + bias can be fused with activation by cutlass?
   // will not set or change any attribute in op_desc
-  bool Conv2dFusionCanSupport(OpDesc *op_desc, Scope *scope, int device_id) {
-    if (op_desc->Type() != "conv2d_fusion") return false;
-    auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
-    if (data_format != "NCHW") return false;
+  bool CbaCanSupport(OpDesc *op_desc,
+                     Scope *scope,
+                     std::string act_type,
+                     int device_id) {
+    auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+    CHECK_EQ(strides.size() == 2UL, true);
+    int stride_h = strides[0];
+    int stride_w = strides[1];
 
     auto filter_names = op_desc->Input("Filter");
 
@@ -45,8 +49,6 @@ class CutlassTeller {
       int kc = filter_tensor.dims()[1];
       int kh = filter_tensor.dims()[2];
       int kw = filter_tensor.dims()[3];
-      auto act_type = op_desc->GetAttrIfExists<std::string>("activation");
-      bool has_residual = op_desc->Input("ResidualData").size() >= 1UL;
 
       // For convience, we only support EXPLICIT
       auto padding_algorithm =
@@ -55,8 +57,61 @@ class CutlassTeller {
         return false;
       }
 
-      if (!Conv2dCanSupport(
-              oc, kc, kh, kw, groups, act_type, device_id, has_residual)) {
+      if (!Conv2dCanSupport(oc,
+                            kc,
+                            kh,
+                            kw,
+                            stride_h,
+                            stride_w,
+                            groups,
+                            act_type,
+                            device_id)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Determine this NCHW conv2d + bias + elewise_add + act can be fused by
+  // cutlass? will not set or change any attribute in op_desc
+  bool CbaaCanSupport(OpDesc *op_desc,
+                      Scope *scope,
+                      std::string act_type,
+                      int device_id) {
+    auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+    CHECK_EQ(strides.size() == 2UL, true);
+    int stride_h = strides[0];
+    int stride_w = strides[1];
+
+    auto filter_names = op_desc->Input("Filter");
+
+    for (const auto &filter_name : filter_names) {
+      auto *filter_var = scope->FindLocalVar(filter_name);
+      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
+      auto groups = op_desc->GetAttrIfExists<int>("groups");
+      int oc = filter_tensor.dims()[0];
+      int kc = filter_tensor.dims()[1];
+      int kh = filter_tensor.dims()[2];
+      int kw = filter_tensor.dims()[3];
+
+      // For convience, we only support EXPLICIT
+      auto padding_algorithm =
+          op_desc->GetAttrIfExists<std::string>("padding_algorithm");
+      if (padding_algorithm != "EXPLICIT") {
+        return false;
+      }
+
+      if (!Conv2dCanSupport(oc,
+                            kc,
+                            kh,
+                            kw,
+                            stride_h,
+                            stride_w,
+                            groups,
+                            act_type,
+                            device_id,
+                            true)) {
         return false;
       }
     }
@@ -69,6 +124,8 @@ class CutlassTeller {
                         int kc,
                         int kh,
                         int kw,
+                        int stride_h,
+                        int stride_w,
                         int groups,
                         std::string activation,
                         int device_id,
@@ -81,14 +138,11 @@ class CutlassTeller {
 
     // To prevent generating too many cutlass code,
     // we only allow oc and ic is divisable by CUTLASS_NHWC_ALIGNMENT
-    if (oc % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
-      return false;
-    }
-    if (ic % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
-      return false;
-    }
-
     if (groups == 1) {
+      if (oc % CUTLASS_NHWC_ALIGNMENT != 0 ||
+          ic % CUTLASS_NHWC_ALIGNMENT != 0) {
+        return false;
+      }
       // conv + bias + act
       if (!has_residual && !cba_act_set.count(activation)) {
         return false;
@@ -131,8 +185,28 @@ class CutlassTeller {
       return {};
     }
   }
+  // Return the supported activation set by cutlass conv + bias + act pattern
+  std::unordered_set<std::string> CbaaAct(int device_id) {
+    int sm_version = platform::GetGPUComputeCapability(device_id);
+    if (cutlass_sm.count(sm_version)) {
+      return cbaa_act_set;
+    } else {
+      return {};
+    }
+  }
 #else
-  bool Conv2dFusionCanSupport(OpDesc *op_desc, Scope *scope, int device_id) {
+
+  bool CbaaCanSupport(OpDesc *op_desc,
+                      Scope *scope,
+                      std::string act_type,
+                      int device_id) {
+    return false;
+  }
+
+  bool CbaCanSupport(OpDesc *op_desc,
+                     Scope *scope,
+                     std::string act_type,
+                     int device_id) {
     return false;
   }
 
@@ -140,6 +214,8 @@ class CutlassTeller {
                         int kc,
                         int kh,
                         int kw,
+                        int stride_h,
+                        int stride_w,
                         int groups,
                         std::string activation,
                         int device_id,
@@ -147,6 +223,7 @@ class CutlassTeller {
     return false;
   }
   std::unordered_set<std::string> CbaAct(int device_id) { return {}; }
+  std::unordered_set<std::string> CbaaAct(int device_id) { return {}; }
 #endif
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
   const std::unordered_set<int> cutlass_sm = {

@@ -188,20 +188,12 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
     auto* scope = param_scope();
-    auto* filter_var = scope->FindLocalVar(conv_filter->Name());
-    auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-    CHECK_EQ(filter_tensor->dims().size() == 4UL, true);
-    auto groups = conv_op->Op()->GetAttrIfExists<int>("groups");
-    int oc = filter_tensor->dims()[0];
-    int kc = filter_tensor->dims()[1];
-    int kh = filter_tensor->dims()[2];
-    int kw = filter_tensor->dims()[3];
-
-    bool cutlass_can_fuse = CutlassTeller::Instance()->Conv2dCanSupport(
-        oc, kc, kh, kw, groups, act_op_type, Get<int>("gpu_device_id"));
+    bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
+        conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
-    // When this conv2d_fusion problem size is not supported by cutlass and not
-    // supported by cuDNN, we should not apply this pass.
+    // When this conv2d_fusion specified by problem size and act type is not
+    // supported by cutlass and not supported by cuDNN, we should not apply this
+    // pass.
     if (!cutlass_can_fuse && !cudnn_can_fuse) {
       return;
     }
@@ -212,7 +204,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
-
+    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+      new_op_desc.SetAttr("use_cutlass", true);
+    }
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 

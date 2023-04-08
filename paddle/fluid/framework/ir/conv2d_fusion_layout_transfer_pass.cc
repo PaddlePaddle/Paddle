@@ -144,9 +144,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
   // will not set or change any attribute in op_desc
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
-    auto data_format =
-        op_node->Op()->GetAttrIfExists<std::string>("data_format");
-    if (data_format != "NCHW") return false;
     auto filter_names = op_node->Op()->Input("Filter");
     constexpr int CUDNN_ALIGNMENT = 8;
     // If filter's channel is not multiple of CUDNN_ALIGNMENT, conv2d_fusion not
@@ -168,13 +165,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
     auto op_desc = op_node->Op();
-    return CutlassTeller::Instance()->Conv2dFusionCanSupport(
-               op_desc, scope, Get<int>("gpu_device_id")) &&
-           cutlass_enable;
+    auto use_cutlass = op_desc->GetAttrIfExists<bool>("use_cutlass");
+    return use_cutlass && cutlass_enable;
   };
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
+    // some common check.
     if (op_node->Op()->Type() != target_op_type) {
       continue;
     }
@@ -182,6 +179,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     if (weights_shape_nhwc.count(filter_name)) {
       continue;
     }
+    auto data_format =
+        op_node->Op()->GetAttrIfExists<std::string>("data_format");
+
+    if (data_format != "NCHW") {
+      continue;
+    }
+
     if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
