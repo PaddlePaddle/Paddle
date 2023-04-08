@@ -70,7 +70,7 @@ void SequencePoolKernel(const Context& ctx,
 
   // Do not create index buffer for inference mode
   if (pooltype == "MAX" &&
-      (is_test || (ctx.GetPlace() == phi::CPUPlace()) == false)) {
+      (is_test == false || (ctx.GetPlace() == phi::CPUPlace()) == false)) {
     index = max_index;
     index->Resize({dims});
     ctx.template Alloc<int>(index);
