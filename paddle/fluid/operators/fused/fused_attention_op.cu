@@ -813,12 +813,12 @@ PD_REGISTER_KERNEL(fused_attention,
                    double,
                    float) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(data_type);
-    kernel->OutputAt(1).SetDataType(data_type);
-    kernel->OutputAt(3).SetDataType(data_type);
-    kernel->OutputAt(4).SetDataType(data_type);
-    kernel->OutputAt(15).SetDataType(data_type);
-    kernel->OutputAt(16).SetDataType(data_type);
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(15).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(16).SetDataType(phi::DataType::FLOAT32);
   }
 }
 
