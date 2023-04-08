@@ -30,7 +30,7 @@ class OpBase;
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_any,
                             ReduceAnyInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+                            PD_INFER_META(phi::ReduceInferMeta));
 
 class ReduceAnyOpMaker : public ops::ReduceBaseOpMaker {
  protected:

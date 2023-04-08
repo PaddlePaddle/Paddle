@@ -26,9 +26,8 @@ void AnyRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& dims,
                   bool keep_dim,
-                  bool reduce_all,
                   DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  bool reduce_all = recompute_reduce_all(x, dims);
   phi::BoolReduceKernel<CPUContext, T, phi::funcs::AnyFunctor>(
       dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
