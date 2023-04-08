@@ -16,6 +16,7 @@ import sys
 
 import numpy as np
 
+sys.path.append('..')
 sys.path.append('../../python/paddle/fluid/tests/unittests/')
 
 from eager_op_test import OpTest
