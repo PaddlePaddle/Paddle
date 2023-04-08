@@ -210,7 +210,7 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
     def init_config(self):
         self.x_shape = (200, 3)
         self.data_x_shape = [200, 3]
-        self.dtype = np.float16
+        self.dtype = 'float16'
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -219,9 +219,9 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = np.random.random([200, 3]).astype("float16")
+                x = np.random.random([200, 3]).astype(self.dtype)
                 data_x = paddle.static.data(
-                    name="x", shape=[200, 3], dtype="float16"
+                    name="x", shape=[200, 3], dtype=self.dtype
                 )
                 out = paddle.empty_like(data_x)
                 exe = paddle.static.Executor(place)
@@ -243,7 +243,7 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
     def init_config(self):
         self.x_shape = (200, 3)
         self.data_x_shape = [200, 3]
-        self.dtype = np.uint16
+        self.dtype = 'uint16'
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -252,9 +252,9 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = np.random.random([200, 3]).astype(self.dtype)
+                x = np.random.random([200, 3]).astype(np.uint16)
                 data_x = paddle.static.data(
-                    name="x", shape=[200, 3], dtype=self.dtype
+                    name="x", shape=[200, 3], dtype=np.uint16
                 )
                 out = paddle.empty_like(data_x)
                 exe = paddle.static.Executor(place)
