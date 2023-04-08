@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <cstdlib>
-#include <ctime>  #include <ctime>
-#include <string>  #include <string>
+#include <ctime>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
