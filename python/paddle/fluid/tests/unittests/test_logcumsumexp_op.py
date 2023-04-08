@@ -325,7 +325,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.dtype = np.uint16
         self.python_api = logcumsumexp_wrapper
         x = np.arange(100).reshape(10, 10).astype("float64")
-        output = np.log(np.cumsum(np.exp(x)))
+        output = np_logcumsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
