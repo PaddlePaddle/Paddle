@@ -27,7 +27,11 @@ namespace phi {
 #define HANDLE_DIM(NDIM, RDIM)                                         \
   if (ndim == NDIM && rdim == RDIM) {                                  \
     funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor<T>>( \
-        dev_ctx, x, out, axis, keepdim);                               \
+        dev_ctx,                                                       \
+        x,                                                             \
+        out,                                                           \
+        std::vector<int64_t>(axis.begin(), axis.end()),                \
+        keepdim);                                                      \
   }
 
 template <typename T>
@@ -63,7 +67,7 @@ struct LogsumexpFunctor {
 template <typename T, typename Context>
 void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
