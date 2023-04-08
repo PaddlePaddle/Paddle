@@ -413,7 +413,10 @@ class TestExponentialBP16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=place
+        )
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
@@ -430,7 +433,9 @@ class TestExponentialBP16Op(OpTest):
         np.testing.assert_allclose(hist1, hist2, rtol=0.05)
 
     def test_check_grad_normal(self):
-        self.check_grad(
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X'],
             'Out',
             in_place=True,
