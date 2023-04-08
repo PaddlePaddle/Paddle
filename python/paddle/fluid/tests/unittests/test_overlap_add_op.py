@@ -76,8 +76,7 @@ class TestOverlapAddOp(OpTest):
     def setUp(self):
         self.op_type = "overlap_add"
         self.python_api = paddle.signal.overlap_add
-        self.shape, self.attrs = self.initTestCase()
-        self.type = self.init_dype()
+        self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
             'X': np.random.random(size=self.shape).astype(self.type),
         }
@@ -85,15 +84,12 @@ class TestOverlapAddOp(OpTest):
 
     def initTestCase(self):
         input_shape = (50, 3)
-
+        input_type = 'float64'
         attrs = {
             'hop_length': 4,
             'axis': -1,
         }
-        return input_shape, attrs
-
-    def init_dype(self):
-        self.dtype = np.float64
+        return input_shape, input_type, attrs
 
     def test_check_output(self):
         paddle.enable_static()
@@ -107,8 +103,14 @@ class TestOverlapAddOp(OpTest):
 
 
 class TestOverlapAddFP16Op(TestOverlapAddOp):
-    def init_dtype(self):
-        self.dtype = np.float16
+    def initTestCase(self):
+        input_shape = (50, 3)
+        input_type = np.float16
+        attrs = {
+            'hop_length': 4,
+            'axis': -1,
+        }
+        return input_shape, input_type, attrs
 
 
 @unittest.skipIf(
