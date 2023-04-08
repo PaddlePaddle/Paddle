@@ -90,6 +90,12 @@ void Pool2dKernel(const Context& ctx,
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (!adaptive) {
+    if (kernel_size[0] > in_h) {
+      kernel_size[0] = in_h;
+    }
+    if (kernel_size[1] > in_w) {
+      kernel_size[1] = in_w;
+    }
     if (pooling_type == "max") {
       r = xpu::max_pool2d<XPUType>(
           ctx.x_context(),

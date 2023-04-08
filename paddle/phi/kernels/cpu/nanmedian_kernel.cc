@@ -207,4 +207,6 @@ PD_REGISTER_KERNEL(nanmedian,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

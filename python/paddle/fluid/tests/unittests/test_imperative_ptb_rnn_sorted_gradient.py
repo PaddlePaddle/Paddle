@@ -19,9 +19,8 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -59,8 +58,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             sgd = SGDOptimizer(
                 learning_rate=1e-3, parameter_list=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -135,9 +134,9 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
-            static_param_name_list = list()
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
             for param in ptb_model.parameters():
                 static_param_name_list.append(param.name)
 

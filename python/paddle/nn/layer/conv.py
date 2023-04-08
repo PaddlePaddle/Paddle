@@ -43,7 +43,7 @@ def _reverse_repeat_list(t, n):
     This can be used to translate padding arg used by Conv and Pooling modules
     to the ones used by `F.pad`.
     """
-    return list(x for x in reversed(t) for _ in range(n))
+    return [x for x in reversed(t) for _ in range(n)]
 
 
 class _ConvNd(Layer):

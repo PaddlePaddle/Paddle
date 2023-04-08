@@ -126,7 +126,7 @@ __global__ void BilateralSliceCudaForwardKernel(T* output,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -442,7 +442,7 @@ __global__ void BilateralSliceCudaInputGradKernel(T* out_input_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -557,9 +557,16 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(bilateral_slice,
-                        ops::BilateralSliceOpCUDAKernel<float>,
-                        ops::BilateralSliceOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(bilateral_slice_grad,
-                        ops::BilateralSliceGradOpCUDAKernel<float>,
-                        ops::BilateralSliceGradOpCUDAKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bilateral_slice,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::BilateralSliceOpCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(bilateral_slice_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::BilateralSliceGradOpCUDAKernel,
+                          float,
+                          double) {}

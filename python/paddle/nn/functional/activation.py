@@ -924,12 +924,12 @@ def selu(
     """
     if scale <= 1.0:
         raise ValueError(
-            "The scale must be greater than 1.0. Received: {}.".format(scale)
+            f"The scale must be greater than 1.0. Received: {scale}."
         )
 
     if alpha < 0:
         raise ValueError(
-            "The alpha must be no less than zero. Received: {}.".format(alpha)
+            f"The alpha must be no less than zero. Received: {alpha}."
         )
 
     if in_dygraph_mode():
@@ -1110,15 +1110,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float32', 'float64'],
+                ['float16', 'bfloat16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float32 or float64.',
+                'If dtype is not None, it only support float16, bfloat16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())

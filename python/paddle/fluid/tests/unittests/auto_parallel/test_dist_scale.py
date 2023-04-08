@@ -60,8 +60,8 @@ class TestDistScale(unittest.TestCase):
         ops = dist_main_prog.global_block().ops
         scale_op = ops[0]
         dist_op = dist_context.get_dist_op_for_program(scale_op)
-        dist_op.dist_attr.impl_type == "scale"
-        dist_op.dist_attr.impl_idx == 0
+        assert dist_op.dist_attr.impl_type == "scale"
+        assert dist_op.dist_attr.impl_idx == 0
 
         in_name = scale_op.input_arg_names[0]
         out_name = scale_op.output_arg_names[0]

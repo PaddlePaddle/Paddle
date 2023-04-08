@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
-from op_test import convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def l2_norm(x, axis, epsilon):
@@ -195,7 +194,7 @@ class API_NormTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_norm_x_type():
-                data = fluid.data(name="x", shape=[3, 3], dtype="int64")
+                data = paddle.static.data(name="x", shape=[3, 3], dtype="int64")
                 out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)

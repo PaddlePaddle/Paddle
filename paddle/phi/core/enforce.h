@@ -287,6 +287,11 @@ inline bool is_error(bool stat) { return !stat; }
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
+#define __THROW_WARN_INTERNAL__(__MSG__)    \
+  do {                                      \
+    LOG(WARNING) << "WARNING :" << __MSG__; \
+  } while (0)
+
 /** ENFORCE EXCEPTION AND MACROS **/
 
 struct EnforceNotMet : public std::exception {
@@ -419,6 +424,17 @@ struct EnforceNotMet : public std::exception {
       __THROW_ERROR_INTERNAL__(                                \
           phi::ErrorSummary(__summary__.code(), __message__)); \
     }                                                          \
+  } while (0)
+
+#define PADDLE_WARN_NOT_NULL(__VAL, ...)                  \
+  do {                                                    \
+    if (UNLIKELY(nullptr == (__VAL))) {                   \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);  \
+      auto __message__ = ::paddle::string::Sprintf(       \
+          "%s\n  [Hint: " #__VAL " should not be null.]", \
+          __summary__.error_message());                   \
+      __THROW_WARN_INTERNAL__(__message__);               \
+    }                                                     \
   } while (0)
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
@@ -883,6 +899,19 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                        \
   } while (0)
 
+#define PADDLE_WARN_GPU_SUCCESS(COND)                        \
+  do {                                                       \
+    auto __cond__ = (COND);                                  \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
+    constexpr auto __success_type__ =                        \
+        ::phi::enforce::details::ExternalApiType<            \
+            __CUDA_STATUS_TYPE__>::kSuccess;                 \
+    if (UNLIKELY(__cond__ != __success_type__)) {            \
+      __THROW_WARN_INTERNAL__(                               \
+          ::phi::enforce::build_nvidia_error_msg(__cond__)); \
+    }                                                        \
+  } while (0)
+
 #define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \
   do {                                                                      \
     auto res = cudaGetLastError();                                          \
@@ -1087,6 +1116,18 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
           ::phi::enforce::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);               \
     }                                                      \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                                          \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
+    constexpr auto __success_type__ =                                          \
+        ::phi::enforce::details::ExternalApiType<                              \
+            __CUDA_STATUS_TYPE__>::kSuccess;                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                              \
+      __THROW_WARN_INTERNAL__(::phi::enforce::build_rocm_error_msg(__cond__)); \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {

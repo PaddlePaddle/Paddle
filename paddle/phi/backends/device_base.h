@@ -231,7 +231,7 @@ class DeviceInterface {  // Driver / Runtime
   // blas
   virtual void BlasAXPBY(size_t dev_id,
                          const stream::Stream& stream,
-                         paddle::experimental::DataType dtype,
+                         phi::DataType dtype,
                          size_t numel,
                          float alpha,
                          void* x,

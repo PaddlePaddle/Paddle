@@ -119,7 +119,7 @@ def array_read(array, i):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
+        i = i.item(0)
         return array[i]
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
@@ -179,7 +179,7 @@ def array_write(x, i, array=None):
         assert i.shape == [
             1
         ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
+        i = i.item(0)
         if array is None:
             array = create_array(x.dtype)
         assert isinstance(
@@ -207,7 +207,7 @@ def array_write(x, i, array=None):
                 )
         if array is None:
             array = helper.create_variable(
-                name="{0}.out".format(helper.name),
+                name=f"{helper.name}.out",
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=x.dtype,
             )
@@ -272,7 +272,7 @@ def create_array(dtype, initialized_list=None):
     else:
         helper = LayerHelper("array", **locals())
         tensor_array = helper.create_variable(
-            name="{0}.out".format(helper.name),
+            name=f"{helper.name}.out",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=dtype,
         )

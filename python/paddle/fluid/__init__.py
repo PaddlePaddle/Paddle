@@ -46,8 +46,6 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
-from .data import *
-
 from . import trainer_desc
 
 from . import io
@@ -73,16 +71,12 @@ from .core import (
     XPUPlace,
     CUDAPlace,
     CUDAPinnedPlace,
-    NPUPlace,
     IPUPlace,
-    MLUPlace,
     CustomPlace,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import profiler
 from . import unique_name
-from . import parallel_executor
-from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
@@ -107,7 +101,6 @@ __all__ = (
     framework.__all__
     + executor.__all__
     + trainer_desc.__all__
-    + parallel_executor.__all__
     + lod_tensor.__all__
     + data_feed_desc.__all__
     + compiler.__all__
@@ -117,7 +110,6 @@ __all__ = (
         'initializer',
         'layers',
         'contrib',
-        'data',
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
@@ -133,9 +125,7 @@ __all__ = (
         'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
-        'NPUPlace',
         'IPUPlace',
-        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -214,10 +204,10 @@ def __bootstrap__():
         sys.argv = [""]
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
+    core.init_memory_method()
     core.init_devices()
     core.init_tensor_operants()
     core.init_default_kernel_signatures()
-    core.init_memory_method()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
@@ -226,10 +216,6 @@ monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
 
-# NOTE(zhiqiu): register npu_finalize on the exit of Python,
-# do some clean up manually.
-if core.is_compiled_with_npu():
-    atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
 

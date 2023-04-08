@@ -20,8 +20,8 @@ import unittest
 from google.protobuf import text_format
 
 import paddle
-import paddle.fluid as fluid
 import paddle.incubate.distributed.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle import fluid
 from paddle.fluid.trainer_factory import TrainerFactory
 from paddle.incubate.distributed.fleet.parameter_server.pslib.node import (
     DownpourServer,
@@ -64,7 +64,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -128,7 +128,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -190,7 +190,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())

@@ -25,8 +25,8 @@ from test_parallel_executor_transformer import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def simple_fc_net_with_accuracy(use_feed):

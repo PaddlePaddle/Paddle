@@ -57,10 +57,6 @@ class DenseTensor;
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
@@ -610,6 +606,34 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
+    const std::string& out) const {
+  auto out_it = ctx_.outputs.find(out);
+  auto& out_var_list = out_it->second;
+
+  std::vector<LoD> ret;
+  for (size_t i = 0; i < out_var_list.size(); ++i) {
+    Variable* out_var = out_var_list[i];
+    if (out_var != nullptr) {
+      auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      ret.push_back(out_tensor->lod());
+    }
+  }
+  return ret;
+}
+
+std::vector<DDim> RuntimeInferShapeContext::GetOutputsDim(
+    const std::string& name) const {
+  const std::vector<Variable*>& vars = OutputVars(name);
+  std::vector<Variable*> vars_res;
+  for (auto var : vars) {
+    if (var != nullptr) {
+      vars_res.push_back(var);
+    }
+  }
+  return GetDims(vars_res);
+}
+
 DDim RuntimeInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
@@ -742,26 +766,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
-#endif
-    } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with NPU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetNPUDeviceId(dev_id);
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#ifndef PADDLE_WITH_MLU
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with MLU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetMLUDeviceId(dev_id);
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -965,6 +969,11 @@ OperatorBase::OperatorBase(const std::string& type,
   if (inputs_.size() > 0 || outputs_.size() > 0) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
+  }
+
+  // canonicalize attrs
+  if (info_ && info_->proto_) {
+    CanonicalizeScalarAttrs(*info_->proto_, &attrs_);
   }
   // In OperatorBase level, all attributes with VarDesc type will be considered
   // as Input.
@@ -1406,7 +1415,8 @@ bool OperatorWithKernel::SupportsMKLDNN(const phi::DataType data_type) const {
           [data_type](OpKernelMap::const_reference kern_pair) {
             return platform::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
-                   kern_pair.first.data_type_ == TransToProtoVarType(data_type);
+                   kern_pair.first.data_type_ ==
+                       paddle::framework::TransToProtoVarType(data_type);
           });
     }
   }
@@ -1658,17 +1668,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
   auto* dev_ctx = pool.Get(place);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-  // values, but only through special `float_status` to checks whether
-  // the operation is overflow. More about `float_status`, see:
-  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-  if (FLAGS_check_nan_inf) {
-    framework::details::NPUAllocAndClearFloatStatus(*this, scope, place);
-  }
-#endif
-
   // using cache
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
@@ -2115,12 +2114,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // CPUKernel will be executed and a warning will be given at the same
       // time.
       expected_kernel_key.place_ = platform::CPUPlace();
-#ifdef PADDLE_WITH_ASCEND_CL
-      if (SupportNPU()) {
-        auto& dev_ctx = ctx.device_context();
-        expected_kernel_key.place_ = dev_ctx.GetPlace();
-      }
-#endif
+
       if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
@@ -2292,26 +2286,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_iter == kernels.end() &&
-      platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing NPU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (kernel_iter == kernels.end() &&
-      platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing MLU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       platform::is_custom_place(expected_kernel_key.place_)) {
@@ -2354,13 +2329,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
                             platform::errors::InvalidArgument(
                                 "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    // In order to solve the problem that the output latitude of NPU reshape
-    // operator is not changed when inplace.
-    if (type_ != "reshape2" && type_ != "reshape2_grad") {
-      original_tensor->Resize(original_dims);
-    }
   }
 }
 
@@ -2746,13 +2715,6 @@ void OperatorWithKernel::ParseInputDataType(
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
-      PADDLE_ENFORCE_EQ(
-          sp_t->initialized(),
-          true,
-          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                            "contains uninitialized Tensor.",
-                                            Type(),
-                                            name));
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
     } else if (var->IsType<LoDTensorArray>()) {
@@ -3250,6 +3212,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
+            case proto::AttrType::SCALAR:
+              phi_kernel_context->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(
+                      paddle::experimental::Scalar, attr_iter->second))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -3357,6 +3324,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
             for (const auto& val : vec) {
               scalar_list.emplace_back(val);
             }
+            phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::SCALARS: {
+            const auto& vec = PADDLE_GET_CONST(
+                std::vector<paddle::experimental::Scalar>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
             phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
           } break;
           default:

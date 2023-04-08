@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def compute_mean_iou(
@@ -137,7 +137,7 @@ class TestCase1(TestMeanIOUOp):
     # NOTE(dev): Skip check_dygraph becuase Python API doesn't expose
     # in_wrong_num/in_correct_num/in_mean_iou_num argument
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_eager=False)
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

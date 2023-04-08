@@ -18,10 +18,10 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.static.nn as nn
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle.static import nn
 
 
 class TRTNearestInterpTest(InferencePassTest):
@@ -43,7 +43,7 @@ class TRTNearestInterpTest(InferencePassTest):
                     self.origin_shape[1],
                     self.channels,
                 ]
-            data = fluid.data(name='data', shape=shape, dtype='float32')
+            data = paddle.static.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
             out = nn.batch_norm(resize_out, is_test=True)
 

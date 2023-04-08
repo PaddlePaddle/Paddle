@@ -18,7 +18,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn import BatchNorm

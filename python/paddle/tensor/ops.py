@@ -1025,7 +1025,7 @@ def erf(x, name=None):
         return _C_ops.erf(x)
 
     locals_var = locals().copy()
-    kwargs = dict()
+    kwargs = {}
     for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val

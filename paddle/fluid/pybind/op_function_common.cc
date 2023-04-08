@@ -31,6 +31,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
 
@@ -104,6 +105,17 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
       return true;
     }
   }
+  return false;
+}
+
+bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
+  if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
+      PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
+    return true;
+  }
+  // consider numpy cfloat & numpy cdouble?
   return false;
 }
 
@@ -187,6 +199,14 @@ void CastPyArg2AttrLong(PyObject* obj,
   attrs[key] = CastPyArg2Long(obj, op_type, arg_pos);
 }
 
+void CastPyArg2AttrScalar(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Scalar(obj, op_type, arg_pos);
+}
+
 float16 CastPyArg2Float16(PyObject* obj,
                           const std::string& op_type,
                           ssize_t arg_pos) {
@@ -241,6 +261,25 @@ phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
   }
 
   return phi::dtype::complex<float>(0, 0);
+}
+
+phi::dtype::complex<double> CastPyArg2Complex128(PyObject* obj,
+                                                 const std::string& op_type,
+                                                 ssize_t arg_pos) {
+  if (PyComplex_Check(obj)) {
+    double real = PyComplex_RealAsDouble(obj);
+    double imag = PyComplex_ImagAsDouble(obj);
+    return phi::dtype::complex<double>(real, imag);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "complex, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  return phi::dtype::complex<double>(0, 0);
 }
 
 void CastPyArg2AttrDouble(PyObject* obj,
@@ -644,6 +683,14 @@ void CastPyArg2AttrFloat64s(PyObject* obj,
   attrs[key] = CastPyArg2Float64s(obj, op_type, arg_pos);
 }
 
+void CastPyArg2AttrScalars(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key,
+                           const std::string& op_type,
+                           ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Scalars(obj, op_type, arg_pos);
+}
+
 std::vector<std::string> CastPyArg2Strings(PyObject* obj,
                                            const std::string& op_type,
                                            ssize_t arg_pos) {
@@ -706,6 +753,64 @@ void CastPyArg2AttrStrings(PyObject* obj,
                            const std::string& op_type,
                            ssize_t arg_pos) {
   attrs[key] = CastPyArg2Strings(obj, op_type, arg_pos);
+}
+
+std::vector<paddle::experimental::Scalar> CastPyArg2Scalars(
+    PyObject* obj, const std::string& op_type, ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  VLOG(4) << "type_name: " << type_name;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    item = PyList_GetItem(obj, 0);
+    if (PyObject_CheckFloatOrToFloat(&item)) {
+      std::vector<paddle::experimental::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(
+            paddle::experimental::Scalar{PyFloat_AsDouble(item)});
+      }
+      return value;
+    } else if (PyObject_CheckLongOrToLong(&item)) {
+      std::vector<paddle::experimental::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        value.emplace_back(paddle::experimental::Scalar{
+            static_cast<int64_t>(PyLong_AsLong(item))});
+      }
+      return value;
+    } else if (PyObject_CheckComplexOrToComplex(&item)) {
+      std::vector<paddle::experimental::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        Py_complex v = PyComplex_AsCComplex(item);
+        value.emplace_back(
+            paddle::experimental::Scalar{std::complex<double>(v.real, v.imag)});
+      }
+      return value;
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, complex, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  // Fake a ScalarArray
+  return std::vector<paddle::experimental::Scalar>(
+      {paddle::experimental::Scalar(1.0)});
 }
 
 void CastPyArg2AttrBlock(PyObject* obj,
@@ -809,6 +914,12 @@ void ConstructAttrMapFromPyArgs(
         break;
       case paddle::framework::proto::AttrType::BLOCK:
         CastPyArg2AttrBlock(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::SCALAR:
+        CastPyArg2AttrScalar(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::SCALARS:
+        CastPyArg2AttrScalars(obj, attrs, key, op_type, arg_pos);
         break;
       default:
         break;

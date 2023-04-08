@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -108,7 +108,9 @@ class TestPool1D_API(unittest.TestCase):
 
     def check_adaptive_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float32"
+            )
             result = F.adaptive_avg_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")

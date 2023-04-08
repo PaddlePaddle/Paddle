@@ -110,6 +110,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
@@ -327,9 +328,9 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
-
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none = false);
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

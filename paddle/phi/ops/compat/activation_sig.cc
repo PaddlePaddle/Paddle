@@ -41,12 +41,7 @@ namespace phi {
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");  // NOLINT
-
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
-                               "stanh",
-                               "scale_a" comma "scale_b");  // NOLINT
-
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");         // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
 
 KernelSignature HardSwishGradOpArgumentMapping(
@@ -72,7 +67,6 @@ PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish_grad, hardswish_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(stanh_grad, phi::STanhGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);

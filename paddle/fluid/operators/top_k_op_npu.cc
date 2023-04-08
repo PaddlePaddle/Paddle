@@ -13,7 +13,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -65,7 +64,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
-    phi::DenseTensor tmp_indices(experimental::DataType::INT32);
+    phi::DenseTensor tmp_indices(phi::DataType::INT32);
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 

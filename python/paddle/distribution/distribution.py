@@ -134,7 +134,11 @@ class Distribution:
         Returns:
             Tensor: generated sample data shape
         """
-        return sample_shape + self._batch_shape + self._event_shape
+        return (
+            tuple(sample_shape)
+            + tuple(self._batch_shape)
+            + tuple(self._event_shape)
+        )
 
     def _validate_args(self, *args):
         """
@@ -173,11 +177,11 @@ class Distribution:
         tmp = 0.0
 
         for arg in args:
-            if isinstance(arg, float):
-                arg = [arg]
-            if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
+            if not isinstance(
+                arg, (float, list, tuple, np.ndarray, tensor.Variable)
+            ):
                 raise TypeError(
-                    "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".format(
+                    "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)
                     )
                 )
