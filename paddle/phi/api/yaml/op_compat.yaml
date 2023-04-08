@@ -320,6 +320,12 @@
   outputs :
     out : Out
 
+- op : class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
+
 - op : clip
   backward : clip_grad, clip_double_grad
   inputs :
@@ -2211,12 +2217,6 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
-
-- op :class_center_sample
-  inputs :
-    label : Label
-  outputs :
-    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
