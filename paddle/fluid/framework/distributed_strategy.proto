@@ -71,6 +71,7 @@ message AMPConfig {
   optional bool use_fp16_guard = 11 [ default = true ];
   optional bool use_optimizer_fp16 = 12
       [ default = false ]; // auto parallel effective only
+  optional bool use_bfp16 = 13 [ default = false ];
 }
 
 message LocalSGDConfig {

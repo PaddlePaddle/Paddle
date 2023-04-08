@@ -300,7 +300,8 @@ PD_REGISTER_KERNEL(adamw,
                    phi::AdamwDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

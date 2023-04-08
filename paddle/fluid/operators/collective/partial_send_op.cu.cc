@@ -120,6 +120,9 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(partial_send,
                         ops::PartialSendCUDAKernel<float>,
                         ops::PartialSendCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::PartialSendCUDAKernel<plat::bfloat16>,
+#endif
                         ops::PartialSendCUDAKernel<int>,
                         ops::PartialSendCUDAKernel<int64_t>,
                         ops::PartialSendCUDAKernel<plat::float16>);

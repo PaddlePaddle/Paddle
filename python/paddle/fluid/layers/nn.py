@@ -5106,7 +5106,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     check_variable_and_dtype(
         input,
         'input',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'reduce_sum',
     )
     helper = LayerHelper('reduce_sum', **locals())
@@ -13836,7 +13836,7 @@ def clip_by_norm(x, max_norm, name=None):
         return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float16', 'uint16'], 'clip_by_norm')
     check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
     if name is None:
