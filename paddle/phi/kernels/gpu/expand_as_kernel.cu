@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/expand_as_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -32,12 +31,6 @@ void ExpandAsKernel(const Context& ctx,
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
   auto vec_in_dims = phi::vectorize<int>(x.dims());
-  PADDLE_ENFORCE_GE(
-      rank,
-      1,
-      errors::InvalidArgument("The rank (%d) of the input 'x' for "
-                              "expand_as_v2 op must be positive.",
-                              rank));
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -91,7 +84,6 @@ PD_REGISTER_KERNEL(expand_as,
                    GPU,
                    ALL_LAYOUT,
                    phi::ExpandAsKernel,
-                   phi::dtype::float16,
                    float,
                    double,
                    int,

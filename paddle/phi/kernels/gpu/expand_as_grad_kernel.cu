@@ -35,13 +35,6 @@ void ExpandAsGradKernel(const Context& context,
   int in_rank = in_dims.size();
   int out_rank = out_dims.size();
 
-  PADDLE_ENFORCE_GE(
-      out_rank,
-      1,
-      errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
-                              "expand_as_v2_grad op must be greater than or "
-                              "equal to 1, but the value received is %d.",
-                              out_rank));
   PADDLE_ENFORCE_LE(
       out_rank,
       MAX_RANK_SUPPORTED,
