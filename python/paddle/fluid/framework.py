@@ -609,7 +609,7 @@ dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
-non_static_only = wrap_decorator(_non_static_only_)
+non_static_only = functools.wraps(wrap_decorator(_non_static_only_))
 
 
 def _dygraph_tracer():
