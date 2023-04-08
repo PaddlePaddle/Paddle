@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 using float16 = phi::dtype::float16;

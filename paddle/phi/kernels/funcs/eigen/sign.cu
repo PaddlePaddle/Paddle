@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <paddle/fluid/platform/device_context.h>
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -32,6 +33,7 @@ struct EigenSign<Eigen::GpuDevice, T> {
 template struct EigenSign<Eigen::GpuDevice, float>;
 template struct EigenSign<Eigen::GpuDevice, double>;
 template struct EigenSign<Eigen::GpuDevice, dtype::float16>;
+template struct EigenSign<Eigen::GpuDevice, dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi
