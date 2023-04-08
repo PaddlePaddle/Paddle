@@ -323,7 +323,7 @@ class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
-        self.python_api = logcumsumexp_wrapper
+        self.python_api = paddle.logcumsumexp
         x = np.arange(12, dtype=np.float32).reshape(3, 4)
         output = np_logcumsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
