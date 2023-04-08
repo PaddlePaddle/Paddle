@@ -1,10 +1,5 @@
 include(FetchContent)
 
-set(LLVM_DOWNLOAD_URL
-    https://paddle-inference-dist.bj.bcebos.com/infrt/llvm_b5149f4e66a49a98b67e8e2de4e24a4af8e2781b.tar.gz
-)
-set(LLVM_MD5 022819bb5760817013cf4b8a37e97d5e)
-
 set(FETCHCONTENT_BASE_DIR ${THIRD_PARTY_PATH}/llvm)
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
@@ -107,26 +102,4 @@ function(mlir_tablegen_on td_base)
   endif()
   add_public_tablegen_target(${td_base}_IncGen)
   add_custom_target(${td_base}_inc DEPENDS ${td_base}_IncGen)
-endfunction()
-
-function(mlir_add_rewriter td_base)
-  set(LLVM_TARGET_DEFINITIONS ${td_base}.td)
-  set(LLVM_TARGET_DEPENDS
-      ${LLVM_TARGET_DEPENDS}
-      ${CMAKE_SOURCE_DIR}/paddle/infrt/dialect/infrt/ir/infrt_base.td)
-  mlir_tablegen(${td_base}.cpp.inc -gen-rewriters)
-  add_public_tablegen_target(MLIR${td_base}IncGen)
-  add_dependencies(mlir-headers MLIR${td_base}IncGen)
-endfunction()
-
-# Execute the mlir script with infrt-exec program.
-# @name: name of the test
-# @script: path to the mlir script file
-function(infrt_exec_check name script)
-  add_test(
-    NAME ${name}
-    COMMAND
-      sh -c
-      "${CMAKE_BINARY_DIR}/paddle/infrt/host_context/infrt-exec -i ${CMAKE_CURRENT_SOURCE_DIR}/${script}| ${LLVM_PATH}/bin/FileCheck  ${CMAKE_CURRENT_SOURCE_DIR}/${script}"
-  )
 endfunction()
