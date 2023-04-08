@@ -93,7 +93,7 @@ class TestOverlapAddOp(OpTest):
         return input_shape, attrs
 
     def init_dype(self):
-        self.dtype = np.uint16
+        self.dtype = np.float64
 
     def test_check_output(self):
         paddle.enable_static()
