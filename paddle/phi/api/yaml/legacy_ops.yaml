@@ -258,14 +258,6 @@
     data_type : x
   inplace : (x -> out), (input_found_infinite -> output_found_infinite)
 
-- op : class_center_sample
-  args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
-  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
-  infer_meta :
-    func : ClassCenterSampleInferMeta
-  kernel :
-    func : class_center_sample
-
 - op : clip_by_norm
   args : (Tensor x, float max_norm)
   output : Tensor(out)

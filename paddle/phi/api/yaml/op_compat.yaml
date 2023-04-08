@@ -2212,6 +2212,14 @@
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
 
+- op :class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
+  extra :
+    attrs : [int num_samples=0, int ring_id=1, int rank=0, int nranks=1, bool fix_seed=false, int seed=0]
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
