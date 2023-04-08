@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -64,6 +64,61 @@ class TestRandpermOp(OpTest):
 
         self.inputs = {}
         self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
+        self.init_attrs()
+        self.attrs = {
+            "n": self.n,
+            "dtype": convert_dtype(self.dtype),
+        }
+
+    def init_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        out_np = np.array(outs[0])
+        self.assertTrue(
+            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+        )
+
+
+class TestRandpermFP16Op(TestRandpermOp):
+    """Test randperm op."""
+
+    def setUp(self):
+        self.op_type = "randperm"
+        self.python_api = paddle.randperm
+        self.n = 200
+        self.dtype = "float16"
+
+        self.inputs = {}
+        self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
+        self.init_attrs()
+        self.attrs = {
+            "n": self.n,
+            "dtype": convert_dtype(self.dtype),
+        }
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestRandpermBF16(OpTest):
+    """Test randperm op."""
+
+    def setUp(self):
+        self.op_type = "randperm"
+        self.python_api = paddle.randperm
+        self.n = 200
+        self.dtype = np.uint16
+
+        self.inputs = {}
+        self.outputs = {
+            "Out": convert_float_to_uint16(np.zeros(self.n).astype(self.dtype))
+        }
         self.init_attrs()
         self.attrs = {
             "n": self.n,

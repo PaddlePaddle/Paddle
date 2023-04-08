@@ -246,21 +246,42 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad(self):
-            pass
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X'], 'out2')
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestSplitFp16.__name__ = cls_name
     globals()[cls_name] = TestSplitFp16
 
 
+def create_test_split_with_num_fp16(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestSplitWithNumFp16(parent):
+        def get_dtype(self):
+            return np.float16
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X'], 'out2')
+
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
+    TestSplitWithNumFp16.__name__ = cls_name
+    globals()[cls_name] = TestSplitWithNumFp16
+
+
 create_test_fp16(TestSplitOp)
+create_test_split_with_num_fp16(TestSplitOp_2)
 
 # ----------------Split Bf16----------------
 
 
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA",
     )
     class TestSplitBf16(parent):
         def get_dtype(self):
@@ -271,14 +292,69 @@ def create_test_bf16(parent):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            pass
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X'], 'out2')
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestSplitBf16.__name__ = cls_name
     globals()[cls_name] = TestSplitBf16
 
 
+def create_test_split_with_num_bf16(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA",
+    )
+    class TestSplitWITHNUMBf16(parent):
+        def setUp(self):
+            self.python_api = paddle.split
+            self.public_python_api = paddle.split
+            self.python_out_sig = ['out0', 'out1', 'out2']
+            self._set_op_type()
+            self.prim_op_type = "prim"
+            self.dtype = self.get_dtype()
+            self.init_data()
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.attrs = {
+                'axis': self.axis,
+                'sections': self.sections,
+                'num': self.num,
+            }
+
+            out = np.split(self.x, self.indices_or_sections, self.axis)
+            self.outputs = {
+                'Out': [
+                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    for i in range(len(out))
+                ]
+            }
+
+        def init_data(self):
+            self.x = np.random.random((4, 5, 6)).astype("float32")
+            self.axis = 2
+            self.sections = []
+            self.num = 3
+            self.indices_or_sections = 3
+
+        def get_dtype(self):
+            return np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X'], 'out2')
+
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
+    TestSplitWITHNUMBf16.__name__ = cls_name
+    globals()[cls_name] = TestSplitWITHNUMBf16
+
+
 create_test_bf16(TestSplitOp)
+create_test_split_with_num_bf16(TestSplitOp_2)
 
 
 class TestSplitAPI(unittest.TestCase):
