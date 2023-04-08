@@ -163,6 +163,4 @@ PD_REGISTER_KERNEL(randperm,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
