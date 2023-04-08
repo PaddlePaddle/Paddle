@@ -222,17 +222,17 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPI_Static):
                     name="x", shape=self.data_x_shape, dtype=self.dtype
                 )
                 out = paddle.empty_like(data_x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "x": input,
-                    },
-                    fetch_list=[out],
-                )
-                self.dst_dtype = self.dtype
-                self.dst_shape = x.shape
-                self.__check_out__(res[0])
+            exe = paddle.static.Executor(place)
+            res = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )
+            self.dst_dtype = self.dtype
+            self.dst_shape = x.shape
+            self.__check_out__(res[0])
         paddle.disable_static()
 
 
@@ -259,17 +259,17 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPI_Static):
 
                 out = paddle.empty_like(data_x)
 
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "x": input,
-                    },
-                    fetch_list=[out],
-                )
-                self.dst_dtype = self.dtype
-                self.dst_shape = x.shape
-                self.__check_out__(res[0])
+            exe = paddle.static.Executor(place)
+            res = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )
+            self.dst_dtype = self.dtype
+            self.dst_shape = x.shape
+            self.__check_out__(res[0])
         paddle.disable_static()
 
 
