@@ -14,15 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <cstdlib>
 #include <ctime>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
-
 #include "paddle/phi/core/generator.h"
 
 namespace paddle {
