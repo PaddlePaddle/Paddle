@@ -110,8 +110,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
-        VLOG(10) << "[interpreterCore]"
-                 << "created:" << core_;
+        VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
         core_->reset_scope(&cur_scope);
@@ -204,8 +203,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
-        VLOG(10) << "[interpreterCore]"
-                 << "created:" << core_;
+        VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
         core_->reset_scope(&cur_scope);
