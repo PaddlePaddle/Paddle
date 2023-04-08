@@ -27,9 +27,9 @@ KernelSignature SequencePoolOpArgumentMapping(
 KernelSignature SequencePoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sequence_pool_grad",
-                         {"X", "MaxIndex", "Out"},
+                         {"X", "MaxIndex", "Out@GRAD"},
                          {"is_test", "pooltype", "pad_value"},
-                         {"X"});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi
