@@ -120,7 +120,6 @@ class WhileOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto *program = block->Program();
     bool is_test = Attr<bool>("is_test");
 
     std::set<std::string> no_copy_var_names;
@@ -345,7 +344,6 @@ class WhileGradOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-    auto *program = block->Program();
     auto *parent_block = block->ParentBlock();
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
