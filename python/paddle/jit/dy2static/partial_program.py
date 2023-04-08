@@ -938,6 +938,7 @@ class PartialProgramLayer:
         """
 
         flatten_outputs = self._outputs.tolist()
+        self._clear_out_name(flatten_outputs)
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
         outs = self._outputs.restore(flatten_outputs)
@@ -945,6 +946,11 @@ class PartialProgramLayer:
             outs = outs[0]
 
         return outs
+
+    def _clear_out_name(self, out_vars):
+        """Clear output name to avoid name conflict in mulitple program"""
+        for var in out_vars:
+            var.name = ""
 
     @switch_to_static_graph
     def _clone_for_test(self, main_program):
