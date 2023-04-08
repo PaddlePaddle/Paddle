@@ -19,6 +19,11 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+typedef enum {
+  cba,
+  cbaa,
+} CutlassFusionType;
+
 class CutlassTeller {
  public:
   static CutlassTeller *Instance() {
@@ -65,7 +70,8 @@ class CutlassTeller {
                             stride_w,
                             groups,
                             act_type,
-                            device_id)) {
+                            device_id,
+                            CutlassFusionType::cba)) {
         return false;
       }
     }
@@ -111,7 +117,7 @@ class CutlassTeller {
                             groups,
                             act_type,
                             device_id,
-                            true)) {
+                            CutlassFusionType::cbaa)) {
         return false;
       }
     }
@@ -129,7 +135,7 @@ class CutlassTeller {
                         int groups,
                         std::string activation,
                         int device_id,
-                        bool has_residual = false) {
+                        CutlassFusionType fuse_type) {
     int sm_version = platform::GetGPUComputeCapability(device_id);
     int ic = kc * groups;
     if (!cutlass_sm.count(sm_version)) {
@@ -144,16 +150,18 @@ class CutlassTeller {
         return false;
       }
       // conv + bias + act
-      if (!has_residual && !cba_act_set.count(activation)) {
+      if (fuse_type == CutlassFusionType::cba &&
+          !cba_act_set.count(activation)) {
         return false;
       }
       // conv + bias + elementwise_add + act
-      if (has_residual && !cbaa_act_set.count(activation)) {
+      if (fuse_type == CutlassFusionType::cbaa &&
+          !cbaa_act_set.count(activation)) {
         return false;
       }
     } else if (groups == ic && ic == oc) {
       // conv2d_depthwise not support residual input
-      if (has_residual) {
+      if (fuse_type != CutlassFusionType::cba) {
         return false;
       }
 
@@ -219,7 +227,7 @@ class CutlassTeller {
                         int groups,
                         std::string activation,
                         int device_id,
-                        bool has_residual = false) {
+                        CutlassFusionType fuse_type) {
     return false;
   }
   std::unordered_set<std::string> CbaAct(int device_id) { return {}; }
