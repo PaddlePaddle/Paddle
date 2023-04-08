@@ -232,16 +232,6 @@ class TestPReluFP16OP(PReluTest):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-03)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Alpha'], 'Out', max_relative_error=0.05
-        )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -308,13 +298,13 @@ class TestPReluBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-03)
+        self.check_output_with_place(
+            place,
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Alpha'], 'Out', max_relative_error=0.05
-        )
+        self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
 
 
 @skip_check_grad_ci(

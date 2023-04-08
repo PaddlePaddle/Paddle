@@ -19,10 +19,10 @@ limitations under the License. */
 #include <ctime>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/generator.h"
 
 namespace paddle {
