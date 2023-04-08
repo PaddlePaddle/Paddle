@@ -151,5 +151,12 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetMatrixNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        platform::CPUPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle
