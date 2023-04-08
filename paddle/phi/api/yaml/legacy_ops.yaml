@@ -821,15 +821,6 @@
     data_type : dtype
     backend : place
 
-- op : logcumsumexp
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumInferMeta
-  kernel :
-    func : logcumsumexp
-  backward : logcumsumexp_grad
-
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
   output : Tensor(out)

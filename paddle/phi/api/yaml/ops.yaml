@@ -981,6 +981,15 @@
     data_type : x
   backward : log_softmax_grad
 
+- op : logcumsumexp
+  args : (Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CumInferMeta
+  kernel :
+    func : logcumsumexp
+  backward : logcumsumexp_grad
+
 - op : logical_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
