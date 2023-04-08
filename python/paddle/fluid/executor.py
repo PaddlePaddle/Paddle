@@ -1589,16 +1589,6 @@ class Executor:
                 )
             feed = self._update_feed(program, feed)
 
-            program, new_exe = self._executor_cache.get_program_and_executor(
-                program,
-                feed,
-                fetch_list,
-                feed_var_name,
-                fetch_var_name,
-                self.place,
-                scope,
-            )
-
             stored_flag = {}
             if isinstance(program, compiler.CompiledProgram) or isinstance(
                 program._graph, compiler.CompiledProgram
@@ -1611,11 +1601,26 @@ class Executor:
                 build_strategy = compiled_program._build_strategy
                 if build_strategy.force_sequential_run:
                     schedule_flag = [
-                        "FLAGS_new_executor_serial_run",
-                        "FLAGS_new_executor_sequential_run",
+                        'FLAGS_new_executor_serial_run',
+                        'FLAGS_new_executor_sequential_run',
                     ]
-                    stored_flag = {f: os.getenv(f, None) for f in schedule_flag}
-                    set_flags({f: "true" for f in schedule_flag})
+                    for flag in schedule_flag:
+                        value = os.getenv(flag, False)
+                        if isinstance(value, str):
+                            value = value.lower()
+                            value = True if value == 'true' else False
+                        stored_flag[flag] = bool(value)
+                    set_flags({f: True for f in schedule_flag})
+
+            program, new_exe = self._executor_cache.get_program_and_executor(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                self.place,
+                scope,
+            )
 
             self._feed_data(program, feed, feed_var_name, scope)
             if hasattr(program, 'lr_scheduler'):
