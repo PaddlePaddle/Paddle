@@ -969,6 +969,7 @@ void group_norm_grad(const Tensor& x,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
   std::cout << "gn_vjp===============" << std::endl;
+
   // scale.shape=[C]
   // mean.shape=[N, groups]
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
@@ -977,16 +978,15 @@ void group_norm_grad(const Tensor& x,
                                               data_layout));
   }
   Tensor x_data = x;
-  auto x_dims = y.dims();
+  // auto x_dims = y.dims();
+  std::vector<int64_t> x_dims = phi::vectorize<int64_t>(x.dims());
   auto add_axis = std::vector<int64_t>({-1});
   const int N = x_dims[0];
   const int C = x_dims[1];
-  // int nume = 1;
-  // for (auto i = 0; i < x_dims.size(); i++) {
-  //   nume = nume * x_dims[i];
-  // }
+
   const int hw = x_dims[2] * x_dims[3];
   const int g_num = C / groups;
+
   const float s = 1.0 / (hw * g_num);
 
   auto reduce_axis = IntArray(std::vector<int64_t>({2, 3}));
@@ -1006,37 +1006,43 @@ void group_norm_grad(const Tensor& x,
     Tensor p1;
     if (scale_ptr) {
       auto scale_data = scale.get();
-      auto d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
-                    .sum(std::vector<int64_t>({2}), dtype, false);
-      auto d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
-                    .sum(std::vector<int64_t>({2}), dtype, false);
-      auto p1 = (reshape<T>(inv_std * scale_data,
-                            std::vector<int64_t>({N, groups, 1})))
-                    .expand(IntArray(shape_group));
+      d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})) *
+            reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num})))
+               .expand(IntArray(shape_group));
     } else {
-      auto d1 = (reshape<T>(sum_y_grad_mul_x, shape_group))
-                    .sum(std::vector<int64_t>({2}), dtype, false);
-      auto d2 = (reshape<T>(sum_y_grad, shape_group))
-                    .sum(std::vector<int64_t>({2}), dtype, false);
-      auto p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})))
-                    .expand(IntArray(shape_group));
+      d1 = (reshape<T>(sum_y_grad_mul_x, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})))
+               .expand(IntArray(shape_group));
     }
-    auto p2 = (d2 * mean - d1) * inv_std * inv_std * inv_std * s;
+
+    // d1, d2 [N, G]
+    // p1 [N, G, g_num]
+    // p2 [N, G]
+
+    auto p2 = (d2 * mean - d1) * (inv_std * inv_std * inv_std * s);
     auto p3 = -p2 * mean - d2 * inv_std * s;
-    p1 = unsqueeze<T>(p1, std::vector<int64_t>({2}));
+    p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
     p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
     p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
-    auto x_grad_tmp = reshape<T>(out_grad, whole_group_shape) * p1 +
-                      reshape<T>(x_data, whole_group_shape) * p2 + p3;
+    auto tmp_1 = reshape<T>(out_grad, whole_group_shape) * p1;
+    auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
+    auto x_grad_tmp = tmp_1 + tmp_2;
     x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
     set_output<T>(x_grad_tmp, x_grad);
   }
   if (scale_grad) {
     if (scale_ptr) {
-      auto tmp1 = reshape<T>(sum_y_grad_mul_x, shape_group) -
-                  reshape<T>(sum_y_grad_mul_x, shape_group) *
-                      unsqueeze<T>(mean, std::vector<int64_t>({2})) *
-                      unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
+      auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
+                   reshape<T>(sum_y_grad, shape_group) *
+                       unsqueeze<T>(mean, std::vector<int64_t>({2}))) *
+                  unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
       auto scale_grad_tmp =
           reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
                      IntArray(std::vector<int64_t>({C})));
