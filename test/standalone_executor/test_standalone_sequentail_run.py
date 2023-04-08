@@ -32,13 +32,13 @@ class TestStandaloneExecutor(unittest.TestCase):
 
         return main_program, startup_program, [c]
 
-    def run_program(self, force_sequential_run=False):
+    def run_program(self, sequential_run=False):
         seed = 100
         paddle.seed(seed)
         np.random.seed(seed)
         main, startup, outs = self.build_program()
         build_strategy = paddle.static.BuildStrategy()
-        build_strategy.force_sequential_run = force_sequential_run
+        build_strategy.sequential_run = sequential_run
         print(build_strategy)
         compiled_program = paddle.static.CompiledProgram(
             main, build_strategy=build_strategy
