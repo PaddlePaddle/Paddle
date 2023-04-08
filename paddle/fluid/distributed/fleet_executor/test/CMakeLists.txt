@@ -51,9 +51,7 @@ cc_test_old(
   scope
   device_context)
 
-if(WITH_DISTRIBUTE
-   AND NOT WITH_PSLIB
-   AND NOT (WITH_ASCEND))
+if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set_source_files_properties(
     interceptor_ping_pong_with_brpc_test.cc
     PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
