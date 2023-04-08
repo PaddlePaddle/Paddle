@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/fused_dropout_add_grad_kernel.h"
-#include "paddle/phi/kernels/fusion/fused_dropout_add_kernel.h"
-
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_add_utils.h"
 
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
@@ -33,6 +32,7 @@ static inline int NumBlocks(const int N) {
 }
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename MT>
 __global__ void FuseScaleAddGrad(const T* grad,
@@ -220,12 +220,13 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
   }
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_dropout_add_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedDropoutAddGradKernel,
+                   phi::fusion::FusedDropoutAddGradKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,

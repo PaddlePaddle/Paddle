@@ -143,7 +143,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              "correct and will be "
              "removed in future. For Tensor contain only one element, Please "
              "modify "
-             " 'Tensor.numpy()[0]' to 'Tensor.item()' as soon as "
+             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
              "possible, "
              "otherwise 'Tensor.numpy()[0]' will raise error in future.";
       py_rank = 1;
