@@ -62,5 +62,6 @@ PD_REGISTER_KERNEL(expand_as_grad,
                    phi::ExpandAsGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}
