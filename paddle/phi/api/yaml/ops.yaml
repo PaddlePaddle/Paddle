@@ -475,7 +475,7 @@
     func : eigvals
 
 - op : eigvalsh
-  args : (Tensor x, str uplo = L, bool is_test = false)
+  args : (Tensor x, str uplo = "L", bool is_test = false)
   output : Tensor(eigenvalues), Tensor(eigenvectors)
   infer_meta :
     func : EigvalshInferMeta
