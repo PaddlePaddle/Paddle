@@ -64,6 +64,11 @@ class TestSplitOp(OpTest):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
+class TestSplitOp(TestSplitOp):
+    def get_dtype(self):
+        return np.float16
+
+
 # test with attr(num)
 class TestSplitOp_2(OpTest):
     def setUp(self):

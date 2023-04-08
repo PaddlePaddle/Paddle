@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def overlap_add(x, hop_length, axis=-1):
@@ -75,7 +76,8 @@ class TestOverlapAddOp(OpTest):
     def setUp(self):
         self.op_type = "overlap_add"
         self.python_api = paddle.signal.overlap_add
-        self.shape, self.type, self.attrs = self.initTestCase()
+        self.shape, self.attrs = self.initTestCase()
+        self.type = self.init_dype()
         self.inputs = {
             'X': np.random.random(size=self.shape).astype(self.type),
         }
@@ -83,12 +85,15 @@ class TestOverlapAddOp(OpTest):
 
     def initTestCase(self):
         input_shape = (50, 3)
-        input_type = 'float64'
+
         attrs = {
             'hop_length': 4,
             'axis': -1,
         }
-        return input_shape, input_type, attrs
+        return input_shape, attrs
+
+    def init_dype(self):
+        self.dtype = np.uint16
 
     def test_check_output(self):
         paddle.enable_static()
@@ -98,6 +103,58 @@ class TestOverlapAddOp(OpTest):
     def test_check_grad_normal(self):
         paddle.enable_static()
         self.check_grad(['X'], 'Out')
+        paddle.disable_static()
+
+
+class TestOverlapAddFP16Op(TestOverlapAddOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestOverlapAddBF16(OpTest):
+    def setUp(self):
+        self.op_type = "overlap_add"
+        self.python_api = paddle.signal.overlap_add
+        self.shape, self.attrs = self.initTestCase()
+        self.type = self.init_dype()
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.random.random(size=self.shape).astype(self.type)
+            ),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                overlap_add(x=self.inputs['X'], **self.attrs).copy()
+            )
+        }
+
+    def initTestCase(self):
+        input_shape = (50, 3)
+
+        attrs = {
+            'hop_length': 4,
+            'axis': -1,
+        }
+        return input_shape, attrs
+
+    def init_dype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+        paddle.disable_static()
+
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
         paddle.disable_static()
 
 

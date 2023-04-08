@@ -33,6 +33,7 @@ paddle/phi/include/*
 paddle/phi/infermeta/generated.*
 paddle/fluid/prim/api/generated_prim/*.cc
 paddle/fluid/prim/api/generated_prim/*.h
+python/paddle/fluid/tests/unittests/test_imperative_ptb_rnn_sorted_gradient.py
 *.DS_Store
 *.vs
 build/

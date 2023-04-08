@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -28,16 +28,56 @@ class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
         self.python_api = paddle.sign
+        self.dtype = self.init_dtype()
         self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
+            'X': np.random.uniform(-10, 10, (10, 10)).astype(self.dtype)
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
+
+    def init_dtype(self):
+        self.dtype = "float64"
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestSignFP16Op(TestSignOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestSignBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        self.dtype = self.init_dtype()
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.random.uniform(-10, 10, (10, 10)).astype(self.dtype)
+            )
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.sign(self.inputs['X']))
+        }
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestSignOpError(unittest.TestCase):
