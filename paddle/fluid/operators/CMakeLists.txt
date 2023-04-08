@@ -96,7 +96,6 @@ register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 genera
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
-target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
