@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/expand_as_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -55,8 +56,13 @@ void ExpandAsGradKernel(const Context& context,
     phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
   } else {
     std::vector<int> reduce_dims = funcs::GetReduceDim(in_dims, out_dims, -1);
-    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        context, out_grad, in_grad, kps::IdentityFunctor<T>(), reduce_dims);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T, MPType>>(
+        context,
+        out_grad,
+        in_grad,
+        kps::IdentityFunctor<T, MPType>(),
+        reduce_dims);
   }
 }
 
@@ -66,6 +72,7 @@ PD_REGISTER_KERNEL(expand_as_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ExpandAsGradKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int,
