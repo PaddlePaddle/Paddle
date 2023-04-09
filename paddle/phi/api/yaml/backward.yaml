@@ -1762,7 +1762,7 @@
   optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_op : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW) -> Tensor(out)
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW") -> Tensor(out)
   args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format)
   output : Tensor(x_grad)
   infer_meta :
