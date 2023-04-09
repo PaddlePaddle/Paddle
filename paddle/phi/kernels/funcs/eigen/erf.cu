@@ -15,6 +15,7 @@ limitations under the License. */
 #define _USE_MATH_DEFINES
 #endif
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -50,7 +51,8 @@ struct EigenErfGrad<Eigen::GpuDevice, T> {
 #define INSTANTIATION(FUNCTOR)                       \
   template struct FUNCTOR<Eigen::GpuDevice, float>;  \
   template struct FUNCTOR<Eigen::GpuDevice, double>; \
-  template struct FUNCTOR<Eigen::GpuDevice, dtype::float16>
+  template struct FUNCTOR<Eigen::GpuDevice, dtype::float16>; \
+  template struct FUNCTOR<Eigen::GpuDevice, dtype::bfloat16>
 INSTANTIATION(EigenErf);
 INSTANTIATION(EigenErfGrad);
 #undef INSTANTIATION
