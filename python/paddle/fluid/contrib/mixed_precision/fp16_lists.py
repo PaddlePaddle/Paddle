@@ -41,8 +41,10 @@ def _get_unsupported_list():
     # _sys_unsupported_bf16_list = []
     if core.is_compiled_with_xpu():
         _, _, _sys_unsupported_list = core.op_supported_infos('XPU', amp_dtype)
-    elif core.is_compiled_with_custom_device('npu'):
+    elif core.is_compiled_with_npu():
         _, _, _sys_unsupported_list = core.op_supported_infos('NPU', amp_dtype)
+    elif core.is_compiled_with_mlu():
+        _, _, _sys_unsupported_list = core.op_supported_infos('MLU', amp_dtype)
     else:
         _, _, _sys_unsupported_list = core.op_supported_infos('GPU', amp_dtype)
 
