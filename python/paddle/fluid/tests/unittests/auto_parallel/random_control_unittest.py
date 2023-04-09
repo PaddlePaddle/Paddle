@@ -192,10 +192,11 @@ class TestRandomControl(unittest.TestCase):
         rc_engine.prepare(mode="train")
         mask_name_list = [f'dropout_{i}.tmp_1' for i in range(7)]
         recompute_mask_name_list = [
-            'dropout_0.tmp_1.subprog_0',
-            'dropout_1.tmp_1.subprog_0',
-            'dropout_2.tmp_1.subprog_0',
-            'dropout_3.tmp_1.subprog_0' 'dropout_4.tmp_1.subprog_0',
+            'dropout_0.tmp_1.subprog_1',
+            'dropout_1.tmp_1.subprog_1',
+            'dropout_2.tmp_1.subprog_1',
+            'dropout_3.tmp_1.subprog_1',
+            'dropout_4.tmp_1.subprog_0',
             'dropout_5.tmp_1.subprog_0',
             'dropout_6.tmp_1.subprog_0',
         ]
