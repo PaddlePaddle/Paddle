@@ -366,7 +366,7 @@ class ForwardAPI(BaseAPI):
         output = (
             f"""std::tie({",".join(outputs)})"""
             if len(outputs) > 1
-            else output[0]
+            else outputs[0]
         )
         local_call += f"""    {output} = {self.api}({args});"""
         return local_call
