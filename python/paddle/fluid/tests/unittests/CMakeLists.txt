@@ -17,7 +17,7 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -272,47 +272,25 @@ function(py_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
     else()
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     if(py_test_modules_SERIAL)
@@ -517,7 +495,7 @@ endforeach()
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+   AND NOT (WITH_ASCEND))
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -530,7 +508,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
-   OR WITH_ASCEND_CL
    OR APPLE)
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
@@ -668,8 +645,7 @@ if(WITH_DISTRIBUTE)
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
        OR WITH_XPU
-       OR WITH_ASCEND
-       OR WITH_ASCEND_CL)
+       OR WITH_ASCEND)
       bash_test_modules(
         test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -683,7 +659,7 @@ if(WITH_DISTRIBUTE)
         test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-    if(WITH_ASCEND OR WITH_ASCEND_CL)
+    if(WITH_ASCEND)
       bash_test_modules(
         test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -851,8 +827,6 @@ if(WIN32)
 endif()
 
 add_subdirectory(ir)
-
-add_subdirectory(standalone_executor)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
@@ -1150,25 +1124,6 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo
                        PROPERTIES TIMEOUT 120)
-endif()
-
-if($ENV{USE_STANDALONE_EXECUTOR})
-  # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-  set_tests_properties(test_apply_pass_to_program
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_buffer_shared_memory_reuse_pass
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(
-    test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-    PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_optimizer
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_star_gan_with_gradient_penalty
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_switch_autotune
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  set_tests_properties(test_imperative_mnist_sorted_gradient
-                       PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 endif()
 
 set(TEST_CINN_OPS

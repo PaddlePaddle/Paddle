@@ -19,7 +19,6 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import (
@@ -1228,7 +1227,7 @@ class ProgramCache:
         partial_program = partial_program_from(
             concrete_program, cache_key.class_instance is not None
         )
-        if core._is_fwd_prim_enabled() and not _in_amp_guard():
+        if core._is_fwd_prim_enabled():
             partial_program.set_hooker(
                 PrimHooker(concrete_program.main_program)
             )
