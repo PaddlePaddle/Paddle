@@ -86,6 +86,8 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                         src_op
                     )
                 )
+            elif rank_id not in op_dist_attr.process_mesh.process_ids:
+                pass
             # NOTE Adopt for recompute
             # If user already set seed, We should not modify it. But if the seed is added by recompute pass, it should be under control.
             # TODO  in future recompute pass should happen after parallel partitione. and remove this at that time.
@@ -117,8 +119,6 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                             src_op
                         )
                     )
-            elif rank_id not in op_dist_attr.process_mesh.process_ids:
-                pass
             else:
                 # determinate rng
                 X_var = main_block._var_recursive(kwargs['X'][0])
