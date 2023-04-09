@@ -10,7 +10,6 @@ register_unity_group(
   lars_momentum_op.cc
   momentum_op.cc
   proximal_adagrad_op.cc
-  adagrad_op.cc
   adam_op.cc
   adamax_op.cc
   dgc_momentum_op.cc

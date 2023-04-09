@@ -32,6 +32,18 @@
     func : acosh
   backward : acosh_grad
 
+- op : adagrad_
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, Tensor master_param, float epsilon = 1.0e-6f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdagradInferMeta
+  kernel :
+    func : adagrad {dense, dense, dense, dense, dense -> dense, dense, dense}
+           adagrad_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense -> dense, dense, dense}
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
+
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
   output : Tensor
