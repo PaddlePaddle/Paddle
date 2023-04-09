@@ -236,7 +236,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(recv_v2,
                         ops::RecvOpV2CUDAKernel<float>,
                         ops::RecvOpV2CUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::RecvOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::RecvOpV2CUDAKernel<int>,
