@@ -181,8 +181,38 @@ class TestRandomControl(unittest.TestCase):
     def test_random_ctrl_with_recompute(self):
         # mp2 recompute training
         rc_engine = self.get_engine(True)
-        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc_losses = np.array(history.history["loss"])
+        train_dataloader = rc_engine.dataloader(
+            self.dataset,
+            batch_size=self.batch_size,
+            mode="train",
+            sample_split=3,
+        )
+
+        rc_engine.prepare(mode="train")
+        mask_name_list = [f'dropout_{i}.tmp_1' for i in range(7)]
+        mask_var_list = [
+            rc_engine.main_program.global_block().var(varname)
+            for varname in mask_name_list
+        ]
+
+        for data in train_dataloader:
+            outs = rc_engine.run(data, fetch_list=mask_var_list, mode="train")
+        mask_np_list = [outs['fetches'][varname] for varname in mask_name_list]
+
+        # check globl mask consistent across ranks
+        paddle.disable_static()
+        rank = paddle.distributed.get_rank()
+        print("########### global ##############")
+        global_index = [0, 2, 3, 5, 6]
+        self.compare_mask_between_ranks(
+            rank, mask_np_list, global_index, equal=True
+        )
+        print("########### local ##############")
+        local_index = [1, 4]
+        self.compare_mask_between_ranks(
+            rank, mask_np_list, local_index, equal=False
+        )
+        paddle.enable_static()
 
         # check program
         rank = paddle.distributed.get_rank()
