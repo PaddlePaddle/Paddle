@@ -117,6 +117,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(c_split,
                         ops::CSplitOpCUDAKernel<float>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CSplitOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CSplitOpCUDAKernel<double>,
                         ops::CSplitOpCUDAKernel<int>,
                         ops::CSplitOpCUDAKernel<int64_t>,

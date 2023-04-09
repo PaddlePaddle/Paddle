@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
@@ -152,7 +154,10 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
-template class CrossEntropyFunctor<phi::GPUContext, platform::float16>;
+template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(8, 1, 0)
+template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+#endif
 
 }  // namespace math
 }  // namespace operators
