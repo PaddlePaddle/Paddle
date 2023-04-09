@@ -20,8 +20,6 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 import paddle.distributed as dist
-
-dist.init_parallel_env()
 from paddle.distributed.fleet import auto
 
 
@@ -104,6 +102,7 @@ class TestRandomControl(unittest.TestCase):
 
         # check globl mask consistent across ranks
         paddle.disable_static()
+        dist.init_parallel_env()
         rank = paddle.distributed.get_rank()
         global_index = [0, 2, 3, 4, 6]
         for np_mask in [mask_np_list[i] for i in global_index]:
