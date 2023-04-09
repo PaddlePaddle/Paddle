@@ -87,18 +87,13 @@ class TestRandomControl(unittest.TestCase):
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
                 dy_broadcast_helper(mask_tensor_remote)
                 if equal:
-                    self.assertTrue(
-                        np.array_equal(
-                            mask_tensor_remote.numpy(),
-                            mask_tensor_local.numpy(),
-                        )
+                    assert np.array_equal(
+                        mask_tensor_remote.numpy(), mask_tensor_local.numpy()
                     )
                 else:
-                    self.assertFalse(
-                        np.array_equal(
-                            mask_tensor_remote.numpy(),
-                            mask_tensor_local.numpy(),
-                        )
+                    assert not np.array_equal(
+                        mask_tensor_remote.numpy(),
+                        mask_tensor_local.numpy(),
                     )
             else:
                 dy_broadcast_helper(mask_tensor_local)
@@ -211,11 +206,9 @@ class TestRandomControl(unittest.TestCase):
         for i in range(7):
             mask_fw = mask_np_list[i].astype("float32")
             mask_rc = mask_np_list[i + 7].astype("float32")
-            self.assertTrue(
-                np.array_equal(
-                    mask_fw,
-                    mask_rc,
-                )
+            assert np.array_equal(
+                mask_fw,
+                mask_rc,
             )
 
         paddle.disable_static()
