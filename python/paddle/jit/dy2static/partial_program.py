@@ -949,8 +949,9 @@ class PartialProgramLayer:
 
     def _clear_outputs_name(self, outputs):
         """Clear output name to avoid name conflict in mulitple program"""
-        for tensor in outputs:
-            tensor.name = ""
+        for output in outputs:
+            if isinstance(output, paddle.Tensor):
+                output.name = ""
 
     @switch_to_static_graph
     def _clone_for_test(self, main_program):
