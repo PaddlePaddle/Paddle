@@ -698,6 +698,35 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
+          "fused_linear_with_mp_scale",
+          [](const BuildStrategy &self) {
+            return self.fused_linear_with_mp_scale_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fused_feedforward_ = b;
+          },
+          R"DOC((bool, optional): fused_linear_with_mp_scale indicate
+                whether to fuse Linear with FusedLinear + MpScale in
+                ColumnParallelLinear and RowParallelLinear, it may
+                make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_linear_with_mp_scale = True
+                     )DOC")
+      .def_property(
           "fuse_adamw",
           [](const BuildStrategy &self) { return self.fuse_adamw_; },
           [](BuildStrategy &self, bool b) {

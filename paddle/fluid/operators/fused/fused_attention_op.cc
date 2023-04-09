@@ -358,6 +358,14 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
+    AddInput("Seed1",
+             "Attention dropout random seed. Its priority is higer than "
+             "attn_dropout_fix_seed and attn_dropout_seed.")
+        .AsDispensable();
+    AddInput("DropoutSeed",
+             "Dropout random seed. Its priority is higer than "
+             "dropout_fix_seed and dropout_seed.")
+        .AsDispensable();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();

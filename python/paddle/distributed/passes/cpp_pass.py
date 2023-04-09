@@ -110,6 +110,19 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fused_linear_with_mp_scale")
+class FusedLinearWithMpScalePass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_linear_with_mp_scale_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_adamw")
 class FuseAdamWPass(CPPPassWrapper):
     def __init__(self):

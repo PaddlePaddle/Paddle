@@ -260,6 +260,10 @@ cc_library(
   SRCS fuse_gemm_epilogue_pass.cc
   DEPS pass graph_pattern_detector)
 cc_library(
+  fused_linear_with_mp_scale_pass
+  SRCS fused_linear_with_mp_scale_pass.cc
+  DEPS pass graph_pattern_detector)
+cc_library(
   fused_attention_pass
   SRCS fused_attention_pass.cc
   DEPS pass graph_pattern_detector)

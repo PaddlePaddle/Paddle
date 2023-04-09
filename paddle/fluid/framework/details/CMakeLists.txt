@@ -385,6 +385,7 @@ set(IR_PASS_DEPS
     fused_attention_pass
     fuse_adamw_op_pass
     fused_feedforward_pass
+    fused_linear_with_mp_scale_pass
     delete_dropout_op_pass)
 
 if(WITH_CINN)

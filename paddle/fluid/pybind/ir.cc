@@ -299,11 +299,12 @@ class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
   std::unordered_map<std::string, GetterSetter> getter_setter_map_;
 };
 
-#define REGISTER_PASS_ATTR_GETTER_SETTER(attr_type_name, cpp_type)             \
+#define REGISTER_PASS_ATTR_GETTER_SETTER(attr_type_name, ...)                  \
   do {                                                                         \
+    using __cpp_type = __VA_ARGS__;                                            \
     auto getter = [](const framework::ir::Pass &pass,                          \
                      const std::string &attr_name) -> py::object {             \
-      auto attr_value = pass.Get<cpp_type>(attr_name);                         \
+      auto attr_value = pass.Get<__cpp_type>(attr_name);                       \
       return py::cast(attr_value);                                             \
     };                                                                         \
     auto setter = [](const std::string &attr_name,                             \
@@ -312,8 +313,8 @@ class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
       PADDLE_ENFORCE_NOT_NULL(                                                 \
           pass, platform::errors::InvalidArgument("pass should be provided")); \
       try {                                                                    \
-        const auto &cpp_attr_value = py::cast<cpp_type>(attr_value);           \
-        pass->Set(attr_name, new cpp_type(cpp_attr_value));                    \
+        const auto &cpp_attr_value = py::cast<__cpp_type>(attr_value);         \
+        pass->Set(attr_name, new __cpp_type(cpp_attr_value));                  \
       } catch (py::cast_error &) {                                             \
         PADDLE_THROW(platform::errors::InvalidArgument(                        \
             "type error of attribute %s, expected to be %s",                   \
@@ -373,6 +374,7 @@ void BindPass(py::module *m) {
   REGISTER_PASS_ATTR_GETTER_SETTER("bytes", std::string);
   REGISTER_PASS_ATTR_GETTER_SETTER("str", std::string);
   REGISTER_PASS_ATTR_GETTER_SETTER("list[str]", std::vector<std::string>);
+  REGISTER_PASS_ATTR_GETTER_SETTER("map[int, int]", std::map<int, int>);
 
   m->def("apply_pass",
          [](framework::ProgramDesc *main_program,

@@ -1033,6 +1033,60 @@ struct ElewiseAddMatmulAct : public PatternBase {
   PATTERN_DECL_NODE(act_grad_dx);
 };
 
+// The following patterns are used to fuse linear of RowParallelLinear.
+// Meanwhile, it adds MpScale on bias of linear.
+// formula: F.linear(x)
+// op: matmul_v2 + c_allreduce_sum + elementwise_add
+// named nodes: matmul, c_allreduce_sum, elementwise_add
+//              matmul_w, matmul_out, c_allreduce_sum_out
+//              ele_bias, elewise_add_out
+struct LinearMpScale : public PatternBase {
+  LinearMpScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "linear_mp_scale") {}
+
+  PDNode* operator()(PDNode* linear_x_var);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(ele_add);
+  PATTERN_DECL_NODE(c_allreduce_sum);
+  // declare variable node's name
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(ele_add_out);
+  PATTERN_DECL_NODE(ele_bias);
+};
+
+// The following patterns are used to fuse linear_grad of RowParallelLinear.
+// formula: the backward of F.linear(x)
+// op: elementwise_add_grad + c_identity + matmul_v2_grad
+// named nodes: ele_add_grad, matmul_grad, c_identity
+//              ele_add_x, ele_add_bias, ele_add_x_grad, ele_add_bias_grad
+//              matmul_x, matmul_w, matmul_x_grad, matmul_w_grad
+//              c_identity_out
+struct LinearMpScaleGrad : public PatternBase {
+  LinearMpScaleGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "linear_mp_scale_grad") {}
+
+  PDNode* operator()(PDNode* out_grad);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad);
+  PATTERN_DECL_NODE(c_identity);
+  PATTERN_DECL_NODE(matmul_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(ele_add_x);
+  PATTERN_DECL_NODE(ele_add_bias);
+  PATTERN_DECL_NODE(ele_add_x_grad);
+  PATTERN_DECL_NODE(ele_add_bias_grad);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(matmul_x);
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_x_grad);
+  PATTERN_DECL_NODE(matmul_w_grad);
+};
+
 // Conv with Elementwise_add as bias
 // op: conv + elementwise_add
 // named nodes:

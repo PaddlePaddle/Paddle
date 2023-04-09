@@ -129,6 +129,8 @@ struct BuildStrategy {
   bool sync_batch_norm_{false};
   // Fuse GEMM+Epilogue via cublasLt epilogue.
   bool fuse_gemm_epilogue_{false};
+  // Fused Linear in ColumnParallelLinear and RowParallelLinear
+  bool fused_linear_with_mp_scale_{false};
   // Fused multi head attention
   bool fused_attention_{false};
   // Fuse adamw
@@ -267,6 +269,8 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "fuse_broadcast_ops_: " << strategy.fuse_broadcast_ops_ << std::endl;
   os << "sync_batch_norm_: " << strategy.sync_batch_norm_ << std::endl;
   os << "fuse_gemm_epilogue_: " << strategy.fuse_gemm_epilogue_ << std::endl;
+  os << "fused_linear_with_mp_scale_: " << strategy.fused_linear_with_mp_scale_
+     << std::endl;
   os << "fused_attention_: " << strategy.fused_attention_ << std::endl;
   os << "fused_feedforward_: " << strategy.fused_feedforward_ << std::endl;
   os << "mkldnn_enabled_op_types_: ";

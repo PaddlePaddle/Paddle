@@ -92,6 +92,7 @@ class TestFusedPassBaseList(unittest.TestCase):
                         "fused_feedforward",
                         "fuse_optimizer",
                         "fuse_gemm_epilogue",
+                        "fused_linear_with_mp_scale",
                         "fuse_bn_add_act",
                         "fuse_relu_depthwise_conv",
                     ],
