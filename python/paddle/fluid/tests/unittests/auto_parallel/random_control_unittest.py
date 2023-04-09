@@ -25,6 +25,13 @@ from paddle import _legacy_C_ops
 from paddle.distributed.fleet import auto
 
 
+def dy_broadcast_helper(tensor):
+    _legacy_C_ops.c_broadcast(
+        tensor, tensor, 'root', 1, 'use_calc_stream', True, 'ring_id', 0
+    )
+    _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+
+
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
@@ -70,16 +77,34 @@ class TestRandomControl(unittest.TestCase):
         self.init(engine)
         return engine
 
-    def check_results(self, ref_losses, check_losses):
-        np.testing.assert_allclose(
-            ref_losses,
-            check_losses,
-            rtol=self.rtol,
-            atol=self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
-        )
+    def compare_mask_between_ranks(
+        self, rank, mask_np_list, comapre_idx, equal
+    ):
+
+        for np_mask in [mask_np_list[i] for i in mask_np_list]:
+            mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
+            if rank == 0:
+                mask_tensor_remote = paddle.ones_like(mask_tensor_local)
+                dy_broadcast_helper(mask_tensor_remote)
+                print("remote : ", mask_tensor_remote.numpy())
+                print("local : ", mask_tensor_local.numpy())
+                if equal:
+                    self.assertTrue(
+                        np.array_equal(
+                            mask_tensor_remote.numpy(),
+                            mask_tensor_local.numpy(),
+                        )
+                    )
+                else:
+                    self.assertFalse(
+                        np.array_equal(
+                            mask_tensor_remote.numpy(),
+                            mask_tensor_local.numpy(),
+                        )
+                    )
+            else:
+                dy_broadcast_helper(mask_tensor_local)
+                print("local : ", mask_tensor_local.numpy())
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
@@ -105,54 +130,16 @@ class TestRandomControl(unittest.TestCase):
         # check globl mask consistent across ranks
         paddle.disable_static()
         rank = paddle.distributed.get_rank()
+        print("########### global ##############")
         global_index = [0, 2, 3, 5, 6]
-
-        for np_mask in [mask_np_list[i] for i in global_index]:
-            mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
-            if rank == 0:
-                mask_tensor_remote = paddle.ones_like(mask_tensor_local)
-                print("before broadcast: ", mask_tensor_remote.numpy())
-                _legacy_C_ops.c_broadcast(
-                    mask_tensor_remote,
-                    mask_tensor_remote,
-                    'root',
-                    1,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    0,
-                )
-                _legacy_C_ops.c_sync_calc_stream(
-                    mask_tensor_remote, mask_tensor_remote
-                )
-
-                # dist.broadcast(mask_tensor_remote, src=1)
-                print("after broadcast: ", mask_tensor_remote.numpy())
-                print("local : ", mask_tensor_local.numpy())
-                np.array_equal(
-                    mask_tensor_remote.numpy(), mask_tensor_local.numpy()
-                )
-                self.assertTrue(
-                    np.array_equal(
-                        mask_tensor_remote.numpy(),
-                        mask_tensor_local.numpy(),
-                    )
-                )
-            else:
-                _legacy_C_ops.c_broadcast(
-                    mask_tensor_local,
-                    mask_tensor_local,
-                    'root',
-                    1,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    0,
-                )
-                _legacy_C_ops.c_sync_calc_stream(
-                    mask_tensor_local, mask_tensor_local
-                )
-                print(mask_tensor_local.numpy())
+        self.compare_mask_between_ranks(
+            rank, mask_np_list, global_index, equal=True
+        )
+        print("########### local ##############")
+        local_index = [1, 4]
+        self.compare_mask_between_ranks(
+            rank, mask_np_list, local_index, equal=False
+        )
         paddle.enable_static()
 
         # check program
