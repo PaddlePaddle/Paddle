@@ -105,6 +105,7 @@ class TestRandomControl(unittest.TestCase):
             mode="train",
             sample_split=3,
         )
+
         rc_engine.prepare(mode="train")
         fetch_list = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
         fetch_var_list = [
@@ -114,20 +115,12 @@ class TestRandomControl(unittest.TestCase):
 
         for data in train_dataloader:
             outs = rc_engine.run(data, fetch_list=fetch_var_list, mode="train")
-            print("2222222222 out:", outs)
 
-        # mp2 recompute training
-        # rc_engine = self.get_engine(False)
-        # history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # rc_losses = np.array(history.history["loss"])
-        # var_list = [
-        #     'dropout_0.tmp_1',
-        #     'dropout_2.tmp_1',
-        #     'dropout_3.tmp_1',
-        #     'dropout_5.tmp_1',
-        #     'dropout_6.tmp_1',
-        # ]
-        # persist_vars(rc_engine, var_list)
+        mask_np_arrays = [outs['fetches'][varname] for varname in fetch_list]
+        print("#############" * 8)
+        print(mask_np_arrays[0])
+        print(mask_np_arrays[1])
+        print("#############" * 8)
 
         # check program
         ops = rc_engine.main_program.global_block().ops
