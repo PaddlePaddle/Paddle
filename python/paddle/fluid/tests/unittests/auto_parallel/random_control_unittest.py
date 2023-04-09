@@ -127,16 +127,17 @@ class TestRandomControl(unittest.TestCase):
             outs = rc_engine.run(data, fetch_list=mask_var_list, mode="train")
         mask_np_list = [outs['fetches'][varname] for varname in mask_name_list]
 
-        # check globl mask consistent across ranks
         paddle.disable_static()
         rank = paddle.distributed.get_rank()
         print("########### global ##############")
+        # check globl mask consistent across ranks
         global_index = [0, 2, 3, 5, 6]
         self.compare_mask_between_ranks(
             rank, mask_np_list, global_index, equal=True
         )
         print("########### local ##############")
         local_index = [1, 4]
+        # check loacl mask different across ranks
         self.compare_mask_between_ranks(
             rank, mask_np_list, local_index, equal=False
         )
@@ -190,17 +191,43 @@ class TestRandomControl(unittest.TestCase):
 
         rc_engine.prepare(mode="train")
         mask_name_list = [f'dropout_{i}.tmp_1' for i in range(7)]
+        recompute_mask_name_list = [
+            'dropout_0.tmp_1.subprog_0',
+            'dropout_1.tmp_1.subprog_0',
+            'dropout_2.tmp_1.subprog_0',
+            'dropout_3.tmp_1.subprog_0' 'dropout_4.tmp_1.subprog_0',
+            'dropout_5.tmp_1.subprog_0',
+            'dropout_6.tmp_1.subprog_0',
+        ]
         mask_var_list = [
             rc_engine.main_program.global_block().var(varname)
-            for varname in mask_name_list
+            for varname in mask_name_list + recompute_mask_name_list
         ]
 
         for data in train_dataloader:
             outs = rc_engine.run(data, fetch_list=mask_var_list, mode="train")
-        mask_np_list = [outs['fetches'][varname] for varname in mask_name_list]
+        mask_np_list = [
+            outs['fetches'][varname]
+            for varname in mask_name_list + recompute_mask_name_list
+        ]
+        print("recompute ###################")
+        for i in range(7):
+            print(mask_np_list[i][:20], mask_np_list[i + 7][:20])
+        print("recompute ###################")
 
-        # check globl mask consistent across ranks
+        # check recompute is mask the same within local device
+        for i in range(7):
+            mask_fw = mask_np_list[i].astype("float32")
+            mask_rc = mask_np_list[i + 7].astype("float32")
+            self.assertTrue(
+                np.array_equal(
+                    mask_fw,
+                    mask_rc,
+                )
+            )
+
         paddle.disable_static()
+        # check globl mask consistent across ranks
         rank = paddle.distributed.get_rank()
         print("########### global ##############")
         global_index = [0, 2, 3, 5, 6]
@@ -209,6 +236,7 @@ class TestRandomControl(unittest.TestCase):
         )
         print("########### local ##############")
         local_index = [1, 4]
+        # check loacl mask different across ranks
         self.compare_mask_between_ranks(
             rank, mask_np_list, local_index, equal=False
         )
