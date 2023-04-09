@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
@@ -103,16 +104,27 @@ class GpuPinnedVector {
     memcpy(reinterpret_cast<char *>(mem_cpu_->ptr()), buf, len);
     len_ = len;
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void pinedcpu_to_gpu(paddle::gpuStream_t stream, phi::Place place) {
     mem_gpu_ = memory::Alloc(place, len_);
+#ifdef PADDLE_WITH_CUDA
     cudaMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
                     reinterpret_cast<char *>(mem_cpu_->ptr()),
                     len_,
                     cudaMemcpyHostToDevice,
                     stream);
-  }
+#elif defined(PADDLE_WITH_HIP)
+    platform::GpuMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
+                             reinterpret_cast<char *>(mem_cpu_->ptr()),
+                             len_,
+                             hipMemcpyHostToDevice,
+                             stream);
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+        "WITH_ROCM=ON."));
 #endif
+  }
+
   template <typename Type>
   Type *get_gpu_ptr() {
     return reinterpret_cast<Type *>(mem_gpu_->ptr());
