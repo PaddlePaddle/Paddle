@@ -107,20 +107,38 @@ class TestRandomControl(unittest.TestCase):
         )
 
         rc_engine.prepare(mode="train")
-        fetch_list = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
-        fetch_var_list = [
+        mask_name_list = ['dropout_{i}.tmp_1' for i in range(7)]
+        mask_var_list = [
             rc_engine.main_program.global_block().var(varname)
-            for varname in fetch_list
+            for varname in mask_name_list
         ]
 
         for data in train_dataloader:
-            outs = rc_engine.run(data, fetch_list=fetch_var_list, mode="train")
+            outs = rc_engine.run(data, fetch_list=mask_var_list, mode="train")
+        mask_np_list = [outs['fetches'][varname] for varname in mask_name_list]
 
-        mask_np_arrays = [outs['fetches'][varname] for varname in fetch_list]
-        print("#############" * 8)
-        print(mask_np_arrays[0])
-        print(mask_np_arrays[1])
-        print("#############" * 8)
+        # check globl mask consistent across ranks
+        rank = paddle.distributed.get_rank()
+        global_index = [0, 2, 3, 4, 6]
+        for np_mask in [mask_np_list[i] for i in global_index]:
+            mask_tensor_local = paddle.to_tensor(np_mask)
+            if rank == 0:
+                mask_tensor_remote = paddle.ones_like(mask_tensor_local)
+                dist.broadcast(mask_tensor_remote, src=1)
+                print(np.array(mask_tensor_remote))
+                print(np.array(mask_tensor_local))
+                np.array_equal(
+                    np.array(mask_tensor_remote), np.array(mask_tensor_local)
+                )
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(mask_tensor_remote),
+                        np.array(mask_tensor_local),
+                    )
+                )
+            else:
+                dist.broadcast(mask_tensor_local, src=1)
+                print(np.array(mask_tensor_local))
 
         # check program
         ops = rc_engine.main_program.global_block().ops
