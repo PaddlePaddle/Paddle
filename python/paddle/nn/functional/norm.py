@@ -411,7 +411,7 @@ def layer_norm(
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     check_variable_and_dtype(
-        x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+        x, 'input', ['float16', 'float32', 'float64', 'uint16'], 'LayerNorm'
     )
 
     inputs = dict()
