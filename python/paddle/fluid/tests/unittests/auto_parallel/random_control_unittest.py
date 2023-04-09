@@ -105,10 +105,8 @@ class TestRandomControl(unittest.TestCase):
         # check globl mask consistent across ranks
         paddle.disable_static()
         rank = paddle.distributed.get_rank()
-        global_index = [0, 2, 3, 4, 6]
-        from paddle.auto.process_group import get_world_process_group
+        global_index = [0, 2, 3, 5, 6]
 
-        world_group = get_world_process_group()
         for np_mask in [mask_np_list[i] for i in global_index]:
             mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
             if rank == 0:
@@ -130,7 +128,7 @@ class TestRandomControl(unittest.TestCase):
 
                 # dist.broadcast(mask_tensor_remote, src=1)
                 print("after broadcast: ", mask_tensor_remote.numpy())
-                print("local : ", np.array(mask_tensor_local))
+                print("local : ", mask_tensor_local.numpy())
                 np.array_equal(
                     mask_tensor_remote.numpy(), mask_tensor_local.numpy()
                 )
