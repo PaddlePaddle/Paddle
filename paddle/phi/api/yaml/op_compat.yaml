@@ -863,8 +863,6 @@
 
 - op : gather
   backward : gather_grad
-  extra :
-    attrs : [bool overwrite = true]
 
 - op : gather_nd
   backward : gather_nd_grad
