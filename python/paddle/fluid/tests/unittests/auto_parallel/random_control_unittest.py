@@ -86,8 +86,6 @@ class TestRandomControl(unittest.TestCase):
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
                 dy_broadcast_helper(mask_tensor_remote)
-                print("remote : ", mask_tensor_remote.numpy())
-                print("local : ", mask_tensor_local.numpy())
                 if equal:
                     self.assertTrue(
                         np.array_equal(
@@ -104,7 +102,6 @@ class TestRandomControl(unittest.TestCase):
                     )
             else:
                 dy_broadcast_helper(mask_tensor_local)
-                print("local : ", mask_tensor_local.numpy())
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
@@ -129,13 +126,11 @@ class TestRandomControl(unittest.TestCase):
 
         paddle.disable_static()
         rank = paddle.distributed.get_rank()
-        print("########### global ##############")
         # check globl mask consistent across ranks
         global_index = [0, 2, 3, 5, 6]
         self.compare_mask_between_ranks(
             rank, mask_np_list, global_index, equal=True
         )
-        print("########### local ##############")
         local_index = [1, 4]
         # check loacl mask different across ranks
         self.compare_mask_between_ranks(
@@ -211,10 +206,6 @@ class TestRandomControl(unittest.TestCase):
             outs['fetches'][varname]
             for varname in mask_name_list + recompute_mask_name_list
         ]
-        print("recompute ###################")
-        for i in range(7):
-            print(mask_np_list[i][:20], mask_np_list[i + 7][:20])
-        print("recompute ###################")
 
         # check recompute is mask the same within local device
         for i in range(7):
@@ -230,12 +221,10 @@ class TestRandomControl(unittest.TestCase):
         paddle.disable_static()
         # check globl mask consistent across ranks
         rank = paddle.distributed.get_rank()
-        print("########### global ##############")
         global_index = [0, 2, 3, 5, 6]
         self.compare_mask_between_ranks(
             rank, mask_np_list, global_index, equal=True
         )
-        print("########### local ##############")
         local_index = [1, 4]
         # check loacl mask different across ranks
         self.compare_mask_between_ranks(
