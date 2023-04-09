@@ -410,6 +410,8 @@ class Engine:
             ), "user_fetches must be a list, but receive {}".format(
                 type(user_fetches).__name__
             )
+        else:
+            user_fetches = []
         fetch_names = []
         fetch_indices = []
 
