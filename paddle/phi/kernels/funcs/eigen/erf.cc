@@ -47,9 +47,9 @@ struct EigenErfGrad<Eigen::DefaultDevice, T> {
   }
 };
 
-#define INSTANTIATION(FUNCTOR)                           \
-  template struct FUNCTOR<Eigen::DefaultDevice, float>;  \
-  template struct FUNCTOR<Eigen::DefaultDevice, double>; \
+#define INSTANTIATION(FUNCTOR)                                   \
+  template struct FUNCTOR<Eigen::DefaultDevice, float>;          \
+  template struct FUNCTOR<Eigen::DefaultDevice, double>;         \
   template struct FUNCTOR<Eigen::DefaultDevice, dtype::float16>; \
   template struct FUNCTOR<Eigen::DefaultDevice, dtype::bfloat16>
 INSTANTIATION(EigenErf);

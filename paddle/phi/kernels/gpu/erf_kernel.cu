@@ -20,5 +20,11 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/erf_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    erf, GPU, ALL_LAYOUT, phi::ErfKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(erf,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ErfKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

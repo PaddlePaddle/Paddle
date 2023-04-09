@@ -48,9 +48,9 @@ struct EigenErfGrad<Eigen::GpuDevice, T> {
   }
 };
 
-#define INSTANTIATION(FUNCTOR)                       \
-  template struct FUNCTOR<Eigen::GpuDevice, float>;  \
-  template struct FUNCTOR<Eigen::GpuDevice, double>; \
+#define INSTANTIATION(FUNCTOR)                               \
+  template struct FUNCTOR<Eigen::GpuDevice, float>;          \
+  template struct FUNCTOR<Eigen::GpuDevice, double>;         \
   template struct FUNCTOR<Eigen::GpuDevice, dtype::float16>; \
   template struct FUNCTOR<Eigen::GpuDevice, dtype::bfloat16>
 INSTANTIATION(EigenErf);
