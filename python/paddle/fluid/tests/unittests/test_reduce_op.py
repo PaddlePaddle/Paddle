@@ -627,7 +627,6 @@ class TestAnyOp(OpTest):
         self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
-        self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
         self.check_output()
@@ -639,7 +638,7 @@ class TestAnyOp_ZeroDim(OpTest):
         self.op_type = "reduce_any"
         self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
-        self.attrs = {'dim': [], 'reduce_all': True}
+        self.attrs = {'dim': []}
 
     def test_check_output(self):
         self.check_output()
@@ -654,7 +653,7 @@ class TestAny8DOp(OpTest):
                 "bool"
             )
         }
-        self.attrs = {'reduce_all': True, 'dim': (3, 5, 4)}
+        self.attrs = {'dim': (3, 5, 4)}
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
