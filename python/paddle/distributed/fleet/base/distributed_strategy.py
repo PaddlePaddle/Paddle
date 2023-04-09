@@ -1702,6 +1702,12 @@ class DistributedStrategy:
         check_configs_key(
             self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
+
+        if "mp_configs" in configs:
+            assign_configs_value(
+                self.strategy.hybrid_configs.mp_configs, configs["mp_configs"]
+            )
+            configs.pop("mp_configs")
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
