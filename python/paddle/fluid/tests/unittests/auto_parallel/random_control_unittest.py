@@ -20,24 +20,9 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import global_scope
 
 dist.init_parallel_env()
 from paddle.distributed.fleet import auto
-
-
-def get_tensor(varname, scope):
-    return scope.find_var(varname).get_tensor()
-
-
-def persist_vars(program, var_list):
-
-    block = program.global_block()
-    for varnme in var_list:
-        var = block.var(varnme)
-        var.persistable(True)
-
-        print(str(var))
 
 
 def apply_pass(use_recompute=False, no_recompute_segments=[]):
@@ -121,12 +106,13 @@ class TestRandomControl(unittest.TestCase):
         rank = paddle.distributed.get_rank()
         global_index = [0, 2, 3, 4, 6]
         for np_mask in [mask_np_list[i] for i in global_index]:
-            mask_tensor_local = paddle.to_tensor(np_mask)
+            mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
+                print("before broadcast: ", np.array(mask_tensor_remote))
                 dist.broadcast(mask_tensor_remote, src=1)
-                print(np.array(mask_tensor_remote))
-                print(np.array(mask_tensor_local))
+                print("after broadcast: ", np.array(mask_tensor_remote))
+                print("local : ", np.array(mask_tensor_local))
                 np.array_equal(
                     np.array(mask_tensor_remote), np.array(mask_tensor_local)
                 )
@@ -175,27 +161,6 @@ class TestRandomControl(unittest.TestCase):
                 'tensor_parallel_seed.tmp_6',
             ],
         )
-
-        # Check local regine different randomness, global region same randomness
-        var_scope = global_scope()
-        local_mask = ['dropout_1.tmp_1', 'dropout_4.tmp_1']
-        global_mask = [
-            'dropout_0.tmp_1',
-            'dropout_2.tmp_1',
-            'dropout_3.tmp_1',
-            'dropout_5.tmp_1',
-            'dropout_6.tmp_1',
-        ]
-        for i in range(len(local_mask)):
-            if rank == 0:
-                ref_mask = get_tensor(local_mask[i], var_scope)
-                mask_1 = paddle.ones_like(ref_mask)
-                print(np.array(ref_mask))
-                print(np.array(mask_1))
-            else:
-                mask_tensor = get_tensor(local_mask[i], var_scope)
-                # dist.broadcast(data, src=1)
-                print(np.array(mask_tensor))
 
     def test_random_ctrl_with_recompute(self):
         # mp2 recompute training
