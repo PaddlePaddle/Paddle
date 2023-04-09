@@ -60,7 +60,7 @@ cba_kernel_no_alpha = (
         CommonCutlassConv2dDepthwiseKernelDeclare, dict_for_declare_part
     )
     + '''
-size_t filter_size = oc * kh * kw * kc;
+size_t filter_size = oc * kh * kw * kc * sizeof(half);
 phi::Allocator::AllocationPtr filter_gpu_ptrs_data =
     phi::memory_utils::Alloc(
         params.ctx->GetPlace(),
