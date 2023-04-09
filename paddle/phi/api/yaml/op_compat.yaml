@@ -612,6 +612,8 @@
     {x : X}
   outputs :
     {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
+  extra :
+    attrs : [str UPLO= "L", bool is_test = false]
 
 - op : elementwise_pow
   backward : elementwise_pow_grad
