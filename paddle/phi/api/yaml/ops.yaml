@@ -44,6 +44,17 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
 
+- op : adamax_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdamaxInferMeta
+  kernel :
+    func : adamax
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (moment -> moment_out), (inf_norm -> inf_norm_out), (master_param ->master_param_out)
+
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
   output : Tensor

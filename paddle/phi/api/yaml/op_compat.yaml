@@ -50,6 +50,12 @@
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
+- op : adamax_
+  inputs :
+    {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
