@@ -81,7 +81,7 @@ class TestRandomControl(unittest.TestCase):
         self, rank, mask_np_list, comapre_idx, equal
     ):
 
-        for np_mask in [mask_np_list[i] for i in mask_np_list]:
+        for np_mask in [mask_np_list[i] for i in comapre_idx]:
             mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
