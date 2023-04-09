@@ -19,7 +19,9 @@ import numpy as np
 from get_gpt_model import FakeDataset, generate_model
 
 import paddle
-import paddle.distributed as dist
+
+paddle.enable_static()
+from paddle import _legacy_C_ops
 from paddle.distributed.fleet import auto
 
 
@@ -102,28 +104,56 @@ class TestRandomControl(unittest.TestCase):
 
         # check globl mask consistent across ranks
         paddle.disable_static()
-        dist.init_parallel_env()
         rank = paddle.distributed.get_rank()
         global_index = [0, 2, 3, 4, 6]
+        from paddle.auto.process_group import get_world_process_group
+
+        world_group = get_world_process_group()
         for np_mask in [mask_np_list[i] for i in global_index]:
             mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
                 print("before broadcast: ", mask_tensor_remote.numpy())
-                dist.broadcast(mask_tensor_remote, src=1)
+                _legacy_C_ops.c_broadcast(
+                    mask_tensor_remote,
+                    mask_tensor_remote,
+                    'root',
+                    1,
+                    'use_calc_stream',
+                    True,
+                    'ring_id',
+                    0,
+                )
+                _legacy_C_ops.c_sync_calc_stream(
+                    mask_tensor_remote, mask_tensor_remote
+                )
+
+                # dist.broadcast(mask_tensor_remote, src=1)
                 print("after broadcast: ", mask_tensor_remote.numpy())
                 print("local : ", np.array(mask_tensor_local))
                 np.array_equal(
-                    np.array(mask_tensor_remote), mask_tensor_local.numpy()
+                    mask_tensor_remote.numpy(), mask_tensor_local.numpy()
                 )
                 self.assertTrue(
                     np.array_equal(
-                        np.array(mask_tensor_remote),
-                        np.array(mask_tensor_local),
+                        mask_tensor_remote.numpy(),
+                        mask_tensor_local.numpy(),
                     )
                 )
             else:
-                dist.broadcast(mask_tensor_local, src=1)
+                _legacy_C_ops.c_broadcast(
+                    mask_tensor_local,
+                    mask_tensor_local,
+                    'root',
+                    1,
+                    'use_calc_stream',
+                    True,
+                    'ring_id',
+                    0,
+                )
+                _legacy_C_ops.c_sync_calc_stream(
+                    mask_tensor_local, mask_tensor_local
+                )
                 print(mask_tensor_local.numpy())
         paddle.enable_static()
 
