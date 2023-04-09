@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 #include "paddle/phi/kernels/impl/sequence_pool_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(sequence_pool_grad,
