@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 
 namespace phi {
 
-KernelSignature TruncatedGaussianRandomOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("truncated_gaussian_random",
-                         {},
-                         {"shape", "mean", "std", "seed", "dtype"},
-                         {"Out"});
+KernelSignature PSendOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
+}
+
+KernelSignature PSendArrayOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("p_send_array", {"x"}, {"peer"}, {});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(truncated_gaussian_random,
-                           phi::TruncatedGaussianRandomOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(p_send, phi::PSendOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(p_send_array, phi::PSendArrayOpArgumentMapping);

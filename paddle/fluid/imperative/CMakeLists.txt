@@ -123,20 +123,10 @@ if(NOT WIN32)
       SRCS reducer.cc
       DEPS layer)
   endif()
-  if(WITH_ASCEND_CL)
-    cc_library(
-      hccl_context
-      SRCS hccl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
-  endif()
+
   if(WITH_NCCL
      OR WITH_RCCL
-     OR WITH_XPU_BKCL
-     OR WITH_ASCEND_CL)
+     OR WITH_XPU_BKCL)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc
@@ -165,32 +155,16 @@ if(WITH_GLOO)
   endif()
 endif()
 
-if(NOT WITH_ASCEND_CL)
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         phi_tensor
-         ${MLU_DEPS})
-else()
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         npu_op_runner
-         phi_tensor)
-endif()
+cc_library(
+  gradient_accumulator
+  SRCS gradient_accumulator.cc
+  DEPS blas
+       operator
+       lod_tensor
+       selected_rows_utils
+       selected_rows_functor
+       var_type_traits
+       layer
+       math_function
+       phi_tensor
+       ${MLU_DEPS})
