@@ -592,7 +592,7 @@ def cast_model_to_fp16(
 
 def _convert_float_to_bfloat16(place, fp32_array):
     paddle.disable_static()
-    paddle.set_device(place)
+    framework._set_expected_place(place)
     fp32_tensor = paddle.to_tensor(fp32_array)
     bf16_array = paddle.cast(fp32_tensor, paddle.bfloat16).numpy()
     paddle.enable_static()

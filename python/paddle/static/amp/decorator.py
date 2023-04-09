@@ -706,6 +706,8 @@ def decorate(
             if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                 run_example_code()
     """
+    dtype = "bfloat16" if use_bf16 else "float16"
+    paddle.static.amp.set_global_amp_dtype(dtype)
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
 
@@ -745,6 +747,7 @@ def amp_decorate(
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
     """
+    paddle.static.amp.set_global_amp_dtype(dtype)
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
 
@@ -754,8 +757,6 @@ def amp_decorate(
         raise ValueError(
             "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
         )
-
-    paddle.static.amp.set_global_amp_dtype(dtype)
 
     use_pure_fp16 = level == "O2"
     use_fp16_guard = use_amp_guard
