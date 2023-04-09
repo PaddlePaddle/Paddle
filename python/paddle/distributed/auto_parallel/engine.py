@@ -51,7 +51,7 @@ from .dist_loader import (
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
-from .interface import CollectionNames, get_collection
+from .interface import CollectionNames, get_collection, fetch
 from .utils import to_list, get_dist_attr, get_lr, validate_opt
 from .utils import initialize_pg_in_full_mode, get_input_split_info
 from .cost.estimate_cost import get_cost_from_engine
@@ -469,10 +469,13 @@ class Engine:
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
             _process_fetch_group("outputs", fetch_vars["outputs"])
+        for usr_fetch in user_fetches:
+            var_name = _to_name_str(usr_fetch)
+            fetch(var_name)
         user_fetches_collection = [
             item[1] for item in get_collection(CollectionNames.FETCHES)
         ]
-        var_list = (user_fetches_collection or []) + (user_fetches or [])
+        var_list = user_fetches_collection or []
         _process_fetch_group("fetches", var_list)
         return fetch_names, fetch_indices
 
@@ -527,10 +530,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
