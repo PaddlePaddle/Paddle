@@ -14,7 +14,6 @@
 
 import copy
 
-import paddle
 from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
@@ -28,8 +27,7 @@ _extra_unsupported_list = {
 }
 
 
-def _get_unsupported_list():
-    dtype = paddle.fluid.contrib.mixed_precision.get_global_amp_dtype()
+def _get_unsupported_list(dtype):
     if dtype == "float16":
         amp_dtype = core.VarDesc.VarType.FP16
     elif dtype == "bfloat16":
@@ -70,14 +68,16 @@ class AutoMixedPrecisionLists(object):
         custom_white_list=None,
         custom_black_list=None,
         custom_black_varnames=None,
+        dtype="float16",
     ):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(_get_unsupported_list())
+        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
         self.black_varnames = copy.copy(custom_black_varnames)
+        self.amp_dtype = dtype
         self._update_list()
 
     def _update_list(self):
