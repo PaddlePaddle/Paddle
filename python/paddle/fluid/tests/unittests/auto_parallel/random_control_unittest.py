@@ -98,7 +98,6 @@ class TestRandomControl(unittest.TestCase):
 
     def test_random_ctrl_vanilla(self):
         # mp2 recompute training
-
         rc_engine = self.get_engine(False)
         train_dataloader = rc_engine.dataloader(
             self.dataset,
@@ -112,6 +111,7 @@ class TestRandomControl(unittest.TestCase):
             rc_engine.main_program.global_block().var(varname)
             for varname in fetch_list
         ]
+
         for data in train_dataloader:
             outs = rc_engine.run(data, fetch_list=fetch_var_list, mode="train")
             print("2222222222 out:", outs)
