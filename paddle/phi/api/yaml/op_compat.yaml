@@ -1311,6 +1311,14 @@
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
 
+- op : matrix_nms
+  inputs :
+    {bboxes : BBoxes, scores : Scores}
+  outputs :
+    {out : Out, index : Index, roisnum : RoisNum}
+  get_expected_kernel_type :
+    matrix_nms : GetMatrixNmsExpectedKernelType
+
 - op : matrix_power
   inputs :
     x : X
@@ -2114,6 +2122,10 @@
 - op : trunc
   inputs :
     input : X
+  outputs :
+    out : Out
+
+- op : truncated_gaussian_random
   outputs :
     out : Out
 

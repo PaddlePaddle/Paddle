@@ -215,6 +215,19 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
+                                  const MetaTensor& out_grad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* y_grad) {
+  if (x_grad != nullptr) {
+    x_grad->share_meta(out_grad);
+  }
+
+  if (y_grad != nullptr) {
+    y_grad->share_meta(out_grad);
+  }
+}
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,

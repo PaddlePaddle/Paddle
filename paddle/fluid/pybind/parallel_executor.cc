@@ -760,6 +760,31 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fused_feedforward = True
                      )DOC")
       .def_property(
+          "force_sequential_run",
+          [](const BuildStrategy &self) { return self.force_sequential_run_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.force_sequential_run_ = b;
+          },
+          R"DOC((bool, optional): force_sequential_run is used to let the `StandaloneExecutor` run ops by the
+          order of `ProgramDesc`. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_feedforward = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
