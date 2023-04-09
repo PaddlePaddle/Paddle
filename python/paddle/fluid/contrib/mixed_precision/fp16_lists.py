@@ -29,7 +29,7 @@ _extra_unsupported_list = {
 
 
 def _get_unsupported_list():
-    dtype = paddle.static.amp.get_global_amp_dtype()
+    dtype = paddle.fluid.contrib.mixed_precision.get_global_amp_dtype()
     if dtype == "float16":
         amp_dtype = core.VarDesc.VarType.FP16
     elif dtype == "bfloat16":
