@@ -107,7 +107,7 @@ class TestRandomControl(unittest.TestCase):
         )
 
         rc_engine.prepare(mode="train")
-        mask_name_list = ['dropout_{i}.tmp_1' for i in range(7)]
+        mask_name_list = [f'dropout_{i}.tmp_1' for i in range(7)]
         mask_var_list = [
             rc_engine.main_program.global_block().var(varname)
             for varname in mask_name_list
