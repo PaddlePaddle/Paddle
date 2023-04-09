@@ -607,7 +607,7 @@
   args : (Tensor x, int64_t[] axis,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceInferMeta
   kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
