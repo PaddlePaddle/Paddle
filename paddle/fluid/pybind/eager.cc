@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/dist_tensor.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -99,6 +100,14 @@ void EmptyTensorInitializer(TensorObject* self,
     std::shared_ptr<phi::SelectedRows> tensor =
         std::make_shared<phi::SelectedRows>();
     self->tensor.set_impl(tensor);
+  } else if (var_type == paddle::framework::proto::VarType::DIST_TENSOR) {
+    // TODO(liuzhenhai): simple implementation for test purpose, modify it as
+    // appropriate
+    auto dis_tensor = std::make_shared<phi::DistTensor>(
+        std::make_shared<phi::Allocation>(),
+        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                             ddims));
+    self->tensor.set_impl(dis_tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {

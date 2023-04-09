@@ -342,6 +342,70 @@ class ForwardAPI(BaseAPI):
 """
         return remap_code
 
+    def gen_dist_tensor_hijack_guard(self):
+        var = self.inputs["names"][0]
+        return f"""{var}.is_dist_tensor()"""
+
+    def gen_dist_tensor_unwrap_code(self):
+        unwrap_code = "  // gen_dist_tensor_unwrap_code"
+        for var in self.inputs["names"]:
+            unwrap_code += f"""
+    auto {var}_unwrapped = DistTensorHijackHelper::UnWrap({var});"""
+        return unwrap_code
+
+    def gen_local_tensor_call(self):
+        inputs = [f"""{var}_unwrapped""" for var in self.inputs["names"]]
+        inputs.extend(self.attrs["names"])
+        args = ",".join(inputs)
+        outputs = list(self.outputs["names"])
+        local_call = """  // gen_local_tensor_call
+"""
+        for output in outputs:
+            local_call += f"""    Tensor {output};
+"""
+        output = (
+            f"""std::tie({",".join(outputs)})"""
+            if len(outputs) > 1
+            else output[0]
+        )
+        local_call += f"""    {output} = {self.api}({args});"""
+        return local_call
+
+    def gen_dist_tensor_wrap_code(self):
+        wrap_code = """   // gen_dist_tensor_wrap_code
+"""
+        for output in self.outputs["names"]:
+            wrap_code += f"""    Tensor {output}_wrapped = DistTensorHijackHelper::Wrap({output});
+"""
+        outputs = [e + "_wrapped" for e in self.outputs["names"]]
+        if len(outputs) > 1:
+            wrap_code += f"""    return std::make_tuple({",".join(outputs)});"""
+        else:
+            wrap_code += f"""    return {outputs[0]};"""
+        return wrap_code
+
+    def gene_dist_tensor_hijack(self, inplace_flag):
+        """
+        hijack to dist tensor logic
+        TODO(liuzhenhai):
+           1、support optional inputs
+           2、support inputs/outputs of which the type is vector of tensor
+           3、support inplace
+           4、support view
+           5、support intermediate
+           6、support invoke
+           7、add sharding inference and re-sharding logic
+        """
+        if inplace_flag:
+            return ""
+        if self.api not in ["accuracy", "add", "abs"]:
+            return ""
+        return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
+  {self.gen_dist_tensor_unwrap_code()}
+  {self.gen_local_tensor_call()}
+  {self.gen_dist_tensor_wrap_code()}
+  }}"""
+
 
 def header_include():
     return """
@@ -358,6 +422,7 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 #include <memory>
+#include <tuple>
 
 #include "glog/logging.h"
 
@@ -365,6 +430,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/dist_tensor_hijack_helper.h"
 #include "paddle/phi/api/include/tensor_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/type_traits.h"

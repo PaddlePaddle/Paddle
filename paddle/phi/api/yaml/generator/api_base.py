@@ -1270,13 +1270,19 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
+    # what is inplace?
+    def gene_dist_tensor_hijack(self, inplace_flag):
+        if inplace_flag:
+            return ""
+        return ""
+
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
         api_code = f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
-{self.gene_kernel_select()}
+{self.gene_dist_tensor_hijack(inplace_flag)} {self.gene_kernel_select()}
 """
 
         if len(self.kernel['func']) > 1:

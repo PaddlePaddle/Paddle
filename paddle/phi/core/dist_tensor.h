@@ -31,6 +31,12 @@ class DistTensor : public TensorBase,
 
   static const char* name() { return "DistTensor"; }
 
+  DistTensor();
+  /// \brief Construct a dist tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of dense tensor.
+  DistTensor(Allocator* a, const DenseTensorMeta& meta);
+
   ~DistTensor() = default;
 
   /// \brief Returns the number of elements contained in tensor.
@@ -71,7 +77,7 @@ class DistTensor : public TensorBase,
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
 
-  const DenseTensorMeta& meta() const noexcept { return meta_; }
+  const DenseTensorMeta& meta() const noexcept { return local_tensor_->meta(); }
 
   /// \brief Sets the meta information of the tensor. Only when the original
   /// attribute of Tensor is incomplete, can it be reset.
@@ -83,10 +89,6 @@ class DistTensor : public TensorBase,
   const DistAttr& get_dist_attr();
 
  private:
-  // place of the tensor
-  Place place_;
-  // mete of the whole tensor
-  DenseTensorMeta meta_;
   // dist attribute
   DistAttr dist_attr_;
   // local shard of the tensor
