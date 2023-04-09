@@ -18,6 +18,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
+
 namespace phi {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
