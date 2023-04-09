@@ -45,7 +45,7 @@ from .dist_loader import (
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
-from .interface import CollectionNames, get_collection
+from .interface import CollectionNames, fetch, get_collection
 from .parallelizer_v2 import Parallelizer
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
@@ -434,10 +434,13 @@ class Engine:
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
             _process_fetch_group("outputs", self._fetch_vars[mode]["outputs"])
+        for usr_fetch in user_fetches:
+            var_name = _to_name_str(usr_fetch)
+            fetch(var_name)
         user_fetches_collection = [
             item[1] for item in get_collection(CollectionNames.FETCHES)
         ]
-        var_list = (user_fetches_collection or []) + (user_fetches or [])
+        var_list = user_fetches_collection or []
         _process_fetch_group("fetches", var_list)
         return fetch_names, fetch_indices
 
@@ -491,15 +494,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
-                fetch_names.pop(idx)
-                outs.pop(idx)
-        for name in fetch_names:
-            idx = fetch_names.index(name)
-            logs_fetch[name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
