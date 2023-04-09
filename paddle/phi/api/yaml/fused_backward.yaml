@@ -9,8 +9,9 @@
   args : (Tensor seed_offset, Tensor out_grad, Scalar p, bool is_test, str mode, bool fix_seed)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [out_grad, out_grad]
+    func : FusedDropoutAddGradInferMeta
+    param : [seed_offset, out_grad]
   kernel :
     func : fused_dropout_add_grad
+    data_type : out_grad
   support_dygraph_mode : true
