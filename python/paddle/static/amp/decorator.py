@@ -75,6 +75,7 @@ class OptimizerWithMixedPrecision:
         decr_ratio,
         use_pure_fp16,
         use_fp16_guard,
+        use_bf16=False,
     ):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
@@ -86,6 +87,9 @@ class OptimizerWithMixedPrecision:
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
+        self._use_dynamic_loss_scaling = (
+            use_dynamic_loss_scaling and not use_bf16
+        )
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = use_pure_fp16
@@ -98,6 +102,12 @@ class OptimizerWithMixedPrecision:
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+
+        self._type = (
+            core.VarDesc.VarType.FP16
+            if not use_bf16
+            else core.VarDesc.VarType.BF16
+        )
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -209,10 +219,15 @@ class OptimizerWithMixedPrecision:
 
             if self._use_pure_fp16:
                 self._to_fp16_var_names = cast_model_to_fp16(
-                    self._train_program, self._amp_lists, self._use_fp16_guard
+                    self._train_program,
+                    self._amp_lists,
+                    self._use_fp16_guard,
+                    self._type,
                 )
             else:
-                rewrite_program(self._train_program, self._amp_lists)
+                rewrite_program(
+                    self._train_program, self._amp_lists, self._type
+                )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
@@ -258,7 +273,7 @@ class OptimizerWithMixedPrecision:
                 outputs={'Out': [name]},
                 attrs={
                     'in_dtype': core.VarDesc.VarType.FP32,
-                    'out_dtype': core.VarDesc.VarType.FP16,
+                    'out_dtype': self._type,
                 },
             )
         self._to_fp16_var_names = None
@@ -326,15 +341,22 @@ class OptimizerWithMixedPrecision:
         ), "Please call the minimize method first."
         if self._use_pure_fp16:
             cast_parameters_to_fp16(
-                place, self._train_program, scope, self._to_fp16_var_names
+                place,
+                self._train_program,
+                scope,
+                self._to_fp16_var_names,
+                self._type,
             )
         if test_program is not None:
             if self._use_pure_fp16:
                 cast_model_to_fp16(
-                    test_program, self._amp_lists, self._use_fp16_guard
+                    test_program,
+                    self._amp_lists,
+                    self._use_fp16_guard,
+                    self._type,
                 )
             elif use_fp16_test:
-                rewrite_program(test_program, self._amp_lists)
+                rewrite_program(test_program, self._amp_lists, self._type)
 
     def apply_gradients(self, params_grads):
         """
@@ -368,7 +390,10 @@ class OptimizerWithMixedPrecision:
             return optimize_ops
 
         found_inf = self._check_finite_and_unscale(params_grads)
-        if self._use_dynamic_loss_scaling:
+        if (
+            self._use_dynamic_loss_scaling
+            and self._type == core.VarDesc.VarType.FP16
+        ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 
         # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
@@ -395,10 +420,10 @@ class OptimizerWithMixedPrecision:
     def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
         fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
-        fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16]
+        fp16_grads = [g for g in grads if g.dtype == self._type]
         assert len(fp32_grads) + len(fp16_grads) == len(
             grads
-        ), "Data types of all grads must be either fp16 or fp32."
+        ), "Data types of all grads must be either fp16/bf16 or fp32."
         return grads, fp32_grads, fp16_grads
 
     def _check_finite_and_unscale(self, params_grads):
@@ -587,6 +612,7 @@ def decorate(
     use_dynamic_loss_scaling=True,
     use_pure_fp16=False,
     use_fp16_guard=None,
+    use_bf16=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -695,6 +721,7 @@ def decorate(
         decr_ratio,
         use_pure_fp16,
         use_fp16_guard,
+        use_bf16,
     )
 
     return mp_optimizer

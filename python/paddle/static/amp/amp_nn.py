@@ -49,7 +49,7 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         check_variable_and_dtype(
             e,
             "x",
-            ['float16', 'float32', 'float64'],
+            ['float16', 'uint16', 'float32', 'float64'],
             'check_finite_and_unscale',
         )
 
@@ -133,12 +133,15 @@ def update_loss_scaling(
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
         check_variable_and_dtype(
-            e, "x", ['float16', 'float32', 'float64'], 'update_loss_scaling'
+            e,
+            "x",
+            ['float16', 'uint16', 'float32', 'float64'],
+            'update_loss_scaling',
         )
-        if e.dtype == core.VarDesc.VarType.FP16:
+        if e.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             assert (
                 prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
-            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
         else:
             assert (
                 prev_loss_scaling.dtype == e.dtype
