@@ -863,7 +863,7 @@ class PartialProgramLayer:
                 var = None
                 var = core.eager.Tensor(
                     value=value,
-                    name="",  # self._inputs[i].desc.name(),
+                    name=self._inputs[i].desc.name(),
                     persistable=False,
                     place=expected_place,
                     zero_copy=True,
@@ -879,7 +879,7 @@ class PartialProgramLayer:
                     var.stop_gradient = True
                 else:
                     var = value
-                var.name = ""  # self._inputs[i].desc.name()
+                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
@@ -940,7 +940,7 @@ class PartialProgramLayer:
         flatten_outputs = self._outputs.tolist()
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
-        # self._clear_outputs_name(flatten_outputs)
+        self._clear_outputs_name(flatten_outputs)
         outs = self._outputs.restore(flatten_outputs)
         if outs is not None and len(outs) == 1:
             outs = outs[0]
