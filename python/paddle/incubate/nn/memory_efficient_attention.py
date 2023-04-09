@@ -71,6 +71,8 @@ def memory_efficient_attention(
     query, key, value, attn_bias=None, p=0.0, scale=None, training=True
 ):
     assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
+    if attn_bias is not None:
+        assert p == 0.0
     causal = isinstance(
         attn_bias,
         (
