@@ -744,7 +744,7 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.data(
+            var = paddle.static.data(
                 name=slot, shape=[None, 1], dtype="int64", lod_level=1
             )
             slots_vars.append(var)
@@ -807,10 +807,12 @@ class TestDataset(unittest.TestCase):
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
             f.write(data)
 
+        paddle.enable_static()
+
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.data(
+            var = paddle.static.data(
                 name=slot, shape=[None, 1], dtype="uint16", lod_level=1
             )
             slots_vars.append(var)
@@ -876,7 +878,7 @@ class TestDataset(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.data(
+            var = paddle.static.data(
                 name=slot, shape=[None, 1], dtype="float16", lod_level=1
             )
             slots_vars.append(var)
