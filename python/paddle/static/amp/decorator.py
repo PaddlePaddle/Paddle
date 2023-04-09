@@ -33,6 +33,8 @@ from .fp16_utils import (
     update_role_var_grad,
 )
 
+__all__ = ["decorate"]
+
 
 class OptimizerWithMixedPrecision:
     """
@@ -95,6 +97,7 @@ class OptimizerWithMixedPrecision:
         self._use_pure_fp16 = use_pure_fp16
         self._use_fp16_guard = use_fp16_guard
         self._to_fp16_var_names = None
+        self._use_bf16 = use_bf16
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf

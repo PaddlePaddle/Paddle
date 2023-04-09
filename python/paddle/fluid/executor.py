@@ -1609,6 +1609,32 @@ class Executor:
                 )
             feed = self._update_feed(program, feed)
 
+            stored_flag = {}
+            if isinstance(program, compiler.CompiledProgram) or isinstance(
+                program._graph, compiler.CompiledProgram
+            ):
+                compiled_program = (
+                    program
+                    if isinstance(program, compiler.CompiledProgram)
+                    else program._graph
+                )
+                build_strategy = compiled_program._build_strategy
+                if (
+                    build_strategy is not None
+                    and build_strategy.force_sequential_run
+                ):
+                    schedule_flag = [
+                        'FLAGS_new_executor_serial_run',
+                        'FLAGS_new_executor_sequential_run',
+                    ]
+                    for flag in schedule_flag:
+                        value = os.getenv(flag, False)
+                        if isinstance(value, str):
+                            value = value.lower()
+                            value = True if value == 'true' else False
+                        stored_flag[flag] = bool(value)
+                    set_flags({f: True for f in schedule_flag})
+
             program, new_exe = self._executor_cache.get_program_and_executor(
                 program,
                 feed,
@@ -1644,9 +1670,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            return new_exe.run(
+            ret = new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+            set_flags(stored_flag)
+            return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
