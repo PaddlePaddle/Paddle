@@ -92,12 +92,10 @@ class TestFrobeniusNormOp(OpTest):
         self.init_dtype()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
         norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
-        self.reduce_all = len(self.axis) == len(self.shape)
         self.inputs = {'X': x}
         self.attrs = {
             'dim': list(self.axis),
             'keep_dim': self.keepdim,
-            'reduce_all': self.reduce_all,
         }
         self.outputs = {'Out': norm}
 

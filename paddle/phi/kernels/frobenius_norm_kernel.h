@@ -25,7 +25,6 @@ void FrobeniusNormKernel(const Context& ctx,
                          const DenseTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
-                         bool reduce_all,
                          DenseTensor* out);
 
 }  // namespace phi
