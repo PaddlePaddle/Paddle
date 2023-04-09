@@ -3175,8 +3175,6 @@ class Operator:
 
         attr_names = sorted(self.attr_names)
         attrs_str = ""
-        if self.type == "seed":
-            attr_names.extend(["rng_name", "deterministic", "force_cpu"])
         for i in range(0, len(attr_names)):
             name = attr_names[i]
             if skip_op_callstack and name == "op_callstack":
