@@ -103,6 +103,7 @@ class TestRandomControl(unittest.TestCase):
         mask_np_list = [outs['fetches'][varname] for varname in mask_name_list]
 
         # check globl mask consistent across ranks
+        paddle.disable_static()
         rank = paddle.distributed.get_rank()
         global_index = [0, 2, 3, 4, 6]
         for np_mask in [mask_np_list[i] for i in global_index]:
@@ -125,6 +126,7 @@ class TestRandomControl(unittest.TestCase):
             else:
                 dist.broadcast(mask_tensor_local, src=1)
                 print(mask_tensor_local.numpy())
+        paddle.enable_static()
 
         # check program
         ops = rc_engine.main_program.global_block().ops
