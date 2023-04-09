@@ -109,12 +109,12 @@ class TestRandomControl(unittest.TestCase):
             mask_tensor_local = paddle.to_tensor(np_mask.astype("float32"))
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
-                print("before broadcast: ", np.array(mask_tensor_remote))
+                print("before broadcast: ", mask_tensor_remote.numpy())
                 dist.broadcast(mask_tensor_remote, src=1)
-                print("after broadcast: ", np.array(mask_tensor_remote))
+                print("after broadcast: ", mask_tensor_remote.numpy())
                 print("local : ", np.array(mask_tensor_local))
                 np.array_equal(
-                    np.array(mask_tensor_remote), np.array(mask_tensor_local)
+                    np.array(mask_tensor_remote), mask_tensor_local.numpy()
                 )
                 self.assertTrue(
                     np.array_equal(
@@ -124,7 +124,7 @@ class TestRandomControl(unittest.TestCase):
                 )
             else:
                 dist.broadcast(mask_tensor_local, src=1)
-                print(np.array(mask_tensor_local))
+                print(mask_tensor_local.numpy())
 
         # check program
         ops = rc_engine.main_program.global_block().ops
