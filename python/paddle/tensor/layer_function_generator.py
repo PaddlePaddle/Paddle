@@ -268,13 +268,13 @@ def generate_activation_fn(op_type):
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
-            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'uint16'],
                                      op_type)
         else:
             # abs exp square ops support dtype(int32, int64, float16, float32, float64)
             check_variable_and_dtype(x, 'x', [
                 'int32', 'int64', 'float16', 'float32', 'float64', 'complex64',
-                'complex128'
+                'complex128', 'uint16'
             ], op_type)
 
         helper = LayerHelper(op_type, **locals())
