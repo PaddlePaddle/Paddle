@@ -300,7 +300,7 @@
   backward : cholesky_solve_grad
 
 - op : class_center_sample
-  args : (Tensor label, int num_classes, int num_samples = 0, int ring_id = 1, int rank = 0, int nranks = 1, bool fix_seed = false, int seed = 0)
+  args : (Tensor label, int num_classes = 1, int num_samples = 0, int ring_id = 1, int rank = 0, int nranks = 1, bool fix_seed = false, int seed = 0)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
   infer_meta :
     func : ClassCenterSampleInferMeta
