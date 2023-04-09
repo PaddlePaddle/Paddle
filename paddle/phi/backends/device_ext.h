@@ -40,6 +40,8 @@ typedef enum {
   FLOAT32,
   FLOAT64,
   BFLOAT16,
+  COMPLEX64,
+  COMPLEX128,
 } C_DataType;
 
 typedef enum {
