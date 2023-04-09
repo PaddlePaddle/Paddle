@@ -1277,6 +1277,12 @@
   kernel :
     func : renorm_grad
 
+- backward_op : reverse_grad
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  invoke : reverse(out_grad, axis)
+
 - backward_op : roll_grad
   forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray shifts, int64_t[] axis)

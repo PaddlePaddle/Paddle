@@ -1694,6 +1694,16 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op : reverse
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+
 - op : roll
   backward : roll_grad
   inputs :
