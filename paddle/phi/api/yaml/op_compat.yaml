@@ -72,6 +72,22 @@
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
+- op : adamw_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      tensor_name : Beta1Tensor
+    beta2 :
+      data_type : float
+      tensor_name : Beta2Tensor
+    episilon :
+      data_type : float
+      tensor_name : EpisilonTensor
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
