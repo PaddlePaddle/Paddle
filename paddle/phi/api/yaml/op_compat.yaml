@@ -1374,6 +1374,12 @@
   outputs :
     out : Out
 
+- op : merged_momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
+
 - op : meshgrid
   backward : meshgrid_grad
   inputs :
