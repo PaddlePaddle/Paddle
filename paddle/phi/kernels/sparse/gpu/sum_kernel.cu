@@ -27,13 +27,6 @@ namespace phi {
 namespace sparse {
 
 template <typename T>
-__global__ void SetValueCudaKernel(const T value,
-                                   const int64_t length,
-                                   T* data) {
-  CUDA_KERNEL_LOOP_TYPE(index, length, int64_t) { data[index] = value; }
-}
-
-template <typename T>
 __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
                                  const T* x_values_data,
                                  const int64_t x_nnz,
@@ -162,14 +155,7 @@ void SumCooKernel(const Context& dev_ctx,
       out_dims = make_ddim({1});
       out_indices = Empty<int64_t, Context>(dev_ctx, {1, 1});
     }
-    auto* out_indices_data = out_indices.data<int64_t>();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, out_indices.dims()[0], 1);
-    SetValueCudaKernel<int64_t>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(0, out_indices.dims()[0], out_indices_data);
+    phi::funcs::SetConstant<Context, T>(dev_ctx, out_indices, 0);
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
