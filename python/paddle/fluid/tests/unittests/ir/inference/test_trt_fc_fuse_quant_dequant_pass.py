@@ -18,19 +18,21 @@ import numpy as np
 from quant_dequant_test import QuantDequantTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             fc_out = paddle.static.nn.fc(
                 x=self.data,
                 size=10,
@@ -98,10 +100,12 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
 class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             fc_out = paddle.static.nn.fc(
                 x=self.data,
                 size=28,
@@ -170,10 +174,12 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
 class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
     def setUp(self):
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
             reshape_out = paddle.reshape(self.data, shape=[1, 14, 14, 4])
             fc_out = paddle.static.nn.fc(

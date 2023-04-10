@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -71,6 +70,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("flash_multihead_matmul");
     teller_set.insert("cross_multihead_matmul");
     int8_teller_set.insert("cross_multihead_matmul");
+    teller_set.insert("qk_multihead_matmul");
+    int8_teller_set.insert("qk_multihead_matmul");
 #endif
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
@@ -306,10 +307,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "deformable_conv") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "Deformable conv trt plugin does not support dynamic shape";
-        return false;
-      }
       if (!desc.HasAttr("groups") || !desc.HasAttr("strides") ||
           !desc.HasAttr("paddings"))
         return false;
@@ -735,6 +732,22 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
                    "Variable type in arg_max.";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+
+      if (!(x_dtype == framework::proto::VarType::FP32 ||
+            x_dtype == framework::proto::VarType::FP16)) {
         return false;
       }
 
@@ -1432,7 +1445,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "less_than" || op_type == "greater_than" ||
         op_type == "logical_or" || op_type == "logical_xor" ||
-        op_type == "logical_and" || op_type == "less_equal") {
+        op_type == "logical_and" || op_type == "less_equal" ||
+        op_type == "greater_equal") {
 #if IS_TRT_VERSION_GE(8400)
       // TRT does not support kEQUAL/kGREATER/kLESS work with implicit batch
       if (!with_dynamic_shape) {
@@ -1453,7 +1467,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
       if (op_type == "less_than" || op_type == "greater_than" ||
-          op_type == "less_equal") {
+          op_type == "less_equal" || op_type == "greater_equal") {
         if (x_dtype == framework::proto::VarType::BOOL ||
             y_dtype == framework::proto::VarType::BOOL) {
           VLOG(3)
@@ -1779,6 +1793,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "pad3d") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "pad3d is not supported static shape";
+        return false;
+      }
+      if (!desc.HasAttr("paddings") && !desc.HasInput("Paddings")) {
+        return false;
+      }
+      if (desc.HasAttr("mode")) {
+        std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
+        if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+          VLOG(3) << "The pad3d layer of TRT only support "
+                     "constant/reflect/replicate mode.";
+          return false;
+        }
+      }
+      if (desc.HasAttr("data_format")) {
+        std::string data_format =
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_format"));
+        if (data_format != "NCDHW") {
+          VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+          return false;
+        }
+      }
+    }
     if (op_type == "swish") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -1795,7 +1838,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-
     if (op_type == "prelu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid input X's size of prelu TRT converter. "
@@ -1928,6 +1970,21 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "the where op does not support static shape yet";
         return false;
       }
+    }
+
+    if (op_type == "bitwise_not") {
+#if !IS_TRT_VERSION_GE(8400)
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype == framework::proto::VarType::BOOL ||
+          dtype == framework::proto::VarType::INT8 ||
+          dtype == framework::proto::VarType::UINT8) {
+        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "one_hot" || op_type == "one_hot_v2") {
@@ -2444,7 +2501,21 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
+
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto* x_var_desc = block->FindVar(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+
+      if (!(x_dtype == framework::proto::VarType::FP32 ||
+            x_dtype == framework::proto::VarType::FP16)) {
+        return false;
+      }
+
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
         VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
@@ -2725,6 +2796,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "batch_norm",
       "concat",
       "tanh",
+      "pad3d",
       "pad",
       "elementwise_add",
       "elementwise_sub",
@@ -2743,6 +2815,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_xor",
       "logical_and",
       "less_equal",
+      "greater_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2752,6 +2825,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "bitwise_not",
       "one_hot",
       "one_hot_v2",
       "swish",
@@ -2880,6 +2954,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "batch_norm",
       "concat",
       "tanh",
+      "pad3d",
       "pad",
       "elementwise_add",
       "elementwise_sub",
@@ -2898,6 +2973,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logical_xor",
       "logical_and",
       "less_equal",
+      "greater_equal",
       "dropout",
       "fill_any_like",
       "prelu",
@@ -2907,6 +2983,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
+      "bitwise_not",
       "one_hot",
       "one_hot_v2",
       "swish",
@@ -3004,14 +3081,6 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
-    }
-    if (op_type == "pad3d") {
-      auto pad3d_inputs = desc.Inputs();
-      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
-        if (desc.Input("Paddings").size() >= 1) {
-          return false;
-        }
-      }
     }
     if (use_no_calib_int8) {
       return false;

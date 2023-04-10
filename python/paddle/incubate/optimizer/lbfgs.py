@@ -89,7 +89,7 @@ class LBFGS(Optimizer):
 
             class Net(paddle.nn.Layer):
                 def __init__(self):
-                    super(Net, self).__init__()
+                    super().__init__()
                     w = paddle.to_tensor(np_w)
                     self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import os
 import warnings
 
 import paddle
@@ -25,7 +24,7 @@ AMP_LEVEL = core.AmpLevel
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-WHITE_LIST = {
+FP16_WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
@@ -37,7 +36,7 @@ WHITE_LIST = {
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
-BLACK_LIST = {
+FP16_BLACK_LIST = {
     'exp',
     'square',
     'log',
@@ -73,7 +72,8 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_WHITE_LIST = set()
+PURE_FP16_WHITE_LIST = copy.copy(FP16_WHITE_LIST)
+
 PURE_FP16_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',
@@ -90,43 +90,32 @@ PURE_FP16_BLACK_LIST = {
 BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = set()
 
-PURE_BF16_WHITE_LIST = set()
+PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
 PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
 
 
-def low_precision_op_list():
-    if os.getenv("FLAGS_low_precision_op_list") is not None:
-        level = int(os.getenv("FLAGS_low_precision_op_list"))
-        print('<{:-^120}>'.format(" op list "))
-        op_list = paddle.fluid.core.get_low_precision_op_list()
-        op_count = 0
-        print(
-            '<{:-^40}'.format(" Op Name "),
-            '|',
-            '{:-^17}'.format("FP16 Calls"),
-            '|',
-            '{:-^17}'.format("BF16 Calls"),
-            '|',
-            '{:-^17}'.format('FP32 Calls'),
-            '|',
-            '{:-^17}>'.format('Other Calls'),
-        )
-        for x in op_list:
-            # fp16, bf16, fp32, other
-            called = op_list[x].split(",")
-            print(
-                '  %-40s|  %-17s|  %-17s|  %-17s|  %-17s'
-                % (x, called[0], called[1], called[2], called[3])
-            )
-            op_count += 1
-        print('<{:-^120}>'.format(" op count: " + str(op_count) + " "))
-
-
 def amp_state():
     global _g_amp_state_
     return _g_amp_state_
+
+
+class AMPGlobalState:
+    def __init__(self):
+        self.model_parameters = []
+        self.use_master_grad = False
+        self.already_register_final_backward_hook = False
+
+    def __setattr__(self, name, val):
+        self.__dict__[name] = val
+
+
+_amp_global_state = AMPGlobalState()
+
+
+def amp_global_state():
+    return _amp_global_state
 
 
 # NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -139,8 +128,8 @@ def _update_list(
     """
     if dtype == 'float16':
         if level == 'O1':
-            _white_list = copy.copy(WHITE_LIST)
-            _black_list = copy.copy(BLACK_LIST)
+            _white_list = copy.copy(FP16_WHITE_LIST)
+            _black_list = copy.copy(FP16_BLACK_LIST)
         else:
             _white_list = copy.copy(PURE_FP16_WHITE_LIST)
             _black_list = copy.copy(PURE_FP16_BLACK_LIST)
@@ -367,13 +356,11 @@ def amp_guard(
         )
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (
         tracer._expected_place.is_gpu_place()
         or tracer._expected_place.is_xpu_place()
-        or tracer._expected_place.is_mlu_place()
-        or tracer._expected_place.is_npu_place()
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
@@ -381,17 +368,9 @@ def amp_guard(
             % tracer._expected_place
         )
         enable = False
-    # For npu:
-    if tracer._expected_place.is_npu_place() and (dtype == 'bfloat16'):
-        warnings.warn('NPUPlace only support float16 amp.')
-        enable = False
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
-        enable = False
-    # For mlu:
-    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
-        warnings.warn('MLUPlace only support float16 amp.')
         enable = False
     # For custom device:
     if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
@@ -424,8 +403,8 @@ def amp_guard(
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
         if dtype == 'float16':
-            _white_list = WHITE_LIST
-            _black_list = BLACK_LIST
+            _white_list = FP16_WHITE_LIST
+            _black_list = FP16_BLACK_LIST
         elif dtype == 'bfloat16':
             _white_list = BF16_WHITE_LIST
             _black_list = BF16_BLACK_LIST
@@ -441,8 +420,8 @@ def amp_guard(
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
         if dtype == 'float16':
-            _white_list = WHITE_LIST
-            _black_list = BLACK_LIST
+            _white_list = FP16_WHITE_LIST
+            _black_list = FP16_BLACK_LIST
         elif dtype == 'bfloat16':
             _white_list = BF16_WHITE_LIST
             _black_list = BF16_BLACK_LIST
@@ -455,6 +434,21 @@ def amp_guard(
     if not enable:
         amp_level = AMP_LEVEL.O0
         amp_dtype = "float32"
+
+    # master_grad_hook will run at the end of backward.
+    # Since backward_final_hook will be cleared once they have been
+    # done, we should register the hook every step.
+    if (
+        amp_global_state().use_master_grad
+        and not amp_global_state().already_register_final_backward_hook
+    ):
+
+        def master_grad_hook():
+            core.eager.set_master_grads(amp_global_state().model_parameters)
+            amp_global_state().already_register_final_backward_hook = False
+
+        core.eager._add_backward_final_hook(master_grad_hook)
+        amp_global_state().already_register_final_backward_hook = True
 
     if tracer:
         # enable auto_cast
@@ -524,6 +518,7 @@ def amp_decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -637,6 +632,14 @@ def amp_decorate(
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
+        # support master_grad
+        if master_grad:
+            amp_global_state().use_master_grad = True
+            for idx in range(len(models)):
+                amp_global_state().model_parameters.extend(
+                    models[idx].parameters()
+                )
+
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'bfloat16', 'float32', 'float64']):
             raise ValueError(
@@ -734,6 +737,7 @@ def decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -750,6 +754,8 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
+        master_grad(bool, optional): For level='O2', whether to use FP32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If it is enabled, the weight
+             gradients will be FP32 dtype after the backpropagation. Default is False.
 
     Examples:
 
@@ -799,5 +805,5 @@ def decorate(
             print(output.dtype) # FP16
     """
     return amp_decorate(
-        models, optimizers, level, dtype, master_weight, save_dtype
+        models, optimizers, level, dtype, master_weight, save_dtype, master_grad
     )

@@ -567,8 +567,9 @@ def partial_concat(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
-            x = fluid.data(name="x", shape=[None,3], dtype="float32")
-            y = fluid.data(name="y", shape=[None,3], dtype="float32")
+            import paddle
+            x = paddle.randn(name="x", shape=[1,3], dtype="float32")
+            y = paddle.randn(name="y", shape=[1,3], dtype="float32")
             concat = fluid.contrib.layers.partial_concat(
                 [x, y], start_index=0, length=2)
     """
@@ -629,9 +630,12 @@ def partial_sum(input, start_index=0, length=-1):
         import paddle.fluid.layers as layers
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[None, 3], dtype="float32")
-        y = fluid.data(name="y", shape=[None, 3], dtype="float32")
-        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        import paddle
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+        y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
+        sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
@@ -898,7 +902,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         import paddle.fluid as fluid
         import numpy as np
         paddle.enable_static()
-        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                      [0,1,0,3,4],[0,1,0,5,6],
                      [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
@@ -1007,7 +1011,7 @@ def tdm_sampler(
         import paddle.fluid as fluid
         import numpy as np
         paddle.enable_static()
-        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
@@ -1197,18 +1201,17 @@ def rank_attention(
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
-           import numpy as np
+           import paddle
+           paddle.enable_static()
 
-           input = fluid.data(name="input", shape=[None, 2], dtype="float32")
-           rank_offset = fluid.data(name="rank_offset", shape=[None, 7], dtype="int32")
+           input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
+           rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
                                                      rank_param_attr=
-                                                       fluid.ParamAttr(learning_rate=1.0,
-                                                                     name="ubm_rank_param.w_0",
-                                                                     initializer=
-                                                                     fluid.initializer.Xavier(uniform=False)),
+                                                     paddle.ParamAttr(learning_rate=1.0,
+                                                                     name="ubm_rank_param.w_0"),
                                                       max_rank=3,
                                                       max_size=0)
     """
@@ -1259,22 +1262,21 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
+           import paddle
 
-           input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+           paddle.enable_static()
+
+           input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
-                                                               name="w_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
+                                               paddle.ParamAttr(learning_rate=1.0,
+                                                               name="w_0"),
                                                bias_size=[16, 10],
                                                bias_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
-                                                               name="b_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
-                                                   act="relu")
+                                               paddle.ParamAttr(learning_rate=1.0,
+                                                               name="b_0"),
+                                               act="relu")
     """
 
     helper = LayerHelper("batch_fc", **locals())
@@ -1380,10 +1382,12 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
-            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
-            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
-            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+            x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
+            guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
+            grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
 
             # without offset
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)

@@ -18,7 +18,7 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -288,23 +288,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
-            elif core.is_compiled_with_npu():
-                place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_mlu():
-                place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             else:
-                assert False, "no cuda device found"
+                raise AssertionError("no cuda device found")
         else:
             return gp
 

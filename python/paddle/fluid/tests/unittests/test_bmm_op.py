@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestBmmOp(OpTest):

@@ -24,9 +24,8 @@ else:
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.distributed import fleet
 
 
 class LinearNet(nn.Layer):
@@ -106,7 +105,7 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
 
         for i in range(10):
             cost_val = exe.run(feed=self.gen_data(), fetch_list=[avg_cost.name])
-            print("cost of step[{}] = {}".format(i, cost_val))
+            print(f"cost of step[{i}] = {cost_val}")
 
 
 class TestFleetBaseSingleRunPS(unittest.TestCase):

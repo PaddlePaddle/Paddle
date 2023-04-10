@@ -118,7 +118,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
             shape_tensor = []
             for index, ele in enumerate(self.new_shape):
                 shape_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {

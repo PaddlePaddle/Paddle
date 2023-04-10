@@ -228,24 +228,24 @@ def _build_layer_from_tree(nodetrees):
 
 def _format_large_number(n, precision=2):
     if n // 1e12 > 0:
-        return "{} T".format(round(n / 1e12, precision))
+        return f"{round(n / 1e12, precision)} T"
     if n // 1e9 > 0:
-        return "{} G".format(round(n / 1e9, precision))
+        return f"{round(n / 1e9, precision)} G"
     if n // 1e6 > 0:
-        return "{} M".format(round(n / 1e6, precision))
+        return f"{round(n / 1e6, precision)} M"
     if n // 1e3 > 0:
-        return "{} K".format(round(n / 1e3, precision))
-    return "{}".format(round(n, precision))
+        return f"{round(n / 1e3, precision)} K"
+    return f"{round(n, precision)}"
 
 
 def _format_time(n, precision=2):
     if n // 1e9 > 0:
-        return "{} s".format(round(n / 1e9, precision))
+        return f"{round(n / 1e9, precision)} s"
     if n // 1e6 > 0:
-        return "{} ms".format(round(n / 1e6, precision))
+        return f"{round(n / 1e6, precision)} ms"
     if n // 1e3 > 0:
-        return "{} us".format(round(n / 1e3, precision))
-    return "{} ns".format(round(n, precision))
+        return f"{round(n / 1e3, precision)} us"
+    return f"{round(n, precision)} ns"
 
 
 def _gen_layer_flops(node, repeat=1):
@@ -977,7 +977,7 @@ def _build_table(
                 )
             )
             utilization = gpu_time / total_time
-            row_values = ['GPU{}'.format(gpu_name), format_ratio(utilization)]
+            row_values = [f'GPU{gpu_name}', format_ratio(utilization)]
             append(row_format.format(*row_values))
 
         append(header_sep)
@@ -1010,7 +1010,7 @@ def _build_table(
 
         # construct table string
         append(add_title(line_length, "Overview Summary"))
-        append('Time unit: {}'.format(time_unit))
+        append(f'Time unit: {time_unit}')
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
@@ -1155,13 +1155,9 @@ def _build_table(
                         gpu_ratio = 0
                     else:
                         gpu_ratio = float(item.gpu_time) / gpu_total_time
-                    name = (
-                        '{}'.format(name)
-                        if 'ProfileStep' in name
-                        else '  {}'.format(name)
-                    )
+                    name = f'{name}' if 'ProfileStep' in name else f'  {name}'
                     row_values = [
-                        '{}'.format(name),
+                        f'{name}',
                         item.call,
                         '{} / {} / {} / {} / {}'.format(
                             format_time(item.cpu_time, unit=time_unit),
@@ -1237,7 +1233,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Model Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1275,7 +1271,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Distribution Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1345,7 +1341,7 @@ def _build_table(
                     'All threads merged': statistic_data.event_summary.items
                 }
             for thread_id, items in thread_items.items():
-                all_row_values.append("Thread: {}".format(thread_id))
+                all_row_values.append(f"Thread: {thread_id}")
                 if sorted_by == SortedKeys.CPUTotal:
                     sorted_items = sorted(
                         items.items(), key=lambda x: x[1].cpu_time, reverse=True
@@ -1456,7 +1452,7 @@ def _build_table(
                                 ]
                                 innerop_name += "..."
                             row_values = [
-                                '  {}'.format(innerop_name),
+                                f'  {innerop_name}',
                                 innerop_node.call,
                                 '{} / {} / {} / {} / {}'.format(
                                     format_time(
@@ -1518,7 +1514,7 @@ def _build_table(
                                     ]
                                     device_node_name += "..."
                                 row_values = [
-                                    '    {}'.format(device_node_name),
+                                    f'    {device_node_name}',
                                     device_node.call,
                                     '- / - / - / - / -',
                                     '{} / {} / {} / {} / {}'.format(
@@ -1559,7 +1555,7 @@ def _build_table(
                                 ]
                                 device_node_name += "..."
                             row_values = [
-                                '  {}'.format(device_node_name),
+                                f'  {device_node_name}',
                                 device_node.call,
                                 '- / - / - / - / -',
                                 '{} / {} / {} / {} / {}'.format(
@@ -1619,7 +1615,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Operator Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1713,7 +1709,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Kernel Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1809,7 +1805,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Memory Manipulation Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1838,7 +1834,7 @@ def _build_table(
                     'All threads merged': statistic_data.event_summary.userdefined_items
                 }
             for thread_id, items in userdefined_thread_items.items():
-                all_row_values.append("Thread: {}".format(thread_id))
+                all_row_values.append(f"Thread: {thread_id}")
                 if sorted_by == SortedKeys.CPUTotal:
                     sorted_items = sorted(
                         items.items(), key=lambda x: x[1].cpu_time, reverse=True
@@ -1956,7 +1952,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "UserDefined Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -2046,9 +2042,7 @@ def _build_table(
 
                 # construct table string
                 append(
-                    add_title(
-                        line_length, "Memory Summary - {}".format(device_type)
-                    )
+                    add_title(line_length, f"Memory Summary - {device_type}")
                 )
                 append(
                     'Peak Allocated Memory: {}'.format(

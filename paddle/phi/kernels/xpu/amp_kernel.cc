@@ -173,7 +173,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  DenseTensor* found_infinite) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
   const MPDType* scale_data = scale.data<MPDType>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
@@ -234,7 +234,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                       out->numel() * sizeof(MPDType));
 
       int r = xpu::cast(dev_ctx.x_context(),
-                        reinterpret_cast<const float16*>(x->data<T>()),
+                        reinterpret_cast<const XPUTypeFP16*>(x->data<T>()),
                         float_x.data<MPDType>(),
                         x->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -250,7 +250,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
 
       r = xpu::cast(dev_ctx.x_context(),
                     float_out.data<MPDType>(),
-                    reinterpret_cast<float16*>(out->data<T>()),
+                    reinterpret_cast<XPUTypeFP16*>(out->data<T>()),
                     out->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {

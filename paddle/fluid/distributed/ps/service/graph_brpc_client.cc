@@ -51,7 +51,7 @@ int GraphBrpcClient::get_server_index_by_id(int64_t id) {
   int shard_per_server = shard_num % server_size == 0
                              ? shard_num / server_size
                              : shard_num / server_size + 1;
-  return id % shard_num / shard_per_server;
+  return static_cast<uint64_t>(id) % shard_num / shard_per_server;
 }
 
 std::future<int32_t> GraphBrpcClient::get_node_feat(

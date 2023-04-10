@@ -16,7 +16,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"
 
@@ -96,15 +95,12 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
       &new_argc, &new_argv_address, false);
-  paddle::framework::InitDevices();
   paddle::framework::InitMemoryMethod();
+  paddle::framework::InitDevices();
   paddle::framework::InitDefaultKernelSignatureMap();
 
   int ret = RUN_ALL_TESTS();
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  paddle::platform::AclInstance::Instance().Finalize();
-#endif
   if (env_str) free(env_str);
   if (undefok_str) free(undefok_str);
   return ret;

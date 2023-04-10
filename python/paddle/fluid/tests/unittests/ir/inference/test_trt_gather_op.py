@@ -18,8 +18,8 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -27,8 +27,12 @@ class TRTGatherTest1(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
-            index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
+            data = paddle.static.data(
+                name='data', shape=[-1, 128], dtype='float32'
+            )
+            index = paddle.static.data(
+                name='index', shape=[-1, 1], dtype='int32'
+            )
             scale_out = paddle.gather(data, index=index)
             out = paddle.nn.functional.softmax(scale_out)
 
@@ -66,8 +70,10 @@ class TRTGatherTest2(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name='data', shape=[16, 64], dtype='float32')
-            index = fluid.data(name='index', shape=[2], dtype='int32')
+            data = paddle.static.data(
+                name='data', shape=[16, 64], dtype='float32'
+            )
+            index = paddle.static.data(name='index', shape=[2], dtype='int32')
             scale_out = paddle.gather(data, index=index)
             out = paddle.nn.functional.softmax(scale_out)
 

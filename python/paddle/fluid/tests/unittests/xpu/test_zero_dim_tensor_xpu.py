@@ -161,6 +161,20 @@ class TestReduceAPI(unittest.TestCase):
                 np.testing.assert_allclose(x.grad.numpy(), np.array(1.0))
                 np.testing.assert_allclose(out.grad.numpy(), np.array(1.0))
 
+            out1 = api(x, 0)
+            self.assertEqual(out1.shape, [])
+            self.assertEqual(out1, out)
+            out1.backward()
+
+            out2 = api(x, -1)
+            self.assertEqual(out2.shape, [])
+            self.assertEqual(out2, out)
+            out2.backward()
+
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
+
         paddle.enable_static()
 
 
@@ -463,32 +477,72 @@ class TestSundryAPI(unittest.TestCase):
             tmp = paddle.topk(x1, k=1, axis=2)
 
     def test_argmin(self):
+        # 1) x is 0D
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
         out2 = paddle.argmin(x, -1)
         out3 = paddle.argmin(x, None)
+
         self.assertEqual(out1.shape, [])
-        np.testing.assert_allclose(out1, 0.0)
+        np.testing.assert_allclose(out1, 0)
 
         self.assertEqual(out2.shape, [])
-        np.testing.assert_allclose(out2, 0.0)
+        np.testing.assert_allclose(out2, 0)
 
         self.assertEqual(out3.shape, [])
-        np.testing.assert_allclose(out3, 0.0)
+        np.testing.assert_allclose(out3, 0)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        x.stop_gradient = False
+        out = paddle.argmin(x, 0)
+        out.backward()
+        self.assertEqual(out.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.argmin(x)
+        out.backward()
+        self.assertEqual(out.shape, [])
+
+        # 4) x is ND, keepdim=True
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.argmin(x, keepdim=True)
+        out.backward()
+        self.assertEqual(out.shape, [1, 1])
 
     def test_argmax(self):
+        # 1) x is 0D
         x = paddle.rand([])
         out1 = paddle.argmax(x, 0)
         out2 = paddle.argmax(x, -1)
         out3 = paddle.argmax(x, None)
+
         self.assertEqual(out1.shape, [])
-        np.testing.assert_allclose(out1, 0.0)
+        np.testing.assert_allclose(out1, 0)
 
         self.assertEqual(out2.shape, [])
-        np.testing.assert_allclose(out2, 0.0)
+        np.testing.assert_allclose(out2, 0)
 
         self.assertEqual(out3.shape, [])
-        np.testing.assert_allclose(out3, 0.0)
+        np.testing.assert_allclose(out3, 0)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        out = paddle.argmax(x, 0)
+        self.assertEqual(out.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        out = paddle.argmax(x)
+        self.assertEqual(out.shape, [])
+
+        # 4) x is ND, keepdim=True
+        x = paddle.rand([3, 5])
+        out = paddle.argmax(x, keepdim=True)
+        self.assertEqual(out.shape, [1, 1])
 
     def test_median(self):
         x = paddle.rand([])
@@ -575,14 +629,28 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), np.array(0.5))
 
     def test_numel(self):
+        # 1) x is 0D
         out = paddle.numel(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(1))
 
+        # 2) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.numel(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(15))
+
     def test_rank(self):
+        # 1) x is 0D
         out = paddle.rank(self.x)
         self.assertEqual(out.shape, [])
         np.testing.assert_array_equal(out.numpy(), np.array(0))
+
+        # 1) x is ND
+        x = paddle.full([3, 5], 0.5)
+        out = paddle.rank(x)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_array_equal(out.numpy(), np.array(2))
 
     def test_shape(self):
         out = paddle.shape(self.x)

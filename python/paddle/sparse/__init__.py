@@ -36,6 +36,7 @@ from .unary import rad2deg
 from .unary import expm1
 from .unary import transpose
 from .unary import reshape
+from .unary import isnan
 
 from .binary import mv
 from .binary import matmul
@@ -83,4 +84,5 @@ __all__ = [
     'coalesce',
     'is_same_shape',
     'reshape',
+    'isnan',
 ]
