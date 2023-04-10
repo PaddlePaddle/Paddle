@@ -177,7 +177,8 @@ class TensorCheckerConfig:
         random.seed(self.seed)
 
         # set cudnn and cpu
-        paddle.set_flags({"FLAGS_cudnn_deterministic": flag})
+        if core.is_compiled_with_cuda():
+            paddle.set_flags({"FLAGS_cudnn_deterministic": flag})
         paddle.set_flags({"FLAGS_cpu_deterministic": flag})
 
         # info
