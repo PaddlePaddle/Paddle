@@ -313,13 +313,6 @@ def fluid_softmax_with_cross_entropy(
         loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': loss}
-        if core.is_compiled_with_custom_device(
-            "npu"
-        ) or core.is_compiled_with_custom_device("mlu"):
-            backprop = helper.create_variable_for_type_inference(
-                dtype=logits.dtype
-            )
-            outputs['Backprop'] = backprop
         helper.append_op(
             type='softmax_with_cross_entropy',
             inputs={'Logits': logits, 'Label': label},
@@ -2768,13 +2761,6 @@ def cross_entropy(
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': out}
-        if core.is_compiled_with_custom_device(
-            "npu"
-        ) or core.is_compiled_with_custom_device("mlu"):
-            backprop = helper.create_variable_for_type_inference(
-                dtype=input.dtype
-            )
-            outputs['Backprop'] = backprop
         helper.append_op(
             type='softmax_with_cross_entropy',
             inputs={'Logits': input, 'Label': label},

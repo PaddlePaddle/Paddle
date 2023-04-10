@@ -330,9 +330,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith(PADDLE_ROOT + 'paddle/infrt'):
-                    filterFiles.append(filename)
-                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                if filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
                         (
                             PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
