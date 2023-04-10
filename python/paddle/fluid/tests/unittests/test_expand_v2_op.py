@@ -209,6 +209,7 @@ class TestExpandV2FP16Op(OpTest):
         self.prim_op_type = "prim"
         self.dtype = np.float16
         self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(8, 8, 5)).astype(self.dtype)
         }

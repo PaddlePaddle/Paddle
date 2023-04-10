@@ -50,6 +50,10 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
@@ -604,15 +608,10 @@ struct RadixTypeConfig<phi::dtype::bfloat16> {
   }
 
   static inline __device__ phi::dtype::bfloat16 Deconvert(RadixType v) {
-#if defined(PADDLE_CUDA_BF16)
     RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
     phi::dtype::bfloat16 r;
     r.x = (v ^ mask);
     return r;
-#else
-    assert(false);
-    return static_cast<phi::dtype::bfloat16>(0);
-#endif
   }
 };
 

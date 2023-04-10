@@ -193,6 +193,7 @@ class TestTopkFP16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.float16
         self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
@@ -214,6 +215,7 @@ class TestTopkBF16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
         self.dtype = np.uint16
         self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(np.float32)
