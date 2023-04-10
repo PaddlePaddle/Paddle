@@ -25,6 +25,7 @@ from paddle.distributed.auto_parallel.utils import (
     is_backward_op,
     is_optimize_op,
     # is_lr_sched_op,
+    is_fillconst_op_for_micro_batch,
 )
 
 
@@ -319,7 +320,7 @@ class PipelinePass(PassBase):
             for op in src_block.ops:
                 # if is_lr_sched_op(op):
                 #     self._create_program(src_block, lr_block, op)
-                if is_forward_op(op):
+                if is_forward_op(op) or is_fillconst_op_for_micro_batch(op):
                     self._create_program(src_block, fwd_block, op)
                 elif is_backward_op(op):
                     self._create_program(src_block, bwd_block, op)

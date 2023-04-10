@@ -469,7 +469,7 @@ class Engine:
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
             _process_fetch_group("outputs", fetch_vars["outputs"])
-        for usr_fetch in user_fetches:
+        for usr_fetch in user_fetches or []:
             var_name = _to_name_str(usr_fetch)
             fetch(var_name)
         user_fetches_collection = [
@@ -1494,6 +1494,8 @@ class Engine:
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
     def _validate_batch_size(self, batch_size):
+        if batch_size is None:
+            return None
         assert (
             batch_size % self._acc_steps == 0
         ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
