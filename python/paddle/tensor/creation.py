@@ -1915,7 +1915,7 @@ def empty_like(x, dtype=None, name=None):
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
 
     Args:
-        x(Tensor): The input tensor which specifies shape and data type. The data type can be uint16, bool, float16, float32, float64, int32, int64.
+        x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
