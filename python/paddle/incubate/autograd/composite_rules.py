@@ -558,11 +558,7 @@ def pow_composite(x, y):
         x = cast(x, "float32")
 
     if isinstance(y, (int, float)):
-        y_value = y
         y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
-        if y_value == 0.5:
-            res = rsqrt(x)
-            return res
     res = pow(x, y)
     if is_amp:
         res = cast(res, "float16")
