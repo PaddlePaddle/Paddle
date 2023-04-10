@@ -43,6 +43,7 @@ _clip_by_global_norm_using_mp_type_flag = False
 
 _merged_grad_in_mp_type_flag = False
 
+
 def _merged_grad_in_mp_type(*args):
     global _merged_grad_in_mp_type_flag
     assert len(args) <= 1
@@ -84,11 +85,7 @@ def _squared_l2_norm(x):
     """
 
     x = _cast_to_mp_type_if_enabled(x)
-    if (
-        core.is_compiled_with_xpu()
-        #or x.dtype == core.VarDesc.VarType.FP16
-        #or x.dtype == core.VarDesc.VarType.BF16
-    ):
+    if core.is_compiled_with_xpu():
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
@@ -99,7 +96,9 @@ def _squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'uint16', 'float16'], op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'float16', 'uint16'], op_type
+    )
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -622,10 +621,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         sum_square_list_fp16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.BF16:
                         if _merged_grad_in_mp_type():
-                            sum_square_list_fp32.append(sum_square.astype(core.VarDesc.VarType.FP32))
+                            sum_square_list_fp32.append(
+                                sum_square.astype(core.VarDesc.VarType.FP32)
+                            )
                         else:
                             sum_square_list_bf16.append(sum_square)
-                        #sum_square_list_bf16.append(sum_square)
+                        # sum_square_list_bf16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
@@ -689,8 +690,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     paddle.add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
-                ) 
-                
+                )
+
                 global_norm_var = paddle.sqrt(x=global_norm_var)
                 max_global_norm = paddle.full(
                     shape=[1],
@@ -712,11 +713,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    #scale_input = (
+                    # scale_input = (
                     #    scale_var.astype(new_g.dtype)
                     #    if scale_var.dtype != new_g.dtype
                     #    else scale_var
-                    #)
+                    # )
                     scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
