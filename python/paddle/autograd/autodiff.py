@@ -428,7 +428,7 @@ def hessian(
     ys: Tuple[paddle.Tensor, ...],
     xs: Tuple[paddle.Tensor, ...],
     batch_axis: Optional[int] = None,
-):
+) -> Union[List[List[Hessian]], List[Hessian], Hessian]:
     """Function that computes the hessians of ys deriveted from xs.
 
     Args:
