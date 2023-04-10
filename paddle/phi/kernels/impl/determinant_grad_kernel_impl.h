@@ -131,20 +131,20 @@ void DeterminantGradKernel(const Context& dev_ctx,
   inverse_A.Resize(x.dims());
   dev_ctx.template Alloc<MPType>(&inverse_A);
 
-  phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
-  mat_inv(dev_ctx, x, &inverse_A);
+  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
+  mat_inv(dev_ctx, x, static_cast<T>(&inverse_A));
 
-  VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
+  VLOG(3) << "inverse(A) dims: " << static_cast<T>(inverse_A).dims();
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
+      phi::TransposeLast2Dim<T>(dev_ctx, static_cast<T>(inverse_A));
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
   // Third: dA * |A|
-  auto mul_dA_detA = phi::Multiply<MPType>(dev_ctx, out_grad, out);
+  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, out);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])

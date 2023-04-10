@@ -63,7 +63,8 @@ class TestDeterminantFP16Op(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
         # not invertible matrix
-        self.case = np.ones([4, 2, 4, 4]).astype('float16')
+        self.dtype = np.float16
+        self.case = np.ones([4, 2, 4, 4]).astype(self.dtype)
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case.astype('float32'))
 
