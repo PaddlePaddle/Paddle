@@ -25,6 +25,8 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
