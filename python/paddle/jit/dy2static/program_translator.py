@@ -45,6 +45,7 @@ from .origin_info import (
 from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
+    NO_SHAPE_VAR_TYPE,
     ast_to_func,
     ast_to_source_code,
     func_to_source_code,
@@ -1217,7 +1218,7 @@ class ProgramCache:
 
         if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
             for var in concrete_program.main_program.list_vars():
-                if -1 in var.shape:
+                if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
                         "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
                             var.name, var.shape
