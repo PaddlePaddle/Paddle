@@ -40,13 +40,13 @@ multi_out_module = load(
 )
 
 
-def discrete_out_dynamic(use_phi, device, dtype, np_w, np_x, np_y, np_z):
+def discrete_out_dynamic(use_custom, device, dtype, np_w, np_x, np_y, np_z):
     paddle.set_device(device)
     w = paddle.to_tensor(np_w, dtype=dtype, stop_gradient=False)
     x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
     y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
     z = paddle.to_tensor(np_z, dtype=dtype, stop_gradient=False)
-    if use_phi:
+    if use_custom:
         out = multi_out_module.discrete_out(w, x, y, z)
     else:
         out = w * 1 + x * 2 + y * 3 + z * 4
@@ -55,7 +55,7 @@ def discrete_out_dynamic(use_phi, device, dtype, np_w, np_x, np_y, np_z):
     return out.numpy(), w.grad.numpy(), y.grad.numpy()
 
 
-def discrete_out_static(use_phi, device, dtype, np_w, np_x, np_y, np_z):
+def discrete_out_static(use_custom, device, dtype, np_w, np_x, np_y, np_z):
     paddle.enable_static()
     paddle.set_device(device)
     with static.scope_guard(static.Scope()):
@@ -68,7 +68,7 @@ def discrete_out_static(use_phi, device, dtype, np_w, np_x, np_y, np_z):
             x.stop_gradient = False
             y.stop_gradient = False
             z.stop_gradient = False
-            if use_phi:
+            if use_custom:
                 out = multi_out_module.discrete_out(w, x, y, z)
             else:
                 out = w * 1 + x * 2 + y * 3 + z * 4
@@ -180,7 +180,11 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                (phi_out, phi_w_grad, phi_y_grad,) = discrete_out_static(
+                (
+                    custom_out,
+                    custom_w_grad,
+                    custom_y_grad,
+                ) = discrete_out_static(
                     True,
                     device,
                     dtype,
@@ -189,10 +193,10 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                self.check_output(phi_out, pd_out, "out")
+                self.check_output(custom_out, pd_out, "out")
                 # NOTE: In static mode, the output gradient of custom operator has been optimized to shape=[1]. However, native paddle op's output shape = [4, 8], hence we need to fetch pd_w_grad[0][0] (By the way, something wrong with native paddle's gradient, the outputs with other indexes instead of pd_w_grad[0][0] is undefined in this unittest.)
-                self.check_output(phi_w_grad, pd_w_grad[0][0], "w_grad")
-                self.check_output(phi_y_grad, pd_y_grad[0][0], "y_grad")
+                self.check_output(custom_w_grad, pd_w_grad[0][0], "w_grad")
+                self.check_output(custom_y_grad, pd_y_grad[0][0], "y_grad")
 
     def test_discrete_out_dynamic(self):
         for device in self.devices:
@@ -206,7 +210,11 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                (phi_out, phi_w_grad, phi_y_grad,) = discrete_out_dynamic(
+                (
+                    custom_out,
+                    custom_w_grad,
+                    custom_y_grad,
+                ) = discrete_out_dynamic(
                     True,
                     device,
                     dtype,
@@ -215,9 +223,9 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                self.check_output(phi_out, pd_out, "out")
-                self.check_output(phi_w_grad, pd_w_grad, "w_grad")
-                self.check_output(phi_y_grad, pd_y_grad, "y_grad")
+                self.check_output(custom_out, pd_out, "out")
+                self.check_output(custom_w_grad, pd_w_grad, "w_grad")
+                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
 
 
 if __name__ == '__main__':
