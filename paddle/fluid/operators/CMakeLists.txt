@@ -117,10 +117,6 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 endif()
 
-if (WITH_ASCEND_CL)
-  op_library(sync_batch_norm_op)
-endif()
-
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
@@ -157,14 +153,7 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
-if (WITH_ASCEND)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ascend_wrapper)
-endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS generated_static_op)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
-endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(unsqueeze_op DEPS reshape_op)
@@ -200,18 +189,10 @@ if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(range_op_npu_test SRCS range_op_npu_test.cc DEPS op_registry range_op scope device_context enforce executor)
-  cc_test(expand_op_npu_test SRCS expand_op_npu_test.cc DEPS op_registry expand_op eigen_function scope device_context enforce executor compare_op)
-endif()
-
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
 cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
-if (WITH_ASCEND_CL)
-    cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
-endif()
 
 
 if(WITH_MKLDNN)
@@ -227,7 +208,7 @@ if(WITH_UNITY_BUILD)
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()
 
-if (WITH_GPU OR WITH_ASCEND_CL)
+if (WITH_GPU)
 cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
 endif()
 
