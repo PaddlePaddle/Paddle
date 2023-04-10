@@ -306,7 +306,10 @@ def instance_norm(
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'instance_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'instance_norm',
     )
     if param_attr is False:
         assert (
@@ -946,7 +949,7 @@ def conv2d(
         l_type = 'depthwise_conv2d'
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if core.is_compiled_with_npu():
+    if core.is_compiled_with_custom_device('npu'):
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:

@@ -685,6 +685,11 @@ def options_process(args, build_options):
 def get_cmake_generator():
     if os.getenv("GENERATOR"):
         cmake_generator = os.getenv("GENERATOR")
+        if os.system('ninja --version') == 0:
+            print("Ninja has been installed,use ninja to compile Paddle now.")
+        else:
+            print("Ninja has not been installed,install it now.")
+            os.system('python -m pip install ninja')
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator

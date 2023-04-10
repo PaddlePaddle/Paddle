@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
+
+#include <type_traits>
 
 #define PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
   _PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)

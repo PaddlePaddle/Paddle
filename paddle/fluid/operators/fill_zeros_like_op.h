@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -32,6 +32,9 @@ class FillZerosLikeKernel : public framework::OpKernel<T> {
            static_cast<T>(0));
   }
 };
+
+template <typename T, typename DeviceContext>
+class FillZerosLikeKernel2 : public FillZerosLikeKernel<T, DeviceContext> {};
 
 }  // namespace operators
 }  // namespace paddle

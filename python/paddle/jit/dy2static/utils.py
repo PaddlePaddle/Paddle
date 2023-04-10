@@ -86,6 +86,13 @@ WHILE_BODY_PREFIX = 'while_body'
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
 
+NO_SHAPE_VAR_TYPE = [
+    core.VarDesc.VarType.READER,
+    core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
+]
+
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
@@ -1454,16 +1461,19 @@ def _param_grad_names(program_desc, params):
     # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
     for param in params:
-        candidate = [
-            var.name()
-            for var in program_desc.block(0).all_vars()
-            if var.name().endswith(param.name + '@GRAD')
-        ]
+        candidate = []
+        suffix = param.name + '@GRAD'
+        for var in program_desc.block(0).all_vars():
+            var_name = var.name()
+            if var_name.endswith(suffix):
+                prefix_count = var_name.count('grad/')
+                if 'grad/' * prefix_count + suffix == var_name:
+                    candidate.append(var_name)
+
         if candidate:
             names.append(max(candidate, key=lambda name: name.count('grad/')))
         else:
-            names.append(param.name + '@GRAD')
-
+            names.append(suffix)
     return names
 
 
