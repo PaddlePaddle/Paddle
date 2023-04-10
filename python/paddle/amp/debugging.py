@@ -115,6 +115,18 @@ class TensorCheckerConfig:
         self.seed = 123
         self.initial_seed = 123
 
+        # check debug_step
+        if debug_step is not None:
+            if isinstance(debug_step, (tuple, list)):
+                assert (
+                    len(self.debug_step) == 2
+                    and self.debug_step[1] > self.debug_step[0]
+                )
+                self.start_step, self.end_step = self.debug_step
+                self.start_step = max(self.start_step, 0)
+            else:
+                raise ValueError("debug_step must be list or tuple")
+
         if core.is_compiled_with_cuda():
             for i in range(core.get_cuda_device_count()):
                 self.initial_seed = core.default_cuda_generator(
@@ -154,16 +166,6 @@ class TensorCheckerConfig:
             else:
                 raise ValueError("skipped_op_list must be list or tuple")
 
-        # check debug_step
-        if self.debug_step is not None:
-            if isinstance(self.debug_step, (tuple, list)):
-                assert (
-                    len(self.debug_step) == 2
-                    and self.debug_step[1] > self.debug_step[0]
-                )
-                self.start_step, self.end_step = self.debug_step
-                self.start_step = max(self.start_step, 0)
-
         if self.enable:
             self._set_seed(self.enable)
 
@@ -171,7 +173,6 @@ class TensorCheckerConfig:
         # get random seed
         self.seed = seed
         paddle.seed(self.seed)
-
         np.random.seed(self.seed)
         random.seed(self.seed)
 
@@ -191,9 +192,12 @@ class TensorCheckerConfig:
         )
 
     def _set_seed(self, enable):
-        if self.initial_seed != 34342423252:
+        if self.initial_seed != self.seed:
             self.seed = self.initial_seed
-        self.keep_random(self.seed, True)
+        if self.seed > 4294967295 or self.seed < 0:
+            print("[Warnning: Seed must be between 0 and 2**32 - 1")
+            self.seed = 123
+            self.keep_random(self.seed, True)
 
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
@@ -212,10 +216,10 @@ class TensorCheckerConfig:
                 paddle.set_flags(
                     {"FLAGS_call_stack_level": self.stack_height_limit}
                 )
-            raise ValueError("stack_height_limit must be int")
+            else:
+                raise ValueError("stack_height_limit must be int")
 
     def check(self):
-        TensorCheckerConfig.Current_step_id += 1
         if self.enable:
             if self.start_step is not None and self.end_step is not None:
                 if (
@@ -223,6 +227,8 @@ class TensorCheckerConfig:
                     or TensorCheckerConfig.Current_step_id >= self.end_step
                 ):
                     return False
+                else:
+                    TensorCheckerConfig.Current_step_id += 1
             return True
         return False
 
