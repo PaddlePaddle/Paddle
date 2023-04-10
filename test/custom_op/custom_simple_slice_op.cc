@@ -17,8 +17,9 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) \
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, #x " must be a CPU Tensor.")
+#define CHECK_INPUT(x)                                         \
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU, \
+           #x " must be a CPU Tensor.")
 
 std::vector<paddle::Tensor> SimpleSliceFunction(const paddle::Tensor& x,
                                                 int64_t begin_index,

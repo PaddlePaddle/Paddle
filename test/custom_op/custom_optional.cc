@@ -45,7 +45,8 @@ if (y) {
 std::vector<paddle::Tensor> AddForward(
     const paddle::Tensor& x,
     const paddle::optional<paddle::Tensor>& y) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
   paddle::Tensor out = paddle::empty(x.shape(), x.dtype(), x.place());
 
   if (y) {
@@ -85,7 +86,8 @@ std::vector<paddle::Tensor> AddBackward(
     const paddle::Tensor& x,
     const paddle::optional<paddle::Tensor>& y,
     const paddle::Tensor& out_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
   paddle::Tensor x_grad = paddle::zeros(x.shape(), x.dtype(), x.place());
 
   if (y) {
@@ -118,7 +120,8 @@ if (y) {
 std::vector<paddle::Tensor> AddVectorForward(
     const paddle::Tensor& x,
     const paddle::optional<std::vector<paddle::Tensor>>& y) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
   paddle::Tensor out = paddle::zeros(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -167,7 +170,8 @@ std::vector<paddle::Tensor> AddVectorBackward(
     const paddle::Tensor& x,
     const paddle::optional<std::vector<paddle::Tensor>>& y,
     const paddle::Tensor& out_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
 
   paddle::Tensor x_grad = paddle::zeros(x.shape(), x.dtype(), x.place());
 
@@ -208,7 +212,8 @@ if (y) {
 std::vector<paddle::Tensor> AddOptionalInplaceForward(
     const paddle::Tensor& x,
     paddle::optional<paddle::Tensor>& y) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
   paddle::Tensor outX = paddle::zeros(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -252,7 +257,8 @@ std::vector<paddle::Tensor> AddOptionalInplaceBackward(
     const paddle::optional<paddle::Tensor>& y,
     const paddle::Tensor& outx_grad,
     paddle::optional<paddle::Tensor>& outy_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
 
   paddle::Tensor x_grad = paddle::zeros(x.shape(), x.dtype(), x.place());
 
@@ -313,7 +319,8 @@ if (y) {
 std::vector<paddle::Tensor> AddOptionalInplaceVectorForward(
     const paddle::Tensor& x,
     paddle::optional<std::vector<paddle::Tensor>>& y) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
   paddle::Tensor outX = paddle::zeros(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -359,7 +366,8 @@ std::vector<paddle::Tensor> AddOptionalInplaceVectorBackward(
     const paddle::optional<std::vector<paddle::Tensor>>& y,
     const paddle::Tensor& outx_grad,
     paddle::optional<std::vector<paddle::Tensor>>& outy_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU,
+           "x must be a CPU Tensor.");
 
   paddle::Tensor x_grad = paddle::zeros(x.shape(), x.dtype(), x.place());
 
