@@ -35,6 +35,19 @@ def git_commit():
     git_commit = git_commit.decode()
     return str(git_commit)
 
+def git_cinn_commit():
+    if "@WITH_CINN@" == 'ON':
+        try:
+            cmd = ['git', 'rev-parse', 'HEAD']
+            git_cinn_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+                cwd="@CINN_SOURCE_DIR@").communicate()[0].strip()
+        except:
+            git_cinn_commit = 'Unknown'
+    else:
+        git_cinn_commit = "NOT COMPILE WITH CINN"
+    git_cinn_commit = git_cinn_commit.decode()
+    return str(git_cinn_commit)
+
 def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
@@ -114,6 +127,7 @@ xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
+cinn_commit      = '%(cinn_commit)s'
 with_mkl         = '%(with_mkl)s'
 
 __all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
@@ -253,6 +267,7 @@ def xpu_xccl():
     return xpu_xccl_version
 '''
     commit = git_commit()
+    cinn_commit = git_cinn_commit()
 
     dirname = os.path.dirname(filename)
 
@@ -275,7 +290,9 @@ def xpu_xccl():
             'xpu_xccl': get_xpu_xccl_version(),
             'commit': commit,
             'istaged': is_taged(),
-            'with_mkl': '@WITH_MKL@'})
+            'with_mkl': '@WITH_MKL@',
+            'with_cinn': '@WITH_CINN@',
+            'cinn_commit' : cinn_commit})
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 

@@ -318,6 +318,27 @@ def git_commit():
     return str(git_commit)
 
 
+def git_cinn_commit():
+    if env_dict.get("WITH_CINN") == 'ON':
+        try:
+            cmd = ['git', 'rev-parse', 'HEAD']
+            git_cinn_commit = (
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=env_dict.get("CINN_SOURCE_DIR"),
+                )
+                .communicate()[0]
+                .strip()
+            )
+        except:
+            git_cinn_commit = 'Unknown'
+    else:
+        git_cinn_commit = "NOT COMPILE WITH CINN"
+    git_cinn_commit = git_cinn_commit.decode('utf-8')
+    return str(git_cinn_commit)
+
+
 def _get_version_detail(idx):
     assert (
         idx < 3
@@ -442,6 +463,7 @@ xpu_xccl_version = '%(xpu_xccl)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
+cinn_commit      = '%(cinn_commit)s'
 
 __all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
@@ -580,6 +602,7 @@ def xpu_xccl():
     return xpu_xccl_version
 '''
     commit = git_commit()
+    cinn_commit = git_cinn_commit()
 
     dirname = os.path.dirname(filename)
 
@@ -605,6 +628,8 @@ def xpu_xccl():
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
+                'with_cinn': env_dict.get("WITH_CINN"),
+                'cinn_commit': cinn_commit,
             }
         )
 
