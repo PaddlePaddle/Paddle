@@ -397,6 +397,11 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestBF16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.uint16
@@ -405,11 +410,7 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
         self.init_kernel_type()
 
     def test_check_output(self):
-        places = []
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                places.append(place)
+        places = [core.CUDAPlace(0)]
         for place in places:
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
