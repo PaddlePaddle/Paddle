@@ -1590,7 +1590,7 @@ void scatter_nd_add_grad(const Tensor& index,
                          Tensor* x_grad,
                          Tensor* updates_grad) {
   if (x_grad) {
-    set_output<T>(out_grad, x_grad);
+    by_pass<T>(out_grad, x_grad);
   }
   if (updates_grad) {
     // Gradient by Gather: dUpdates = dO[Ids]
