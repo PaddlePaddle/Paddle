@@ -42,6 +42,18 @@
     data_type : x
   backward : addmm_grad
 
+- op : affine_grid
+  args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
+  output : Tensor
+  infer_meta :
+    func : AffineGridInferMeta
+    param : [input, output_shape, align_corners]
+  kernel :
+    func : affine_grid
+    param : [input, output_shape, align_corners]
+    data_type : input
+  backward : affine_grid_grad
+
 - op : allclose
   args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
   output : Tensor(out)
@@ -206,6 +218,16 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : bilinear_tensor_product
+  args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  output : Tensor
+  infer_meta :
+    func : BilinearInferMeta
+  kernel :
+    func : bilinear
+  optional : bias
+  backward : bilinear_tensor_product_grad
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -368,6 +390,18 @@
     data_type : x
   backward : cross_grad
 
+# Part of python API paddle.nn.functional.cross_entropy
+- op : cross_entropy_with_softmax
+  args : (Tensor input, Tensor label, bool soft_label=false, bool use_softmax=true, bool numeric_stable_mode=true, int ignore_index=-100, int axis=-1)
+  output : Tensor(softmax), Tensor(loss)
+  inplace : (input -> softmax)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxInferMeta
+  kernel :
+    func : cross_entropy_with_softmax
+    data_type : input
+  backward : cross_entropy_with_softmax_grad
+
 - op : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -473,6 +507,16 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+
+- op : eigvalsh
+  args : (Tensor x, str uplo = "L", bool is_test = false)
+  output : Tensor(eigenvalues), Tensor(eigenvectors)
+  infer_meta :
+    func : EigvalshInferMeta
+  kernel :
+    func : eigvalsh
+    data_type : x
+  backward : eigvalsh_grad
 
 - op : elu
   args : (Tensor x, float alpha = 1.0f)
@@ -981,6 +1025,15 @@
     data_type : x
   backward : log_softmax_grad
 
+- op : logcumsumexp
+  args : (Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CumInferMeta
+  kernel :
+    func : logcumsumexp
+  backward : logcumsumexp_grad
+
 - op : logical_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1065,6 +1118,15 @@
     func : masked_select
     data_type : x
   backward : masked_select_grad
+
+- op : matrix_nms
+  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2., int background_label = 0, bool normalized = true)
+  output : Tensor(out), Tensor(index), Tensor(roisnum)
+  infer_meta :
+    func : MatrixNMSInferMeta
+  optional : roisnum
+  kernel :
+    func : matrix_nms
 
 - op : matrix_power
   args : (Tensor x, int n)

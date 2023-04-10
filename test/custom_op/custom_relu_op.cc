@@ -94,8 +94,6 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
                                    ddout.size());
                              }));
 
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
-
   return {ddout};
 }
 
