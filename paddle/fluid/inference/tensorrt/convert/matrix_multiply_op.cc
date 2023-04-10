@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,16 +11,6 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/matmul_op_int8_plugin.h"
-
-namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -36,8 +26,15 @@ class MatrixMultiplyOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a matrix_multiply op to tensorrt MatrixMultiply layer, "
-               "ElementWiseOperation::kPROD layer.";
+    VLOG(3)
+        << "convert a matrix_multiply op to TensorRT MatrixMultiply layer +  "
+           "ElementWiseOperation::kPROD layer(if alpha != 1).";
+
+    // Input: X, Y
+    // Output: Out
+    // Attributes: transpose_x, transpose_y, x_num_col_dims, y_num_col_dims,
+    // alpha. extra Attributes(for quant dequant): X, Y, Out, Input_scale,
+    // out_threshold.
     framework::OpDesc op_desc(op, nullptr);
 
     // Declare inputs

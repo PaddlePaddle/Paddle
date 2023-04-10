@@ -644,6 +644,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd7(graph, handler7);
 
+  // Removed fc_add fuse, elementwise can be used by the optimized model
   GraphPatternDetector gpd8;
   patterns::ElementWise elementwise(gpd8.mutable_pattern(),
                                     "remove_padding_recover_padding_pass");

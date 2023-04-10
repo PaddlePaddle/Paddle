@@ -170,7 +170,7 @@ void TensorRTEngine::FreezeNetwork() {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
-                   "FP16 speed up, use FP32 instead. ";
+                   "FP16 speed up, use FP32 instead.";
     } else {
       LOG(INFO) << "Run Paddle-TRT FP16 mode";
     }

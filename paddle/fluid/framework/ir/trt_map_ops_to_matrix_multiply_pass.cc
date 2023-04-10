@@ -46,9 +46,12 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
     if (!with_dynamic_shape) {
-      VLOG(3) << "TrtMapOpsToMatrixMultiplyPass need: with_dynamic_shape. Stop "
-                 "this pass, "
-                 "please reconfig. ";
+      VLOG(3)
+          << "TrtMapOpsToMatrixMultiplyPass need with_dynamic_shape, stop this "
+             "pass."
+             "Please reconfig 'SetTRTDynamicShapeInfo'. You can refer to the "
+             "https://github.com/PaddlePaddle/Paddle-Inference-Demo/blob/"
+             "master/c%2B%2B/gpu/resnet50/resnet50_test.cc";
       return;
     }
     VLOG(4) << "trt map some ops to matrix_multiply";
