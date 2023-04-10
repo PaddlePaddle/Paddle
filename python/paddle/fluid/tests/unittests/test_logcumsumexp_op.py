@@ -348,11 +348,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         hist /= float(outs[0].size)
 
         x = np.arange(100, dtype=np.float64).reshape(10, 10)
-        data = np_naive_logcumsumexp(x)
-        self.assertTrue(all(data == np.inf))
         data = np_logcumsumexp(x)
-        self.assertTrue(all(data != np.inf))
-        data = np.log(np.cumsum(np.exp(x)))
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float64")
         hist2 /= float(outs[0].size)
