@@ -87,9 +87,17 @@ class OptimizerWithMixedPrecision:
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
-        self._use_dynamic_loss_scaling = (
-            use_dynamic_loss_scaling and not use_bf16
-        )
+        if use_bf16:
+            if use_dynamic_loss_scaling:
+                self._use_dynamic_loss_scaling = False
+                self._init_loss_scaling = 1.0
+                warnings.warn(
+                    "Dynamic loss scaling for bfloat16 amp training is disabled, and the init_loss_scaling is changed to 1.0 automatically by PaddlePaddle."
+                )
+            self._amp_dtype = core.VarDesc.VarType.BF16
+        else:
+            self._amp_dtype = core.VarDesc.VarType.FP16
+
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = use_pure_fp16
@@ -102,12 +110,6 @@ class OptimizerWithMixedPrecision:
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
-
-        self._type = (
-            core.VarDesc.VarType.FP16
-            if not use_bf16
-            else core.VarDesc.VarType.BF16
-        )
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -222,11 +224,11 @@ class OptimizerWithMixedPrecision:
                     self._train_program,
                     self._amp_lists,
                     self._use_fp16_guard,
-                    self._type,
+                    self._amp_dtype,
                 )
             else:
                 rewrite_program(
-                    self._train_program, self._amp_lists, self._type
+                    self._train_program, self._amp_lists, self._amp_dtype
                 )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
@@ -273,7 +275,7 @@ class OptimizerWithMixedPrecision:
                 outputs={'Out': [name]},
                 attrs={
                     'in_dtype': core.VarDesc.VarType.FP32,
-                    'out_dtype': self._type,
+                    'out_dtype': self._amp_dtype,
                 },
             )
         self._to_fp16_var_names = None
@@ -345,7 +347,7 @@ class OptimizerWithMixedPrecision:
                 self._train_program,
                 scope,
                 self._to_fp16_var_names,
-                self._type,
+                self._amp_dtype,
             )
         if test_program is not None:
             if self._use_pure_fp16:
@@ -353,10 +355,10 @@ class OptimizerWithMixedPrecision:
                     test_program,
                     self._amp_lists,
                     self._use_fp16_guard,
-                    self._type,
+                    self._amp_dtype,
                 )
             elif use_fp16_test:
-                rewrite_program(test_program, self._amp_lists, self._type)
+                rewrite_program(test_program, self._amp_lists, self._amp_dtype)
 
     def apply_gradients(self, params_grads):
         """
@@ -392,7 +394,7 @@ class OptimizerWithMixedPrecision:
         found_inf = self._check_finite_and_unscale(params_grads)
         if (
             self._use_dynamic_loss_scaling
-            and self._type == core.VarDesc.VarType.FP16
+            and self._amp_dtype == core.VarDesc.VarType.FP16
         ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 
@@ -420,7 +422,7 @@ class OptimizerWithMixedPrecision:
     def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
         fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
-        fp16_grads = [g for g in grads if g.dtype == self._type]
+        fp16_grads = [g for g in grads if g.dtype == self._amp_dtype]
         assert len(fp32_grads) + len(fp16_grads) == len(
             grads
         ), "Data types of all grads must be either fp16/bf16 or fp32."
@@ -704,12 +706,61 @@ def decorate(
             if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                 run_example_code()
     """
+    dtype = "bfloat16" if use_bf16 else "float16"
+    paddle.static.amp.set_global_amp_dtype(dtype)
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
 
     if use_fp16_guard is None:
         use_fp16_guard = use_pure_fp16
 
+    mp_optimizer = OptimizerWithMixedPrecision(
+        optimizer,
+        amp_lists,
+        init_loss_scaling,
+        use_dynamic_loss_scaling,
+        incr_every_n_steps,
+        decr_every_n_nan_or_inf,
+        incr_ratio,
+        decr_ratio,
+        use_pure_fp16,
+        use_fp16_guard,
+        use_bf16,
+    )
+
+    return mp_optimizer
+
+
+def amp_decorate(
+    optimizer,
+    amp_lists=None,
+    level='O1',
+    dtype='float16',
+    init_loss_scaling=2**15,
+    incr_every_n_steps=1000,
+    decr_every_n_nan_or_inf=2,
+    incr_ratio=2.0,
+    decr_ratio=0.8,
+    use_dynamic_loss_scaling=True,
+    use_amp_guard=False,
+):
+    """
+    Decorate the given optimizer to adapt to the mixed-precision training.
+    """
+    paddle.static.amp.set_global_amp_dtype(dtype)
+    if amp_lists is None:
+        amp_lists = AutoMixedPrecisionLists()
+
+    # check amp_level: O0-O2
+    level = level.upper()
+    if not (level in ['O0', 'O1', 'O2']):
+        raise ValueError(
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
+        )
+
+    use_pure_fp16 = level == "O2"
+    use_fp16_guard = use_amp_guard
+    use_bf16 = dtype == "bfloat16"
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer,
         amp_lists,
