@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -34,6 +35,14 @@ struct LogCUDAFunctor<float16> {
   HOSTDEVICE inline float16 operator()(const float16 x) const {
     auto x_ = static_cast<float>(x);
     return static_cast<float16>(std::log(x_));
+  }
+};
+
+template <>
+struct LogCUDAFunctor<bfloat16> {
+  HOSTDEVICE inline bfloat16 operator()(const bfloat16 x) const {
+    auto x_ = static_cast<float>(x);
+    return static_cast<bfloat16>(std::log(x_));
   }
 };
 
