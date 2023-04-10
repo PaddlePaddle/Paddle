@@ -263,12 +263,6 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             alpha=1.0,
             transpose_X=False,
             transpose_Y=True,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         ele_3 = OpConfig(
             "elementwise_add",
@@ -316,12 +310,6 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             alpha=1.0,
             transpose_X=False,
             transpose_Y=False,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         ops = [
             mul_0,
