@@ -50,6 +50,9 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
