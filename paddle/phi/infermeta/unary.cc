@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
