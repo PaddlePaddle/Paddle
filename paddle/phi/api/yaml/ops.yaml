@@ -1626,7 +1626,7 @@
 
 - op : squared_l2_norm
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
   kernel :
