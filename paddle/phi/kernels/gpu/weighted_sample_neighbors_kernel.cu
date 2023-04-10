@@ -120,7 +120,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
       weight_keys_local_buff[j] =
           static_cast<float>(GenKeyFromWeight(thread_weight, rng));
     }
+#ifdef PADDLE_WITH_CUDA
     __syncthreads();
+#endif
 
     float topk_val;
     bool topk_is_unique;
@@ -140,7 +142,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
     if (threadIdx.x == 0) {
       cnt = 0;
     }
+#ifdef PADDLE_WITH_CUDA
     __syncthreads();
+#endif
 
     // We use atomicAdd 1 operations instead of binaryScan to calculate the
     // write index, since we do not need to keep the relative positions of
@@ -172,7 +176,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
           }
         }
       }
+#ifdef PADDLE_WITH_CUDA
       __syncthreads();
+#endif
 
       for (int j = threadIdx.x; j < neighbor_count; j += BLOCK_SIZE) {
         float key = weight_keys_local_buff[j];
@@ -272,7 +278,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
                                 : (BLOCK_SIZE * ITEMS_PER_THREAD);
     BlockRadixTopKT{sort_tmp_storage}.radixTopKToStriped(
         weight_keys, neighbor_idxs, max_sample_count, valid_count);
+#ifdef PADDLE_WITH_CUDA
     __syncthreads();
+#endif
     const int stride = BLOCK_SIZE * ITEMS_PER_THREAD - max_sample_count;
 
     for (int idx_offset = ITEMS_PER_THREAD * BLOCK_SIZE;
@@ -294,7 +302,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
               : (max_sample_count + neighbor_count - idx_offset);
       BlockRadixTopKT{sort_tmp_storage}.radixTopKToStriped(
           weight_keys, neighbor_idxs, max_sample_count, iter_valid_count);
+#ifdef PADDLE_WITH_CUDA
       __syncthreads();
+#endif
     }
 #pragma unroll
     for (int j = 0; j < ITEMS_PER_THREAD; j++) {

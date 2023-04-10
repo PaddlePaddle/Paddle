@@ -15,7 +15,9 @@
  */
 #pragma once
 
+#ifdef __NVCC__
 #include <cuda_runtime_api.h>  // NOLINT
+#endif
 
 class RandomNumGen {
  public:

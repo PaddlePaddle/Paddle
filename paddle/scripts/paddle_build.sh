@@ -3178,8 +3178,6 @@ function build_pr_and_develop() {
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
             rm -rf ${PADDLE_ROOT}/build/third_party
-            rm -rf ${PADDLE_ROOT}/build/paddle
-            rm -rf ${PADDLE_ROOT}/build/python
         fi
 
         git checkout -b develop_base_pr upstream/$BRANCH

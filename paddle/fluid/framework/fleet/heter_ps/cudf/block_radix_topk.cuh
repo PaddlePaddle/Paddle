@@ -15,10 +15,16 @@
  */
 #pragma once
 
+#ifdef __NVCC__
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_scan.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/util_ptx.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 
 namespace paddle {
 namespace framework {
