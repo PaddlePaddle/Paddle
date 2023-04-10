@@ -142,7 +142,7 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
             if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7220:
-                return 0, 7
+                return 0, 3
             return 1, 2
 
         def clear_dynamic_shape():
