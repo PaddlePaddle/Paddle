@@ -478,7 +478,10 @@ class DotBF16OpBatch(TestDotBF16Op):
                     place,
                     ['X', 'Y'],
                     'Out',
-                    user_defined_grads=[self.y / 11.0, self.x / 11.0],
+                    user_defined_grads=[
+                        self.y / self.y.shape[0],
+                        self.x / self.x.shape[0],
+                    ],
                 )
 
     def test_check_grad_ingore_x(self):
@@ -490,7 +493,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    user_defined_grads=[self.x / 11.0],
+                    user_defined_grads=[self.x / self.x.shape[0]],
                 )
 
     def test_check_grad_ingore_y(self):
@@ -502,7 +505,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     ['X'],
                     'Out',
                     no_grad_set=set("Y"),
-                    user_defined_grads=[self.y / 11.0],
+                    user_defined_grads=[self.y / self.y.shape[0]],
                 )
 
 
