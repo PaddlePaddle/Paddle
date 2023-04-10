@@ -713,6 +713,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
     case 'G':
       out.setf(std::ios::uppercase);
       [[gnu::fallthrough]];
+
     case 'g':
       out.setf(std::ios::dec, std::ios::basefield);
       // As in boost::format, let stream decide float format.
