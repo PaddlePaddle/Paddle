@@ -129,7 +129,7 @@ class TestInstanceNormOp(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(atol=1e-05, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
