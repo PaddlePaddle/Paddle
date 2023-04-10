@@ -39,10 +39,6 @@ cc_test(
   SRCS vol2col_test.cc
   DEPS vol2col)
 cc_test(
-  sequence_pooling_test
-  SRCS sequence_pooling_test.cc
-  DEPS sequence_pooling)
-cc_test(
   beam_search_test
   SRCS beam_search_test.cc
   DEPS beam_search)
