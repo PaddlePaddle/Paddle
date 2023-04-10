@@ -556,16 +556,6 @@
   no_need_buffer : bias
   optional : scale, bias
 
-- backward_op : logcumsumexp_grad
-  forward : logcumsumexp(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  args : (Tensor x, Tensor out, Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(x_grad)
-  kernel :
-    func : logcumsumexp_grad
-
 - backward_op : lu_grad
   forward : lu (Tensor x, bool pivot) -> Tensor(out), Tensor(pivots), Tensor(infos)
   args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
