@@ -73,7 +73,6 @@ prim_white_list = [
 # bacward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
-    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
 
