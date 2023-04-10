@@ -216,4 +216,4 @@
           default : "false"
         - add_attr : iou_aware_factor
           comment : iou aware factor.
-          default : 0.5f 
+          default : 0.5f
