@@ -12,7 +12,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace paddle {

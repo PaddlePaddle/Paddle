@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/pybind/protobuf.h"
 
+#include <complex>
 #include <deque>
 #include <iostream>
 #include <string>
@@ -27,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace py = pybind11;
 
@@ -287,7 +289,7 @@ void BindOpDesc(pybind11::module *m) {
       .value("LONGS", pd::proto::AttrType::LONGS)
       .value("FLOAT", pd::proto::AttrType::FLOAT)
       .value("FLOATS", pd::proto::AttrType::FLOATS)
-      //  .value("FLOAT64", pd::proto::AttrType::FLOAT64)
+      .value("FLOAT64", pd::proto::AttrType::FLOAT64)
       .value("FLOAT64S", pd::proto::AttrType::FLOAT64S)
       .value("STRING", pd::proto::AttrType::STRING)
       .value("STRINGS", pd::proto::AttrType::STRINGS)
@@ -296,7 +298,9 @@ void BindOpDesc(pybind11::module *m) {
       .value("BLOCK", pd::proto::AttrType::BLOCK)
       .value("BLOCKS", pd::proto::AttrType::BLOCKS)
       .value("VAR", pd::proto::AttrType::VAR)
-      .value("VARS", pd::proto::AttrType::VARS);
+      .value("VARS", pd::proto::AttrType::VARS)
+      .value("SCALAR", pd::proto::AttrType::SCALAR)
+      .value("SCALARS", pd::proto::AttrType::SCALARS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -368,7 +372,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("_set_int32_attr", &pd::OpDesc::SetPlainAttr<int>)
       .def("_set_int64_attr", &pd::OpDesc::SetPlainAttr<int64_t>)
       .def("_set_float32_attr", &pd::OpDesc::SetPlainAttr<float>)
-      //  .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
+      .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
       .def("_set_str_attr", &pd::OpDesc::SetPlainAttr<std::string>)
 
       .def("_set_bools_attr", &pd::OpDesc::SetPlainAttr<std::vector<bool>>)
@@ -378,6 +382,11 @@ void BindOpDesc(pybind11::module *m) {
       .def("_set_float64s_attr", &pd::OpDesc::SetPlainAttr<std::vector<double>>)
       .def("_set_strs_attr",
            &pd::OpDesc::SetPlainAttr<std::vector<std::string>>)
+
+      .def("_set_scalar_attr",
+           &pd::OpDesc::SetPlainAttr<paddle::experimental::Scalar>)
+      .def("_set_scalars_attr",
+           &pd::OpDesc::SetPlainAttr<std::vector<paddle::experimental::Scalar>>)
 
       .def(
           "attr",
@@ -417,6 +426,44 @@ void BindOpDesc(pybind11::module *m) {
                     pybind11::return_value_policy::reference)
       .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
       .def("outputs", &pd::OpDesc::Outputs);
+
+  pybind11::class_<paddle::experimental::Scalar> scalar(*m, "Scalar", "");
+  scalar.def(py::init<bool>())
+      .def(py::init<double>())
+      .def(py::init<int64_t>())
+      .def(py::init<std::complex<double>>())
+      .def(py::init<paddle::experimental::Scalar>())
+      .def("__str__", &paddle::experimental::Scalar::ToString)
+      .def("__repr__", &paddle::experimental::Scalar::ToString)
+      .def("__eq__", &paddle::experimental::Scalar::operator==<paddle::Tensor>)
+      .def("value",
+           [](const paddle::experimental::Scalar &self)
+               -> paddle::variant<bool, int64_t, double, std::complex<double>> {
+             auto dtype = self.dtype();
+             switch (dtype) {
+               case phi::DataType::FLOAT64:
+               case phi::DataType::FLOAT32:
+                 return self.to<double>();
+               case phi::DataType::INT32:
+               case phi::DataType::INT64:
+                 return self.to<int64_t>();
+               case phi::DataType::BOOL:
+                 return self.to<bool>();
+               case phi::DataType::COMPLEX64:
+               case phi::DataType::COMPLEX128:
+                 // to paddle's complex to avoid ambiguious
+                 // when converting bfloat16 or float16 to std::copmplex<double>
+                 return static_cast<std::complex<double>>(
+                     self.to<phi::dtype::complex<double>>());
+               default:
+                 PD_THROW("Invalid tensor data type `", dtype, "`.");
+             }
+           });
+  pybind11::implicitly_convertible<bool, paddle::experimental::Scalar>();
+  pybind11::implicitly_convertible<double, paddle::experimental::Scalar>();
+  pybind11::implicitly_convertible<int64_t, paddle::experimental::Scalar>();
+  pybind11::implicitly_convertible<std::complex<double>,
+                                   paddle::experimental::Scalar>();
 }
 
 // Serialize Class Property

@@ -28,7 +28,6 @@ from paddle.static import (
     Executor,
 )
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
 from paddle.distributed.transpiler.distribute_transpiler import (
@@ -429,11 +428,6 @@ class FleetTranspiler(Fleet):
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
 
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
-
         if not isinstance(executor, Executor):
             raise TypeError(
                 "in fleet.save_inference_model() function, executor must be as Executor type"
@@ -640,9 +634,7 @@ class FleetTranspiler(Fleet):
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append(
-                        "{}.block{}".format(reshaped_varname, i)
-                    )
+                    slice_varnames.append(f"{reshaped_varname}.block{i}")
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -765,11 +757,6 @@ class FleetTranspiler(Fleet):
 
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(

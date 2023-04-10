@@ -600,7 +600,7 @@ class TestSimpleUndiagonal2(unittest.TestCase):
 
 class TestSimpleComplexGrad(unittest.TestCase):
     """
-    EinsumOp support complex grad. but op_test don't support numeric grad for complex dtype.
+    EinsumOp support complex grad. but eager_op_test don't support numeric grad for complex dtype.
     """
 
     def test_shape(self):

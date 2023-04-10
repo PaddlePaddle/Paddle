@@ -23,6 +23,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : accuracy
+  inputs :
+    {x : Out , indices : Indices, label: Label}
+  outputs :
+    {accuracy : Accuracy, correct : Correct, total : Total}
+
 - op : acos
   inputs :
     x : X
@@ -57,6 +63,14 @@
 
 - op : affine_grid
   backward : affine_grid_grad
+  inputs :
+    input : Theta
+  outputs :
+    out : Output
+  int_array:
+    output_shape :
+      data_type : int
+      tensor_name : OutputShape
   extra :
     attrs : [bool use_cudnn = true]
 
@@ -96,6 +110,32 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : arange(range)
+  inputs :
+    {start : Start, end : End, step : Step}
+  outputs :
+    out : Out
+
+- op : argmax(arg_max)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
+- op : argmin(arg_min)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
 
 - op : argsort
   inputs :
@@ -141,6 +181,11 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_value
+  outputs :
+    out : Out
+  manual_signature : [assign_value]
+
 - op : atan
   inputs :
     x : X
@@ -162,6 +207,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : auc
+  inputs :
+    {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
+  outputs :
+    {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
+
 - op : batch_norm
   backward : batch_norm_grad
   inputs:
@@ -179,6 +230,13 @@
     reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : bce_loss
+  backward : bce_loss_grad
+  inputs :
+    {input : X, label : Label}
+  outputs :
+    out : Out
 
 - op : bernoulli
   inputs :
@@ -398,6 +456,22 @@
   outputs :
     out : Out
 
+- op : cross_entropy_with_softmax (softmax_with_cross_entropy)
+  backward : cross_entropy_with_softmax_grad (softmax_with_cross_entropy_grad)
+  inputs :
+    {input : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
+- op : cumprod
+  backward : cumprod_grad
+  inputs :
+    x : X
+  attrs :
+    dim : dim
+  outputs :
+    out : Out
+
 - op : cumsum
   backward: cumsum_grad
   inputs :
@@ -413,6 +487,12 @@
   backward : data_norm_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : decode_jpeg
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
@@ -541,6 +621,15 @@
   outputs :
     out : Out
 
+- op : eigvalsh
+  backward : eigvalsh_grad
+  inputs :
+    {x : X}
+  outputs :
+    {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
+  attrs :
+    uplo : UPLO
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -558,10 +647,24 @@
 
 - op : embedding (lookup_table_v2)
   backward : embedding_grad (lookup_table_v2_grad)
+  inputs :
+    {x : Ids, weight : W}
+  outputs :
+    out : Out
+  manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : empty
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
 
 - op : equal
   inputs :
@@ -627,6 +730,15 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : eye
+  outputs :
+    out : Out
+  scalar :
+    num_rows :
+      support_tensor : true
+    num_columns :
+      support_tensor : true
 
 - op : fake_channel_wise_quantize_abs_max
   extra :
@@ -791,6 +903,18 @@
   outputs :
     out : Out
 
+- op : gaussian (gaussian_random)
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  extra :
+    attrs : [bool use_mkldnn = false]
+  manual_signature : [gaussian]
+
 - op : gelu
   backward : gelu_grad
   inputs :
@@ -889,6 +1013,13 @@
   outputs :
     out : Out
 
+- op : huber_loss
+  backward : huber_loss_grad
+  inputs :
+    {input : X, label : Y}
+  outputs :
+    {out : Out, residual : Residual}
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -974,6 +1105,13 @@
   outputs :
     out : Out
 
+- op : kldiv_loss
+  backward : kldiv_loss_grad
+  inputs :
+    {x : X, label : Target}
+  outputs :
+    out : Loss
+
 - op : kron
   backward : kron_grad
   inputs :
@@ -1058,6 +1196,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : linspace
+  inputs :
+    {start : Start, stop : Stop, number : Num}
+  outputs :
+    out : Out
+
 - op : log
   backward : log_grad, log_double_grad (log_grad_grad)
   inputs :
@@ -1103,8 +1247,43 @@
 
 - op : log_softmax
   backward : log_softmax_grad
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : logcumsumexp
+  backward : logcumsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_not
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : logit
   inputs :
@@ -1133,6 +1312,13 @@
   outputs :
     {pmat : Pmat, l : L, u : U}
 
+- op : margin_cross_entropy
+  backward : margin_cross_entropy_grad
+  inputs:
+    {logits : Logits, label : Label}
+  outputs:
+    {softmax : Softmax, loss : Loss}
+
 - op : masked_select
   inputs :
     {x : X, mask : Mask}
@@ -1148,15 +1334,21 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
-             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
-             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
+
+- op : matrix_nms
+  inputs :
+    {bboxes : BBoxes, scores : Scores}
+  outputs :
+    {out : Out, index : Index, roisnum : RoisNum}
+  get_expected_kernel_type :
+    matrix_nms : GetMatrixNmsExpectedKernelType
 
 - op : matrix_power
   inputs :
@@ -1206,6 +1398,12 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : merge_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : meshgrid
   backward : meshgrid_grad
@@ -1269,6 +1467,18 @@
   outputs :
     out : Out
 
+- op : nanmedian
+  backward : nanmedian_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, medians : MedianIndex}
+  int_array:
+    axis:
+      data_type : int
+  extra:
+    outputs : [medians]
+
 - op : nce
   backward : nce_grad
   extra :
@@ -1316,6 +1526,16 @@
     x : Input
   outputs :
     size : Out
+
+- op : one_hot (one_hot_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    depth :
+      data_type : int
+      tensor_name : depth_tensor
 
 - op : overlap_add
   backward : overlap_add_grad
@@ -1385,6 +1605,10 @@
 
 - op : prelu
   backward : prelu_grad
+  inputs :
+    { x : X, alpha : Alpha}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1421,6 +1645,16 @@
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : randint
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  manual_signature : [randint]
 
 - op : real
   backward : real_grad
@@ -1608,7 +1842,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
+    sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
 
@@ -1729,6 +1963,13 @@
   outputs :
     out : Out
 
+- op : spectral_norm
+  backward : spectral_norm_grad
+  inputs :
+    {weight : Weight, u : U, v : V}
+  outputs :
+    out : Out
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -1772,6 +2013,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
   drop_empty_grad : [x_grad]
+
+- op : stanh
+  backward : stanh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
@@ -1908,6 +2156,10 @@
   outputs :
     out : Out
 
+- op : truncated_gaussian_random
+  outputs :
+    out : Out
+
 - op : unbind
   inputs :
     input : X
@@ -1919,6 +2171,23 @@
     x : X
   outputs :
     out : Y
+
+- op : uniform (uniform_random)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+      min :
+        data_type : float
+        support_tensor : true
+      max :
+        data_type : float
+        support_tensor : true
+  manual_signature : [uniform]
 
 - op : unique_consecutive
   inputs :
@@ -1949,11 +2218,30 @@
   outputs :
     out : Y
 
+- op : update_loss_scaling_
+  inputs :
+    {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
+  outputs :
+    {out : Out, loss_scaling : LossScaling, out_good_steps : OutGoodSteps, out_bad_steps : OutBadSteps}
+  scalar :
+    stop_update :
+      data_type : bool
+      tensor_name : StopUpdate
+  get_expected_kernel_type :
+    update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
+
 - op : viterbi_decode
   inputs :
     {potentials : Input, transition_params : Transition, lengths : Length}
   outputs :
     {scores : Scores, path : Path}
+
+- op : warpctc
+  backward : warpctc_grad
+  inputs :
+    {logits : Logits, label : Label, logits_length : LogitsLength, labels_length : LabelLength}
+  outputs :
+    {warpctcgrad : WarpCTCGrad, loss : Loss}
 
 - op : where
   backward : where_grad
@@ -1966,3 +2254,10 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op: sigmoid_cross_entropy_with_logits
+  backward: sigmoid_cross_entropy_with_logits_grad
+  inputs :
+    {x: X, label: Label}
+  outputs :
+    out : Out

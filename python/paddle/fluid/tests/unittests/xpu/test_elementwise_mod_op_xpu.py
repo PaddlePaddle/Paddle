@@ -72,26 +72,6 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
 
-    class TestElementwiseModOp_broadcast_1(ElementwiseModOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(2, 100, 3).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
-
-    class TestElementwiseModOp_broadcast_2(ElementwiseModOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(22, 128, 3).astype(self.dtype),
-                'Y': np.random.rand(22, 128, 3).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
-
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):
             with fluid.dygraph.guard():

@@ -18,7 +18,6 @@
 #include <thread>
 
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
@@ -61,11 +60,6 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
         device_count = phi::backends::xpu::GetXPUDeviceCount();
-#endif
-      }
-      if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-        device_count = platform::GetNPUDeviceCount();
 #endif
       }
       if (platform::is_ipu_place(place)) {

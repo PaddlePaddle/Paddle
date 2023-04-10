@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

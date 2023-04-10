@@ -92,7 +92,7 @@ class TestProfiler(unittest.TestCase):
                 y = x / 2.0
                 prof.step()
 
-        def my_sheduler(num_step):
+        def my_scheduler(num_step):
             if num_step % 5 < 2:
                 return profiler.ProfilerState.RECORD_AND_RETURN
             elif num_step % 5 < 3:
@@ -102,7 +102,7 @@ class TestProfiler(unittest.TestCase):
             else:
                 return profiler.ProfilerState.CLOSED
 
-        def my_sheduler1(num_step):
+        def my_scheduler1(num_step):
             if num_step % 5 < 2:
                 return profiler.ProfilerState.RECORD
             elif num_step % 5 < 3:
@@ -124,7 +124,7 @@ class TestProfiler(unittest.TestCase):
         prof = None
         with profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU],
-            scheduler=my_sheduler,
+            scheduler=my_scheduler,
             on_trace_ready=my_trace_back,
         ) as prof:
             for i in range(5):
@@ -132,7 +132,7 @@ class TestProfiler(unittest.TestCase):
                 prof.step()
         prof = None
         with profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=my_sheduler1
+            targets=[profiler.ProfilerTarget.CPU], scheduler=my_scheduler1
         ) as prof:
             for i in range(5):
                 y = x / 2.0
@@ -404,7 +404,7 @@ class TestTimerOnly(unittest.TestCase):
                 p.step(num_samples=step_num_samples)
                 if i % 10 == 0:
                     step_info = p.step_info()
-                    print("Iter {}: {}".format(i, step_info))
+                    print(f"Iter {i}: {step_info}")
             p.stop()
             return step_info
 

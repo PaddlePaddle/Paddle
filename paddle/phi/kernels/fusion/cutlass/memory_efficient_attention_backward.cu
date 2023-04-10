@@ -408,13 +408,15 @@ void MemoryEfficientAttentionBackwardKernel(
     p.grad_key_ptr = SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
     p.grad_value_ptr = SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
     p.delta_ptr = SafeGetTensorPtr<float>(delta);
-    p.head_dim = q_dims[3];
-    p.head_dim_value = v_dims[3];
+    PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
+    PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
 
-    p.num_queries = max_seqlen_q_tmp;
-    p.num_keys = max_seqlen_k_tmp;
-    p.num_batches = cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
-    p.num_heads = q_dims[2];
+    PD_MEA_CHECK_OVERFLOW(p.num_queries, max_seqlen_q_tmp);
+    PD_MEA_CHECK_OVERFLOW(p.num_keys, max_seqlen_k_tmp);
+    PD_MEA_CHECK_OVERFLOW(
+        p.num_batches,
+        cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0]);
+    PD_MEA_CHECK_OVERFLOW(p.num_heads, q_dims[2]);
     p.causal = causal;
 
     if (scale < 0) {
@@ -430,23 +432,23 @@ void MemoryEfficientAttentionBackwardKernel(
       VLOG(3) << "p.cu_seqlens_q_ptr" << p.cu_seqlens_q_ptr;
     }
 
-    p.lse_strideH = DimStride(logsumexp.dims(), 1);
-    p.lse_strideB = DimStride(logsumexp.dims(), 0);
+    PD_MEA_CHECK_OVERFLOW(p.lse_strideH, DimStride(logsumexp.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.lse_strideB, DimStride(logsumexp.dims(), 0));
     VLOG(3) << "p.lse_strideH " << p.lse_strideH;
 
-    p.gO_strideH = DimStride(output_grad.dims(), 2);
-    p.gO_strideM = DimStride(output_grad.dims(), 1);
-    p.gO_strideB = DimStride(output_grad.dims(), 0);
+    PD_MEA_CHECK_OVERFLOW(p.gO_strideH, DimStride(output_grad.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gO_strideM, DimStride(output_grad.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.gO_strideB, DimStride(output_grad.dims(), 0));
 
-    p.o_strideH = DimStride(output.dims(), 2);
-    p.o_strideB = DimStride(output.dims(), 0);
+    PD_MEA_CHECK_OVERFLOW(p.o_strideH, DimStride(output.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.o_strideB, DimStride(output.dims(), 0));
 
-    p.gQ_strideH = DimStride(query_grad->dims(), 2);
-    p.gK_strideH = DimStride(key_grad->dims(), 2);
-    p.gV_strideH = DimStride(value_grad->dims(), 2);
-    p.gQ_strideB = DimStride(query_grad->dims(), 0);
-    p.gK_strideB = DimStride(key_grad->dims(), 0);
-    p.gV_strideB = DimStride(value_grad->dims(), 0);
+    PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gK_strideH, DimStride(key_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gV_strideH, DimStride(value_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.gK_strideB, DimStride(key_grad->dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.gV_strideB, DimStride(value_grad->dims(), 0));
     p.gQKV_strideM_multiplier = 1;
     PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
                       DimStride(query_grad->dims(), 1),
@@ -467,31 +469,32 @@ void MemoryEfficientAttentionBackwardKernel(
                           "should be euqal to the first dimension size of "
                           "value grad's stride"));
 
-    p.q_strideB = DimStride(query.dims(), 0);
-    p.k_strideB = DimStride(key.dims(), 0);
-    p.v_strideB = DimStride(value.dims(), 0);
-    p.q_strideM = DimStride(query.dims(), 1);
-    p.k_strideM = DimStride(key.dims(), 1);
-    p.v_strideM = DimStride(value.dims(), 1);
-    p.q_strideH = DimStride(query.dims(), 2);
-    p.k_strideH = DimStride(key.dims(), 2);
-    p.v_strideH = DimStride(value.dims(), 2);
+    PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(key.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideB, DimStride(value.dims(), 0));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideM, DimStride(query.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideM, DimStride(key.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideM, DimStride(value.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideH, DimStride(query.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideH, DimStride(key.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideH, DimStride(value.dims(), 2));
 
-    p.delta_strideH = DimStride(delta.dims(), 1);
-    p.delta_strideB = DimStride(delta.dims(), 0);
+    PD_MEA_CHECK_OVERFLOW(p.delta_strideH, DimStride(delta.dims(), 1));
+    PD_MEA_CHECK_OVERFLOW(p.delta_strideB, DimStride(delta.dims(), 0));
 
     if (bias) {
       p.bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
-      p.bias_strideB =
-          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims);
-      p.bias_strideH = q_dims[1] * k_dims[1];
-      p.bias_strideM = k_dims[1];
+      PD_MEA_CHECK_OVERFLOW(
+          p.bias_strideB,
+          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
+      PD_MEA_CHECK_OVERFLOW(p.bias_strideH, q_dims[1] * k_dims[1]);
+      PD_MEA_CHECK_OVERFLOW(p.bias_strideM, k_dims[1]);
       VLOG(3) << "p.bias_ptr" << p.bias_ptr;
       if (bias_grad) {
         p.grad_bias_ptr = SafeAllocTensor<scalar_t, Context>(ctx, bias_grad);
-        p.gB_strideB = q_dims[2] * q_dims[1] * k_dims[1];
-        p.gB_strideH = q_dims[1] * k_dims[1];
-        p.gB_strideM = k_dims[1];
+        PD_MEA_CHECK_OVERFLOW(p.gB_strideB, q_dims[2] * q_dims[1] * k_dims[1]);
+        PD_MEA_CHECK_OVERFLOW(p.gB_strideH, q_dims[1] * k_dims[1]);
+        PD_MEA_CHECK_OVERFLOW(p.gB_strideM, k_dims[1]);
         VLOG(3) << "p.grad_bias_ptr" << p.grad_bias_ptr;
       } else {
         p.grad_bias_ptr = nullptr;

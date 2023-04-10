@@ -50,9 +50,7 @@ class ConstantInitializer(Initializer):
         """
         block = self._check_block(block)
 
-        assert isinstance(var, framework.Variable) or isinstance(
-            var, framework.EagerParamBase
-        )
+        assert isinstance(var, (framework.Variable, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
         if in_dygraph_mode():

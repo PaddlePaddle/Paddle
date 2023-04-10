@@ -381,7 +381,7 @@ Please use '.. code-block:: python' to format the sample code."""
                 SAMPLECODE_TEMPDIR,
                 '{}_example{}'.format(
                     name,
-                    '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1),
+                    '.py' if len(codeblocks) == 1 else f'_{y + 1}.py',
                 ),
             )
             with open(tfname, 'w') as tempf:
@@ -432,7 +432,7 @@ def execute_samplecode(tfname):
     else:
         logger.error("Error: fail to parse python version!")
         result = False
-        exit(1)
+        sys.exit(1)
 
     logger.info("----example code check----")
     logger.info("executing sample code: %s", tfname)
@@ -724,7 +724,7 @@ if __name__ == '__main__':
     filenames = get_filenames(args.full_test)
     if len(filenames) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
-        exit(0)
+        sys.exit(0)
     logger.info("API_PR is diff from API_DEV: %s", filenames)
 
     threads = multiprocessing.cpu_count()
@@ -760,7 +760,7 @@ if __name__ == '__main__':
                     "In addition, mistakes found in sample codes: %s", temp[1]
                 )
         logger.info("----------------------------------------------------")
-        exit(1)
+        sys.exit(1)
     else:
         timeovered_test = {}
         for temp in result:
@@ -780,7 +780,7 @@ if __name__ == '__main__':
             )
             if args.debug:
                 for k, v in timeovered_test.items():
-                    logger.info('{} - {}s'.format(k, v))
+                    logger.info(f'{k} - {v}s')
         if len(SUMMARY_INFO['success']):
             logger.info(
                 "%d sample codes ran success", len(SUMMARY_INFO['success'])
@@ -810,7 +810,7 @@ if __name__ == '__main__':
             logger.info(
                 "Mistakes found in sample codes. Please recheck the sample codes."
             )
-            exit(1)
+            sys.exit(1)
 
     logger.info("Sample code check is successful!")
 

@@ -107,10 +107,10 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
     {% if default_value == "DataType::UNDEFINED" %}
 -1
     {%- else %}
-static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+static_cast<int>(framework::TransToProtoVarType(phi::{{default_value}}))
     {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
-static_cast<int>(experimental::{{default_value}})
+static_cast<int>(phi::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
 static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
   {%- else %}{# pass through as-is #}
@@ -385,7 +385,7 @@ phi::KernelKey GetKernelTypeForVar(
           var_name == "{{ skip_arg }}"
           {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
         {%- endfor -%}
-      ){
+      ) {
     {% if "skip_transform" in op["data_transform"] %}
         return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
@@ -400,7 +400,7 @@ phi::KernelKey GetKernelTypeForVar(
         return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
       }
 {% endif %}
-      else{
+      else {
           return phi::KernelKey(
             tensor.place(), tensor.layout(), expected_kernel_type.dtype());
       }

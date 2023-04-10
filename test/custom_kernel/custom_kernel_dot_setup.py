@@ -18,8 +18,6 @@ import site
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
-from paddle.fluid import core
-
 
 # refer: https://note.qidong.name/2018/03/setup-warning-strict-prototypes
 # Avoid a gcc warning below:
@@ -40,16 +38,12 @@ paddle_extra_compile_args = [
     '-Wno-parentheses',
     '-DPADDLE_WITH_CUSTOM_KERNEL',
 ]
-if core.is_compiled_with_npu():
-    paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
 
 # include path
 site_packages_path = site.getsitepackages()
-paddle_custom_kernel_include = list(
-    map(
-        lambda path: os.path.join(path, 'paddle', 'include'), site_packages_path
-    )
-)
+paddle_custom_kernel_include = [
+    os.path.join(path, 'paddle', 'include') for path in site_packages_path
+]
 
 # include path third_party
 compile_third_party_path = os.path.join(
@@ -61,9 +55,9 @@ paddle_custom_kernel_include += [
 ]
 
 # libs path
-paddle_custom_kernel_library_dir = list(
-    map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path)
-)
+paddle_custom_kernel_library_dir = [
+    os.path.join(path, 'paddle', 'fluid') for path in site_packages_path
+]
 
 # libs
 libs = [':libpaddle.so']

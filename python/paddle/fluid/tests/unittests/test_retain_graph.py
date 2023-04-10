@@ -74,7 +74,7 @@ class TestRetainGraph(unittest.TestCase):
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
-                raise NotImplementedError('{} not implemented'.format(type))
+                raise NotImplementedError(f'{type} not implemented')
             interpolatesv.stop_gradient = False
             real_data.stop_gradient = True
             fake_AB = paddle.concat((real_data.detach(), interpolatesv), 1)

@@ -1016,6 +1016,18 @@ template class Pool2dGradFunctor<phi::GPUContext,
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             MaxPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             AvgPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 MaxPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::bfloat16>,
@@ -1894,12 +1906,24 @@ template class Pool3dFunctor<phi::GPUContext,
 template class Pool3dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
+template class Pool3dFunctor<phi::GPUContext,
+                             MaxPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool3dFunctor<phi::GPUContext,
+                             AvgPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
 template class Pool3dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool3dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
+template class Pool3dGradFunctor<phi::GPUContext,
+                                 MaxPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool3dGradFunctor<phi::GPUContext,
+                                 AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
 
 template class Pool3dFunctor<phi::GPUContext,
                              MaxPool<dtype::bfloat16>,
