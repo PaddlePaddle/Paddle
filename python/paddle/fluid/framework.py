@@ -145,7 +145,6 @@ special_op_attrs = {
     "amax": [{"reduce_all": False}],
     "amin": [{"reduce_all": False}],
     "any": [{"reduce_all": False}],
-    "frobenius_norm": [{"reduce_all": False}],
     "logsumexp": [{"reduce_all": False}],
     "reduce_max": [{"reduce_all": False}],
     "reduce_min": [{"reduce_all": False}],

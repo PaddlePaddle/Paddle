@@ -369,11 +369,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
 
         if in_dygraph_mode():
-            return _C_ops.frobenius_norm(input, dim, keepdim, False)
+            return _C_ops.frobenius_norm(input, dim, keepdim)
         else:
             attrs = {'dim': dim, 'keep_dim': keepdim}
-            if dim is None:
-                attrs['reduce_all'] = True
             check_variable_and_dtype(
                 input, 'input', ['float32', 'float64'], 'frobenius_norm'
             )
