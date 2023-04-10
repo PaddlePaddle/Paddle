@@ -4675,11 +4675,35 @@ class PipelineOptimizer(object):
         device = self._param_device_map[param_name]
         return device
 
+    def _find_op_by_output(self, startup_program, var_name):
+        """ find the first op with output named var_name in startup_program. """
+        for op in startup_program.global_block().ops:
+            if op.output_arg_names[0] == var_name:
+                return op
+        return None 
+
     def _split_startup_program(self, startup_program, device_id):
         block = startup_program.global_block()
         new_startup_program = Program()
-        for op in block.ops:
-            device = op.attr(self._op_device_key)
+
+        cur_device = None 
+        prev_master_name = ''
+        for idx, op in enumerate(list(block.ops)):
+            if "master" in op.output_arg_names[0]:
+                master_name = op.output_arg_names[0]
+                if master_name != prev_master_name or prev_master_name == '':
+                    #assert cur_device is None 
+                    param_name = master_name[:master_name.index("_fp32_master")]
+                    pre_op = self._find_op_by_output(startup_program, param_name)
+                    device = pre_op.attr(self._op_device_key)
+                    cur_device = device
+                    prev_master_name = param_name 
+                else:
+                    device = cur_device
+            else:
+                device = op.attr(self._op_device_key)
+                cur_device = None
+
             if device == "cpu":
                 assert op.type == "fill_constant", (
                     "For ops in startup program with the op_device attribute "
@@ -4840,6 +4864,14 @@ class PipelineOptimizer(object):
             assert device, "Please put you program within device_guard scope."
             for i in range(offset):
                 block.ops[idx + i]._set_attr(self._op_device_key, device)
+
+        elif self._is_optimize_op(op) and self._is_gradient_clip_op(op) and op.type == "cast":
+            # For fp16-->fp32 cast added by AMP in grad clip phase
+            grad_name = op.desc.input('X')
+            assert len(grad_name) == 1
+            param_name = self._strip_grad_suffix(grad_name[0])
+            prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
+            op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif self._is_optimize_op(op) and op.type == "cast":
             # For fp16-->fp32 cast added by AMP
             grad_name = op.output('Out')
@@ -5253,6 +5285,7 @@ class PipelineOptimizer(object):
                 if not core.grad_var_suffix() in name: continue
                 param_name = name.strip(core.grad_var_suffix())
                 new_grad_name = name + "@MERGED"
+                # print(f"_rename_gradient_var_name op={op}")
                 self._rename_arg(op, name, new_grad_name)
 
     def _accumulate_gradients(self,
@@ -5282,7 +5315,7 @@ class PipelineOptimizer(object):
                 in_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]
                 if out_name.strip('@GRAD') in self._param_device_map:
-                    assert in_name.replace('.cast_fp16', '') == out_name
+                    #assert in_name.replace('.cast_fp16', '') == out_name
                     block._remove_op(index)
                     continue
 
@@ -5306,7 +5339,7 @@ class PipelineOptimizer(object):
                     merged_param_grad_name = param_grad_name + merged_suffix
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
-                                         merged_param_grad_name, dtype)
+                                         merged_param_grad_name, paddle.float32) #dtype)
                     assert block.has_var(merged_param_grad_name)
 
                     param_grad_var = block.var(param_grad_name)
@@ -5332,7 +5365,7 @@ class PipelineOptimizer(object):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
 
-                    is_fp16_grad = 'cast_fp16' in grad_name
+                    is_fp16_grad = (grad_var.dtype == paddle.bfloat16) or (grad_var.dtype == paddle.float16)  #'cast_fp16' in grad_name
                     need_cast = (is_fp16_grad is not fp16_allreduce)
 
                     if need_cast:
@@ -5342,7 +5375,7 @@ class PipelineOptimizer(object):
                         #     cast grad to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
                         cast_grad_var = self._create_var(
-                            block, param_grad_var, cast_grad_var_name, dtype)
+                            block, param_grad_var, cast_grad_var_name, paddle.float32) #dtype)
                         cast_grad_var.persistable = False
                         block._insert_op(index=first_opt_op_idx + offset,
                                          type='cast',

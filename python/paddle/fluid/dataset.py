@@ -273,6 +273,10 @@ class DatasetBase(object):
                 slot_var.type = "uint64"
             elif var.dtype == core.VarDesc.VarType.INT32:
                 slot_var.type = "uint32"
+            elif var.dtype == core.VarDesc.VarType.FP16:
+                slot_var.type = "float16"
+            elif var.dtype == core.VarDesc.VarType.BF16:
+                slot_var.type = "uint16"
             else:
                 raise ValueError(
                     "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
