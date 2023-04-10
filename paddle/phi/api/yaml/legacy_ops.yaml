@@ -83,18 +83,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : affine_grid
-  args : (Tensor input, IntArray outputShape, bool align_corners=true)
-  output : Tensor
-  infer_meta :
-    func : AffineGridInferMeta
-    param : [input, outputShape, align_corners]
-  kernel :
-    func : affine_grid
-    param : [input, outputShape, align_corners]
-    data_type : input
-  backward : affine_grid_grad
-
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -878,14 +866,6 @@
     func : matmul
   backward : matmul_grad
 
-- op : matrix_nms
-  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2.0, int background_label = 0, bool normalized = true)
-  output : Tensor(out), Tensor(index), Tensor(roisnum)
-  infer_meta :
-    func : MatrixNMSInferMeta
-  kernel :
-    func : matrix_nms
-
 - op : matrix_rank
   args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
@@ -1546,18 +1526,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : warpctc
-  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times)
-  output :  Tensor(loss), Tensor(warpctcgrad)
-  infer_meta :
-    func : WarpctcInferMeta
-  kernel :
-    func : warpctc
-    data_type: logits
-  optional: logits_length, labels_length
-  intermediate: warpctcgrad
-  backward : warpctc_grad
 
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
