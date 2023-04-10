@@ -112,12 +112,12 @@ class TestCustomLinearJit(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
-                    phi_out,
-                    phi_x_grad,
-                    phi_weight_grad,
-                    phi_bias_grad,
+                    custom_out,
+                    custom_x_grad,
+                    custom_weight_grad,
+                    custom_bias_grad,
                 ) = linear_static(
-                    custom_ops.phi_linear,
+                    custom_ops.custom_linear,
                     device,
                     dtype,
                     self.np_x,
@@ -132,23 +132,23 @@ class TestCustomLinearJit(unittest.TestCase):
                     self.np_weight,
                     self.np_bias,
                 )
-                self.check_output(phi_out, pd_out, "out")
-                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(custom_out, pd_out, "out")
+                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
                 self.check_output(
-                    phi_weight_grad, pd_weight_grad, "weight_grad"
+                    custom_weight_grad, pd_weight_grad, "weight_grad"
                 )
-                self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
+                self.check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
 
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
-                    phi_out,
-                    phi_x_grad,
-                    phi_weight_grad,
-                    phi_bias_grad,
+                    custom_out,
+                    custom_x_grad,
+                    custom_weight_grad,
+                    custom_bias_grad,
                 ) = linear_dynamic(
-                    custom_ops.phi_linear,
+                    custom_ops.custom_linear,
                     device,
                     dtype,
                     self.np_x,
@@ -168,12 +168,12 @@ class TestCustomLinearJit(unittest.TestCase):
                     self.np_weight,
                     self.np_bias,
                 )
-                self.check_output(phi_out, pd_out, "phi_out")
-                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output(custom_out, pd_out, "custom_out")
+                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
                 self.check_output(
-                    phi_weight_grad, pd_weight_grad, "weight_grad"
+                    custom_weight_grad, pd_weight_grad, "weight_grad"
                 )
-                self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
+                self.check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
 
 
 if __name__ == "__main__":
