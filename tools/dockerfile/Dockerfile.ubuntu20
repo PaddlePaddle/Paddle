@@ -24,16 +24,16 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool
+
+# Downgrade gcc&&g++
+<install_gcc>
 
 RUN bash /build_scripts/install_trt.sh
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # # So install a newer version here.
 RUN bash /build_scripts/install_patchelf.sh
-
-# Downgrade gcc&&g++
-<install_gcc>
 
 # install cmake
 WORKDIR /home
