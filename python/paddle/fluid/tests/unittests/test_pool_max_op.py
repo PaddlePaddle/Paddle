@@ -154,6 +154,10 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         input = np.random.random(self.shape).astype(self.dtype)
         input = np.round(input * 100.0, 2)
+        if self.is_bfloat16_op():
+            input = input.astype(np.float32)
+        else:
+            input = input.astype(self.dtype)
 
         output, mask = self.pool_forward_naive(
             input,
