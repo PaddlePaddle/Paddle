@@ -2159,7 +2159,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list|None optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2211,7 +2211,7 @@ class Layer:
 
 
         Parameters:
-           excluded_layers(nn.Layer|list|None optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
