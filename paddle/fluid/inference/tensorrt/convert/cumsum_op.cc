@@ -27,7 +27,7 @@ class CumsumOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7220)
-    VLOG(3) << "convert a fluid cumsum op to tensorrt layer";
+    VLOG(3) << "convert a cumsum op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_x_name = op_desc.Input("X").front();
     std::string output_name = op_desc.Output("Out").front();
@@ -59,9 +59,7 @@ class CumsumOpConverter : public OpConverter {
     nvinfer1::Dims start;
     start.nbDims = rank;
     std::vector<int32_t> start_vec(rank, 0);
-    for (int32_t i = 0; i < rank; ++i) {
-      start.d[i] = start_vec[i];
-    }
+    std::fill(start.d, start.d + rank, 0);
 
     nvinfer1::Dims size;
     size.nbDims = rank;

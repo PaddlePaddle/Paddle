@@ -25,10 +25,14 @@ import paddle.inference as paddle_infer
 
 class TrtConvertCumsum(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        self.trt_param.workspace_size = 1073741824
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7220:
+            return False
         return True
 
     def sample_program_configs(self):
+        self.trt_param.workspace_size = 1073741824
+
         def generate_input1():
             if self.dims == 2:
                 self.input_shape = [2, 3]
@@ -135,6 +139,12 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
                     "input_data": [4, 3, 32, 32],
                 }
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7220:
+                return 0, 7
+            return 1, 2
+
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -150,9 +160,13 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-2
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-2
 
     def test(self):
         self.run_test()
