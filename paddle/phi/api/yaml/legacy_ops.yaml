@@ -83,18 +83,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : affine_grid
-  args : (Tensor input, IntArray outputShape, bool align_corners=true)
-  output : Tensor
-  infer_meta :
-    func : AffineGridInferMeta
-    param : [input, outputShape, align_corners]
-  kernel :
-    func : affine_grid
-    param : [input, outputShape, align_corners]
-    data_type : input
-  backward : affine_grid_grad
-
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -334,17 +322,6 @@
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
 
-# Part of python API paddle.nn.functional.cross_entropy
-- op : cross_entropy_with_softmax
-  args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
-  output : Tensor(softmax), Tensor(loss)
-  infer_meta :
-    func : CrossEntropyWithSoftmaxInferMeta
-  kernel :
-    func : cross_entropy_with_softmax
-    data_type : input
-  backward : cross_entropy_with_softmax_grad
-
 - op : cumsum
   args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
@@ -435,15 +412,6 @@
     func : edit_distance
     data_type: DataType::FLOAT32
   optional : hypslength, refslength
-
-- op : eigvalsh
-  args : (Tensor x, str uplo, bool is_test)
-  output : Tensor(eigenvalues), Tensor(eigenvectors)
-  infer_meta :
-    func : EigvalshInferMeta
-  kernel :
-    func : eigvalsh
-  backward : eigvalsh_grad
 
 - op : einsum
   args : (Tensor[] x, str equation)
@@ -820,15 +788,6 @@
     param: [start, stop, number, dtype]
     data_type : dtype
     backend : place
-
-- op : logcumsumexp
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumInferMeta
-  kernel :
-    func : logcumsumexp
-  backward : logcumsumexp_grad
 
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})

@@ -70,6 +70,13 @@ struct Sine<dtype::float16> {
   }
 };
 
+template <>
+struct Sine<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(sin(static_cast<float>(val)));
+  }
+};
+
 template <typename T>
 struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
@@ -79,6 +86,13 @@ template <>
 struct Cosine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
     return dtype::float16(cos(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Cosine<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(cos(static_cast<float>(val)));
   }
 };
 
@@ -2664,10 +2678,12 @@ struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
 
-  // reciprocal(x) = 1 / x
-  __device__ __forceinline__ T operator()(const T x) const { return one / x; }
+  __device__ __forceinline__ T operator()(const T x) const {
+    return static_cast<T>(one / static_cast<MPType>(x));
+  }
 };
 
 template <typename T>
