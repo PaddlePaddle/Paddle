@@ -55,9 +55,24 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   VLOG(3) << "Final State Running: "
           << "add_n_ad_func";
   auto api_result = paddle::experimental::add_n(x);
+
+  std::string filename = __FILE__;
+  std::string line = std::to_string(__LINE__);
+  std::string function_name = __FUNCTION__;
+  std::string forward_trace =
+      filename + " " + line + " " + function_name + "\n";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("add_n", api_result);
+    forward_trace =
+        egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
+    try {
+      PADDLE_ENFORCE(
+          false,
+          "add_n's backward has nan/inf, please check the data of backward op");
+    } catch (std::exception& e) {
+      egr::Controller::Instance().SetOpPythonStackStr(forward_trace);
+    }
   }
 
   // Get Outputs
@@ -83,6 +98,10 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     // Node Construction
     auto grad_node =
         std::shared_ptr<AddNGradNodeFinal>(new AddNGradNodeFinal(1, 1));
+
+    // Set forward's stack
+    grad_node->SetForwardTrace(forward_trace);
+
     // SetAttributes if needed
 
     // Set TensorWrappers for Forward Inputs if needed

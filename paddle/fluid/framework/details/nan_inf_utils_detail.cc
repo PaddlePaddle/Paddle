@@ -163,17 +163,6 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
   std::string cpu_hint_str =
       GetCpuHintString<T>(op_type, var_name, tensor.place());
   CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
-  // try {
-  //      PADDLE_THROW(platform::errors::InvalidArgument(
-  //        "asfasdfasd Cannot find the dimension of in this device mesh."));
-  // } catch (...) {
-  //    std::exception_ptr  current_exception = std::current_exception();
-  //    try {
-  //    } catch (...){
-  //      LOG(WARNING) << "Tasdfa Catch raises an unknown exception";
-  //      std::rethrow_exception(current_exception);
-  //    }
-  // }
 }
 
 template <>

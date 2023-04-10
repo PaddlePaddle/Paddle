@@ -135,11 +135,6 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place
      }}
      std::string last = str + filename +" " + line + " " + function_name+"\\n";
      egr::Controller::Instance().SetOpPythonStackStr(last);
-    //for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {{
-    //    PyObject* line = PyList_GetItem(traceback_list, i);
-    //    const char* line_str = PyUnicode_AsUTF8(line);
-    //    std::cout << line_str << std::endl;
-    //}}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;

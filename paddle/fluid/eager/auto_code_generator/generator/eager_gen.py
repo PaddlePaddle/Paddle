@@ -496,7 +496,7 @@ CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
       forward_trace = egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
       try{{
        PADDLE_ENFORCE(false,
-               "{} backward has nan/inf, please check the data of backward op");
+               "{}'s backward has nan/inf, please check the data of backward op");
       }} catch(std::exception& e) {{
          egr::Controller::Instance().SetOpPythonStackStr(forward_trace);
       }}

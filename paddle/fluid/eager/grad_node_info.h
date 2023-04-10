@@ -296,13 +296,7 @@ class GradNodeBase {
     backward_trace_ = backward_trace;
   }
 
-  std::string GetForwardTrace() {
-    if (backward_trace_.size()) {
-      std::cout << " GetForwardOpBlock is false"
-                << std::endl;  // <<backward_trace_<<std::endl;
-    }
-    return backward_trace_;
-  }
+  std::string GetForwardTrace() { return backward_trace_; }
 
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
