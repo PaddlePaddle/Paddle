@@ -707,9 +707,8 @@ def decorate(
                 run_example_code()
     """
     dtype = "bfloat16" if use_bf16 else "float16"
-    paddle.static.amp.set_global_amp_dtype(dtype)
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists()
+        amp_lists = AutoMixedPrecisionLists(dtype=dtype)
 
     if use_fp16_guard is None:
         use_fp16_guard = use_pure_fp16
@@ -747,9 +746,15 @@ def amp_decorate(
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
     """
-    paddle.static.amp.set_global_amp_dtype(dtype)
+    # check amp_dtype: float16 or bfloat16
+    dtype = dtype.lower()
+    if not (dtype in ['float16', 'bfloat16']):
+        raise ValueError(
+            "If enable AMP, dtype should be 'float16' or 'bfloat16'."
+        )
+
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists()
+        amp_lists = AutoMixedPrecisionLists(dtype=dtype)
 
     # check amp_level: O0-O2
     level = level.upper()
