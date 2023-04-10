@@ -281,7 +281,7 @@ def create_test_class(
         if test_class[0] == '__class__':
             continue
         class_obj = test_class[1]
-        cls_name = "{0}_{1}".format(test_class[0], str(test_type))
+        cls_name = f"{test_class[0]}_{str(test_type)}"
         func_globals[cls_name] = type(
             cls_name,
             (class_obj,),
@@ -298,7 +298,7 @@ def create_test_class(
     ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
-            cls_name = "{0}_{1}".format(dy_class[0], str(test_type))
+            cls_name = f"{dy_class[0]}_{str(test_type)}"
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type
@@ -329,10 +329,10 @@ def get_test_cover_info():
     diff_list = list(set(xpu_op_list).difference(set(xpu_op_covered)))
     total_len = len(set(xpu_op_list))
     covered_len = len(set(xpu_op_covered))
-    print('{} test: {}/{}'.format(version_str, covered_len, total_len))
+    print(f'{version_str} test: {covered_len}/{total_len}')
     if len(diff_list) != 0:
         print(
-            "These ops need to be tested on {0}! ops:{1}".format(
+            "These ops need to be tested on {}! ops:{}".format(
                 version_str, ','.join(diff_list)
             )
         )

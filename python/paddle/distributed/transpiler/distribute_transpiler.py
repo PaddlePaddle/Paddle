@@ -392,7 +392,7 @@ class DistributeTranspiler:
 
             for i in range(1, self.config.nccl_comm_num):
                 startup_program.global_block().create_var(
-                    name="NCCLID_{}".format(i),
+                    name=f"NCCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
@@ -400,12 +400,12 @@ class DistributeTranspiler:
             if self.config.use_hierarchical_allreduce:
                 for i in range(0, self.config.nccl_comm_num):
                     startup_program.global_block().create_var(
-                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_inter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
                     startup_program.global_block().create_var(
-                        name="Hierarchical_exter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_exter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
@@ -805,7 +805,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
                 if self.config.completely_not_async and self.trainer_num > 1:
                     send_varnames = [
-                        "{}.trainer_{}".format(var.name, self.trainer_id)
+                        f"{var.name}.trainer_{self.trainer_id}"
                         for var in splited_vars
                     ]
                 else:

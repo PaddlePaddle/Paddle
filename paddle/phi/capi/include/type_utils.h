@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 
 #include "paddle/phi/capi/include/c_data_type.h"
 #include "paddle/phi/common/data_type.h"
@@ -42,6 +42,8 @@ inline PD_DataType ToPDDataType(::phi::DataType dtype) {
     return_result(UINT16, UINT16);
     return_result(UINT8, UINT8);
     return_result(BOOL, BOOL);
+    return_result(COMPLEX64, COMPLEX64);
+    return_result(COMPLEX128, COMPLEX128);
     default: {
       PADDLE_THROW(
           ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
@@ -69,6 +71,8 @@ inline ::phi::DataType ToPhiDataType(PD_DataType dtype) {
     return_result(UINT16, UINT16);
     return_result(UINT8, UINT8);
     return_result(BOOL, BOOL);
+    return_result(COMPLEX64, COMPLEX64);
+    return_result(COMPLEX128, COMPLEX128);
     default: {
       PADDLE_THROW(
           ::phi::errors::Unavailable("DataType %d is not supported.", dtype));

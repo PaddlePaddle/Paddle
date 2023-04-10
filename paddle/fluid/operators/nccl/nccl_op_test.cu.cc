@@ -31,9 +31,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
-USE_CUDA_ONLY_OP(ncclAllReduce);
-USE_CUDA_ONLY_OP(ncclReduce);
-USE_CUDA_ONLY_OP(ncclBcast);
+USE_OP_ITSELF(ncclAllReduce);
+USE_OP_ITSELF(ncclReduce);
+USE_OP_ITSELF(ncclBcast);
+PD_DECLARE_KERNEL(ncclAllReduce, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(ncclReduce, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(ncclBcast, GPU, ALL_LAYOUT);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;

@@ -103,12 +103,12 @@ def get_info_file_lines(info_file, diff_file):
                 continue
 
             elif line.startswith('LF:'):
-                print('LF:{}'.format(current_lf))
+                print(f'LF:{current_lf}')
 
                 continue
 
             elif line.startswith('LH:'):
-                print('LH:{}'.format(current_lh))
+                print(f'LH:{current_lh}')
 
                 continue
 

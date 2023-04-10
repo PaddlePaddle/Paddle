@@ -19,6 +19,8 @@ limitations under the License. */
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
@@ -178,12 +180,12 @@ struct MatmulDescriptor {
     is_cached = obj.is_cached;
   }
 
-  ~MatmulDescriptor() {
+  ~MatmulDescriptor() PADDLE_MAY_THROW {
     if (!is_cached) {
-      dynload::cublasLtMatmulDescDestroy(op_desc);
-      dynload::cublasLtMatrixLayoutDestroy(y_desc);
-      dynload::cublasLtMatrixLayoutDestroy(x_desc);
-      dynload::cublasLtMatrixLayoutDestroy(out_desc);
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(out_desc));
       delete algo;
 
       op_desc = nullptr;
