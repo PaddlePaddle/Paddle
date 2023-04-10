@@ -65,11 +65,15 @@ class TensorArray : public TensorBase,
 
   DataType dtype() const override;
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   void set_type(const DataType dtype);
+#endif
 
   DataLayout layout() const override;
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   void set_layout(const DataLayout layout);
+#endif
 
   /// \brief This overrided function is not used in TensorArray.
   bool valid() const override;

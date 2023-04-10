@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -167,12 +167,6 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
       dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
   bool use_mkldnn = false;
-  std::vector<int> fused_reshape_X = {};
-  std::vector<int> fused_reshape_Y = {};
-  std::vector<int> fused_reshape_Out = {};
-  std::vector<int> fused_transpose_X = {};
-  std::vector<int> fused_transpose_Y = {};
-  std::vector<int> fused_transpose_Out = {};
   bool use_quantizer = false, force_fp32_output = false;
   std::string mkldnn_data_type = "float32";
   float Scale_x = 1.0, Scale_y = 1.0, Scale_out = 1.0;
@@ -182,12 +176,6 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
   attrs.insert({"transpose_Y", transpose_b});
   attrs.insert({"alpha", alpha});
   attrs.insert({"use_mkldnn", use_mkldnn});
-  attrs.insert({"fused_reshape_X", fused_reshape_X});
-  attrs.insert({"fused_reshape_Y", fused_reshape_Y});
-  attrs.insert({"fused_reshape_Out", fused_reshape_Out});
-  attrs.insert({"fused_transpose_X", fused_transpose_X});
-  attrs.insert({"fused_transpose_Y", fused_transpose_Y});
-  attrs.insert({"fused_transpose_Out", fused_transpose_Out});
   attrs.insert({"use_quantizer", use_quantizer});
   attrs.insert({"mkldnn_data_type", mkldnn_data_type});
   attrs.insert({"Scale_x", Scale_x});

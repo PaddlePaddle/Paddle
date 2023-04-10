@@ -84,6 +84,12 @@ int64_t SparseCooTensor::nnz() const {
   }
 }
 
+void SparseCooTensor::set_type(const DataType dtype) { meta_.dtype = dtype; }
+
+void SparseCooTensor::set_layout(const DataLayout layout) {
+  meta_.layout = layout;
+}
+
 void SparseCooTensor::Resize(const DDim& dense_dims,
                              const int64_t sparse_dim,
                              const int64_t non_zero_num) {
