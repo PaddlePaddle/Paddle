@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.distributed.transpiler import collective
+from paddle.fluid import core
 from paddle.fluid.layers.nn import _pull_box_sparse
 
 
@@ -25,10 +25,10 @@ class TestTranspile(unittest.TestCase):
     """TestCases for BoxPS Preload"""
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = mode
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         return t
 
     def test_transpile(self):

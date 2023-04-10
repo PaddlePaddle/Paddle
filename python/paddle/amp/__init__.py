@@ -16,9 +16,8 @@ from .auto_cast import auto_cast  # noqa: F401
 from .auto_cast import decorate  # noqa: F401
 from .auto_cast import amp_guard  # noqa: F401
 from .auto_cast import amp_decorate  # noqa: F401
-from .auto_cast import low_precision_op_list  # noqa: F401
-from .auto_cast import WHITE_LIST  # noqa: F401
-from .auto_cast import BLACK_LIST  # noqa: F401
+from .auto_cast import FP16_WHITE_LIST  # noqa: F401
+from .auto_cast import FP16_BLACK_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
 
@@ -26,5 +25,7 @@ from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
 from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
+
+from . import debugging  # noqa: F401
 
 __all__ = ['auto_cast', 'GradScaler', 'decorate']

@@ -196,7 +196,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
     SET_IN(WeightH, weight_h);
     SET_IN(Bias, bias);
 #undef SET_IN
-    // TODO(grygielski): Add H0 to the pass
+    // H0 is required for oneDNN and optional in PaddlePaddle
     op_desc.SetInput("H0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetAttr("is_reverse", gru->Op()->GetAttr("is_reverse"));

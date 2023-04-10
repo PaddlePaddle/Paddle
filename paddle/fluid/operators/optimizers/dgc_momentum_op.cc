@@ -76,5 +76,5 @@ REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum,
                              ops::DGCMomentumOp,
                              ops::DGCMomentumOpMaker);
 
-REGISTER_OP_CPU_KERNEL(dgc_momentum,
-                       ops::DGCMomentumKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    dgc_momentum, CPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}

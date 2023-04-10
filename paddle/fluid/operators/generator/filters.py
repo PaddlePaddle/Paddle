@@ -30,8 +30,56 @@ from type_mapping import (
 )
 
 
+def get_infer_var_type_func(op_name):
+    if op_name == "assign":
+        return f"""
+ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SyncTypeAndDataType("X", "Out");
+  }}
+}};
+"""
+    elif op_name == "lookup_table_v2_grad":
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {{
+    auto out_var_name = framework::GradVarName("W");
+    auto attr = ctx->GetAttr("is_sparse");
+    bool is_sparse = PADDLE_GET(bool, attr);
+    if (is_sparse) {{
+      VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
+      ctx->SetOutputType(out_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
+    }} else {{
+      VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
+              << " is set to phi::DenseTensor";
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+    }}
+    ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
+  }}
+}};
+"""
+    elif op_name == "merge_selected_rows":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType
+        : public framework::PassInDtypeAndVarTypeToOutput {{
+    protected:
+    std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+        const override {{
+        static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
+        return m;
+    }}
+    }};
+    """
+    else:
+        return None
+
+
 def quote(s):
-    return '"{}"'.format(s)
+    return f'"{s}"'
 
 
 # ------------------------------ attr -------------------------------------
@@ -65,6 +113,25 @@ def to_dense_input_type(s, optional=False):
         return dense_optional_input_types_map[s]
 
 
+def assert_dense_or_sr(input_type):
+    return (
+        "ctx.IsSelectedRowsInput"
+        if input_type == "selected_rows"
+        else "ctx.IsDenseTensorInput"
+    )
+
+
+def find_optinal_inputs_name(inputs):
+    optional_inputs_name = [
+        input["fluid_name"] for input in inputs if input["optional"] is True
+    ]
+    return optional_inputs_name
+
+
+def delete_last_underline(op_name):
+    return op_name if op_name[-1] != '_' else op_name[:-1]
+
+
 # ------------------------------ output  ----------------------------------
 def to_paddle_output_type(s):
     return output_type_map[s]
@@ -87,16 +154,16 @@ def filter_intermediate(items: Sequence):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(s[:-5])
+        return f'GradVarName("{s[:-5]}")'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(s[:-5])
+        return f'"{s[:-5]}@GRAD"'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_pascal_case(s):

@@ -19,12 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import paddle.fluid.profiler as profiler
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
-import paddle.utils as utils
+from paddle import fluid, utils
+from paddle.fluid import core, profiler
+from paddle.fluid.proto.profiler import profiler_pb2
 from paddle.utils.flops import flops
 
 
@@ -41,11 +38,11 @@ class TestProfiler(unittest.TestCase):
                 name='x', shape=[-1, 784], dtype='float32'
             )
             hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
-            i = layers.zeros(shape=[1], dtype='int64')
-            counter = fluid.layers.zeros(
-                shape=[1], dtype='int64', force_cpu=True
+            i = paddle.zeros(shape=[1], dtype='int64')
+            counter = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=0, force_cpu=True
             )
-            until = layers.fill_constant([1], dtype='int64', value=10)
+            until = paddle.tensor.fill_constant([1], dtype='int64', value=10)
             data_arr = paddle.tensor.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)
             while_op = paddle.static.nn.control_flow.While(cond=cond)

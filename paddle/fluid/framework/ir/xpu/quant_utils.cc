@@ -53,7 +53,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   std::vector<int> axis{1, 0};
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
-      phi::TransposeKernel<float16>(*cpu_ctx, *in, axis, out_ptr);
+      phi::TransposeKernel<phi::dtype::float16>(*cpu_ctx, *in, axis, out_ptr);
       break;
     case phi::DataType::FLOAT32:
       phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);
@@ -82,7 +82,8 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
 
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
-      phi::CastKernel<float16>(*cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
+      phi::CastKernel<phi::dtype::float16>(
+          *cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
       break;
     case phi::DataType::FLOAT32:
       if (out == nullptr) {
@@ -207,9 +208,9 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
 }
 
 template <typename T>
-void QuantWeight(phi::DenseTensor* weight,
-                 phi::DenseTensor* weight_max,
-                 bool transpose) {
+void PrepareWeight(phi::DenseTensor* weight,
+                   phi::DenseTensor* weight_max,
+                   bool transpose) {
   // Convert fp16 to fp32
   phi::DenseTensor weight_fp32;
   CastToFp32(weight, &weight_fp32);
@@ -244,14 +245,14 @@ void QuantWeight(phi::DenseTensor* weight,
          max_ptr_size * sizeof(float));
 
   // Quant
-  weight->set_type(paddle::experimental::CppTypeToDataType<T>::Type());
+  weight->set_type(phi::CppTypeToDataType<T>::Type());
   weight->Resize(weight_fp32.dims());
   QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
 }
 
-template void QuantWeight<int16_t>(phi::DenseTensor* weight,
-                                   phi::DenseTensor* weight_max,
-                                   bool transpose);
+template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
+                                     phi::DenseTensor* weight_max,
+                                     bool transpose);
 
 }  // namespace ir
 }  // namespace framework

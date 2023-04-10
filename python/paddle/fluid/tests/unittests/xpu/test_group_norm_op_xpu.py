@@ -19,7 +19,7 @@ import numpy as np
 
 sys.path.append("..")
 
-from op_test import OpTest
+from eager_op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -92,7 +92,9 @@ class XPUTestGroupNormOp(XPUOpTestWrapper):
             self.check_output_with_place(paddle.XPUPlace(0))
 
         def test_check_grad(self):
-            pass
+            self.check_grad_with_place(
+                paddle.XPUPlace(0), ['X', 'Scale', 'Bias'], 'Y'
+            )
 
     class TestGroupNormOp2(TestGroupNormOp):
         def init_test_case(self):

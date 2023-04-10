@@ -44,21 +44,21 @@ TEST(Generated, Sigmoid) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
-  paddle::experimental::Tensor tensor =
+  paddle::Tensor tensor =
       egr_utils_api::CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
                                            0.0,
                                            true);
-  VLOG(6) << "Make paddle::experimental::Tensor";
+  VLOG(6) << "Make paddle::Tensor";
   egr_utils_api::RetainGradForTensor(tensor);
   VLOG(6) << "Retain Grad for Tensor";
   auto output_tensor = sigmoid_dygraph_function(tensor, {});
   VLOG(6) << "Run Backward";
   eager_test::CompareTensorWithValue<float>(output_tensor, 0.5);
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::Tensor> target_tensors = {output_tensor};
   VLOG(6) << "Runing Backward";
   Backward(target_tensors, {});
 
@@ -75,7 +75,7 @@ TEST(Generated, Matmul_v2) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X =
+  paddle::Tensor X =
       egr_utils_api::CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -85,7 +85,7 @@ TEST(Generated, Matmul_v2) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
-  paddle::experimental::Tensor Y =
+  paddle::Tensor Y =
       egr_utils_api::CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -99,7 +99,7 @@ TEST(Generated, Matmul_v2) {
 
   eager_test::CompareTensorWithValue<float>(output_tensor, 96);
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::Tensor> target_tensors = {output_tensor};
   Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
@@ -115,7 +115,7 @@ TEST(Generated, ElementwiseAdd) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X =
+  paddle::Tensor X =
       egr_utils_api::CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -125,7 +125,7 @@ TEST(Generated, ElementwiseAdd) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor Y =
+  paddle::Tensor Y =
       egr_utils_api::CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -138,7 +138,7 @@ TEST(Generated, ElementwiseAdd) {
 
   eager_test::CompareTensorWithValue<float>(output_tensor, 5);
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
+  std::vector<paddle::Tensor> target_tensors = {output_tensor};
   Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);

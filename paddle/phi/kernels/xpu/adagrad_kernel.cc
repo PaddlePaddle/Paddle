@@ -24,9 +24,12 @@ void AdagradDenseKernel(const Context& ctx,
                         const DenseTensor& grad,
                         const DenseTensor& moment,
                         const DenseTensor& learning_rate,
+                        const paddle::optional<DenseTensor>& master_param,
                         float epsilon_t,
+                        bool multi_precision,
                         DenseTensor* param_out_tensor,
-                        DenseTensor* moment_out_tensor) {
+                        DenseTensor* moment_out_tensor,
+                        DenseTensor* master_param_outs) {
   ctx.template Alloc<T>(param_out_tensor);
   ctx.template Alloc<T>(moment_out_tensor);
 

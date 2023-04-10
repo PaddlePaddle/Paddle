@@ -109,7 +109,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
 #ifdef PADDLE_WITH_MKLDNN
-      // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&

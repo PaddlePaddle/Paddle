@@ -415,7 +415,7 @@ struct ReduceConfig {
 #ifdef PADDLE_WITH_XPU_KP
     bool not_higher = x_dim[0] > 1;
 #else
-    int device_id = paddle::platform::GetCurrentDeviceId();
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif  // PADDLE_WITH_XPU_KP
@@ -467,10 +467,10 @@ struct ReduceConfig {
       grid_num = details::CeilingDiv(left_num, block_dim->x);
       reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->y);
     }
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -509,10 +509,10 @@ struct ReduceConfig {
     int grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);
@@ -905,14 +905,16 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
+static
+    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
+                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
+                            void>::type
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int reduce_num,
+                        const KPDevice& dev_ctx,
+                        KPStream stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -955,6 +957,23 @@ CubTensorReduceImpl(const Tx* x_data,
                     KPStream stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+}
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp>
+static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
 }
 #endif  // PADDLE_WITH_XPU_KP
 
@@ -1008,7 +1027,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {
@@ -1117,14 +1137,32 @@ void ReduceKernel(const KPDevice& dev_ctx,
       is_mean);
 }
 
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp>
+void TensorReduceImpl(const phi::GPUContext& dev_ctx,
+                      const phi::DenseTensor& x,
+                      phi::DenseTensor* y,
+                      const TransformOp& transform,
+                      const std::vector<int>& origin_reduce_dims,
+                      gpuStream_t stream,
+                      bool is_mean = false) {
+  dev_ctx.template Alloc<Ty>(y);
+  ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+      static_cast<const phi::GPUContext&>(dev_ctx),
+      x,
+      y,
+      transform,
+      origin_reduce_dims,
+      is_mean);
+}
+
 #endif
 
-template <typename DeviceContext,
-          typename T,
-          size_t D,
-          size_t R_D,
-          typename Functor>
-void ReduceFunctor(const DeviceContext& context,
+template <typename Context, typename T, size_t D, size_t R_D, typename Functor>
+void ReduceFunctor(const Context& context,
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
                    const std::vector<int64_t>& dims,
@@ -1161,10 +1199,10 @@ void ReduceFunctor(const DeviceContext& context,
   }
 }
 
-#define HANDLE_REDUCE_DIM(NDIM, RDIM)                        \
-  if (ndim == NDIM && rdim == RDIM) {                        \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, Functor>( \
-        dev_ctx, input, output, dims, keep_dim);             \
+#define HANDLE_REDUCE_DIM(NDIM, RDIM)                  \
+  if (ndim == NDIM && rdim == RDIM) {                  \
+    ReduceFunctor<Context, OutT, NDIM, RDIM, Functor>( \
+        dev_ctx, input, output, dims, keep_dim);       \
   }
 //////////////// HandleLargeDim
 
@@ -1200,8 +1238,8 @@ inline void GetShuffledDim(const DDim& src_dims,
   }
 }
 
-template <typename DeviceContext, typename OutT>
-void GetShuffledInput(const DeviceContext& dev_ctx,
+template <typename Context, typename OutT>
+void GetShuffledInput(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
@@ -1212,19 +1250,19 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   shuffled_input->Resize(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
+  phi::funcs::TransposeNormal<Context, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
-template <typename DeviceContext, typename OutT, typename Functor>
-void HandleLargeDim(const DeviceContext& dev_ctx,
+template <typename Context, typename OutT, typename Functor>
+void HandleLargeDim(const Context& dev_ctx,
                     const phi::DenseTensor& input,
                     phi::DenseTensor* output,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
   phi::DenseTensor shuffled_input;
-  GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
+  GetShuffledInput<Context, OutT>(dev_ctx, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
@@ -1246,15 +1284,15 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 
   DDim output_dim = output->dims();
   output->ResizeAndAllocate({unreduced});
-  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+  ReduceFunctor<Context, OutT, 2, 1, Functor>(
       dev_ctx, shuffled_input, output, {1}, keep_dim);
   output->ResizeAndAllocate(output_dim);
 }
 
 ////////////// ReduceKernel
 
-template <typename DeviceContext, typename T, typename OutT, typename Functor>
-void ReduceKernelImpl(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename OutT, typename Functor>
+void ReduceKernelImpl(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* output,
                       const std::vector<int64_t>& dims,
@@ -1275,7 +1313,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
     int ndim = input.dims().size();
     int rdim = dims.size();
     if (ndim > 6) {
-      HandleLargeDim<DeviceContext, OutT, Functor>(
+      HandleLargeDim<Context, OutT, Functor>(
           dev_ctx, input, output, dims, keep_dim);
 
     } else {

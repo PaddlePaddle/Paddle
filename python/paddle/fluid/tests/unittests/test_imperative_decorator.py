@@ -18,8 +18,8 @@ import unittest
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import framework
 
 
 class TestTracerMode(unittest.TestCase):
@@ -105,8 +105,7 @@ class TestNoGradClass(unittest.TestCase):
         )
 
         def test_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         a = 0
         for i in test_gen():
@@ -114,8 +113,7 @@ class TestNoGradClass(unittest.TestCase):
 
         @paddle.no_grad()
         def test_wrapped_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         b = 0
         for i in test_wrapped_gen():
@@ -151,8 +149,7 @@ class TestEnableGradClass(unittest.TestCase):
         )
 
         def test_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         a = 0
         for i in test_gen():
@@ -160,8 +157,7 @@ class TestEnableGradClass(unittest.TestCase):
 
         @paddle.enable_grad()
         def test_wrapped_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         b = 0
         for i in test_wrapped_gen():
@@ -215,8 +211,7 @@ class TestSetGradEnabledClass(unittest.TestCase):
         )
 
         def test_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         a = 0
         for i in test_gen():
@@ -224,8 +219,7 @@ class TestSetGradEnabledClass(unittest.TestCase):
 
         @paddle.set_grad_enabled(True)
         def test_wrapped_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         b = 0
         for i in test_wrapped_gen():

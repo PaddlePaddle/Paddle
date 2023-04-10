@@ -89,12 +89,12 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
     T *norm = dev_ctx.template Alloc<T>(norm_tensor);
     auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
-    paddle::memory::Copy(phi::CPUPlace(),
-                         norm_cpu_ptr,
-                         dev_ctx.GetPlace(),
-                         norm,
-                         sizeof(T),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       norm_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       norm,
+                       sizeof(T),
+                       dev_ctx.stream());
     dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;

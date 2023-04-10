@@ -234,4 +234,5 @@ void elementwise_cuda_kernel_0(size_t n, float *x, float* y, float* z) {
 }  // namespace operators
 }  // namespace paddle
 
-USE_CUDA_ONLY_OP(fusion_group);
+USE_OP_ITSELF(fusion_group);
+PD_DECLARE_KERNEL(fusion_group, GPU, ALL_LAYOUT);

@@ -15,9 +15,8 @@
 from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid import core
+from paddle import fluid
+from paddle.fluid import core, layers
 
 paddle.enable_static()
 

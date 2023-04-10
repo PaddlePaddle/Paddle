@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
@@ -32,6 +32,8 @@ def lamb_wrapper(
     moment2,
     beta1Pow,
     beta2Pow,
+    master_weight=None,
+    found_inf=None,
     epsilon=1e-8,
     beta1=0.9,
     beta2=0.999,
@@ -45,8 +47,8 @@ def lamb_wrapper(
         moment2,
         beta1Pow,
         beta2Pow,
-        None,
-        None,
+        master_weight,
+        found_inf,
         weight_decay,
         beta1,
         beta2,
@@ -334,7 +336,7 @@ class TestSparseLambOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place)
 
-        op_args = dict()
+        op_args = {}
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)

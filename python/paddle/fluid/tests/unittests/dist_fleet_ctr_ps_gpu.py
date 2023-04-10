@@ -26,7 +26,7 @@ from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
 from test_dist_fleet_base import runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1

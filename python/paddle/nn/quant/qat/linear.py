@@ -26,11 +26,11 @@ class QuantedLinear(ConvertibleQuantedLayer):
     """
 
     def __init__(self, layer: Layer, q_config):
-        super(QuantedLinear, self).__init__()
+        super().__init__()
         # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, 'name')
+        self.weight = layer.weight
+        self.bias = layer.bias
+        self.name = layer.name
         # For FakeQuant
 
         self.weight_quanter = None

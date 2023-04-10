@@ -36,6 +36,9 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_pipeline_parallel_fp16(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_fp16.py')
 
+    def test_pipeline_parallel_bf16(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_bf16.py')
+
     def test_hybrid_parallel_transformer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer.py')
 

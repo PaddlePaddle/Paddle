@@ -34,12 +34,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "xpu/refactor/math.h"
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -127,7 +121,7 @@ TType* GetInnerMutableTensor(framework::Variable* dst) {
 }
 
 template <typename TType>
-TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
+TType* GetInnerMutableTensor(paddle::Tensor* dst) {
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
   return dst_tensor;
 }
@@ -138,7 +132,7 @@ const TType& GetInnerTensor(const framework::Variable& src) {
 }
 
 template <typename TType>
-TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
+TType& GetInnerTensor(const paddle::Tensor& src) {
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
@@ -150,7 +144,7 @@ TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
 }
 
 template <typename TType>
-TType* GetEmptyInnerTensor(paddle::experimental::Tensor* dst) {
+TType* GetEmptyInnerTensor(paddle::Tensor* dst) {
   PADDLE_ENFORCE_EQ(
       dst->defined(),
       false,
@@ -271,32 +265,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
   }
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::DeviceContext* ctx = pool.Get(place);
-    auto dev_ctx = dynamic_cast<platform::NPUDeviceContext*>(ctx);
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
-      dst_tensor->mutable_data<float>(place);
-    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
-      dst_tensor->mutable_data<double>(place);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
-      dst_tensor->mutable_data<platform::float16>(place);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-    }
-    const auto& runner = operators::NpuOpRunner(
-        "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
-    runner.Run(dev_ctx->stream());
-    return;
-  }
-#endif
-
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {
@@ -317,41 +285,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 #endif
 
-#ifdef PADDLE_WITH_MLU
-  if (platform::is_mlu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::DeviceContext* ctx = pool.Get(place);
-    auto dev_ctx = dynamic_cast<platform::MLUDeviceContext*>(ctx);
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
-      dst_tensor->mutable_data<float>(place);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
-      dst_tensor->mutable_data<platform::float16>(place);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-    }
-    static const float alpha = 1.f;
-    static const float beta = 1.f;
-    operators::MLUCnnlTensorDesc src_tensor_desc(src_tensor);
-    operators::MLUCnnlTensorDesc dst_tensor_desc(*dst_tensor);
-    PADDLE_ENFORCE_MLU_SUCCESS(
-        cnnlAssignAdd(dev_ctx->cnnl_handle(),
-                      static_cast<const void*>(&alpha),
-                      src_tensor_desc.get(),
-                      operators::GetBasePtr(&src_tensor),
-                      nullptr,
-                      0,
-                      static_cast<const void*>(&beta),
-                      dst_tensor_desc.get(),
-                      operators::GetBasePtr(dst_tensor)));
-    return;
-  }
-#endif
-
   PADDLE_THROW(platform::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
       "supported in imperative mode",
@@ -361,8 +294,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 template void TensorAdd<framework::Variable>(const framework::Variable& src,
                                              framework::Variable* dst);
-template void TensorAdd<paddle::experimental::Tensor>(
-    const paddle::experimental::Tensor& src, paddle::experimental::Tensor* dst);
+template void TensorAdd<paddle::Tensor>(const paddle::Tensor& src,
+                                        paddle::Tensor* dst);
 
 template <typename VarType>
 void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
@@ -405,8 +338,8 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 template void SelectedRowsAddToTensor(const framework::Variable& src,
                                       framework::Variable* dst);
-template void SelectedRowsAddToTensor(const paddle::experimental::Tensor& src,
-                                      paddle::experimental::Tensor* dst);
+template void SelectedRowsAddToTensor(const paddle::Tensor& src,
+                                      paddle::Tensor* dst);
 
 template <typename VarType>
 void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
@@ -458,10 +391,9 @@ template void SelectedRowsAddTensor(
     const framework::Variable& src_selected_rows_var,
     const framework::Variable& src_tensor_var,
     framework::Variable* dst_tensor_var);
-template void SelectedRowsAddTensor(
-    const paddle::experimental::Tensor& src_selected_rows_var,
-    const paddle::experimental::Tensor& src_tensor_var,
-    paddle::experimental::Tensor* dst_tensor_var);
+template void SelectedRowsAddTensor(const paddle::Tensor& src_selected_rows_var,
+                                    const paddle::Tensor& src_tensor_var,
+                                    paddle::Tensor* dst_tensor_var);
 
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
@@ -523,9 +455,8 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
       framework::DataTypeToString(data_type)));
 }
 
-template std::shared_ptr<paddle::experimental::Tensor> SelectedRowsMerge(
-    const paddle::experimental::Tensor& src1,
-    const paddle::experimental::Tensor& src2);
+template std::shared_ptr<paddle::Tensor> SelectedRowsMerge(
+    const paddle::Tensor& src1, const paddle::Tensor& src2);
 template std::shared_ptr<paddle::imperative::VariableWrapper> SelectedRowsMerge(
     const framework::Variable& src1, const framework::Variable& src2);
 

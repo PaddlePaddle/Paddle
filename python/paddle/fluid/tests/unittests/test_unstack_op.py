@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -34,7 +34,7 @@ class TestUnStackOpBase(OpTest):
     def get_y_names(self):
         y_names = []
         for i in range(self.input_dim[self.axis]):
-            y_names.append('y{}'.format(i))
+            y_names.append(f'y{i}')
         return y_names
 
     def setUp(self):
@@ -60,10 +60,10 @@ class TestUnStackOpBase(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names(), check_eager=True)
+        self.check_grad(['X'], self.get_y_names())
 
 
 class TestUnStackFP16Op(TestUnStackOpBase):
