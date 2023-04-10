@@ -161,7 +161,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> ReluDoubleBackward(const paddle::Tensor& out,
                                                const paddle::Tensor& ddx) {
-  if (out.place().GetType() == paddle::AllocationType::CPU) {
+  if (out.is_cpu()) {
     return relu_cpu_double_backward(out, ddx);
   } else if (out.place().GetType() == phi::AllocationType::XPU) {
     return relu_xpu_double_backward(out, ddx);

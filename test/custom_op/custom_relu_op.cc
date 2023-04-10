@@ -128,9 +128,9 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> ReluDoubleBackward(const paddle::Tensor& out,
                                                const paddle::Tensor& ddx) {
-  if (out.place().GetType() == paddle::AllocationType::CPU) {
+  if (out.is_cpu()) {
     return relu_cpu_double_backward(out, ddx);
-  } else if (out.place().GetType() == paddle::AllocationType::GPU) {
+  } else if (out.is_gpu()) {
     return relu_cuda_double_backward(out, ddx);
   } else {
     PD_THROW("Not implemented.");
@@ -179,9 +179,9 @@ std::vector<paddle::Tensor> relu_cuda_backward_without_x(
 
 std::vector<paddle::Tensor> ReluBackwardWithoutX(
     const paddle::Tensor& out, const paddle::Tensor& grad_out) {
-  if (out.place().GetType() == paddle::AllocationType::CPU) {
+  if (out.is_cpu()) {
     return relu_cpu_backward_without_x(out, grad_out);
-  } else if (out.place().GetType() == paddle::AllocationType::GPU) {
+  } else if (out.is_gpu()) {
     return relu_cuda_backward_without_x(out, grad_out);
   } else {
     PD_THROW("Not implemented.");
@@ -235,9 +235,9 @@ void relu_cuda_backward_out(const paddle::Tensor& x,
                             paddle::Tensor* grad_x);
 
 void ReluForwardOut(const paddle::Tensor& x, paddle::Tensor* out) {
-  if (x.place().GetType() == paddle::AllocationType::CPU) {
+  if (x.is_cpu()) {
     return relu_cpu_forward_out(x, out);
-  } else if (x.place().GetType() == paddle::AllocationType::GPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_forward_out(x, out);
   } else {
     PD_THROW("Not implemented.");
@@ -248,9 +248,9 @@ void ReluBackwardOut(const paddle::Tensor& x,
                      const paddle::Tensor& out,
                      const paddle::Tensor& grad_out,
                      paddle::Tensor* grad_x) {
-  if (x.place().GetType() == paddle::AllocationType::CPU) {
+  if (x.is_cpu()) {
     return relu_cpu_backward_out(x, out, grad_out, grad_x);
-  } else if (x.place().GetType() == paddle::AllocationType::GPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_backward_out(x, out, grad_out, grad_x);
   } else {
     PD_THROW("Not implemented.");

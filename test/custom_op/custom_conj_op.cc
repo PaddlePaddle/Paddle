@@ -18,9 +18,7 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x)                                         \
-  PD_CHECK(x.place().GetType() == paddle::AllocationType::CPU, \
-           #x " must be a CPU Tensor.")
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 
 template <typename data_t>
 using EnableComplex = typename std::enable_if<
