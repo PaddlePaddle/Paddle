@@ -125,7 +125,9 @@ size_t XPUAvailableMemToAlloc() {
 }
 
 size_t XPUMaxAllocSize() {
-  size_t max_all_size = 4;
+  const char* maxsize = std::getenv("XPUMaxAllocSize");
+  size_t max_all_size = static_cast<size_t>((maxsize && atoi(maxsize) > 0) ? atoi(maxsize) : 4);
+  //size_t max_all_size = 2;
   for (uint32_t i = 0; i < 3; i++) {
     max_all_size *= 1024;
   }
@@ -153,7 +155,12 @@ static size_t XPUAllocSize(bool realloc) {
       phi::errors::ResourceExhausted("Not enough available XPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
-  return alloc_bytes;
+  //return alloc_bytes;
+  size_t max_all_size = 1;
+  for (uint32_t i = 0; i < 3; i++) {
+    max_all_size *= 1024;
+  }
+  return std::min(alloc_bytes, max_all_size);
 }
 
 size_t XPUInitAllocSize() { return XPUAllocSize(/* realloc = */ false); }
@@ -161,7 +168,7 @@ size_t XPUInitAllocSize() { return XPUAllocSize(/* realloc = */ false); }
 size_t XPUReallocSize() { return XPUAllocSize(/* realloc = */ true); }
 
 size_t XPUMinChunkSize() {
-  return 1 << 15;
+  return 1 << 8;
 }
 
 size_t XPUMaxChunkSize() {

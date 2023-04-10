@@ -19,7 +19,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU) 
 #define USE_DEVICE
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -128,6 +128,7 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   total_used_ += size;
   total_free_ -= size;
 
+  VLOG(10) << "alloc total_used_: " << total_used_ << "total_free_: " << total_free_;
   // split the allocation and return data for use
   return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->Data();
 }
