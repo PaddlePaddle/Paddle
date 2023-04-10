@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <fcntl.h>
 #include <cstddef>
 #include <string>
 #include <unordered_set>
@@ -352,15 +353,31 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
-  if (trt_tuned_dynamic_shape && shape_range_info_path != "") {
-    VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
-    inference::DeserializeShapeRangeInfo(shape_range_info_path,
-                                         &min_input_shape,
-                                         &max_input_shape,
-                                         &opt_input_shape,
-                                         &min_shape_tensor,
-                                         &max_shape_tensor,
-                                         &opt_shape_tensor);
+  if (trt_tuned_dynamic_shape) {
+    if (shape_range_info_path != "") {
+      VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
+      inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                           &min_input_shape,
+                                           &max_input_shape,
+                                           &opt_input_shape,
+                                           &min_shape_tensor,
+                                           &max_shape_tensor,
+                                           &opt_shape_tensor);
+    } else {
+      shape_range_info_path =
+          Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
+      if (open(shape_range_info_path.c_str(), O_RDONLY) != -1) {
+        VLOG(1) << "trt dynamic_shape deserialize from "
+                << shape_range_info_path;
+        inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                             &min_input_shape,
+                                             &max_input_shape,
+                                             &opt_input_shape,
+                                             &min_shape_tensor,
+                                             &max_shape_tensor,
+                                             &opt_shape_tensor);
+      }
+    }
   }
 
   // The following procedure is used to rename all the intermediate
