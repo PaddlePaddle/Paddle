@@ -49,7 +49,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       output_offset += mod * output_stride[dim];
     }
 
-    output_data[i] = input_data[input_offset];
+    output_data[output_offset] = input_data[input_offset];
   }
 }
 }  // namespace phi

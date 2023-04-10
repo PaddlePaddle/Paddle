@@ -51,6 +51,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 
   if (NeedTransform2Contiguous(in.meta().is_contiguous(in.layout()))) {
     out = paddle::experimental::Trans2Contiguous(in);
+    transformed = true;
     PassTensorData(&out, &in);
   }
 
