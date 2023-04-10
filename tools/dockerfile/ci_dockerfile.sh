@@ -1,6 +1,4 @@
-#!/bin/bash
-
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+opyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +42,6 @@ function make_ubuntu_dockerfile(){
 function make_ubuntu_trt7_dockerfile(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
   sed "s/<baseimg>/10.2-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
-  sed -i 's###g'
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
@@ -79,22 +76,29 @@ function make_ubuntu_trt7_dockerfile(){
 
 function make_centos_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
-  sed 's#nvidia/cuda:<baseimg>#centos:centos7#g' Dockerfile.centos >${dockerfile_name}
-  sed -i "s#COPY build_scripts /build_scripts#COPY tools/dockerfile/build_scripts  ./build_scripts#g" ${dockerfile_name}
+  sed "s#<baseimg>#ubuntu:22.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed -i "s#<setcuda>##g" ${dockerfile_name}
+  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz zstd libsndfile ninja-build" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip3.8 install distro" ${dockerfile_name}
-  sed -i "${dockerfile_line}i ENV LD_LIBRARY_PATH /opt/_internal/cpython-3.7.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 " ${dockerfile_name}
-  sed -i "${dockerfile_line}i ENV PATH /opt/_internal/cpython-3.7.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/cc && ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/g++ && ln -s /usr/local/gcc-12.2/bin/g++ /usr/bin/g++" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/c++ && ln -s /usr/local/gcc-12.2/bin/c++ /usr/bin/c++" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/gcc && ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so \\
-    RUN ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/" ${dockerfile_name}
-  sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q  https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \\
-    RUN tar -xzf hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8431#g' ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
+     tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libsndfile1 zstd pigz libcurl4-openssl-dev gettext zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+    tar -xvf git-2.17.1.tar.gz \&\& \
+    cd git-2.17.1 \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
+    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
+  sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
+    COPY tools/dockerfile/build_scripts /build_scripts \\
+    RUN bash /build_scripts/install_gcc.sh gcc122 \&\& rm -rf /build_scripts \\
+    RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
+    RUN ln -s /usr/local/gcc-12.2/bin/gcc /usr/local/bin/gcc \\
+    RUN ln -s /usr/local/gcc-12.2/bin/g++ /usr/local/bin/g++ \\
+    RUN ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc \\
+    RUN ln -s /usr/local/gcc-12.2/bin/g++ /usr/bin/g++ \\
+    ENV PATH=/usr/local/gcc-12.2/bin:\$PATH #g" ${dockerfile_name}
 }
 
 
