@@ -103,7 +103,7 @@ class OptimizerWithMixedPrecision(object):
         self._use_pure_fp16 = use_pure_fp16
         self._use_fp16_guard = use_fp16_guard
         self._to_fp16_var_names = None
-        self._use_bfp16 = use_bfp16
+        self._use_bf16 = use_bf16
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
@@ -111,12 +111,6 @@ class OptimizerWithMixedPrecision(object):
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
-
-        self._type = (
-            core.VarDesc.VarType.FP16
-            if not use_bfp16
-            else core.VarDesc.VarType.BF16
-        )
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -401,7 +395,7 @@ class OptimizerWithMixedPrecision(object):
         found_inf = self._check_finite_and_unscale(params_grads)
         if (
             self._use_dynamic_loss_scaling
-            and self._type == core.VarDesc.VarType.FP16
+            and self._amp_dtype == core.VarDesc.VarType.FP16
         ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 

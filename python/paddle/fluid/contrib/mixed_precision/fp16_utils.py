@@ -567,7 +567,7 @@ def cast_model_to_fp16(
                                 op,
                                 idx + pre_cast_num + 1,
                                 core.VarDesc.VarType.FP32,
-                                dst_type,
+                                dest_type,
                                 out_var_name,
                                 op_var_rename_map,
                             )

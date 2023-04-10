@@ -32,6 +32,10 @@ def _get_unsupported_list(dtype):
         amp_dtype = core.VarDesc.VarType.FP16
     elif dtype == "bfloat16":
         amp_dtype = core.VarDesc.VarType.BF16
+    else:
+        raise ValueError(
+            "If enable AMP, dtype should be 'float16' or 'bfloat16'."
+        )
 
     # The set of ops that don't support fp16 calculation
     # lookup_table fp16 is slower than fp32, though fp16 is supported.
@@ -72,12 +76,12 @@ class AutoMixedPrecisionLists(object):
     ):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
+        self.amp_dtype = dtype
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
         self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
         self.black_varnames = copy.copy(custom_black_varnames)
-        self.amp_dtype = dtype
         self._update_list()
 
     def _update_list(self):

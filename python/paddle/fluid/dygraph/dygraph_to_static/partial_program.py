@@ -183,7 +183,7 @@ class PartialProgramLayer:
             self._amp_list = AutoMixedPrecisionLists(
                 custom_white_list=custom_white_list,
                 custom_black_list=custom_black_list,
-                dtype=dtype,
+                dtype=amp_dtype,
             )
 
         # program_id -> list(scope)
