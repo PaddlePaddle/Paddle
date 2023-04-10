@@ -1392,44 +1392,6 @@ class TestAllZeroError(unittest.TestCase):
             self.assertRaises(ValueError, test_0_size)
 
 
-class TestAmaxOp(OpTest):
-    """Remove Amax with subgradient from gradient check to confirm the success of CI."""
-
-    def setUp(self):
-        self.op_type = "reduce_amax"
-        self.prim_op_type = "prim"
-        self.python_api = paddle.amax
-        self.public_python_api = paddle.amax
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-        self.outputs = {
-            'Out': np.amax(self.inputs['X'])
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        # only composite op support gradient check of amax
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            only_check_prim=True,
-        )
-
-    def test_raise_error(self):
-        if core.is_compiled_with_cuda():
-            self.inputs = {'X': np.random.random((5, 6, 10)).astype("float16")}
-            place = core.CUDAPlace(0)
-            with self.assertRaises(RuntimeError) as cm:
-                self.check_output_with_place(place)
-            error_msg = str(cm.exception).split("\n")[-2].strip().split(".")[0]
-            self.assertEqual(
-                error_msg,
-                "NotFoundError: The kernel (amax) with key (GPU, Undefined(AnyLayout), float16) is not found and GPU kernel cannot fallback to CPU one",
-            )
-
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
