@@ -116,4 +116,5 @@ PD_REGISTER_KERNEL(norm_grad,
                    phi::NormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

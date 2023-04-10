@@ -187,7 +187,11 @@ PD_REGISTER_KERNEL(sgd,
                    phi::SGDDenseKernel,
                    phi::dtype::float16,
                    float,
-                   double) {}
+                   double) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    GPU,

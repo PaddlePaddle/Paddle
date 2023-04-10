@@ -36,7 +36,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace experimental {
+
+using DeviceContextPool = experimental::DeviceContextPool;
+using DefaultAllocator = experimental::DefaultAllocator;
 
 /////// Tensor Methods ////////
 
@@ -439,5 +441,4 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
-}  // namespace experimental
 }  // namespace paddle

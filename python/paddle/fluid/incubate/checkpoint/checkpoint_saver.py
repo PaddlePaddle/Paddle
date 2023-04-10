@@ -34,7 +34,7 @@ class PaddleModel(SerializableBase):
         self._file_name = "_paddle_fleet_param__"
 
     def serialize(self, path):
-        from ...io import save_persistables
+        from paddle.distributed.io import save_persistables
 
         save_persistables(
             executor=self._exe,
@@ -44,7 +44,7 @@ class PaddleModel(SerializableBase):
         )
 
     def deserialize(self, path):
-        from ...io import load_persistables
+        from paddle.distributed.io import load_persistables
 
         load_persistables(
             executor=self._exe,

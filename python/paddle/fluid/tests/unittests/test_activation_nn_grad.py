@@ -19,9 +19,9 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
@@ -285,6 +285,41 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.celu_wrapper, [x], y, x_init=x_arr, place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestSoftplusDoubleGradCheck(unittest.TestCase):
+    def softplus_wrapper(self, x):
+        return F.softplus(x[0], beta=1, threshold=20)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 4, 4]
+        eps = 1e-6
+        beta = 1
+        threshold = 20
+        dtype = np.float64
+        SEED = 0
+
+        x = paddle.static.data('x', shape, dtype)
+        x.persistable = True
+
+        y = F.softplus(x, beta=beta, threshold=threshold)
+        np.random.RandomState(SEED)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.softplus_wrapper, [x], y, x_init=x_arr, place=place
         )
 
     def test_grad(self):

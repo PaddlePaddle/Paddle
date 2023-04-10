@@ -102,7 +102,7 @@ __global__ void KernelUpdateParam(int C,
 }
 
 template <typename T>
-class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -114,6 +114,16 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
+
+    PADDLE_ENFORCE_LT(0,
+                      N,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+    PADDLE_ENFORCE_LT(0,
+                      C,
+                      platform::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+
     const T *batch_size_in =
         ctx.Input<phi::DenseTensor>("BatchSize")->data<T>();
     const T *batch_sum_in = ctx.Input<phi::DenseTensor>("BatchSum")->data<T>();
@@ -144,7 +154,7 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -257,9 +267,8 @@ class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(data_norm,
-                        ops::DataNormKernel<phi::GPUContext, float>,
-                        ops::DataNormKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(data_norm_grad,
-                        ops::DataNormGradKernel<phi::GPUContext, float>,
-                        ops::DataNormGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm, GPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm_grad, GPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}

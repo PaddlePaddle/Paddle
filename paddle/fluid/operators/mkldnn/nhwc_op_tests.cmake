@@ -11,6 +11,7 @@ cc_test_old(
   generated_op
   pooling
   transpose_op
+  fused_transpose_op
   scope
   device_context
   enforce

@@ -144,7 +144,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   while (cur_count < op_deps->size()) {
     cur_count++;
     auto cur_op = ready_ops->Pop();
-    // when execption, get cur_op == nullptr
+    // when exception, get cur_op == nullptr
     if (cur_op == nullptr) {
       std::lock_guard<std::mutex> lock(mutex_);
       exec_op_count_ = op_deps->size();

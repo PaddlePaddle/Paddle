@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -65,7 +65,7 @@ void ActivationGradImpl(const Context& dev_ctx,
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = paddle::platform::is_gpu_place(dev_ctx.GetPlace());
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     functor(*place,
             To32BitIndex(x),
@@ -572,6 +572,30 @@ void CeluDoubleGradKernel(const Context& dev_ctx,
   phi::funcs::CELUGradGradFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = alpha;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void SoftplusDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& dout,
+                              const DenseTensor& ddx,
+                              float beta,
+                              float threshold,
+                              DenseTensor* dx,
+                              DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SoftplusDoubleGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 

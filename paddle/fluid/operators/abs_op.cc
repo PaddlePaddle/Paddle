@@ -19,6 +19,9 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -92,6 +95,24 @@ class AbsGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class AbsCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor input = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
+
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Running abs_grad composite func";
+    prim::abs_grad<prim::DescTensor>(input, out_grad, dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
+
 // AbsGrad: dx=dy if x >=0 else -dy
 // AbsDoubleGrad: ddy = ddx if x >=0 else -ddx
 template <typename T>
@@ -150,6 +171,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(abs,
                   ops::AbsOp,
                   ops::AbsOpMaker,
+                  ops::AbsCompositeGradOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
                   ops::AbsGradMaker<paddle::imperative::OpBase>,
                   AbsInferShapeFunctor);

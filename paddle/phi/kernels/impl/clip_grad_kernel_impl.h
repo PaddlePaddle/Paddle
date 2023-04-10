@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"

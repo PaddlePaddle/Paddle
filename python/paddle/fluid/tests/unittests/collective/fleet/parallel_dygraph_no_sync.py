@@ -25,7 +25,7 @@ from test_dist_base import (
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.nn import Linear
 
 seed = 90
@@ -34,7 +34,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = Linear(10, 20)
@@ -60,7 +60,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        x_data = np.array([x for x in batch])
+        x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
         x = paddle.to_tensor(x_data)
         out = model(x)

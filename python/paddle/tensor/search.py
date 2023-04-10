@@ -39,7 +39,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -101,7 +101,15 @@ def argsort(x, axis=-1, descending=False, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'argsort',
         )
 
@@ -186,6 +194,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             x,
             'x',
             [
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -216,7 +225,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -274,7 +283,16 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'paddle.argmin',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -334,7 +352,7 @@ def index_select(x, index, axis=0, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_select',
         )
         check_variable_and_dtype(
@@ -414,6 +432,22 @@ def nonzero(x, as_tuple=False):
     if in_dygraph_mode():
         outs = _C_ops.nonzero(x)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'int16',
+                'int32',
+                'int64',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'bool',
+            ],
+            'where_index',
+        )
+
         helper = LayerHelper("where_index", **locals())
 
         outs = helper.create_variable_for_type_inference(
@@ -427,7 +461,7 @@ def nonzero(x, as_tuple=False):
     if not as_tuple:
         return outs
     elif rank == 1:
-        return tuple([outs])
+        return (outs,)
     else:
         for i in range(rank):
             list_out.append(
@@ -773,7 +807,7 @@ def masked_select(x, mask, name=None):
     which is a tensor with data type of bool.
 
     Args:
-        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64.
+        x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -804,7 +838,7 @@ def masked_select(x, mask, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'paddle.tensor.search.mask_select',
         )
         check_variable_and_dtype(

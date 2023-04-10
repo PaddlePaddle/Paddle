@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/phi/api/profiler/trace_event_collector.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -285,8 +285,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_h2d) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_h2d(device, dst, src, size));
@@ -306,8 +305,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_d2h) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2h(device, dst, src, size));
@@ -327,8 +325,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_d2d) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2d(device, dst, src, size));
@@ -364,8 +361,7 @@ class CustomDevice : public DeviceInterface {
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
         auto src_place = CustomPlace(Type(), src_dev_id);
-        paddle::platform::DeviceContextPool& pool =
-            paddle::platform::DeviceContextPool::Instance();
+        phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
         pool.Get(src_place)->Wait();
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->memory_copy_p2p(dst_device, src_device, dst, src, size));
@@ -618,18 +614,18 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
-  C_DataType ToCDatatType(paddle::experimental::DataType data_type) {
+  C_DataType ToCDatatType(phi::DataType data_type) {
 #define return_result(in, ret) \
   case in:                     \
     return C_DataType::ret
     switch (data_type) {
-      return_result(paddle::experimental::DataType::FLOAT64, FLOAT64);
-      return_result(paddle::experimental::DataType::FLOAT32, FLOAT32);
-      return_result(paddle::experimental::DataType::FLOAT16, FLOAT16);
-      return_result(paddle::experimental::DataType::INT64, INT64);
-      return_result(paddle::experimental::DataType::INT32, INT32);
-      return_result(paddle::experimental::DataType::INT16, INT16);
-      return_result(paddle::experimental::DataType::INT8, INT8);
+      return_result(phi::DataType::FLOAT64, FLOAT64);
+      return_result(phi::DataType::FLOAT32, FLOAT32);
+      return_result(phi::DataType::FLOAT16, FLOAT16);
+      return_result(phi::DataType::INT64, INT64);
+      return_result(phi::DataType::INT32, INT32);
+      return_result(phi::DataType::INT16, INT16);
+      return_result(phi::DataType::INT8, INT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
@@ -806,7 +802,7 @@ class CustomDevice : public DeviceInterface {
 
   void BlasAXPBY(size_t dev_id,
                  const stream::Stream& stream,
-                 paddle::experimental::DataType dtype,
+                 phi::DataType dtype,
                  size_t numel,
                  float alpha,
                  void* x,
@@ -826,45 +822,44 @@ class CustomDevice : public DeviceInterface {
   }
 
   // Profiler
-  void ProfilerInitialize(paddle::platform::TraceEventCollector* collector,
+  void ProfilerInitialize(phi::TraceEventCollector* collector,
                           void** user_data) override {
     CHECK_PTR(pimpl_->profiler_initialize);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_initialize(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerFinalize(paddle::platform::TraceEventCollector* collector,
+  void ProfilerFinalize(phi::TraceEventCollector* collector,
                         void* user_data) override {
     CHECK_PTR(pimpl_->profiler_finalize);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_finalize(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerPrepareTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerPrepareTracing(phi::TraceEventCollector* collector,
                               void* user_data) override {
     CHECK_PTR(pimpl_->profiler_prepare_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_prepare_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerStartTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerStartTracing(phi::TraceEventCollector* collector,
                             void* user_data) override {
     CHECK_PTR(pimpl_->profiler_start_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_start_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerStopTracing(paddle::platform::TraceEventCollector* collector,
+  void ProfilerStopTracing(phi::TraceEventCollector* collector,
                            void* user_data) override {
     CHECK_PTR(pimpl_->profiler_stop_tracing);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_stop_tracing(
         reinterpret_cast<C_Profiler>(collector), user_data));
   }
 
-  void ProfilerCollectTraceData(
-      paddle::platform::TraceEventCollector* collector,
-      uint64_t start_ns,
-      void* user_data) override {
+  void ProfilerCollectTraceData(phi::TraceEventCollector* collector,
+                                uint64_t start_ns,
+                                void* user_data) override {
     CHECK_PTR(pimpl_->profiler_collect_trace_data);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_collect_trace_data(
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));

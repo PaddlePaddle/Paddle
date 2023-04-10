@@ -192,19 +192,19 @@ class XPUTestConv2DTransposeOp(XPUOpTestWrapper):
         def test_check_grad_no_input(self):
             if self.need_check_grad:
                 self.check_grad_with_place(
-                    self.place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    self.place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def test_check_grad_no_filter(self):
             if self.need_check_grad:
                 self.check_grad_with_place(
-                    self.place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    self.place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad(self):
             if self.need_check_grad:
                 self.check_grad_with_place(
-                    self.place, set(['Input', 'Filter']), 'Output'
+                    self.place, {'Input', 'Filter'}, 'Output'
                 )
 
         def init_test_case(self):

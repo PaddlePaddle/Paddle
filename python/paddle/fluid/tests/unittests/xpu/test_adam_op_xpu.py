@@ -27,7 +27,7 @@ from xpu.get_test_cover_info import (
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
@@ -391,7 +391,7 @@ class TestSparseAdamOp(unittest.TestCase):
         scope = core.Scope()
         self.setup(scope, place, lazy_mode)
 
-        op_args = dict()
+        op_args = {}
         op_args['lazy_mode'] = lazy_mode
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()

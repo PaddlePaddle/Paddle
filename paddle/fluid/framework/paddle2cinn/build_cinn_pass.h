@@ -79,7 +79,8 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
+  std::unordered_set<std::string> default_deny_ops_{
+      "feed", "fetch", "conv2d", "conv2d_grad"};
 };
 
 // A pass named BuildCinnPass, the function of this pass is:

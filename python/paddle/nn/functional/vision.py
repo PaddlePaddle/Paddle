@@ -86,17 +86,13 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
 
     if in_dygraph_mode():
         _out_shape = (
-            out_shape.numpy().tolist()
-            if isinstance(out_shape, Variable)
-            else out_shape
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
         theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_dynamic_mode():
         _out_shape = (
-            out_shape.numpy().tolist()
-            if isinstance(out_shape, Variable)
-            else out_shape
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
         return _legacy_C_ops.affine_grid(
             theta,
@@ -320,7 +316,7 @@ def grid_sample(
             'use_cudnn',
             use_cudnn,
         )
-        out = getattr(_legacy_C_ops, 'grid_sampler')(x, grid, *attrs)
+        out = _legacy_C_ops.grid_sampler(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
@@ -353,7 +349,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     Parameters:
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string from: ``'NCHW'``, ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
+        data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -383,7 +379,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     else:
         helper = LayerHelper("pixel_shuffle", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'pixel_shuffle'
+            x, 'x', ['float16', 'float32', 'float64'], 'pixel_shuffle'
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(

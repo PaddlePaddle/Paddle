@@ -48,23 +48,22 @@ inline std::unordered_map<std::string, float> compute_mlp_expected_results() {
 }
 
 /* ---- Eager Scale ---- */
-void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
+void benchmark_eager_scale(const paddle::Tensor& tensor,
                            bool accuracy_check = false);
 
 /* ---- Eager MatMul ---- */
-void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
-                            const paddle::experimental::Tensor& Y,
+void benchmark_eager_matmul(const paddle::Tensor& X,
+                            const paddle::Tensor& Y,
                             bool accuracy_check = false);
 
-void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
-                                         const paddle::experimental::Tensor& Y,
+void benchmark_eager_intermediate_matmul(const paddle::Tensor& X,
+                                         const paddle::Tensor& Y,
                                          bool accuracy_check = false);
 
-void benchmark_eager_intermediate_mlp(
-    const paddle::experimental::Tensor& X,
-    const std::vector<paddle::experimental::Tensor>& Ws,
-    const std::vector<paddle::experimental::Tensor>& Bs,
-    bool accuracy_check = false);
+void benchmark_eager_intermediate_mlp(const paddle::Tensor& X,
+                                      const std::vector<paddle::Tensor>& Ws,
+                                      const std::vector<paddle::Tensor>& Bs,
+                                      bool accuracy_check = false);
 
 }  // namespace egr
 

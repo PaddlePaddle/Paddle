@@ -21,7 +21,7 @@
 paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y);
 
 paddle::Tensor custom_add(const paddle::Tensor& x, const paddle::Tensor& y) {
-  return paddle::add(paddle::exp(x), paddle::exp(y));
+  return x.exp() + y.exp();
 }
 
 paddle::Tensor nullable_tensor(bool return_none = false) {

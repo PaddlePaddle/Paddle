@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def sequence_enumerate(input_seq, in_lod, win_size, pad_value):

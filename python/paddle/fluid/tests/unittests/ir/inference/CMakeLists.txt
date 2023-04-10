@@ -42,6 +42,8 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_split_layernorm_to_math_ops_pass")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -92,8 +94,22 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_MKLDNN_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
 
+file(
+  GLOB TEST_ONEDNN_IR_PASSES
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_onednn_*.py")
+string(REPLACE ".py" "" TEST_ONEDNN_IR_PASSES "${TEST_ONEDNN_IR_PASSES}")
+foreach(TEST_INFERENCE_IR_PASS ${TEST_ONEDNN_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
+endforeach()
+
 if(WITH_MKLDNN)
   foreach(target ${TEST_MKLDNN_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+  endforeach()
+
+  foreach(target ${TEST_ONEDNN_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
@@ -185,9 +201,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
-  set_tests_properties(
-    test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60 ENVIRONMENT
-                                           FLAGS_USE_STANDALONE_EXECUTOR=0)
+  set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
   if(WITH_MKLDNN
      AND TENSORRT_FOUND
@@ -214,14 +228,15 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
                          PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_multi_gru_fuse_pass PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_onednn_multi_gru_seq_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
                                                                      240)
     set_tests_properties(test_trt_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT
-                                                                       240)
-    set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT
                                                                        240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
@@ -234,6 +249,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      360)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
+      set_tests_properties(test_layernorm_shift_partition_pass
+                           PROPERTIES TIMEOUT 360)
     else()
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 60)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT 60)
@@ -248,6 +265,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                          120)
       set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
                                                                         120)
+      set_tests_properties(test_split_layernorm_to_math_ops_pass
+                           PROPERTIES TIMEOUT 240)
     endif()
   endif()
 

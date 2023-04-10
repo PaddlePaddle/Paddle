@@ -22,13 +22,13 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
                                const DenseTensor& repeats,
                                DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
-  if (!paddle::platform::is_cpu_place(repeats.place())) {
-    phi::Copy(
-        ctx, repeats, paddle::platform::CPUPlace(), true, &repeats_cpu_copy);
+  if (repeats.place().GetType() != phi::AllocationType::CPU) {
+    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
   }
-  const RepeatsT* repeats_data = paddle::platform::is_cpu_place(repeats.place())
-                                     ? repeats.data<RepeatsT>()
-                                     : repeats_cpu_copy.data<RepeatsT>();
+  const RepeatsT* repeats_data =
+      repeats.place().GetType() == phi::AllocationType::CPU
+          ? repeats.data<RepeatsT>()
+          : repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
   for (int i = 0; i < repeats.dims()[0]; i++) {

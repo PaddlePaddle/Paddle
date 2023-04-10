@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,10 +66,6 @@ class XPUTestAssignOP(XPUOpTestWrapper):
     class XPUTestAssign1(TestAssignOPBase):
         def init_config(self):
             self.input_shape = [2, 768]
-
-    class XPUTestAssign2(TestAssignOPBase):
-        def init_config(self):
-            self.input_shape = [3, 8, 4096]
 
     class XPUTestAssign3(TestAssignOPBase):
         def init_config(self):

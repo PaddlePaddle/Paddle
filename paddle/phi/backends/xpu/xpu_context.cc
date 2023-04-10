@@ -19,6 +19,7 @@
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
@@ -54,6 +55,17 @@ struct XPUContext::Impl {
     }
   }
 
+  bool IsDataloader() const {
+    if (std::getenv("XPU_PADDLE_XDL_CONTEXTS") == nullptr) {
+      return false;
+    }
+    std::string cur_thread_name = phi::GetCurrentThreadName();
+    VLOG(3) << "XPU Dataloader: current thread at Get Context = "
+            << phi::GetCurrentThreadName();
+    bool is_dataloader_thread = (cur_thread_name != "MainThread");
+    return is_dataloader_thread;
+  }
+
   Impl() : place_(XPUPlace()) {}
 
   explicit Impl(const Place& place) : place_(place) {}
@@ -71,11 +83,31 @@ struct XPUContext::Impl {
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
+    if (std::getenv("XPU_PADDLE_XDL_CONTEXTS") != nullptr) {
+      // destroy all XPU Dataloader threads if exist
+      backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+      for (auto ctx : GetAllXdlCtxs()) {
+        xpu_wait(ctx->xpu_stream);
+        if (ctx->xpu_stream) {
+          xpu_stream_destroy(ctx->xpu_stream);
+          ctx->xpu_stream = nullptr;
+        }
+        xpu::destroy_context(ctx);
+        ctx = nullptr;
+      }
+      xdl_context_map_.clear();
+    }
   }
 
   const Place& GetPlace() const { return place_; }
 
-  XPUStream stream() const { return context_->xpu_stream; }
+  XPUStream stream() const {
+    if (IsDataloader()) {
+      xpu::Context* ctx_t = GetXdlCtx();
+      return ctx_t->xpu_stream;
+    }
+    return context_->xpu_stream;
+  }
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
@@ -87,10 +119,38 @@ struct XPUContext::Impl {
     return bkcl_context_;
   }
 
+  // Overload GetXContext function to set and get
+  // contexts of XPU Dataloader threads, and keep old GetXContext Method
+  xpu::Context* GetXContext() {
+    if (IsDataloader()) {
+      SetXdlCtx();
+      xpu::Context* ctx_t = GetXdlCtx();
+      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+      return ctx_t;
+    }
+
+    PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
+    return context_;
+  }
+
   void Wait() const {
+    if (IsDataloader()) {
+      xpu::Context* ctx_t = GetXdlCtx();
+      if (ctx_t) {
+        PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+        xpu_wait(ctx_t->xpu_stream);
+      }
+      return;
+    }
+
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
+    xpu::Context* ctx_t = GetXdlCtx();
+    if (ctx_t) {
+      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+      xpu_wait(ctx_t->xpu_stream);
+    }
   }
 
   void Init() {
@@ -99,6 +159,10 @@ struct XPUContext::Impl {
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
+    if (std::getenv("XPU_PADDLE_XDL_CONTEXTS") != nullptr) {
+      // Initialize XPU Dataloader threads contexts map
+      InitializeXdlContexts();
+    }
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
@@ -115,20 +179,64 @@ struct XPUContext::Impl {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
   }
 
+  // Methods of XPU Dataloader threads contexts map,
+  // currently, need set 'export XPU_PADDLE_XDL_CONTEXTS=1'
+  // to open XPU Dataloader context map
+  void InitializeXdlContexts() {
+    if (std::getenv("XPU_PADDLE_XDL_CONTEXTS") == nullptr) {
+      return;
+    }
+    auto thread_map = phi::GetAllThreadNames();
+    for (const auto& tp : thread_map) {
+      std::string t_name = tp.second;
+      if (t_name.substr(0, 10) == "Dataloader") {
+        SetXdlCtx();
+      }
+    }
+  }
+
+  void SetXdlCtx() {
+    auto pid = phi::GetProcessId();
+    if (xdl_context_map_.find(pid) == xdl_context_map_.end()) {
+      xpu::Context* ctx_t = xpu::create_context();
+      xdl_context_map_[pid] = ctx_t;
+    }
+  }
+
+  xpu::Context* GetXdlCtx() const {
+    auto pid = phi::GetProcessId();
+    return (xdl_context_map_.find(pid) == xdl_context_map_.end())
+               ? nullptr
+               : xdl_context_map_.find(pid)->second;
+  }
+
+  std::vector<xpu::Context*> GetAllXdlCtxs() {
+    std::vector<xpu::Context*> ctxs;
+    for (const auto& it : xdl_context_map_) {
+      ctxs.emplace_back(it.second);
+    }
+    return ctxs;
+  }
+
   bool owned_{false};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
   xpu::Context* context_{nullptr};
+  std::unordered_map<uint32_t, xpu::Context*> xdl_context_map_;
 
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
+XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
+  impl_->Init();
+}
 
 XPUContext::XPUContext(const XPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->Init();
+}
 
 XPUContext::~XPUContext() = default;
 
@@ -154,6 +262,8 @@ void XPUContext::SetXContext(xpu::Context* context) {
 
 void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
 
+bool XPUContext::IsDataloader() const { return impl_->IsDataloader(); }
+
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
@@ -161,5 +271,4 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
 void XPUContext::CreateStream() { impl_->CreateStream(); }
 
 void XPUContext::Init() { impl_->Init(); }
-
 }  // namespace phi
