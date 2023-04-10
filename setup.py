@@ -1116,6 +1116,7 @@ def get_package_data_and_package_dir():
         if os.name != 'nt':
             shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_1"), libs_path)
             shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_2"), libs_path)
+            shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_3"), libs_path)
             package_data['paddle.libs'] += [
                 'libmkldnn.so.0',
                 'libdnnl.so.1',
