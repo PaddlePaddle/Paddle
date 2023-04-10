@@ -166,10 +166,11 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
+            mask = mask.astype(np.float32)
         else:
             output = output.astype(self.dtype)
+            mask = mask.astype(self.dtype)
 
-        mask = mask.astype(np.float32)
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
@@ -372,7 +373,6 @@ def create_test_fp16_class(parent):
     class TestMaxPool2dFP16(parent):
         def init_dtype(self):
             self.dtype = np.float16
-            self.mask_dtype = np.float32
 
         def test_check_output(self):
             if core.is_compiled_with_cuda():
