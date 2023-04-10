@@ -33,5 +33,16 @@ class SequencePoolFunctor {
                   phi::DenseTensor* index = nullptr);
 };
 
+template <typename DeviceContext, typename T>
+class SequencePoolGradFunctor {
+ public:
+  void operator()(const DeviceContext& context,
+                  const std::string pooltype,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
+                  /* max pool has index */
+                  const phi::DenseTensor* index = nullptr);
+};
+
 }  // namespace funcs
 }  // namespace phi

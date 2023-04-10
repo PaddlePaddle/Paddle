@@ -279,9 +279,224 @@ class SequencePoolFunctor<phi::GPUContext, T> {
   }
 };
 
+template <typename T>
+struct MaxPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        if (i == index[tid]) {
+          in_grad[item_dim * i + tid] = out_grad[tid];
+        } else {
+          in_grad[item_dim * i + tid] = static_cast<T>(0);
+        }
+      }
+    }
+  }
+};
+
+template <typename T>
+struct AvgPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        in_grad[item_dim * i + tid] = out_grad[tid] / (end - start);
+      }
+    }
+  }
+};
+
+template <typename T>
+struct SumPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        in_grad[item_dim * i + tid] = out_grad[tid];
+      }
+    }
+  }
+};
+
+template <typename T>
+struct SqrtPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        in_grad[item_dim * i + tid] =
+            out_grad[tid] / (sqrt(static_cast<T>(end - start)));
+      }
+    }
+  }
+};
+
+template <typename T>
+struct LastPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        if (i == end - 1) {
+          in_grad[item_dim * i + tid] = out_grad[tid];
+        } else {
+          in_grad[item_dim * i + tid] = static_cast<T>(0);
+        }
+      }
+    }
+  }
+};
+
+template <typename T>
+struct FirstPoolGradFunctor {
+  HOSTDEVICE void operator()(const T* out_grad,
+                             const size_t start,
+                             const size_t end,
+                             const size_t item_dim,
+                             T* in_grad,
+                             const int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (int i = start; i < end; ++i) {
+        if (i == start) {
+          in_grad[item_dim * i + tid] = out_grad[tid];
+        } else {
+          in_grad[item_dim * i + tid] = static_cast<T>(0);
+        }
+      }
+    }
+  }
+};
+
+template <typename T, typename Range_OP>
+__global__ void sequence_pool_grad_kernel(Range_OP op,
+                                          const T* out_grad,
+                                          const size_t* lod,
+                                          const size_t lod_size,
+                                          const size_t item_dim,
+                                          T* in_grad,
+                                          const int* index) {
+  int bid = blockIdx.x;
+  if (bid >= lod_size - 1) return;
+  size_t start = lod[bid];
+  size_t end = lod[bid + 1];
+  const int* index_offset = nullptr;
+  if (index != nullptr) {
+    index_offset = &index[bid * item_dim];
+  }
+  op(&out_grad[bid * item_dim], start, end, item_dim, in_grad, index_offset);
+}
+
+template <typename T>
+class SequencePoolGradFunctor<phi::GPUContext, T> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const std::string pooltype,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
+                  /* max pool has index */
+                  const phi::DenseTensor* index = nullptr) {
+    auto lod_level = in_grad->lod().size();
+    auto& lod = in_grad->lod()[lod_level - 1];
+    const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
+    dim3 threads(1024, 1);
+    dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
+    phi::MixVector<size_t> mix_vector(&lod);
+    if (pooltype == "MAX") {
+      sequence_pool_grad_kernel<T, MaxPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              MaxPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              index->data<int>());
+    } else if (pooltype == "AVERAGE") {
+      sequence_pool_grad_kernel<T, AvgPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              AvgPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              nullptr);
+    } else if (pooltype == "SUM") {
+      sequence_pool_grad_kernel<T, SumPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              SumPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              nullptr);
+    } else if (pooltype == "SQRT") {
+      sequence_pool_grad_kernel<T, SqrtPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              SqrtPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              nullptr);
+    } else if (pooltype == "LAST") {
+      sequence_pool_grad_kernel<T, LastPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              LastPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              nullptr);
+    } else if (pooltype == "FIRST") {
+      sequence_pool_grad_kernel<T, FirstPoolGradFunctor<T>>
+          <<<grid, threads, 0, context.stream()>>>(
+              FirstPoolGradFunctor<T>(),
+              out_grad.data<T>(),
+              mix_vector.CUDAData(context.GetPlace()),
+              lod.size(),
+              item_dim,
+              in_grad->mutable_data<T>(context.GetPlace()),
+              nullptr);
+
+    } else {
+      PADDLE_THROW(errors::InvalidArgument(
+          "unsupported pooling pooltype: %s. Only support \"MAX\", "
+          "\"AVERAGE\", \"SUM\", \"SQRT\", \"LAST\" and \"FIRST\"",
+          pooltype));
+    }
+  }
+};
+
 // sequence pooling
 template class SequencePoolFunctor<phi::GPUContext, float>;
 template class SequencePoolFunctor<phi::GPUContext, double>;
+template class SequencePoolGradFunctor<phi::GPUContext, float>;
+template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

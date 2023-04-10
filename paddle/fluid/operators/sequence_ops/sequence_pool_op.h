@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,7 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
       index = context.Input<phi::DenseTensor>("MaxIndex");
     }
     in_g->mutable_data<T>(context.GetPlace());
-    math::SequencePoolGradFunctor<DeviceContext, T> pool;
+    phi::funcs::SequencePoolGradFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(),
          pooltype,
          *out_g,

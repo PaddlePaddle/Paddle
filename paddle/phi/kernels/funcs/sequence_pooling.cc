@@ -173,6 +173,68 @@ class MaxSeqPoolFunctor<T, true> {
     }
   }
 };
+template <typename T>
+class MaxSeqPoolGradFunctor {
+ public:
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& out_grad,
+                  const phi::DenseTensor& index,
+                  phi::DenseTensor* in_grad) {
+    auto og_dims = out_grad.dims();
+    auto ig_dims = in_grad->dims();
+    auto idx_dims = index.dims();
+    PADDLE_ENFORCE_GT(og_dims.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The rank of output@Grad shall be greater than 1, "
+                          "but got %ld <= 1. Please check the input value.",
+                          og_dims.size()));
+    PADDLE_ENFORCE_GT(ig_dims.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The rank of input@Grad shall be greater than 1, but "
+                          "got %ld <= 1. Please check the input value.",
+                          ig_dims.size()));
+    for (int64_t i = 1; i < og_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(og_dims[i],
+                        ig_dims[i],
+                        errors::InvalidArgument(
+                            "The dimension of input@Grad and output@Grad shall "
+                            "be same. Expected %ld == %ld, but got %ld != %ld. "
+                            "Please check the input value.",
+                            og_dims[i],
+                            ig_dims[i],
+                            og_dims[i],
+                            ig_dims[i]));
+    }
+    PADDLE_ENFORCE_EQ(
+        idx_dims,
+        og_dims,
+        errors::InvalidArgument(
+            "The dimension of index and output@Grad shall be same. Expected "
+            "%ld == %ld, but got %ld != %ld. Please check the input value.",
+            idx_dims,
+            og_dims,
+            idx_dims,
+            og_dims));
+
+    const T* og_data = out_grad.data<T>();
+    const int* max_index = index.data<int>();
+    T* ig_data = in_grad->data<T>();
+
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    set_zero(context, in_grad, static_cast<T>(0.0));
+    int64_t num_seq = og_dims[0];
+    int64_t dim = out_grad.numel() / num_seq;
+    for (int64_t i = 0; i < num_seq; ++i) {
+      for (int64_t j = 0; j < dim; ++j) {
+        int step_id = max_index[i * dim + j];
+        if (step_id == -1) continue;
+        ig_data[step_id * dim + j] = og_data[i * dim + j];
+      }
+    }
+  }
+};
 
 template <typename T>
 class LastSeqPoolFunctor {
@@ -238,6 +300,42 @@ class FirstSeqPoolFunctor {
         in_data += seq_len * item_size;
       }
       out_data += item_size;
+    }
+  }
+};
+
+template <typename T>
+class SumSeqPoolGradFunctor {
+ public:
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad) {
+    auto lod_level = in_grad->lod().size();
+    auto lod = in_grad->lod()[lod_level - 1];
+    int64_t out_w = out_grad.numel() / out_grad.dims()[0];
+    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    PADDLE_ENFORCE_EQ(in_w,
+                      out_w,
+                      errors::InvalidArgument(
+                          "The feature size of input@Grad and output@Grad "
+                          "shall be same. Expected %ld == %ld, but got %ld != "
+                          "%ld. Please check the input value.",
+                          in_w,
+                          out_w,
+                          in_w,
+                          out_w));
+    const T* out_g_data = out_grad.data<T>();
+    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      if (h == 0) continue;
+      int64_t in_offset = lod[i] * in_w;
+      const T* out_pos = out_g_data + i * out_w;
+      T* in_pos = in_g_data + in_offset;
+      for (int r = 0; r != h; ++r) {
+        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+      }
     }
   }
 };
@@ -334,8 +432,71 @@ class SequencePoolFunctor<phi::CPUContext, T> {
   }
 };
 
+template <typename T>
+class SequencePoolGradFunctor<phi::CPUContext, T> {
+ public:
+  void operator()(const phi::CPUContext& context,
+                  const std::string pooltype,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
+                  /* max pool has index */
+                  const phi::DenseTensor* index = nullptr) {
+    if (pooltype == "MAX") {
+      phi::funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
+      max_pool_grad(context, out_grad, *index, in_grad);
+      return;
+    }
+
+    if (pooltype == "LAST" || pooltype == "FIRST") {
+      // set X@Grad be zero at first when pooltype is LAST/FIRST
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
+      functor(context, in_grad, 0);
+    }
+
+    if (pooltype == "SUM") {
+      phi::funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      sum_pool_grad(context, out_grad, in_grad);
+      return;
+    }
+
+    auto lod_level = in_grad->lod().size();
+    auto lod = in_grad->lod()[lod_level - 1];
+    auto& place = *context.eigen_device();
+    for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
+      if (lod[i] == lod[i + 1]) continue;
+      auto in_g_t = in_grad->Slice(static_cast<int>(lod[i]),
+                                   static_cast<int>(lod[i + 1]));
+      auto out_g_t = out_grad.Slice(i, i + 1);
+      int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      int64_t w = in_grad->numel() / in_grad->dims()[0];
+      auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
+      auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
+      auto out_g_e_v = EigenVector<T>::Flatten(out_g_t);
+      Eigen::DSizes<int, 2> bcast(h, 1);
+
+      if (pooltype == "AVERAGE") {
+        in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
+      } else if (pooltype == "SQRT") {
+        in_g_e.device(place) =
+            (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
+      } else if (pooltype == "LAST") {
+        in_g_e.chip(h - 1, 0).device(place) = out_g_e_v;
+      } else if (pooltype == "FIRST") {
+        in_g_e.chip(0, 0).device(place) = out_g_e_v;
+      } else {
+        PADDLE_THROW(errors::InvalidArgument(
+            "unsupported pooling pooltype: %s. Only support \"AVERAGE\", "
+            "\"SQRT\", \"LAST\" and \"FIRST\"",
+            pooltype));
+      }
+    }
+  }
+};
+
 template class SequencePoolFunctor<phi::CPUContext, float>;
 template class SequencePoolFunctor<phi::CPUContext, double>;
+template class SequencePoolGradFunctor<phi::CPUContext, float>;
+template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi
