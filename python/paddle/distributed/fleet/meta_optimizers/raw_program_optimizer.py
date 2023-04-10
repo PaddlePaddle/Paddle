@@ -13,6 +13,7 @@
 
 from paddle import static
 from paddle.fluid import core
+from paddle.framework.ir import apply_build_strategy
 from paddle.utils import unique_name
 
 from .common import (
@@ -145,6 +146,13 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
+        )
+        pass_attrs = {"use_cuda": True}
+        apply_build_strategy(
+            self.main_program,
+            self.startup_program,
+            self.user_defined_strategy.build_strategy._copy(),
+            pass_attrs,
         )
         if self.nranks == 1:
             return optimize_ops, params_grads
