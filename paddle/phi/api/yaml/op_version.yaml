@@ -1,3 +1,11 @@
+- op : affine_grid
+  version :
+    - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
+      action :
+        - add_attr : align_corners
+          comment : Whether to align the corners of input and output.
+          default : "true"
+
 - op : allclose
   version :
     - checkpoint : Upgrade allclose, add two new inputs [Rtol] and [Atol].
@@ -42,6 +50,13 @@
           comment : Pass the mix, min value as input, not attribute. Min is dispensable.
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
+
+- op : embedding
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - fix_bug : fix_bug
+          comment : lookup_table_v2 support input type `int64`; after support input type `int32/int64`
 
 - op : equal
   version :
@@ -131,6 +146,13 @@
           comment : In order to change output data type
           default : 5
 
+- op : matrix_nms
+  version :
+    - checkpoint : Upgrade matrix_nms, add a new output [RoisNum].
+      action :
+        - add_output : RoisNum
+          comment : The number of RoIs in each image.
+
 - op : not_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
@@ -168,6 +190,14 @@
       action :
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
+
+- op : softmax_with_cross_entropy
+  version :
+    - checkpoint : Add a new attribute [use_softmax]
+      action :
+        - add_attr : use_softmax
+          comment : A flag to indicate whether to do softmax
+          default : "true"
 
 - op : trace
   version :

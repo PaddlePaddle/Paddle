@@ -57,10 +57,6 @@ class DenseTensor;
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
@@ -770,16 +766,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#ifndef PADDLE_WITH_MLU
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with MLU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetMLUDeviceId(dev_id);
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -2128,12 +2114,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       // CPUKernel will be executed and a warning will be given at the same
       // time.
       expected_kernel_key.place_ = platform::CPUPlace();
-#ifdef PADDLE_WITH_ASCEND_CL
-      if (SupportNPU()) {
-        auto& dev_ctx = ctx.device_context();
-        expected_kernel_key.place_ = dev_ctx.GetPlace();
-      }
-#endif
+
       if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
@@ -2305,26 +2286,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_iter == kernels.end() &&
-      platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing NPU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (kernel_iter == kernels.end() &&
-      platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing MLU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       platform::is_custom_place(expected_kernel_key.place_)) {
@@ -2367,13 +2329,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
                             platform::errors::InvalidArgument(
                                 "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    // In order to solve the problem that the output latitude of NPU reshape
-    // operator is not changed when inplace.
-    if (type_ != "reshape2" && type_ != "reshape2_grad") {
-      original_tensor->Resize(original_dims);
-    }
   }
 }
 
@@ -2759,13 +2715,6 @@ void OperatorWithKernel::ParseInputDataType(
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
-      PADDLE_ENFORCE_EQ(
-          sp_t->initialized(),
-          true,
-          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                            "contains uninitialized Tensor.",
-                                            Type(),
-                                            name));
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
     } else if (var->IsType<LoDTensorArray>()) {

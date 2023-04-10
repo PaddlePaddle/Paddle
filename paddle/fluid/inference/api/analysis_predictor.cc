@@ -502,14 +502,18 @@ void *AnalysisPredictor::GetExecStream() const {
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
-  } else {
-    return nullptr;
   }
-  return nullptr;
-#else
+#endif
+#if defined(PADDLE_WITH_XPU)
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
-#endif
 }
 
 const void *AnalysisPredictor::GetDeviceContexts() const {
@@ -2565,6 +2569,7 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+USE_TRT_CONVERTER(qk_multihead_matmul)
 #endif
 #if IS_TRT_VERSION_GE(8510)
 USE_TRT_CONVERTER(grid_sampler)
