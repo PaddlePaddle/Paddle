@@ -22,7 +22,7 @@ from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,

@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle.fluid.framework import convert_np_dtype_to_dtype_

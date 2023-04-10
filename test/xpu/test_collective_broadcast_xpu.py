@@ -14,8 +14,8 @@
 
 import unittest
 
+from get_test_cover_info import XPUOpTestWrapper, create_test_class
 from test_collective_base_xpu import TestDistBase
-from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
 
 import paddle
 from paddle.fluid import core

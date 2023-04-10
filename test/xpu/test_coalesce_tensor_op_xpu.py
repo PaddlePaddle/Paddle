@@ -19,12 +19,12 @@ import numpy as np
 from paddle.fluid import core
 
 alignment = 256
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test_xpu import XPUOpTest
 
 import paddle
 

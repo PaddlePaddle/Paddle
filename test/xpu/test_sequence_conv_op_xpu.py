@@ -21,12 +21,12 @@ import numpy as np
 import paddle
 
 sys.path.append("../")
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
 np.set_printoptions(threshold=np.inf)

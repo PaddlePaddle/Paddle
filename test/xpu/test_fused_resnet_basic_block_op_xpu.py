@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+
+sys.path.append('../../python/paddle/fluid/tests/unittests')
 
 import numpy as np
 from eager_op_test import OpTest
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,

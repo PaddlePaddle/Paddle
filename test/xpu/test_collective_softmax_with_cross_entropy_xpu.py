@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from test_collective_base_xpu import DataTypeCast, TestDistBase
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from test_collective_base_xpu import DataTypeCast, TestDistBase
 
 import paddle
 from paddle.framework import core

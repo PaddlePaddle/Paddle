@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test_xpu import XPUOpTest
-from test_pool2d_op import adaptive_end_index, adaptive_start_index
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test_xpu import XPUOpTest
+from test_pool2d_op import adaptive_end_index, adaptive_start_index
 
 import paddle
 

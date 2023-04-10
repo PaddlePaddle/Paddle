@@ -20,13 +20,13 @@ sys.path.append('..')
 sys.path.append('../../python/paddle/fluid/tests/unittests/')
 
 from eager_op_test import OpTest
-from testsuite import append_loss_ops, create_op, set_input
-from white_list import no_grad_set_white_list, op_threshold_white_list
-from xpu.get_test_cover_info import (
+from get_test_cover_info import (
     get_xpu_op_support_types,
     is_empty_grad_op_type,
     type_dict_str_to_numpy,
 )
+from testsuite import append_loss_ops, create_op, set_input
+from white_list import no_grad_set_white_list, op_threshold_white_list
 
 import paddle
 from paddle import fluid

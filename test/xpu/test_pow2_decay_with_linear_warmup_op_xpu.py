@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-from xpu.get_test_cover_info import record_op_test
+sys.path.append('../../python/paddle/fluid/tests/unittests')
+
+from get_test_cover_info import record_op_test
 
 import paddle
 from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
