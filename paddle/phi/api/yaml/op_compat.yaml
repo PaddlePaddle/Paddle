@@ -1247,6 +1247,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : logcumsumexp
+  backward : logcumsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : logical_and
   inputs :
     {x : X, y : Y}
