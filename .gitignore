@@ -86,6 +86,7 @@ paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc
 paddle/fluid/pybind/eager_op_function.cc
 tools/nvcc_lazy
 
+
 # these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op*.cc
 paddle/fluid/operators/generated_sparse_op.cc
