@@ -9,9 +9,12 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 set_tests_properties(test_resnet_prim_cinn PROPERTIES TIMEOUT 850)
+set_tests_properties(test_resnet_prim_cinn_res PROPERTIES TIMEOUT 850)
 set_tests_properties(test_bert_prim_cinn PROPERTIES TIMEOUT 500)
 
 if(WITH_CINN)
   set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(test_resnet_prim_cinn_res PROPERTIES LABELS
+                                                            "RUN_TYPE=CINN")
   set_tests_properties(test_bert_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
