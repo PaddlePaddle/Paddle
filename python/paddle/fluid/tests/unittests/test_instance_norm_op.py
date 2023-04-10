@@ -608,8 +608,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             )
 
             for j in range(len(self.static_rev_desire[i])):
-                # TODO: fix the diff between cpu and gpu grad is large in original op
-                # now use larger threshold when testing cpu grads to bypass cpu grad test
                 if self.special_threshold is not None and j <= 1:
                     atol = self.special_threshold[i]
                     rtol = self.special_threshold[i]
@@ -637,7 +635,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                     err_msg=f"Check diff failed of place:{self.places[i]}, output: {vars_name[j + 3]}",
                 )
 
-            # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if self.special_threshold is not None and i == 0:
                 atol = self.special_threshold[i]
@@ -691,7 +688,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 err_msg='%s jit fwd' % self.places[i],
             )
 
-            # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if self.special_threshold is not None:
                 atol = self.special_threshold[i]
@@ -741,7 +737,6 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 atol=atol,
                 err_msg='%s jit_cinn fwd' % self.places[i],
             )
-            # TODO: fix the diff between cpu and gpu grad is large in original op
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if self.special_threshold is not None:
                 atol = self.special_threshold[i]
