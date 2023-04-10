@@ -104,6 +104,8 @@ class GpuPinnedVector {
     memcpy(reinterpret_cast<char *>(mem_cpu_->ptr()), buf, len);
     len_ = len;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void pinedcpu_to_gpu(paddle::gpuStream_t stream, phi::Place place) {
     mem_gpu_ = memory::Alloc(place, len_);
 #ifdef PADDLE_WITH_CUDA
@@ -124,6 +126,7 @@ class GpuPinnedVector {
         "WITH_ROCM=ON."));
 #endif
   }
+#endif
 
   template <typename Type>
   Type *get_gpu_ptr() {
