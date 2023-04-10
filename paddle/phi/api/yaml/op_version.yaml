@@ -1,3 +1,11 @@
+- op : affine_grid
+  version :
+    - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
+      action :
+        - add_attr : align_corners
+          comment : Whether to align the corners of input and output.
+          default : "true"
+
 - op : allclose
   version :
     - checkpoint : Upgrade allclose, add two new inputs [Rtol] and [Atol].
