@@ -772,7 +772,6 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("device_type"),
            py::arg("device_id") = 0,
            py::arg("precision") = AnalysisConfig::Precision::kFloat32)
-      .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("enable_ipu",
            &AnalysisConfig::EnableIpu,
            py::arg("ipu_device_num") = 1,
@@ -1063,13 +1062,6 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("get_output_names", &paddle_infer::Predictor::GetOutputNames)
       .def("get_input_handle", &paddle_infer::Predictor::GetInputHandle)
       .def("get_output_handle", &paddle_infer::Predictor::GetOutputHandle)
-      .def("run",
-           [](paddle_infer::Predictor &self) {
-#ifdef PADDLE_WITH_ASCEND_CL
-             pybind11::gil_scoped_release release;
-#endif
-             self.Run();
-           })
       .def(
           "run",
           [](paddle_infer::Predictor &self, py::handle py_in_tensor_list) {
@@ -1079,8 +1071,8 @@ void BindPaddleInferPredictor(py::module *m) {
             self.Run(in_tensor_list, &outputs);
             return py::handle(ToPyObject(outputs));
           },
-          py::arg("inputs"),
-          py::call_guard<py::gil_scoped_release>())
+          py::arg("inputs"))
+      .def("run", [](paddle_infer::Predictor &self) { self.Run(); })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

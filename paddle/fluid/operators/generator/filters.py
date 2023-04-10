@@ -40,6 +40,28 @@ def get_infer_var_type_func(op_name):
   }}
 }};
 """
+    elif op_name == "lookup_table_v2_grad":
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {{
+    auto out_var_name = framework::GradVarName("W");
+    auto attr = ctx->GetAttr("is_sparse");
+    bool is_sparse = PADDLE_GET(bool, attr);
+    if (is_sparse) {{
+      VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
+      ctx->SetOutputType(out_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
+    }} else {{
+      VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
+              << " is set to phi::DenseTensor";
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+    }}
+    ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
+  }}
+}};
+"""
     elif op_name == "merge_selected_rows":
         return f"""
     class {to_pascal_case(op_name)}InferVarType

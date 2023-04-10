@@ -224,6 +224,7 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})

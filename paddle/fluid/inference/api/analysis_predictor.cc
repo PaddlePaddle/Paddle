@@ -376,14 +376,6 @@ void AnalysisPredictor::InitPlace() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
-  } else if (config_.use_npu()) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use NPU forward propagation, but Paddle was not compiled "
-        "with WITH_ASCEND_CL."));
-#endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
       place_ = paddle::platform::CPUPlace();
@@ -510,14 +502,18 @@ void *AnalysisPredictor::GetExecStream() const {
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
-  } else {
-    return nullptr;
   }
-  return nullptr;
-#else
+#endif
+#if defined(PADDLE_WITH_XPU)
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
-#endif
 }
 
 const void *AnalysisPredictor::GetDeviceContexts() const {

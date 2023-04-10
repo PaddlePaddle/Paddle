@@ -11,7 +11,7 @@ cc_library(
 if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo
-    SRCS process_group_gloo.cc send_recv.cc
+    SRCS process_group_gloo.cc gloo_send_recv.cc
     DEPS phi_api eager_api gloo_wrapper tcp_store)
 endif()
 
