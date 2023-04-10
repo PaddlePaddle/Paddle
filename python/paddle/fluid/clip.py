@@ -84,11 +84,7 @@ def _squared_l2_norm(x):
     """
 
     x = _cast_to_mp_type_if_enabled(x)
-    if (
-        core.is_compiled_with_xpu()
-        #or x.dtype == core.VarDesc.VarType.FP16
-        #or x.dtype == core.VarDesc.VarType.BF16
-    ):
+    if core.is_compiled_with_xpu():
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
@@ -99,7 +95,9 @@ def _squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'uint16', 'float16'], op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'float16', 'uint16'], op_type
+    )
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -616,7 +614,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad
                         )
-
                     sum_square = _squared_l2_norm(merge_grad)
                     if sum_square.dtype == core.VarDesc.VarType.FP16:
                         sum_square_list_fp16.append(sum_square)
@@ -718,6 +715,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     #    else scale_var
                     #)
                     scale_input = scale_var
+
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
