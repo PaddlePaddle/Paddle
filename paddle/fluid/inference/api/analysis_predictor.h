@@ -150,7 +150,7 @@ class AnalysisPredictor : public PaddlePredictor {
            int batch_size = -1) override;
 
   ///
-  /// \brief Run the prediction engine.
+  /// \brief Run the prediction engine (Recommended).
   ///
   /// \param[in] inputs input tensors
   /// \param[out] outputs output tensors
