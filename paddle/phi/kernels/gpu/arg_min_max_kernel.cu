@@ -266,7 +266,9 @@ PD_REGISTER_KERNEL(argmin,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(argmax,
                    GPU,
@@ -279,4 +281,6 @@ PD_REGISTER_KERNEL(argmax,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

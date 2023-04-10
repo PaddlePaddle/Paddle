@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import enable_static
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
+from paddle import enable_static, fluid
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
@@ -129,7 +128,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def prepare_w(self):
-        rows = [a for a in range(self.w_bf16.shape[0])]
+        rows = list(range(self.w_bf16.shape[0]))
         row_numel = self.w_bf16.shape[1]
 
         w_selected_rows = self.scope.var('W').get_selected_rows()

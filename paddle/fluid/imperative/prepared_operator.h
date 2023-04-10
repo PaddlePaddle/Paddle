@@ -426,6 +426,10 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
               break;
+            case framework::proto::AttrType::SCALAR:
+              kernel_ctx->EmplaceBackAttr(std::move(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr))));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
@@ -526,6 +530,16 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           } break;
           case framework::proto::AttrType::BOOLEANS: {
             const auto& vec = PADDLE_GET_CONST(std::vector<bool>, attr);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case framework::proto::AttrType::SCALARS: {
+            const auto& vec = PADDLE_GET_CONST(
+                std::vector<paddle::experimental::Scalar>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {

@@ -73,30 +73,6 @@ enum class Backend : uint8_t {
    * and some kernels are also device-independent when implemented based on
    * primitive API.
    *
-   * In this case, we need to provide a more concise registration method,
-   * instead of registering the kernels for each device with almost
-   * repetitive code, we need one registration covers all situations,
-   * so if we provide the ALL field with Register the kernel in this statement.
-   *
-   * Of course, we have also considered solving this problem through different
-   * named macros, for example, if we define
-   *
-   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND
-   *
-   * Based on this design pattern, the dtype and layout also have the same
-   * requirements, this cause we need to define a series of macros
-   *
-   * PD_REGISTER_KERNEL_FOR_ALL_DTYPE
-   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT
-   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
-   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
-   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
-   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
-   *
-   * It makes the system of registering macros more complicated, we think
-   * this is not a simple design, so we still adopt the design of providing
-   * the ALL field.
-   *
    * Note: ALL_BACKEND only used for Kernel registration and selection
    */
   ALL_BACKEND = UNDEFINED,
@@ -133,6 +109,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       break;
     case Backend::IPU:
       os << "IPU";
+      break;
+    case Backend::CUSTOM:
+      os << "CUSTOM";
       break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -181,6 +160,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
 #endif
   } else if (s == std::string("IPU")) {
     return Backend::IPU;
+  } else if (s == std::string("Custom")) {
+    return Backend::CUSTOM;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::CustomRegisteredDeviceMap::Instance()

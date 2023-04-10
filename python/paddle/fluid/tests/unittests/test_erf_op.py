@@ -19,13 +19,15 @@ from eager_op_test import OpTest
 from scipy.special import erf
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 
 class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.erf
         self.python_api = paddle.erf
         self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
@@ -41,7 +43,7 @@ class TestErfOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestErfLayer(unittest.TestCase):

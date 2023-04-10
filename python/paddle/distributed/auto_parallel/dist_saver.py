@@ -103,9 +103,7 @@ class DistributedSaver:
         def _load_file(filename, dirname, suffix="pdparams"):
             file_list = []
             for file in os.listdir(dirname):
-                if check_filename(
-                    '{}(.*)_dist(.*).{}'.format(filename, suffix), file
-                ):
+                if check_filename(f'{filename}(.*)_dist(.*).{suffix}', file):
                     file_list.append(os.path.join(dirname, file))
             file_list.sort()
             return file_list
@@ -121,7 +119,7 @@ class DistributedSaver:
                         state_dict[name].append(np.array(value))
                     else:
                         state_dict[name] = [np.array(value)]
-            self._logger.info("Load param file: {}".format(file_list))
+            self._logger.info(f"Load param file: {file_list}")
             return state_dict
 
         filename = os.path.basename(path)
@@ -141,7 +139,7 @@ class DistributedSaver:
         # load path.pdattr
         dist_attr_file_list = _load_file(filename, dirname, "pdattr")
         self._logger.info(
-            "Load distributed attribute file: {}".format(dist_attr_file_list)
+            f"Load distributed attribute file: {dist_attr_file_list}"
         )
         dist_attr = {}
         for dist_attr_file in dist_attr_file_list:
@@ -170,8 +168,8 @@ class DistributedSaver:
         global_block = dist_main_prog.global_block()
 
         ops = global_block.ops
-        feed_vars_names = list(map(lambda x: x.name, feed_vars))
-        fetch_vars_names = list(map(lambda x: x.name, fetch_vars))
+        feed_vars_names = [x.name for x in feed_vars]
+        fetch_vars_names = [x.name for x in fetch_vars]
 
         last_idx = -1
         for idx, op in enumerate(ops):

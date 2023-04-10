@@ -326,7 +326,8 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     auto* w_data = w->data<T>();
     auto* col_data = col->data<T>();
 
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
@@ -484,7 +485,8 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int batch = x->lod()[0].size() - 1;
     const auto& top_offset = out->lod()[0];
     const auto& col_offset = col->lod()[0];
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {

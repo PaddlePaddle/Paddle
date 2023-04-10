@@ -31,9 +31,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
-USE_CUDA_ONLY_OP(ncclAllReduce);
-USE_CUDA_ONLY_OP(ncclReduce);
-USE_CUDA_ONLY_OP(ncclBcast);
+USE_OP_ITSELF(ncclAllReduce);
+USE_OP_ITSELF(ncclReduce);
+USE_OP_ITSELF(ncclBcast);
+PD_DECLARE_KERNEL(ncclAllReduce, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(ncclReduce, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(ncclBcast, GPU, ALL_LAYOUT);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -55,24 +58,11 @@ class NCCLTester : public ::testing::Test {
       gpu_list_.emplace_back(i);
     }
 
-    paddle::platform::CPUPlace cpu_place;
-    for (size_t i = 0; i < gpu_list_.size(); ++i) {
-      p::CUDAPlace place(i);
-      auto *ctx = new phi::GPUContext(place);
-      ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(place, ctx->stream())
-                            .get());
-      ctx->PartialInitWithAllocator();
-      dev_ctxs_.emplace_back(ctx);
-    }
+    p::CPUPlace cpu_place;
+    f::InitDevices();
+    pool_ptr_ = &p::DeviceContextPool::Instance();
 
     NCCLInitOp();
-  }
-
-  void TearDown() override {
-    for (auto &device_context : dev_ctxs_) {
-      delete device_context;
-    }
   }
 
   void NCCLInitOp() {
@@ -104,7 +94,7 @@ class NCCLTester : public ::testing::Test {
     const f::OpDesc *op1 = &op_desc;
 
     p::CUDAPlace place(gpu_id);
-    auto &ctx = dev_ctxs_.at(gpu_id);
+    const auto &ctx = pool_ptr_->Get(place);
 
     auto *send_tensor = scope->Var("st")->GetMutable<phi::DenseTensor>();
     auto *recv_tensor = scope->Var("rt")->GetMutable<phi::DenseTensor>();
@@ -138,7 +128,7 @@ class NCCLTester : public ::testing::Test {
   void testNcclBcastOp();
 
  public:
-  std::vector<p::DeviceContext *> dev_ctxs_;
+  p::DeviceContextPool *pool_ptr_;
   f::Scope g_scope_;
   std::mutex mu_;
   std::vector<int> gpu_list_;
@@ -185,7 +175,7 @@ void NCCLTester::testNcclAllReduceOp() {
     result_tensor->Resize(kDims);
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-    auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[i]);
+    auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
     paddle::memory::Copy(cpu_place,
                          ct,
                          p::CUDAPlace(gpu_list_[i]),
@@ -242,12 +232,14 @@ void NCCLTester::testNcclReduceOp() {
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
+  auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
   paddle::memory::Copy(cpu_place,
                        ct,
                        p::CUDAPlace(gpu_list_[kRoot]),
                        rt,
                        recv_tensor.numel() * sizeof(float),
-                       nullptr);
+                       dev_ctx->stream());
+  dev_ctx->Wait();
 
   for (int64_t j = 0; j < phi::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], expected_result, 1e-5);
@@ -298,7 +290,7 @@ void NCCLTester::testNcclBcastOp() {
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-  auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[idx]);
+  auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
   paddle::memory::Copy(cpu_place,
                        ct,
                        p::CUDAPlace(gpu_list_[idx]),

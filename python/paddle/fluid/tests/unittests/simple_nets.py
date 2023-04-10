@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):

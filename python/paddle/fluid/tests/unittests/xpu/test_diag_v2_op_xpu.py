@@ -26,7 +26,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
@@ -58,11 +58,11 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
 
         def test_check_output(self):
             paddle.enable_static()
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
 
         def test_check_grad(self):
             paddle.enable_static()
-            self.check_grad(['X'], 'Out', check_eager=False)
+            self.check_grad(['X'], 'Out', check_dygraph=False)
 
         def init_config(self):
             pass

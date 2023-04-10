@@ -24,6 +24,8 @@
 namespace paddle {
 namespace operators {
 
+USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
+
 template <typename T>
 static void InitRandom(phi::DenseTensor *tensor, const platform::Place &place) {
   phi::DenseTensor cpu_tensor;

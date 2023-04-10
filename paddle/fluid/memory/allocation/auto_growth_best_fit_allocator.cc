@@ -54,6 +54,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
   total_alloc_size_ = 0;
   total_free_times_ = 0;
   total_free_size_ = 0;
+  VLOG(4) << "chunk_size_:" << chunk_size_;
 }
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(

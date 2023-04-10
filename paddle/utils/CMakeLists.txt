@@ -17,5 +17,5 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     pybind_util
     SRCS pybind.cc
-    DEPS phi_tensor_raw)
+    DEPS phi_tensor_raw flags)
 endif()

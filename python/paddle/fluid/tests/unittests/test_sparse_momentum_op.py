@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def calculate_sparse_momentum_by_numpy(
@@ -175,9 +175,7 @@ class TestSparseMomentumOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(
-            atol=5e-3 if self.multi_precision else 1e-5, check_eager=True
-        )
+        self.check_output(atol=5e-3 if self.multi_precision else 1e-5)
 
 
 class TestSparseMomentumOpDtype1(TestSparseMomentumOp):

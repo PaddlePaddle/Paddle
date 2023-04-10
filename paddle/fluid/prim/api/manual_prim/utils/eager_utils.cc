@@ -21,33 +21,32 @@ namespace prim {
 
 template <>
 Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
-                     paddle::experimental::DataType dtype,
+                     phi::DataType dtype,
                      const paddle::Place& place) {
-  if (dtype == paddle::experimental::DataType::UNDEFINED) {
-    dtype = paddle::experimental::DataType::FLOAT32;
+  if (dtype == phi::DataType::UNDEFINED) {
+    dtype = phi::DataType::FLOAT32;
   }
   return empty_ad_func(shape, dtype, place);
 }
 
 template <>
-Tensor empty_like<Tensor>(const paddle::experimental::Tensor& x,
-                          paddle::experimental::DataType dtype,
+Tensor empty_like<Tensor>(const paddle::Tensor& x,
+                          phi::DataType dtype,
                           const paddle::Place& place) {
-  if (dtype == paddle::experimental::DataType::UNDEFINED) {
-    dtype = paddle::experimental::DataType::FLOAT32;
+  if (dtype == phi::DataType::UNDEFINED) {
+    dtype = phi::DataType::FLOAT32;
   }
   return empty_like_ad_func(x, dtype, place);
 }
 
 template <>
-void set_output<Tensor>(const paddle::experimental::Tensor& x_tmp,
-                        paddle::experimental::Tensor* x) {
+void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
   x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
 template <>
-void by_pass<Tensor>(const paddle::experimental::Tensor& x, Tensor* out) {
+void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 

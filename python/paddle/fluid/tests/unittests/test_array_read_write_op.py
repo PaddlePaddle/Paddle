@@ -17,17 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_main_program
 
 
 def _test_read_write(x):
-    i = layers.zeros(shape=[1], dtype='int64')
+    i = paddle.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     arr = paddle.tensor.array_write(x=x[0], i=i)
     i = paddle.increment(x=i)
@@ -35,7 +33,7 @@ def _test_read_write(x):
     i = paddle.increment(x=i)
     arr = paddle.tensor.array_write(x=x[2], i=i, array=arr)
 
-    i = layers.zeros(shape=[1], dtype='int64')
+    i = paddle.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     a0 = paddle.tensor.array_read(array=arr, i=i)
     i = paddle.increment(x=i)

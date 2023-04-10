@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    "TrainerRuntimeConfig",
-    "DistributedStrategy",
-    "SyncStrategy",
-    "AsyncStrategy",
-    "HalfAsyncStrategy",
-    "GeoStrategy",
-    "StrategyFactory",
-]
+__all__ = []
 
 import os
 
-import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle import fluid
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )
@@ -136,7 +128,7 @@ class TrainerRuntimeConfig:
                     'communicator_send_queue_size'
                 ] = num_threads
 
-        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+        return {key: str(self.runtime_configs[key]) for key in need_keys}
 
     def display(self, configs):
         raw0, raw1, length = 45, 5, 50
@@ -156,7 +148,7 @@ class TrainerRuntimeConfig:
 
         draws += border
 
-        _str = "\n{}\n".format(draws)
+        _str = f"\n{draws}\n"
         return _str
 
     def __repr__(self):
@@ -194,7 +186,7 @@ class DistributedStrategy:
         self.debug_opt = opt_info
 
     def get_debug_opt(self):
-        opt_info = dict()
+        opt_info = {}
         if self.debug_opt is not None and isinstance(self.debug_opt, dict):
             opt_info["dump_slot"] = bool(self.debug_opt.get("dump_slot", 0))
             opt_info["dump_converter"] = str(
@@ -247,7 +239,7 @@ class DistributedStrategy:
                     self._trainer_runtime_config.runtime_configs[key] = Value
                 else:
                     raise ValueError(
-                        "TrainerRuntimeConfig doesn't have key: {}".format(key)
+                        f"TrainerRuntimeConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -278,7 +270,7 @@ class DistributedStrategy:
                     setattr(self._server_runtime_config, key, config[key])
                 else:
                     raise ValueError(
-                        "ServerRuntimeConfig doesn't have key: {}".format(key)
+                        f"ServerRuntimeConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -303,7 +295,7 @@ class DistributedStrategy:
                     setattr(self._execute_strategy, key, config[key])
                 else:
                     raise ValueError(
-                        "ExecutionStrategy doesn't have key: {}".format(key)
+                        f"ExecutionStrategy doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -327,9 +319,7 @@ class DistributedStrategy:
                 if hasattr(self._build_strategy, key):
                     setattr(self._build_strategy, key, config[key])
                 else:
-                    raise ValueError(
-                        "BuildStrategy doesn't have key: {}".format(key)
-                    )
+                    raise ValueError(f"BuildStrategy doesn't have key: {key}")
         else:
             raise TypeError(
                 "build_strategy only accept input type: dict or BuildStrategy"

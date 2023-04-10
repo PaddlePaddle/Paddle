@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.ir import apply_build_strategy
+from paddle.framework.ir import apply_build_strategy
 from paddle.nn import CrossEntropyLoss
 from paddle.vision.models import resnet50
 
@@ -208,7 +208,7 @@ class TestIRPassBase(unittest.TestCase):
                 loss_value2 = self.executor.run(
                     main2, feed=feed, fetch_list=[loss2]
                 )[0]
-            self.assertEqual(loss_value1, loss_value2, "batch {}".format(idx))
+            self.assertEqual(loss_value1, loss_value2, f"batch {idx}")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 
@@ -246,6 +247,50 @@ class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+
+class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+  void Apply() override {
+    // get inputs
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor dout =
+        this->GetSingleForwardInput(framework::GradVarName("Out"));
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+
+    // get attr
+    bool trans_x = this->Attr<bool>("trans_x");
+    bool trans_y = this->Attr<bool>("trans_y");
+
+    // get output
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+    VLOG(3) << "Runing matmul_double_grad composite func";
+    // call composite backward func
+    prim::matmul_double_grad<prim::DescTensor>(
+        x, y, dout, ddx, ddy, trans_x, trans_y, x_grad, y_grad, grad_out_grad);
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -335,6 +380,7 @@ REGISTER_OPERATOR(matmul_v2_grad,
                   ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
+                  ops::MatMulCompositeDoubleGradOpMaker,
                   MatMulV2GradInferShapeFunctor);
 
 REGISTER_OPERATOR(matmul_v2_grad_grad,

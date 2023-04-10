@@ -156,7 +156,6 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-// TODO(jczaja): Enable FP32 when performance is good
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(layer_norm,
                    MKLDNN,

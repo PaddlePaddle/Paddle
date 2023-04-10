@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -86,7 +86,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def test_tensor_parallel_extra_sync(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.tensor_parallel = True

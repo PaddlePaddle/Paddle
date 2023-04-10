@@ -20,10 +20,8 @@ import numpy
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.optimizer as optimizer
+from paddle import fluid
+from paddle.fluid import core, framework, optimizer
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import (
     Program,
@@ -1167,6 +1165,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=[drop_res], size=2, activation='softmax'
             )
+            drop_res.stop_gradient = False
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
                 label=input_y,
@@ -1231,6 +1230,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=[drop_res], size=2, activation='softmax'
             )
+            drop_res.stop_gradient = False
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
                 label=input_y,

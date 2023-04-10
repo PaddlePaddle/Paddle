@@ -47,7 +47,7 @@ ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
-  GIT_TAG 1.2.0
+  GIT_TAG 1.4.0
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

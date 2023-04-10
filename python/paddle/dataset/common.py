@@ -86,17 +86,17 @@ def download(url, module_name, md5sum, save_name=None):
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            sys.stderr.write("file %s  md5 %s\n" % (md5file(filename), md5sum))
+            sys.stderr.write(f"file {md5file(filename)}  md5 {md5sum}\n")
         if retry < retry_limit:
             retry += 1
         else:
             raise RuntimeError(
-                "Cannot download {0} within retry limit {1}".format(
+                "Cannot download {} within retry limit {}".format(
                     url, retry_limit
                 )
             )
         sys.stderr.write(
-            "Cache file %s not found, downloading %s \n" % (filename, url)
+            f"Cache file {filename} not found, downloading {url} \n"
         )
         sys.stderr.write("Begin to download\n")
         try:
@@ -138,10 +138,7 @@ def fetch_all():
         if "fetch" in dir(
             importlib.import_module("paddle.dataset.%s" % module_name)
         ):
-            getattr(
-                importlib.import_module("paddle.dataset.%s" % module_name),
-                "fetch",
-            )()
+            importlib.import_module('paddle.dataset.%s' % module_name).fetch()
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -223,6 +220,4 @@ def _check_exists_and_download(path, url, md5, module_name, download=True):
     if download:
         return paddle.dataset.common.download(url, module_name, md5)
     else:
-        raise ValueError(
-            '{} not exists and auto download disabled'.format(path)
-        )
+        raise ValueError(f'{path} not exists and auto download disabled')

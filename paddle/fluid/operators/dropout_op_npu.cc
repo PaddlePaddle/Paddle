@@ -17,7 +17,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -87,7 +86,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
-      phi::DenseTensor npu_mask(experimental::DataType::UINT8);
+      phi::DenseTensor npu_mask(phi::DataType::UINT8);
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
       npu_mask.Resize(phi::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
@@ -114,7 +113,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
-      phi::DenseTensor cast_mask(experimental::DataType::BOOL);
+      phi::DenseTensor cast_mask(phi::DataType::BOOL);
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
       auto dst_dtype_bool =

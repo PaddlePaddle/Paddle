@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -25,7 +25,7 @@ paddle.enable_static()
 class TestFleetExecutor(unittest.TestCase):
     def fake_fleet_opt(self):
         # TODO: Fake for coverage will be removed in the future
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         strategy = fleet.DistributedStrategy()
         strategy.sharding_configs = {

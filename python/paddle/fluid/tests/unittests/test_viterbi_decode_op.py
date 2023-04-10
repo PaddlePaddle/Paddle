@@ -11,10 +11,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -99,7 +99,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestViterbiAPI(unittest.TestCase):
@@ -124,13 +124,15 @@ class TestViterbiAPI(unittest.TestCase):
     def check_static_result(self, place):
         bz, length, ntags = self.bz, self.len, self.ntags
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            Input = fluid.data(
+            Input = paddle.static.data(
                 name="Input", shape=[bz, length, ntags], dtype="float32"
             )
-            Transition = fluid.data(
+            Transition = paddle.static.data(
                 name="Transition", shape=[ntags, ntags], dtype="float32"
             )
-            Length = fluid.data(name="Length", shape=[bz], dtype="int64")
+            Length = paddle.static.data(
+                name="Length", shape=[bz], dtype="int64"
+            )
             decoder = paddle.text.ViterbiDecoder(Transition, self.use_tag)
             score, path = decoder(Input, Length)
             exe = fluid.Executor(place)

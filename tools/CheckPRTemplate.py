@@ -54,14 +54,14 @@ def parameter_accuracy(body):
         value = PR_dic[key].strip().split(',')
         single_mess = ''
         if len(value) == 1 and value[0] == '':
-            message += '%s should be in %s. but now is None.' % (key, test_list)
+            message += f'{key} should be in {test_list}. but now is None.'
         else:
             for i in value:
                 i = i.strip().lower()
                 if i not in test_list_lower:
                     single_mess += '%s.' % i
             if len(single_mess) != 0:
-                message += '%s should be in %s. but now is [%s].' % (
+                message += '{} should be in {}. but now is [{}].'.format(
                     key,
                     test_list,
                     single_mess,
@@ -112,7 +112,7 @@ def pull_request_event_template(event, repo, *args, **kwargs):
     sha = event["head"]["sha"]
     title = event["title"]
     pr_user = event["user"]["login"]
-    print(f'接收数据：pr_num: {pr_num}, title: {title}, user: {pr_user}')
+    print(f'receive data : pr_num: {pr_num}, title: {title}, user: {pr_user}')
     if repo in pr_effect_repos:
         CHECK_TEMPLATE = REPO_TEMPLATE[repo]
         global check_pr_template
@@ -120,7 +120,7 @@ def pull_request_event_template(event, repo, *args, **kwargs):
         check_pr_template, check_pr_template_message = checkPRTemplate(
             repo, BODY, CHECK_TEMPLATE
         )
-        print("check_pr_template: %s pr: %s" % (check_pr_template, pr_num))
+        print(f"check_pr_template: {check_pr_template} pr: {pr_num}")
         if check_pr_template is False:
             print("ERROR MESSAGE:", check_pr_template_message)
             sys.exit(7)

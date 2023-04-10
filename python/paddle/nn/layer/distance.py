@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import Layer
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 

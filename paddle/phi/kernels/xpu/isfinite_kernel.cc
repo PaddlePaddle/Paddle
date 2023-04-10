@@ -34,4 +34,6 @@ void IsnanKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    isnan, XPU, ALL_LAYOUT, phi::IsnanKernel, float, phi::dtype::float16) {}
+    isnan, XPU, ALL_LAYOUT, phi::IsnanKernel, float, phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}

@@ -47,6 +47,8 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   // input data and assign to Quantize and Dequantize scale.
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
+  rules_["fused_transpose"]["X"] = ScaleAlgo::KL;
+  rules_["fused_transpose"]["Out"] = ScaleAlgo::NONE;
 
   rules_["slice"]["Input"] = ScaleAlgo::KL;
   rules_["slice"]["Out"] = ScaleAlgo::NONE;

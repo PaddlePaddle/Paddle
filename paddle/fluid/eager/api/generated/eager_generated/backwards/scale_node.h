@@ -27,11 +27,11 @@
 */
 namespace egr {
 
-void ScaleAPI(const paddle::experimental::Tensor& x,
+void ScaleAPI(const paddle::Tensor& x,
               float scale,
               float bias,
               bool bias_after_scale,
-              paddle::experimental::Tensor* out);
+              paddle::Tensor* out);
 
 class GradNodeScale : public GradNodeBase {
  public:
@@ -41,17 +41,16 @@ class GradNodeScale : public GradNodeBase {
   ~GradNodeScale() override = default;
 
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  void SetTensorWrappers_X(
-      const std::vector<paddle::experimental::Tensor>& tensors);
+  void SetTensorWrappers_X(const std::vector<paddle::Tensor>& tensors);
 
   void SetAttributes_scale(float scale);
   std::string name() override { return "scale node"; }
