@@ -1534,7 +1534,7 @@ def is_builtin(func, name=None):
 
 
 @signature_safe_contextmanager
-def dy2st_prim_guard(backend):
+def backend_guard(backend):
     core.check_and_set_prim_all_enabled()
     orign_fwd = core._is_fwd_prim_enabled()
     orign_bwd = core._is_bwd_prim_enabled()

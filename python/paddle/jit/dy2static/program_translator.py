@@ -47,7 +47,7 @@ from .utils import (
     ALREADY_D2S,
     ast_to_func,
     ast_to_source_code,
-    dy2st_prim_guard,
+    backend_guard,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -1227,7 +1227,7 @@ class ProgramCache:
         partial_program = partial_program_from(
             concrete_program, cache_key.class_instance is not None
         )
-        with dy2st_prim_guard(backend):
+        with backend_guard(backend):
             if core._is_fwd_prim_enabled():
                 partial_program.set_hooker(
                     PrimHooker(concrete_program.main_program, backend)
@@ -1298,7 +1298,7 @@ class PrimHooker(PartialProgramLayerHook):
             )
         self.backend = backend
         self.custom_vjps = set()
-        with dy2st_prim_guard(self.backend):
+        with backend_guard(self.backend):
             if core._is_all_prim_enabled():
                 self.custom_vjps = {
                     op.type
@@ -1307,13 +1307,13 @@ class PrimHooker(PartialProgramLayerHook):
                 }
 
     def before_append_backward(self, forward_program):
-        with dy2st_prim_guard(self.backend):
+        with backend_guard(self.backend):
             if core._is_fwd_prim_enabled():
                 _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
             return forward_program
 
     def after_append_backward(self, whole_program, backward_start_idx):
-        with dy2st_prim_guard(self.backend):
+        with backend_guard(self.backend):
             backward_length = (
                 len(whole_program.block(0).ops) - backward_start_idx
             )
@@ -1327,7 +1327,7 @@ class PrimHooker(PartialProgramLayerHook):
             return whole_program, new_start_index
 
     def after_infer(self, infer_program):
-        with dy2st_prim_guard(self.backend):
+        with backend_guard(self.backend):
             if core._is_fwd_prim_enabled():
                 _to_prim(infer_program.block(0))
             return infer_program

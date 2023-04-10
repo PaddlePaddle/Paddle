@@ -31,7 +31,7 @@ from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     _out_grad_names,
     _param_grad_names,
-    dy2st_prim_guard,
+    backend_guard,
 )
 
 __all__ = []
@@ -643,7 +643,7 @@ class PartialProgramLayer:
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            with dy2st_prim_guard(self._backend):
+            with backend_guard(self._backend):
                 backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
