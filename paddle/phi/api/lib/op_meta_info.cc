@@ -110,6 +110,18 @@ paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
   return paddle::make_optional<paddle::Tensor>(inputs_.at(idx));
 }
 
+paddle::optional<std::vector<Tensor>>
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    if (!inputs_.at(i).is_initialized()) {
+      return paddle::none;
+    }
+    rlt.emplace_back(inputs_.at(i));
+  }
+  return paddle::make_optional<std::vector<Tensor>>(rlt);
+}
+
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }

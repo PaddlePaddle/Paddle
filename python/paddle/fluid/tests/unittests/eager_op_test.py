@@ -23,6 +23,17 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+from op import Operator
+from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
+from testsuite import append_input_output, append_loss_ops, create_op, set_input
+from white_list import (
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    no_grad_set_white_list,
+    op_accuracy_white_list,
+    op_threshold_white_list,
+)
 
 import paddle
 from paddle import fluid
@@ -35,21 +46,9 @@ from paddle.fluid.framework import (
     _current_expected_place,
     canonicalize_attrs,
 )
-from paddle.fluid.op import Operator
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
-from testsuite import append_input_output, append_loss_ops, create_op, set_input
-from white_list import (
-    check_shape_white_list,
-    compile_vs_runtime_white_list,
-    no_check_set_white_list,
-    no_grad_set_white_list,
-    op_accuracy_white_list,
-    op_threshold_white_list,
-)
-
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 
 @signature_safe_contextmanager
@@ -338,10 +337,7 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        if paddle.is_compiled_with_npu():
-            cls._use_system_allocator = _set_use_system_allocator(False)
-        else:
-            cls._use_system_allocator = _set_use_system_allocator(True)
+        cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -376,12 +372,6 @@ class OpTest(unittest.TestCase):
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
 
-        def is_npu_op_test():
-            return hasattr(cls, "use_npu") and cls.use_npu
-
-        def is_mlu_op_test():
-            return hasattr(cls, "use_mlu") and cls.use_mlu
-
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
@@ -414,8 +404,6 @@ class OpTest(unittest.TestCase):
                 and not is_xpu_op_test()
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
-                and not is_npu_op_test()
-                and not is_mlu_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
             ):
@@ -638,7 +626,11 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
@@ -1526,7 +1518,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
@@ -1914,7 +1906,16 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
             self.dtype == np.float64
             and self.op_type
@@ -1969,11 +1970,8 @@ class OpTest(unittest.TestCase):
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
-        if (
-            not paddle.is_compiled_with_xpu()
-            and not paddle.is_compiled_with_npu()
-            and not paddle.is_compiled_with_mlu()
-            and not isinstance(place, core.CustomPlace)
+        if not paddle.is_compiled_with_xpu() and not isinstance(
+            place, core.CustomPlace
         ):
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol
@@ -2035,7 +2033,7 @@ class OpTest(unittest.TestCase):
                 )
 
     def _get_places(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == "float16":
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 self.op_type
             ):
@@ -2074,7 +2072,7 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         places = self._get_places()
@@ -2216,7 +2214,16 @@ class OpTest(unittest.TestCase):
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         self.__class__.op_type = self.op_type
         self.__class__.exist_check_grad = True
         if self.dtype == np.float64:
@@ -2237,7 +2244,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         self._check_grad_helper()
@@ -2276,7 +2283,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         core._set_prim_all_enabled(False)
@@ -2497,7 +2504,7 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         with fluid.dygraph.base.guard(place=place):

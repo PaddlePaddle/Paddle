@@ -833,7 +833,11 @@ static void RunInferDtypeFunc(
       auto in_name = inplace_reverse_map.at(out_name);
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {
-        ctx->SetOutputDataTypes(out_name, ctx->GetInputDataTypes(in_name));
+        size_t size = ctx->InputSize(in_name);
+        for (size_t i = 0; i < size; ++i) {
+          auto dtype = ctx->GetInputDataType(in_name, i);
+          ctx->SetOutputDataType(out_name, dtype, i);
+        }
       } else {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(out_name),
