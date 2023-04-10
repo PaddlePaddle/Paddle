@@ -218,6 +218,7 @@ REGISTER_OPERATOR(tile,
                   ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>,
+                  ops::TileCompositeGradOpMaker,
                   TileInferMetaFunctor);
 REGISTER_OPERATOR(tile_grad,
                   ops::TileGradOp,
