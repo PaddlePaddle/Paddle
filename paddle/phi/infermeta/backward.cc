@@ -25,7 +25,11 @@ void AffineGridGradInferMeta(const MetaTensor& output_grad,
                              MetaTensor* input_grad) {
   if (input_grad) {
     auto output_dims = output_grad.dims();
-    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    if (output_dims.size() == 4) {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    } else {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 3, 4}));
+    }
   }
 }
 
@@ -212,6 +216,19 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
   if (dv && v) {
     dv->share_meta(v);
+  }
+}
+
+void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
+                                  const MetaTensor& out_grad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* y_grad) {
+  if (x_grad != nullptr) {
+    x_grad->share_meta(out_grad);
+  }
+
+  if (y_grad != nullptr) {
+    y_grad->share_meta(out_grad);
   }
 }
 
