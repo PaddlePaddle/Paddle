@@ -160,8 +160,8 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    #sqrt_var = sqrt(var_tmp3)
-    #out = difference / sqrt_var
+    # sqrt_var = sqrt(var_tmp3)
+    # out = difference / sqrt_var
     rsqrt_var = rsqrt(var_tmp3)
     out = difference * rsqrt_var
 
@@ -208,6 +208,13 @@ def gelu_composite(x, approximate):
 @REGISTER_COMPOSITE('reduce_mean')
 def mean_composite(x, axis, keepdim):
     """define composite rule of op mean"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     axes = axis or list(range(0, len(x.shape)))
     axes = [axes] if isinstance(axes, int) else axes
     sum_x = sum(x, axis=axes, keepdim=keepdim)
@@ -219,7 +226,10 @@ def mean_composite(x, axis, keepdim):
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
-    return divide(sum_x, norm)
+    res = divide(sum_x, norm)
+    if is_amp:
+        res = cast(res, "float16")
+    return res
 
 
 @REGISTER_COMPOSITE('expand_v2')
@@ -426,9 +436,16 @@ def sigmoid_composite(x):
     define composite rule of op sigmoid
     res = 1 / (1 + exp(-x))
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     sum_temp = 1 + exp(-x)
     res = 1 / sum_temp
-    return res
+    return res if not is_amp else cast(res, "float16")
 
 
 @REGISTER_COMPOSITE('silu')
@@ -437,9 +454,16 @@ def silu_composite(x):
     define composite rule of op silu
     res = x / (1 + exp(-x))
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
-    return res
+    return res if not is_amp else cast(res, "float16")
 
 
 @REGISTER_COMPOSITE('meshgrid')
@@ -507,10 +531,17 @@ def sqrt_composite(x):
     define composite rule of op sqrt
     res = pow(x, 0.5)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
     res = pow(x, y)
-    #res = sqrt(x)
-    return res
+    # res = sqrt(x)
+    return res if not is_amp else cast(res, "float16")
 
 
 @REGISTER_COMPOSITE('pow')
@@ -519,6 +550,13 @@ def pow_composite(x, y):
     define composite rule of op pow
     res = x^y
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     if isinstance(y, (int, float)):
         y_value = y
         y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
@@ -526,6 +564,8 @@ def pow_composite(x, y):
             res = rsqrt(x)
             return res
     res = pow(x, y)
+    if is_amp:
+        res = cast(res, "float16")
     return res
 
 
@@ -563,10 +603,17 @@ def unsqueeze_composite(x, axis):
 def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     res = pow(x, y)
     # res = rsqrt(x)
     return res if not is_amp else cast(res, "float16")
+
 
 @REGISTER_COMPOSITE('group_norm')
 def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):

@@ -139,28 +139,6 @@ class CUDAPinnedGarbageCollector : public GarbageCollector {
 };
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-class NPUDefaultStreamGarbageCollector : public GarbageCollector {
- public:
-  NPUDefaultStreamGarbageCollector(const platform::NPUPlace &place,
-                                   size_t max_memory_size);
-
-  void Wait() const override;
-
- protected:
-  void ClearCallback(const std::function<void()> &callback) override;
-};
-
-class NPUUnsafeFastGarbageCollector : public GarbageCollector {
- public:
-  NPUUnsafeFastGarbageCollector(const platform::NPUPlace &place,
-                                size_t max_memory_size);
-
- protected:
-  void ClearCallback(const std::function<void()> &callback) override;
-};
-#endif
-
 #ifdef PADDLE_WITH_MLU
 class MLUDefaultStreamGarbageCollector : public GarbageCollector {
  public:

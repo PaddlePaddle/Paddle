@@ -22,12 +22,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BilinearTensorProductKernel(const Context& ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 const DenseTensor& weight,
-                                 const paddle::optional<DenseTensor>& bias,
-                                 DenseTensor* out) {
+void BilinearKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& weight,
+                    const paddle::optional<DenseTensor>& bias,
+                    DenseTensor* out) {
   ctx.template Alloc<T>(out);
 
   auto y_mat = EigenMatrix<T>::From(y);
