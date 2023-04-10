@@ -83,18 +83,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : affine_grid
-  args : (Tensor input, IntArray outputShape, bool align_corners=true)
-  output : Tensor
-  infer_meta :
-    func : AffineGridInferMeta
-    param : [input, outputShape, align_corners]
-  kernel :
-    func : affine_grid
-    param : [input, outputShape, align_corners]
-    data_type : input
-  backward : affine_grid_grad
-
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -435,15 +423,6 @@
     func : edit_distance
     data_type: DataType::FLOAT32
   optional : hypslength, refslength
-
-- op : eigvalsh
-  args : (Tensor x, str uplo, bool is_test)
-  output : Tensor(eigenvalues), Tensor(eigenvectors)
-  infer_meta :
-    func : EigvalshInferMeta
-  kernel :
-    func : eigvalsh
-  backward : eigvalsh_grad
 
 - op : einsum
   args : (Tensor[] x, str equation)
@@ -821,15 +800,6 @@
     data_type : dtype
     backend : place
 
-- op : logcumsumexp
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumInferMeta
-  kernel :
-    func : logcumsumexp
-  backward : logcumsumexp_grad
-
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
   output : Tensor(out)
@@ -868,14 +838,6 @@
   kernel :
     func : matmul
   backward : matmul_grad
-
-- op : matrix_nms
-  args : (Tensor bboxes, Tensor scores, float score_threshold, int nms_top_k, int keep_top_k, float post_threshold=0., bool use_gaussian = false, float gaussian_sigma = 2.0, int background_label = 0, bool normalized = true)
-  output : Tensor(out), Tensor(index), Tensor(roisnum)
-  infer_meta :
-    func : MatrixNMSInferMeta
-  kernel :
-    func : matrix_nms
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)

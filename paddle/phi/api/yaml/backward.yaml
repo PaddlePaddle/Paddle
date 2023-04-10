@@ -33,6 +33,17 @@
   kernel :
     func : addmm_grad
 
+- backward_op : affine_grid_grad
+  forward : affine_grid (Tensor input, IntArray output_shape={}, bool align_corners=true) -> Tensor(output)
+  args : (Tensor input, Tensor output_grad, IntArray output_shape, bool align_corners=true)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : AffineGridGradInferMeta
+    param : [output_grad, output_shape, align_corners]
+  kernel :
+    func : affine_grid_grad
+    param : [output_grad, output_shape, align_corners]
+
 - backward_op : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -444,6 +455,16 @@
   kernel :
     func : eigh_grad
     data_type : out_v
+
+- backward_op : eigvalsh_grad
+  forward : eigvalsh (Tensor x, str uplo = "L", bool is_test = false) -> Tensor(eigenvalues), Tensor(eigenvectors)
+  args : (Tensor eigenvectors, Tensor eigenvalues_grad, str uplo, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : EigvalshGradInferMeta
+  kernel :
+    func : eigvalsh_grad
+    data_type : eigenvectors
 
 - backward_op : elu_double_grad
   forward : elu_grad (Tensor x, Tensor out, Tensor grad_out, float alpha)-> Tensor(grad_x)
@@ -944,6 +965,16 @@
   kernel :
     func : log_softmax_grad
     data_type : out_grad
+
+- backward_op : logcumsumexp_grad
+  forward : logcumsumexp(Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  args : (Tensor x, Tensor out, Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  kernel :
+    func : logcumsumexp_grad
 
 - backward_op : logit_grad
   forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)

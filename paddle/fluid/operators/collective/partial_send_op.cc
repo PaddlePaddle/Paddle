@@ -94,9 +94,12 @@ REGISTER_OP_WITHOUT_GRADIENT(partial_send,
                              ops::PartialSendOp,
                              ops::PartialSendMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_send,
-                       ops::PartialSendOpCPUKernel<float>,
-                       ops::PartialSendOpCPUKernel<double>,
-                       ops::PartialSendOpCPUKernel<int>,
-                       ops::PartialSendOpCPUKernel<int64_t>,
-                       ops::PartialSendOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_send,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialSendOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}
