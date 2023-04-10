@@ -782,7 +782,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
 add_subdirectory(rnn)
 
 if(NOT WIN32 OR NOT WITH_GPU)
@@ -811,7 +810,6 @@ if(WIN32)
     DEPS python)
 endif()
 
-add_subdirectory(ir)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
