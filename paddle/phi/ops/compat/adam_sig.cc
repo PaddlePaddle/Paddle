@@ -19,44 +19,58 @@
 namespace phi {
 
 KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  paddle::small_vector<const char*> in_names = {"Param",
-                                                "Grad",
-                                                "LearningRate",
-                                                "Moment1",
-                                                "Moment2",
-                                                "Beta1Pow",
-                                                "Beta2Pow",
-                                                "MasterParam",
-                                                "SkipUpdate"};
-  paddle::small_vector<const char*> out_names = {"ParamOut",
-                                                 "Moment1Out",
-                                                 "Moment2Out",
-                                                 "Beta1PowOut",
-                                                 "Beta2PowOut",
-                                                 "MasterParamOut"};
-  paddle::small_vector<const char*> attr_names;
-
-  attr_names.emplace_back(ctx.HasInput("Beta1Tensor") ? "Beta1Tensor"
-                                                      : "beta1");
-  attr_names.emplace_back(ctx.HasInput("Beta2Tensor") ? "Beta2Tensor"
-                                                      : "beta2");
-  attr_names.emplace_back(ctx.HasInput("EpsilonTensor") ? "EpsilonTensor"
-                                                        : "epsilon");
-  attr_names.emplace_back("lazy_mode");
-  attr_names.emplace_back("min_row_size_to_use_multithread");
-  attr_names.emplace_back("multi_precision");
-  attr_names.emplace_back("use_global_beta_pow");
-
-  if (ctx.IsSelectedRowsInput("Grad")) {
+  paddle::small_vector<const char*> inputs{"Param",
+                                           "Grad",
+                                           "LearningRate",
+                                           "Moment1",
+                                           "Moment2",
+                                           "Beta1Pow",
+                                           "Beta2Pow",
+                                           "MasterParam",
+                                           "SkipUpdate"};
+  paddle::small_vector<const char*> attrs;
+  attrs.emplace_back(ctx.HasInput("Beta1Tensor") ? "Beta1Tensor" : "beta1");
+  attrs.emplace_back(ctx.HasInput("Beta2Tensor") ? "Beta2Tensor" : "beta2");
+  attrs.emplace_back(ctx.HasInput("EpsilonTensor") ? "EpsilonTensor"
+                                                   : "epsilon");
+  attrs.emplace_back("lazy_mode");
+  attrs.emplace_back("min_row_size_to_use_multithread");
+  attrs.emplace_back("multi_precision");
+  attrs.emplace_back("use_global_beta_pow");
+  paddle::small_vector<const char*> outputs{"ParamOut",
+                                            "Moment1Out",
+                                            "Moment2Out",
+                                            "Beta1PowOut",
+                                            "Beta2PowOut",
+                                            "MasterParamOut"};
+  if (ctx.IsDenseTensorInput("Param") && ctx.IsDenseTensorInput("Grad") &&
+      ctx.IsDenseTensorInput("LearningRate") &&
+      ctx.IsDenseTensorInput("Moment1") && ctx.IsDenseTensorInput("Moment2") &&
+      ctx.IsDenseTensorInput("Beta1Pow") &&
+      ctx.IsDenseTensorInput("Beta2Pow") &&
+      ((ctx.HasInput("MasterParam") && ctx.IsDenseTensorInput("MasterParam")) ||
+       (!ctx.HasInput("MasterParam"))) &&
+      ((ctx.HasInput("SkipUpdate") && ctx.IsDenseTensorInput("SkipUpdate")) ||
+       (!ctx.HasInput("SkipUpdate")))) {
+    return KernelSignature(
+        "adam", std::move(inputs), std::move(attrs), std::move(outputs));
+  } else if (ctx.IsDenseTensorInput("Param") &&
+             ctx.IsSelectedRowsInput("Grad") &&
+             ctx.IsDenseTensorInput("LearningRate") &&
+             ctx.IsDenseTensorInput("Moment1") &&
+             ctx.IsDenseTensorInput("Moment2") &&
+             ctx.IsDenseTensorInput("Beta1Pow") &&
+             ctx.IsDenseTensorInput("Beta2Pow") &&
+             ((ctx.HasInput("MasterParam") &&
+               ctx.IsDenseTensorInput("MasterParam")) ||
+              (!ctx.HasInput("MasterParam"))) &&
+             ((ctx.HasInput("SkipUpdate") &&
+               ctx.IsDenseTensorInput("SkipUpdate")) ||
+              (!ctx.HasInput("SkipUpdate")))) {
     return KernelSignature("adam_dense_param_sparse_grad",
-                           std::move(in_names),
-                           std::move(attr_names),
-                           std::move(out_names));
-  } else if (ctx.IsDenseTensorInput("Grad")) {
-    return KernelSignature("adam",
-                           std::move(in_names),
-                           std::move(attr_names),
-                           std::move(out_names));
+                           std::move(inputs),
+                           std::move(attrs),
+                           std::move(outputs));
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
