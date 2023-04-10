@@ -39,9 +39,13 @@ class CutlassTeller {
                      std::string act_type,
                      int device_id) {
     auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+    auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
     CHECK_EQ(strides.size() == 2UL, true);
+    CHECK_EQ(dilations.size() == 2UL, true);
     int stride_h = strides[0];
     int stride_w = strides[1];
+    int dilation_h = dilations[0];
+    int dilation_w = dilations[1];
 
     auto filter_names = op_desc->Input("Filter");
 
@@ -68,6 +72,8 @@ class CutlassTeller {
                             kw,
                             stride_h,
                             stride_w,
+                            dilation_h,
+                            dilation_w,
                             groups,
                             act_type,
                             device_id,
@@ -85,9 +91,13 @@ class CutlassTeller {
                       std::string act_type,
                       int device_id) {
     auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+    auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
     CHECK_EQ(strides.size() == 2UL, true);
+    CHECK_EQ(dilations.size() == 2UL, true);
     int stride_h = strides[0];
     int stride_w = strides[1];
+    int dilation_h = dilations[0];
+    int dilation_w = dilations[1];
 
     auto filter_names = op_desc->Input("Filter");
 
@@ -114,6 +124,8 @@ class CutlassTeller {
                             kw,
                             stride_h,
                             stride_w,
+                            dilation_h,
+                            dilation_w,
                             groups,
                             act_type,
                             device_id,
@@ -132,6 +144,8 @@ class CutlassTeller {
                         int kw,
                         int stride_h,
                         int stride_w,
+                        int dilation_h,
+                        int dilation_w,
                         int groups,
                         std::string activation,
                         int device_id,
@@ -160,15 +174,33 @@ class CutlassTeller {
         return false;
       }
     } else if (groups == ic && ic == oc) {
-      // conv2d_depthwise not support residual input
+      // return false;
+      //  conv2d_depthwise not support residual input
       if (fuse_type != CutlassFusionType::cba) {
         return false;
       }
 
-      // Now we only 3x3, 5x5
+      // Now we only 3x3s1s2, 5x5s1s2
       if (!(kh == 3 && kw == 3) || (kh == 5 && kw == 5)) {
         return false;
       }
+
+      if (!(stride_h == 1 || stride_h == 2)) {
+        return false;
+      }
+
+      if (stride_h != stride_w) {
+        return false;
+      }
+
+      if (dilation_h != 1) {
+        return false;
+      }
+
+      if (dilation_w != 1) {
+        return false;
+      }
+
       // Now we only allow ic % 8 == 0, because of cutlass.
       if (ic % 8 != 0) {
         return false;
@@ -224,6 +256,8 @@ class CutlassTeller {
                         int kw,
                         int stride_h,
                         int stride_w,
+                        int dilation_h,
+                        int dilation_w,
                         int groups,
                         std::string activation,
                         int device_id,
