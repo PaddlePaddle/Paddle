@@ -510,7 +510,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def test_check_output(self):
         if self.python_api is not None:
             self.check_output()
-        self.check_output(atol=1e-2)
+        self.check_output()
 
     def test_check_grad(self):
         if self.python_api is not None:
@@ -918,6 +918,11 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.use_softmax = True
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
     def setUp(self):
         self.initParams()
@@ -955,14 +960,18 @@ class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
+        place = core.CUDAPlace(0)
         if self.python_api is not None:
-            self.check_output()
-        self.check_output(atol=1e-2)
+            self.check_output_with_place(place)
+        self.check_output_with_place(place, atol=1e-2)
 
     def test_check_grad(self):
+        place = core.CUDAPlace(0)
         if self.python_api is not None:
-            self.check_grad(["Logits"], "Loss")
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+            self.check_grad_with_place(place, ["Logits"], "Loss")
+        self.check_grad_with_place(
+            place, ["Logits"], "Loss", max_relative_error=0.1
+        )
 
 
 if __name__ == "__main__":
