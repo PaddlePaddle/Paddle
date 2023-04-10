@@ -357,25 +357,25 @@ class ForwardAPI(BaseAPI):
         inputs = [f"""{var}_unwrapped""" for var in self.inputs["names"]]
         inputs.extend(self.attrs["names"])
         args = ",".join(inputs)
-        outputs = list(self.outputs["names"])
         local_call = """  // gen_local_tensor_call
 """
-        for output in outputs:
-            local_call += f"""    Tensor {output};
+        for output in self.outputs["names"]:
+            local_call += f"""    Tensor {output}_local;
 """
-        output = (
+        outputs = [e + "_local" for e in self.outputs["names"]]
+        output_arg = (
             f"""std::tie({",".join(outputs)})"""
             if len(outputs) > 1
             else outputs[0]
         )
-        local_call += f"""    {output} = {self.api}({args});"""
+        local_call += f"""    {output_arg} = {self.api}({args});"""
         return local_call
 
     def gen_dist_tensor_wrap_code(self):
         wrap_code = """   // gen_dist_tensor_wrap_code
 """
         for output in self.outputs["names"]:
-            wrap_code += f"""    Tensor {output}_wrapped = DistTensorHijackHelper::Wrap({output});
+            wrap_code += f"""    Tensor {output}_wrapped = DistTensorHijackHelper::Wrap({output}_local);
 """
         outputs = [e + "_wrapped" for e in self.outputs["names"]]
         if len(outputs) > 1:
