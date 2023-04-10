@@ -1866,4 +1866,4 @@
     func : YoloBoxInferMeta
   kernel :
     func : yolo_box
-    data_type : x
+    data_type : x 
