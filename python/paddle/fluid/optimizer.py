@@ -4553,7 +4553,7 @@ class PipelineOptimizer:
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
@@ -5770,7 +5770,7 @@ class PipelineOptimizer:
                     # If there are some not initialized sections in the fused var,
                     # and the value in those sections are nan/inf, it will trigger the nan/inf check.
                     # To avoid these problematic triggers, set constant is needed for npu
-                    "set_constant": core.is_compiled_with_npu(),
+                    "set_constant": core.is_compiled_with_custom_device('npu'),
                     "constant": float(0.0),
                 },
             )
@@ -6387,8 +6387,8 @@ class PipelineOptimizer:
             dev_index = int(dev.split(":")[1])
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
-            elif core.is_compiled_with_npu():
-                place_list.append(core.NPUPlace(dev_index % 1))
+            elif paddle.is_compiled_with_custom_device('npu'):
+                place_list.append(paddle.CustomPlace('npu', dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(
@@ -6411,7 +6411,7 @@ class PipelineOptimizer:
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        elif core.is_compiled_with_npu():
+        elif core.is_compiled_with_custom_device('npu'):
             place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # A pass to move the recv op to the beginning of
         # the forward/backward phase

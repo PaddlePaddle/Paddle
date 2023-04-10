@@ -23,6 +23,7 @@ from paddle.utils import unique_name
 from ..utils.log_utils import get_logger
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
+from .random import init_auto_parallel_rng
 from .reshard import Resharder
 from .utils import set_grad_var_shape
 
@@ -83,6 +84,9 @@ class Parallelizer:
             ) = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads
             )
+
+            init_auto_parallel_rng()
+
             self._logger.debug(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode
