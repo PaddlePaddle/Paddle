@@ -42,6 +42,18 @@
     data_type : x
   backward : addmm_grad
 
+- op : affine_grid
+  args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
+  output : Tensor
+  infer_meta :
+    func : AffineGridInferMeta
+    param : [input, output_shape, align_corners]
+  kernel :
+    func : affine_grid
+    param : [input, output_shape, align_corners]
+    data_type : input
+  backward : affine_grid_grad
+
 - op : allclose
   args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
   output : Tensor(out)

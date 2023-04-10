@@ -83,18 +83,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : affine_grid
-  args : (Tensor input, IntArray outputShape, bool align_corners=true)
-  output : Tensor
-  infer_meta :
-    func : AffineGridInferMeta
-    param : [input, outputShape, align_corners]
-  kernel :
-    func : affine_grid
-    param : [input, outputShape, align_corners]
-    data_type : input
-  backward : affine_grid_grad
-
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
