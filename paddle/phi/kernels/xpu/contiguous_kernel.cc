@@ -29,13 +29,13 @@ void ContiguousKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
 
-  int r = xpu::as_stride<XPUT>(dev_ctx.x_context(),
-                               input_data,
-                               output_data,
-                               phi::vectorize<int64_t>(input.dims()),
-                               phi::vectorize<int64_t>(input.strides()),
-                               0);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_stride");
+  int r = xpu::as_strided<XPUT>(dev_ctx.x_context(),
+                                input_data,
+                                output_data,
+                                phi::vectorize<int64_t>(input.dims()),
+                                phi::vectorize<int64_t>(input.strides()),
+                                0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
 }
 }  // namespace phi
 

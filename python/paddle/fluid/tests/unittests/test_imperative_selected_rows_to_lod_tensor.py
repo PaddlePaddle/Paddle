@@ -158,6 +158,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 dy_param_updated[param.name] = param.numpy()
                     dy_loss_value = dy_loss.numpy()
 
+                paddle.enable_static()
                 with new_program_scope():
                     paddle.seed(seed)
                     paddle.framework.random._manual_program_seed(seed)

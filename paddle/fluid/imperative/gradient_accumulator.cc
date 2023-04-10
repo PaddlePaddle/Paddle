@@ -373,6 +373,11 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
   phi::DenseTensor* dst_tensor = GetInnerMutableTensor<phi::DenseTensor>(dst);
   const phi::SelectedRows& src_selected_rows =
       GetInnerTensor<phi::SelectedRows>(src);
+
+  paddle::experimental::CheckAndTrans2Contiguous(
+      const_cast<phi::SelectedRows*>(&src_selected_rows)->mutable_value());
+  paddle::experimental::CheckAndTrans2Contiguous(dst_tensor);
+
   auto place = dst_tensor->place();
   auto data_type =
       framework::TransToProtoVarType(src_selected_rows.value().dtype());
@@ -420,6 +425,10 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
       GetInnerTensor<phi::SelectedRows>(src_selected_rows_var);
   const phi::DenseTensor& src_tensor =
       GetInnerTensor<phi::DenseTensor>(src_tensor_var);
+
+  paddle::experimental::CheckAndTrans2Contiguous(
+      const_cast<phi::SelectedRows*>(&src_selected_rows)->mutable_value());
+
   const auto& place = src_tensor.place();
   auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -476,6 +485,11 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
       GetInnerTensor<phi::SelectedRows>(src1);
   const phi::SelectedRows& src_selected_rows2 =
       GetInnerTensor<phi::SelectedRows>(src2);
+
+  paddle::experimental::CheckAndTrans2Contiguous(
+      const_cast<phi::SelectedRows*>(&src_selected_rows1)->mutable_value());
+  paddle::experimental::CheckAndTrans2Contiguous(
+      const_cast<phi::SelectedRows*>(&src_selected_rows2)->mutable_value());
 
   auto place = src_selected_rows1.value().place();
   auto data_type =
