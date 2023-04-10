@@ -333,6 +333,14 @@
     data_type : x
   backward : clip_grad
 
+- op : clip_by_norm
+  args : (Tensor x, float max_norm)
+  output : Tensor(out)
+  infer_meta :
+    func : ClipByNormInferMeta
+  kernel :
+    func : clip_by_norm
+
 - op : complex
   args : (Tensor real, Tensor imag)
   output : Tensor
