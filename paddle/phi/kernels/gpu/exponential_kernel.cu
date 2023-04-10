@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/exponential_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
@@ -25,12 +25,19 @@ void ExponentialKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        float lambda,
                        DenseTensor *out) {
-  phi::funcs::uniform_distribution<T> dist;
-  phi::funcs::exponential_transform<T> trans(lambda);
+  using MT = typename kps::details::MPTypeTrait<T>::Type;
+  phi::funcs::uniform_distribution<MT> dist;
+  phi::funcs::exponential_transform<MT> trans(lambda);
   phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    exponential, GPU, ALL_LAYOUT, phi::ExponentialKernel, float, double) {}
+PD_REGISTER_KERNEL(exponential,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ExponentialKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
