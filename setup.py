@@ -318,27 +318,6 @@ def git_commit():
     return str(git_commit)
 
 
-def git_cinn_commit():
-    if env_dict.get("WITH_CINN") == 'ON':
-        try:
-            cmd = ['git', 'rev-parse', 'HEAD']
-            git_cinn_commit = (
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    cwd=env_dict.get("CINN_SOURCE_DIR"),
-                )
-                .communicate()[0]
-                .strip()
-            )
-        except:
-            git_cinn_commit = 'Unknown'
-    else:
-        git_cinn_commit = "NOT COMPILE WITH CINN"
-    git_cinn_commit = git_cinn_commit.decode('utf-8')
-    return str(git_cinn_commit)
-
-
 def _get_version_detail(idx):
     assert (
         idx < 3
@@ -448,6 +427,57 @@ def is_taged():
         return False
 
 
+def get_cinn_version():
+    if env_dict.get("WITH_CINN") != 'ON':
+        return "False"
+
+    cinn_git_version = 'Unknown'
+    # try get cinn tag name
+    try:
+        cmd = [
+            'git',
+            'describe',
+            '--exact-match',
+            '--tags',
+            'HEAD',
+            '2>/dev/null',
+        ]
+        cinn_tag = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=env_dict.get("CINN_SOURCE_DIR"),
+            )
+            .communicate()[0]
+            .strip()
+        )
+        if len(cinn_tag) > 0:
+            cinn_git_version = cinn_tag
+    except:
+        pass
+
+    if cinn_git_version == 'Unknown':
+        # try get cinn commit id
+        try:
+            cmd = ['git', 'rev-parse', 'HEAD']
+            cinn_commit = (
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=env_dict.get("CINN_SOURCE_DIR"),
+                )
+                .communicate()[0]
+                .strip()
+            )
+            if cinn_commit != "":
+                cinn_git_version = cinn_commit
+        except:
+            pass
+
+    cinn_git_version = cinn_git_version.decode('utf-8')
+    return str(cinn_git_version)
+
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
@@ -463,7 +493,7 @@ xpu_xccl_version = '%(xpu_xccl)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
-cinn_commit      = '%(cinn_commit)s'
+cinn_version      = '%(cinn)s'
 
 __all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
@@ -492,6 +522,8 @@ def show():
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
+        cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
+
     Examples:
         .. code-block:: python
 
@@ -508,6 +540,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
 
             # Case 2: paddle is not tagged
             paddle.version.show()
@@ -516,6 +549,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
     """
     if istaged:
         print('full_version:', full_version)
@@ -529,6 +563,7 @@ def show():
     print('cudnn:', cudnn_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
+    print('cinn:', cinn_version)
 
 def mkl():
     return with_mkl
@@ -600,9 +635,25 @@ def xpu_xccl():
 
     """
     return xpu_xccl_version
+
+def cinn():
+    """Get CINN version of paddle package.
+
+    Returns:
+        string: Return the version information of CINN. If paddle package is not compiled with CINN, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cinn()
+            # False
+
+    """
+    return cinn_version
 '''
     commit = git_commit()
-    cinn_commit = git_cinn_commit()
 
     dirname = os.path.dirname(filename)
 
@@ -628,8 +679,7 @@ def xpu_xccl():
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
-                'with_cinn': env_dict.get("WITH_CINN"),
-                'cinn_commit': cinn_commit,
+                'cinn': get_cinn_version(),
             }
         )
 
