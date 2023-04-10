@@ -202,7 +202,6 @@ register_unity_group(
   pad_op.cc)
 register_unity_group(
   cc
-  modified_huber_loss_op.cc
   partial_sum_op.cc
   pixel_shuffle_op.cc
   pool_op.cc
@@ -294,7 +293,6 @@ register_unity_group(
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
   tril_triu_op.cc
-  truncated_gaussian_random_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(
@@ -544,7 +542,6 @@ register_unity_group(
   row_conv_op.cu
   tree_conv_op.cu
   tril_triu_op.cu
-  truncated_gaussian_random_op.cu
   unfold_op.cu
   arg_min_op.cu
   crop_tensor_op.cu)

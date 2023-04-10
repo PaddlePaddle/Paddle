@@ -626,7 +626,11 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
@@ -881,7 +885,9 @@ class OpTest(unittest.TestCase):
                 np_dyg,
                 rtol=1e-05,
                 equal_nan=False,
-                err_msg='Output ('
+                err_msg='Operator ('
+                + self.op_type
+                + ') Output ('
                 + name
                 + ') has diff at '
                 + str(place)
@@ -1133,7 +1139,9 @@ class OpTest(unittest.TestCase):
                     actual_out,
                     rtol=1e-05,
                     atol=inplace_atol,
-                    err_msg='Output ('
+                    err_msg='Operator ('
+                    + self.op_type
+                    + ') Output ('
                     + name
                     + ') has diff at '
                     + str(place)
@@ -1622,7 +1630,9 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
-                            "Output ("
+                            "Operator ("
+                            + self.op_type
+                            + ") Output ("
                             + name
                             + ") has diff at "
                             + str(place)
@@ -1639,7 +1649,9 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
-                    "Output ("
+                    "Operator ("
+                    + self.op_type
+                    + ") Output ("
                     + name
                     + ") has diff at "
                     + str(place)
@@ -1811,7 +1823,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
-                                "Output ("
+                                "Operator ("
+                                + self.op_type
+                                + ") Output ("
                                 + name
                                 + ") has diff at "
                                 + str(place)
@@ -1828,7 +1842,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has diff at "
                         + str(place)
@@ -1878,7 +1894,9 @@ class OpTest(unittest.TestCase):
                         .get_tensor()
                         .recursive_sequence_lengths(),
                         expect[1],
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has different lod at "
                         + str(place)
@@ -1902,7 +1920,16 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
             self.dtype == np.float64
             and self.op_type
@@ -2201,7 +2228,16 @@ class OpTest(unittest.TestCase):
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         self.__class__.op_type = self.op_type
         self.__class__.exist_check_grad = True
         if self.dtype == np.float64:
