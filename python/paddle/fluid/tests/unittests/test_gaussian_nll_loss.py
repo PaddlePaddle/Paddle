@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+import paddle.fluid as core
 import paddle.nn.functional as F
 
 np.random.seed(10)

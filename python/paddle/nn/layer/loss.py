@@ -1962,12 +1962,12 @@ class GaussianNLLLoss(Layer):
 
     This class create a callable object of Gaussian negative log likelihood loss among ``input``,``variance`` and
     ``label``. Note that the ``label`` is treated as samples from Gaussian distributions.
-    One of the interpretations is this class is used to train a neural network predicts
+    This class is used to train a neural network predicts
     the ``input`` and ``variance`` of a gaussian distribution that ``label`` are supposed to
     be coming from. This means ``input`` and ``variance`` should be functions(the neural network) of some inputs.
 
-    For a ``label`` tensor modelled as having Gaussian distribution with a tensor
-    of expectations ``input`` and a tensor of positive  ``variance`` the loss is calculated as follows:
+    For a ``label`` having Gaussian distribution with ``input`` and ``variance`` predicted by neural network
+    the loss is calculated as follows:
 
     .. math::
         \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
