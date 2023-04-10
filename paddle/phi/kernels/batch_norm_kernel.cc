@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
