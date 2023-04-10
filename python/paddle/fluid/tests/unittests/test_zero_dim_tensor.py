@@ -2066,6 +2066,20 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(1.0))
 
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        out1.retain_grads()
+        out1.backward()
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out1.shape, ())
+        self.assertEqual(out1, 1)
+        self.assertEqual(out2.shape, ())
+        self.assertEqual(out2, 2.5)
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -3608,6 +3622,19 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
+
+    @prog_scope()
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 2.5)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
