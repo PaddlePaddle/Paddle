@@ -23,7 +23,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DGCMomentumKernel : public framework::OpKernel<T> {
  public:
   DGCMomentumKernel() {}

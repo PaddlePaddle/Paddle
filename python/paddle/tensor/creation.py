@@ -2249,8 +2249,6 @@ def _memcpy(input, place=None, output=None):
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
-        elif p.is_npu_place():
-            dst_place_type = 4
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(

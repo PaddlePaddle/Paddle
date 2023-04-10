@@ -101,6 +101,23 @@ def amp_state():
     return _g_amp_state_
 
 
+class AMPGlobalState:
+    def __init__(self):
+        self.model_parameters = []
+        self.use_master_grad = False
+        self.already_register_final_backward_hook = False
+
+    def __setattr__(self, name, val):
+        self.__dict__[name] = val
+
+
+_amp_global_state = AMPGlobalState()
+
+
+def amp_global_state():
+    return _amp_global_state
+
+
 # NOTE(zhiqiu): similar as paddle.static.amp.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(
@@ -339,13 +356,11 @@ def amp_guard(
         )
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (
         tracer._expected_place.is_gpu_place()
         or tracer._expected_place.is_xpu_place()
-        or tracer._expected_place.is_mlu_place()
-        or tracer._expected_place.is_npu_place()
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
@@ -353,17 +368,9 @@ def amp_guard(
             % tracer._expected_place
         )
         enable = False
-    # For npu:
-    if tracer._expected_place.is_npu_place() and (dtype == 'bfloat16'):
-        warnings.warn('NPUPlace only support float16 amp.')
-        enable = False
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
-        enable = False
-    # For mlu:
-    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
-        warnings.warn('MLUPlace only support float16 amp.')
         enable = False
     # For custom device:
     if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
@@ -427,6 +434,21 @@ def amp_guard(
     if not enable:
         amp_level = AMP_LEVEL.O0
         amp_dtype = "float32"
+
+    # master_grad_hook will run at the end of backward.
+    # Since backward_final_hook will be cleared once they have been
+    # done, we should register the hook every step.
+    if (
+        amp_global_state().use_master_grad
+        and not amp_global_state().already_register_final_backward_hook
+    ):
+
+        def master_grad_hook():
+            core.eager.set_master_grads(amp_global_state().model_parameters)
+            amp_global_state().already_register_final_backward_hook = False
+
+        core.eager._add_backward_final_hook(master_grad_hook)
+        amp_global_state().already_register_final_backward_hook = True
 
     if tracer:
         # enable auto_cast
@@ -496,6 +518,7 @@ def amp_decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -609,6 +632,14 @@ def amp_decorate(
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
+        # support master_grad
+        if master_grad:
+            amp_global_state().use_master_grad = True
+            for idx in range(len(models)):
+                amp_global_state().model_parameters.extend(
+                    models[idx].parameters()
+                )
+
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'bfloat16', 'float32', 'float64']):
             raise ValueError(
@@ -706,6 +737,7 @@ def decorate(
     dtype='float16',
     master_weight=None,
     save_dtype=None,
+    master_grad=False,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -722,6 +754,8 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
+        master_grad(bool, optional): For level='O2', whether to use FP32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If it is enabled, the weight
+             gradients will be FP32 dtype after the backpropagation. Default is False.
 
     Examples:
 
@@ -771,5 +805,5 @@ def decorate(
             print(output.dtype) # FP16
     """
     return amp_decorate(
-        models, optimizers, level, dtype, master_weight, save_dtype
+        models, optimizers, level, dtype, master_weight, save_dtype, master_grad
     )
