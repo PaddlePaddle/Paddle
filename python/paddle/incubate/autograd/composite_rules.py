@@ -160,8 +160,10 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = sqrt(var_tmp3)
-    out = difference / sqrt_var
+    #sqrt_var = sqrt(var_tmp3)
+    #out = difference / sqrt_var
+    rsqrt_var = rsqrt(var_tmp3)
+    out = difference * rsqrt_var
 
     if scale is not None:
         scale = reshape(scale, x.shape[begin_norm_axis:])
@@ -507,6 +509,7 @@ def sqrt_composite(x):
     """
     y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
     res = pow(x, y)
+    #res = sqrt(x)
     return res
 
 
@@ -517,7 +520,11 @@ def pow_composite(x, y):
     res = x^y
     """
     if isinstance(y, (int, float)):
+        y_value = y
         y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
+        if y_value == 0.5:
+            res = rsqrt(x)
+            return res
     res = pow(x, y)
     return res
 
@@ -557,8 +564,9 @@ def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    return pow(x, y)
-
+    res = pow(x, y)
+    # res = rsqrt(x)
+    return res if not is_amp else cast(res, "float16")
 
 @REGISTER_COMPOSITE('group_norm')
 def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
