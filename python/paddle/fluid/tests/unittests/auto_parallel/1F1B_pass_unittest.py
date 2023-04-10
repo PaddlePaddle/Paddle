@@ -34,6 +34,11 @@ def apply_pass(use_1f1b=False):
         pipeline.enable = True
         pipeline.schedule_mode = "1F1B"
         pipeline.accumulate_steps = 2
+    else:
+        gradient_merge = strategy.gradient_merge
+        gradient_merge.enable = True
+        gradient_merge.k_steps = 2
+        gradient_merge.avg = True
 
     amp = strategy.amp
     amp.enable = True
@@ -59,7 +64,7 @@ class Test1F1BPass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
-        self.batch_size = 8
+        self.batch_size = 2
         self.batch_num = 10
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
@@ -96,7 +101,7 @@ class Test1F1BPass(unittest.TestCase):
         )
 
     def test_1f1b_pass(self):
-        # pp2 training
+        # navie_pp+gradient_merge training
         engine_pp = self.get_engine()
         history = engine_pp.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
