@@ -499,6 +499,13 @@ class FusedScaleBiasReluConvBnstatsOpKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
 
+    if (accumulation_count == 0) {
+      // dim_out = [N, H, W, C]
+      // accumulation_count = N * H * W
+      auto dim_out = phi::vectorize<int64_t>(output->dims());
+      accumulation_count = dim_out[0] * dim_out[1] * dim_out[2];
+    }
+
     // Step 1: Scale Bias ReLU Conv BNStats
     auto bn_dims = bn_scale->dims();
     Tensor sum_tensor(bn_scale->dtype());

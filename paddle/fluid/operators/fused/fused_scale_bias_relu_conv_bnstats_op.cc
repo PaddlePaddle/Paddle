@@ -77,7 +77,7 @@ class FusedScaleBiasReluConvBnstatsOpMaker
     AddAttr<std::string>("data_format", "(string, NHWC) Must be NHWC.")
         .SetDefault("NHWC");
     // BN params
-    AddAttr<int64_t>("accumulation_count", "").SetDefault(1L);
+    AddAttr<int64_t>("accumulation_count", "").SetDefault(0L);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
     // fusion options
@@ -262,19 +262,12 @@ class FusedScaleBiasReluConvBnstatsOp : public operators::ConvOp {
     // sanity checks for BN
     const int64_t K = output_shape[output_shape.size() - 1];
     auto c_dims = ctx->GetInputDim("BN_Scale");
-    int64_t accumulation_count =
-        ctx->Attrs().Get<int64_t>("accumulation_count");
     PADDLE_ENFORCE(
         (c_dims.size() == 1) && (c_dims[0] == K),
         platform::errors::InvalidArgument("BN_Scale, should be of shape [%d]."
                                           "Got: [%s]",
                                           K,
                                           c_dims));
-    PADDLE_ENFORCE_GT(
-        accumulation_count,
-        0,
-        platform::errors::InvalidArgument(
-            "Expect accumulation_count > 0, got %d", accumulation_count));
     // set output shapes
     ctx->SetOutputDim("updatedRunningMean", c_dims);
     ctx->SetOutputDim("updatedRunningVar", c_dims);

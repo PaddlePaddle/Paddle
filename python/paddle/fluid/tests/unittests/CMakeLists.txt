@@ -83,6 +83,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
 list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
 list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -560,6 +561,7 @@ if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
                   test_fused_scale_bias_add_relu_op)
   py_test_modules(test_fused_scale_bias_relu_conv_bnstats_op MODULES
                   test_fused_scale_bias_relu_conv_bnstats_op)
+  py_test_modules(test_fuse_resunit_pass MODULES test_fuse_resunit_pass)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")

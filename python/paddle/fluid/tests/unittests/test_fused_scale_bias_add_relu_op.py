@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 
@@ -20,7 +19,7 @@ import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def skip_unit_test():
@@ -115,4 +114,5 @@ class TestFusedScaleBiasAddReluOpDual(TestFusedScaleBiasAddReluOp):
 
 
 if __name__ == '__main__':
+    np.random.seed(0)
     unittest.main()
