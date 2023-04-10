@@ -19,7 +19,9 @@ import paddle
 from paddle.fluid import core
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda())
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "not support cpu TestCompareAccuracyApi"
+)
 class TestCompareAccuracyApi(unittest.TestCase):
     def test_num_nan_inf(self):
         path1 = "workerlog_fp32_log_dir"
