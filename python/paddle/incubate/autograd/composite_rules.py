@@ -240,7 +240,6 @@ def expand_v2_composite(x, shape):
     shape_in = x.shape
     dim_out = len(shape)
     dim_in = len(shape_in)
-    assert dim_in <= dim_out and dim_out >= 0
     repeat_times = []
     for i in range(dim_out):
         offset = dim_out - i
@@ -248,12 +247,28 @@ def expand_v2_composite(x, shape):
         size_in = shape_in[dim] if dim >= 0 else 1
         size_out = shape[i]
         if size_out == -1:
-            assert dim >= 0
+            if dim < 0:
+                raise ValueError(
+                    "The expanded size (-1) for non-existing dimensions must be positive for expand_v2 op."
+                )
             repeat = 1
         else:
-            assert size_out % size_in == 0
+            if size_out % size_in != 0:
+                raise ValueError(
+                    "Expected shape[i] to be divided exactly by shape_in[i]."
+                )
             repeat = int(size_out / size_in)
+            if repeat > 1 and size_in > 1:
+                raise ValueError(
+                    f"Expected shape[i] == shape_in[i], but received shape[i]:{size_out} != shape_in[i]:{size_in}."
+                )
         repeat_times.append(repeat)
+    '''
+        Under the static graph, the tile op will set the expanded dimension to -1 when expanding the tensor,
+        which will result in failure to pass the shape check.
+        So for tensors that need to expand the dimension,
+        reshape will be used in advance.
+    '''
     if dim_in < dim_out:
         shape_in_expand = []
         for i in range(dim_out - dim_in):
@@ -274,10 +289,8 @@ def expand_as_v2_composite(x, y, target_shape):
     shape_in = x.shape
     if y is not None:
         target_shape = y.shape
-    assert target_shape is not None
     dim_out = len(target_shape)
     dim_in = len(shape_in)
-    assert dim_in <= dim_out and dim_out >= 0
     repeat_times = []
     for i in range(dim_out):
         offset = dim_out - i
@@ -285,12 +298,28 @@ def expand_as_v2_composite(x, y, target_shape):
         size_in = shape_in[dim] if dim >= 0 else 1
         size_out = target_shape[i]
         if size_out == -1:
-            assert dim >= 0
+            if dim < 0:
+                raise ValueError(
+                    "The expanded size (-1) for non-existing dimensions must be positive for expand_as_v2 op."
+                )
             repeat = 1
         else:
-            assert size_out % size_in == 0
+            if size_out % size_in != 0:
+                raise ValueError(
+                    "Expected target_shape[i] to be divided exactly by shape_in[i]."
+                )
             repeat = int(size_out / size_in)
+            if repeat > 1 and size_in > 1:
+                raise ValueError(
+                    f"Expected target_shape[i] == shape_in[i], but received target_shape[i]:{size_out} != shape_in[i]:{size_in}."
+                )
         repeat_times.append(repeat)
+    '''
+        Under the static graph, the tile op will set the expanded dimension to -1 when expanding the tensor,
+        which will result in failure to pass the shape check.
+        So for tensors that need to expand the dimension,
+        reshape will be used in advance.
+    '''
     if dim_in < dim_out:
         shape_in_expand = []
         for i in range(dim_out - dim_in):
