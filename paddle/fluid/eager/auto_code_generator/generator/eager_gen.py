@@ -487,15 +487,18 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   }}"""
 
 CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
-  std::string forward_trace = "";
+  std::string filename = __FILE__;
+  std::string line = std::to_string(__LINE__);
+  std::string function_name = __FUNCTION__;
+  std::string forward_trace = filename+" " + line+" "+function_name+"\\n";
   if (FLAGS_check_nan_inf) {{
       egr::CheckTensorHasNanOrInf("{}", {});
+      forward_trace = egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
       try{{
        PADDLE_ENFORCE(false,
-               " Asfasdfasdf Id should no less than 0 but received an id value: {}"
-               );
+               "{} backward has nan/inf, please check the data of backward op");
       }} catch(std::exception& e) {{
-         forward_trace = phi::enforce::GetCurrentTraceBackString(false);
+         egr::Controller::Instance().SetOpPythonStackStr(forward_trace);
       }}
   }}
 """
@@ -507,9 +510,8 @@ CHECK_NAN_AND_INF_TEMPLATE_BACKWARD = """
      }} catch(...) {{
        LOG(WARNING) << "There are nan/inf in ({})";
        auto forward_trace = GetForwardTrace();
-       if (forward_trace.size()) {{
-         std::cout <<" Backward PPPPP   " << forward_trace <<std::endl;
-       }}
+       std::cout<<forward_trace<<std::endl;
+       std::rethrow_exception(std::current_exception());
      }}
   }}
 """
