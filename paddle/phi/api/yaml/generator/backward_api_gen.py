@@ -257,6 +257,65 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         else:
             return ""
 
+    def gen_dist_tensor_hijack_guard(self):
+        var = self.inputs["names"][0]
+        return f"""{var}.is_dist_tensor()"""
+
+    def gen_local_tensor_call(self):
+        local_call = """  // gen_local_tensor_call
+"""
+        # input tensors
+        inputs = [f"""{var}_unwrapped""" for var in self.inputs["names"]]
+        # input attr
+        inputs.extend(self.attrs["names"])
+        for output in self.outputs["names"]:
+            local_call += f"""    Tensor {output}_local;
+"""
+        # output arg
+        inputs.extend(["&" + e + "_local" for e in self.outputs["names"]])
+        args = ",".join(inputs)
+        local_call += f"""    {self.api}({args});"""
+        return local_call
+
+    def gen_dist_tensor_unwrap_code(self):
+        unwrap_code = "  // gen_dist_tensor_unwrap_code"
+        for var in self.inputs["names"]:
+            unwrap_code += f"""
+    auto {var}_unwrapped = DistTensorHijackHelper::UnWrap({var});"""
+        return unwrap_code
+
+    def gen_dist_tensor_wrap_code(self):
+        wrap_code = """   // gen_dist_tensor_wrap_code"""
+        for output in self.outputs["names"]:
+            wrap_code += f"""
+    *{output}= DistTensorHijackHelper::Wrap({output}_local);"""
+        return wrap_code
+
+    def gene_dist_tensor_hijack(self, inplace_flag):
+        """
+        hijack to dist tensor logic
+        TODO(liuzhenhai):
+           1、support optional inputs
+           2、support inputs/outputs of which the type is vector of tensor
+           3、support inplace
+           4、support view
+           5、support intermediate
+           6、support invoke
+           7、add sharding inference and re-sharding logic
+        """
+        if inplace_flag:
+            return ""
+
+        if self.api not in ["add_grad", "abs_grad"]:
+            return ""
+
+        return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
+  {self.gen_dist_tensor_unwrap_code()}
+  {self.gen_local_tensor_call()}
+  {self.gen_dist_tensor_wrap_code()}
+    return;
+  }}"""
+
 
 def header_include():
     return """
@@ -280,6 +339,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/dist_tensor_hijack_helper.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "{fw_header_file_path}"
