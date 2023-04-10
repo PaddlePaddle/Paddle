@@ -219,7 +219,11 @@ def ignore_module(modules: list[Any]):
 
 
 def to_static(
-    function=None, input_spec=None, build_strategy=None, property=False
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    property=False,
+    compiler_fn=None,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -279,6 +283,7 @@ def to_static(
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
+                compiler_fn=compiler_fn,
             ),
         )
 

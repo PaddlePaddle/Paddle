@@ -1206,6 +1206,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
+      .def("local_var_names", &Scope::LocalVarNames)
       .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
 
   m.def(
