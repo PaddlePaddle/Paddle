@@ -30,6 +30,7 @@ class TestTileOpRank1(OpTest):
         self.op_type = "tile"
         self.python_api = paddle.tile
         self.init_data()
+
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'repeat_times': self.repeat_times}
         output = np.tile(self.inputs['X'], self.repeat_times)
@@ -158,6 +159,52 @@ class TestTileOpRank4(TestTileOpRank1):
         self.repeat_times = (3, 2, 1, 2)
 
 
+# Situation 2: repeat_times is a list (with tensor)
+class TestTileOpRank1_tensor_attr(OpTest):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.init_data()
+        repeat_times_tensor = []
+        for index, ele in enumerate(self.repeat_times):
+            repeat_times_tensor.append(
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
+            )
+
+        self.inputs = {
+            'X': np.random.random(self.ori_shape).astype("float64"),
+            'repeat_times_tensor': repeat_times_tensor,
+        }
+        self.attrs = {"repeat_times": self.infer_repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.ori_shape = [100]
+        self.repeat_times = [2]
+        self.infer_repeat_times = [-1]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+    def init_data(self):
+        self.ori_shape = [12, 14]
+        self.repeat_times = [1, 1]
+        self.infer_repeat_times = [1, -1]
+
+
+class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+    def init_data(self):
+        self.ori_shape = [12, 14]
+        self.repeat_times = [2, 3]
+        self.infer_repeat_times = [-1, 3]
+
+
 # Situation 3: repeat_times is a tensor
 class TestTileOpRank1_tensor(OpTest):
     def setUp(self):
@@ -246,7 +293,6 @@ class TestTileBF16OP(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'repeat_times': self.repeat_times}
         self.outputs = {'Out': convert_float_to_uint16(output)}
-        self.enable_cinn = False
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -401,6 +447,51 @@ class TestTileTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestTileAPI_ZeroDim(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.tile(x, [])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.tile(x, [3])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [3])
+
+        out = paddle.tile(x, [2, 3])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2, 3])
+
+        paddle.enable_static()
+
+
+class Testfp16TileOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (np.random.random([1, 2, 3])).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
+            repeat_times = [2, 2]
+            out = paddle.tile(x, repeat_times=repeat_times)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":
