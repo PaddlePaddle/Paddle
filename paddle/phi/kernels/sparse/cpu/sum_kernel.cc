@@ -56,7 +56,8 @@ void SumCooKernel(const Context& dev_ctx,
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
     const auto* x_indices_data = x_indices.data<int64_t>();
     const auto* x_values_data = x_values.data<T>();
-    std::map<std::vector<int64_t>, std::vector<int64_t>> map_indices;
+    //
+    std::map<std::vector<int64_t>, std::vector<int64_t>> indices_map;
     for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
       std::vector<int64_t> pos;
       for (int64_t i = 0; i < x_indices.dims()[0]; ++i) {
@@ -66,7 +67,7 @@ void SumCooKernel(const Context& dev_ctx,
           pos.emplace_back(0);
         }
       }
-      map_indices[pos].emplace_back(j);
+      indices_map[pos].emplace_back(j);
     }
 
     std::vector<int64_t> dims;
@@ -80,23 +81,23 @@ void SumCooKernel(const Context& dev_ctx,
     out_dims = make_ddim(dims);
 
     out_indices = Empty<int64_t, Context>(
-        dev_ctx, {out_dims.size(), static_cast<int>(map_indices.size())});
+        dev_ctx, {out_dims.size(), static_cast<int>(indices_map.size())});
     out_values =
-        Empty<T, Context>(dev_ctx, {static_cast<int>(map_indices.size())});
+        Empty<T, Context>(dev_ctx, {static_cast<int>(indices_map.size())});
     auto* out_indices_data = out_indices.data<int64_t>();
     auto* out_values_data = out_values.data<T>();
 
-    auto iter_map_indices = map_indices.begin();
-    for (size_t j = 0; j < map_indices.size(); ++j) {
-      std::vector<int64_t> pos = iter_map_indices->first;
-      std::vector<int64_t> values_index = iter_map_indices->second;
-      iter_map_indices++;
+    auto iter_indices_map = indices_map.begin();
+    for (size_t j = 0; j < indices_map.size(); ++j) {
+      std::vector<int64_t> pos = iter_indices_map->first;
+      std::vector<int64_t> values_index = iter_indices_map->second;
+      iter_indices_map++;
       T out_value = 0;
       for (auto index : values_index) {
         out_value += x_values_data[index];
       }
       for (auto i = 0; i < out_indices.dims()[0]; ++i) {
-        out_indices_data[j + i * map_indices.size()] = pos[i];
+        out_indices_data[j + i * indices_map.size()] = pos[i];
       }
       out_values_data[j] = out_value;
     }
