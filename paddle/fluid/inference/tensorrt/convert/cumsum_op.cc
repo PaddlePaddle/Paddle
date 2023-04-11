@@ -124,11 +124,16 @@ class CumsumOpConverter : public OpConverter {
     // creat ZeroTensor
     std::vector<float> zero_vec{0.f};
     auto zero = Add1DConstantLayer(zero_vec);
-    zero = TRT_ENGINE_ADD_LAYER(engine_,
-                                ElementWise,
-                                *inputSliced_output,
-                                *BroadcastTensors(zero, inputSliced_output),
-                                nvinfer1::ElementWiseOperation::kPROD)
+
+    auto cast = TRT_ENGINE_ADD_LAYER(engine_, Identity, *zero);
+    cast->setOutputType(0, inputSliced_output->getType());
+
+    zero = TRT_ENGINE_ADD_LAYER(
+               engine_,
+               ElementWise,
+               *inputSliced_output,
+               *BroadcastTensors(cast->getOutput(0), inputSliced_output),
+               nvinfer1::ElementWiseOperation::kPROD)
                ->getOutput(0);
     auto runningSum = loop->addRecurrence(*zero);
     auto runningSumTensor = runningSum->getOutput(0);
