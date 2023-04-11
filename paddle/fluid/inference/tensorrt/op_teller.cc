@@ -295,15 +295,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
-      auto* block = desc.Block();
-      if (block) {
-        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
-        if (!filter_var_desc->Persistable()) {
-          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
-                     "conv2d op.";
-          return false;
-        }
-      }
     }
 
     if (op_type == "deformable_conv") {
@@ -2033,6 +2024,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "quantize_linear") {
+      return true;
+    }
+    if (op_type == "dequantize_linear") {
+      return true;
+    }
+
     if (op_type == "preln_skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the preln_skip_layernorm does not support static shape yet";
@@ -2904,6 +2902,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
+      "quantize_linear",
+      "dequantize_linear",
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler"};
@@ -3062,6 +3062,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
+      "quantize_linear",
+      "dequantize_linear",
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler"};

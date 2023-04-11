@@ -105,6 +105,8 @@ list(
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
+  dequantize_linear_op.cc
+  quantize_linear_op.cc
   expand_v2_op.cc
   temporal_shift_op.cc)
 
