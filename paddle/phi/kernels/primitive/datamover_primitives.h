@@ -376,7 +376,7 @@ __device__ __forceinline__ void ReadData(T* dst,
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
+ * ArgsT: The Type of dst, ArgsT can be std::tuple<T> or std::tuple<Args>
  * Index: The index of data stored in dst.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -397,7 +397,7 @@ template <typename T,
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T* __restrict__ src,
                                          int num,
-                                         int read_lens) {
+                                         int read_lens = 0) {
   if (IsBoundary) {  // blockDim.x * NX > num
     int thread_offset = threadIdx.x * NX;
 #pragma unroll
@@ -824,7 +824,7 @@ __device__ __forceinline__ void ReadDataBc(
  * T: The type of data stored in the global memory.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
+ * ArgsT: The Type of dst, ArgsT can be std::tuple<T> or std::tuple<Args>
  * Index: The index of data stored in dst.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than

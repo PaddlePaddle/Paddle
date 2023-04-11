@@ -396,94 +396,49 @@ HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
   return dst_idx;
 }
 
-template <typename T, int VecSize, bool IsBoundary>
-HOSTDEVICE static void ReadVecDataWithInt64Index(
-    const T *in,
-    int64_t idx,
-    bool need_broadcast,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
-    const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
-    int rank,
-    int n,
-    phi::AlignedVector<T, VecSize> *out) {
-  if (IsBoundary) {
-    for (int i = 0; i < n; ++i) {
-      (*out)[i] =
-          in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
-    }
-  } else {
-    if (!need_broadcast) {
-      phi::Load<T, VecSize>(in + idx, out);
-    } else {
-#pragma unroll
-      for (int i = 0; i < VecSize; ++i) {
-        (*out)[i] =
-            in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
-      }
-    }
-  }
-}
-
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int VecSize,
-          int NumIns>
-struct ApplyFunctorWithInt64IndexHelper {
-  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
-                             Functor functor,
-                             int i);
-};
-
-template <typename InT, typename OutT, typename Functor, int VecSize>
-struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 0> {
-  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
-                             Functor functor,
-                             int i) {
-    return static_cast<OutT>(functor());
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, int VecSize>
-struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 1> {
-  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
-                             Functor functor,
-                             int i) {
-    return static_cast<OutT>(functor(ins_vec[0][i]));
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, int VecSize>
-struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 2> {
-  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
-                             Functor functor,
-                             int i) {
-    return static_cast<OutT>(functor(ins_vec[0][i], ins_vec[1][i]));
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, int VecSize>
-struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 3> {
-  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
-                             Functor functor,
-                             int i) {
-    return static_cast<OutT>(
-        functor(ins_vec[0][i], ins_vec[1][i], ins_vec[2][i]));
-  }
-};
-
 template <int N>
 struct MaxWithOne {
   static constexpr auto kValue = (N >= 1 ? N : 1);
 };
 
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int VecSize,
-          int NumIns>
+template <int Index, int VecSize>
+struct ReadVecDataWithInt64Index {
+  template <typename Array1, typename Array2, typename Array3, typename ArgsT>
+  static __device__ __forceinline__ void Apply(
+      const Array1 &in,
+      ArgsT *args,
+      int64_t idx,
+      const Array2 &need_broadcast,
+      const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
+      const Array3 &dst_strides,
+      int rank,
+      bool is_boundary) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    if (is_boundary) {
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        std::get<Index>(args[i]) = in[Index][ConvertSrcIdxToDstIdx(
+            idx + i, src_strides, dst_strides[Index], rank)];
+      }
+    } else {
+      if (!need_broadcast[Index]) {
+        kps::ReadData<Type, VecSize, 1, ArgsT, Index, false>(
+            args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + idx, 1);
+      } else {
+#pragma unroll
+        for (int i = 0; i < VecSize; ++i) {
+          std::get<Index>(args[i]) = in[Index][ConvertSrcIdxToDstIdx(
+              idx + i, src_strides, dst_strides[Index], rank)];
+        }
+      }
+    }
+  }
+};
+
+template <typename OutT, typename Functor, int VecSize, int NumIns>
 __global__ void BroadcastKernelWithInt64Index(
-    phi::Array<const InT *, MaxWithOne<NumIns>::kValue> ins,
+    const phi::Array<const _ptr_ char *__restrict__, MaxWithOne<NumIns>::kValue>
+        &ins,
     OutT *out,
     phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
                MaxWithOne<NumIns>::kValue> ins_strides,
@@ -497,70 +452,34 @@ __global__ void BroadcastKernelWithInt64Index(
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize;
   int64_t limit = numel - VecSize;
 
-  phi::Array<phi::AlignedVector<InT, VecSize>, MaxWithOne<NumIns>::kValue>
-      ins_vec;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+
+  ArgsT args[VecSize];
   phi::AlignedVector<OutT, VecSize> out_vec;
   for (; idx <= limit; idx += stride) {
-#pragma unroll
-    for (int i = 0; i < NumIns; ++i) {
-      ReadVecDataWithInt64Index<InT, VecSize, false>(ins[i],
-                                                     idx,
-                                                     need_broadcasts[i],
-                                                     out_strides,
-                                                     ins_strides[i],
-                                                     rank,
-                                                     VecSize,
-                                                     &ins_vec[i]);
-    }
+    Unroller<ReadVecDataWithInt64Index, VecSize, NumIns>::step(
+        ins, args, idx, need_broadcasts, out_strides, ins_strides, rank, false);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      out_vec[i] = ApplyFunctorWithInt64IndexHelper<InT,
-                                                    OutT,
-                                                    Functor,
-                                                    VecSize,
-                                                    NumIns>::Run(ins_vec.Get(),
-                                                                 functor,
-                                                                 i);
+      out_vec[i] = static_cast<OutT>(Apply(functor, args[i]));
     }
-
     phi::Store<OutT, VecSize>(out_vec, out + idx);
   }
 
   if (idx < numel) {
     int remain = numel - idx;  // remain is always less than VecSize, therefore
                                // `int` is enough here
-#pragma unroll
-    for (int i = 0; i < NumIns; ++i) {
-      ReadVecDataWithInt64Index<InT, VecSize, true>(ins[i],
-                                                    idx,
-                                                    need_broadcasts[i],
-                                                    out_strides,
-                                                    ins_strides[i],
-                                                    rank,
-                                                    remain,
-                                                    &ins_vec[i]);
-    }
-
+    Unroller<ReadVecDataWithInt64Index, VecSize, NumIns>::step(
+        ins, args, idx, need_broadcasts, out_strides, ins_strides, rank, true);
     for (int i = 0; i < remain; ++i) {
-      out[idx + i] =
-          ApplyFunctorWithInt64IndexHelper<InT,
-                                           OutT,
-                                           Functor,
-                                           VecSize,
-                                           NumIns>::Run(ins_vec.Get(),
-                                                        functor,
-                                                        i);
+      out_vec[idx + i] = static_cast<OutT>(Apply(functor, args[i]));
     }
   }
 }
 
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
+template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 struct LaunchBroadcastKernelWithInt64IndexHelper {
   static void Run(const KPDevice &ctx,
                   const std::vector<const DenseTensor *> &ins,
@@ -572,9 +491,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper {
   }
 };
 
-template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
-struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
-                                                 OutT,
+template <typename OutT, typename Functor, int Arity, int VecSize>
+struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                                                  Functor,
                                                  Arity,
                                                  /*NumOuts=*/1,
@@ -584,10 +502,9 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                   std::vector<DenseTensor *> *outs,
                   int axis,
                   Functor functor) {
-    phi::Array<const InT *, MaxWithOne<Arity>::kValue> ins_ptrs;
-    for (int i = 0; i < Arity; ++i) {
-      ins_ptrs[i] = ins[i]->data<InT>();
-    }
+    phi::Array<const _ptr_ char *__restrict__, MaxWithOne<Arity>::kValue>
+        ins_ptrs;
+    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_ptrs);
     auto *out_tensor = (*outs)[0];
     auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
 
@@ -659,7 +576,7 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
 
-    BroadcastKernelWithInt64Index<InT, OutT, Functor, VecSize, Arity>
+    BroadcastKernelWithInt64Index<OutT, Functor, VecSize, Arity>
         <<<gpu_config.block_per_grid,
            gpu_config.thread_per_block,
            0,
@@ -768,9 +685,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
 };
 #endif
 
-// FIXME: delete ElementwiseType InT
+// FIXME: delete ElementwiseType
 template <ElementwiseType ET,
-          typename InT,
           typename OutT,
           typename Functor,
           int kArity,
@@ -791,8 +707,7 @@ void BroadcastKernelForDifferentVecSize(
         LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
     switch (loader_classifier.vec_size) {
       case VecSizeL: {
-        LaunchBroadcastKernelWithInt64IndexHelper<InT,
-                                                  OutT,
+        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                                                   Functor,
                                                   kArity,
                                                   NumOuts,
@@ -804,8 +719,7 @@ void BroadcastKernelForDifferentVecSize(
         break;
       }
       case VecSizeM: {
-        LaunchBroadcastKernelWithInt64IndexHelper<InT,
-                                                  OutT,
+        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                                                   Functor,
                                                   kArity,
                                                   NumOuts,
@@ -817,8 +731,7 @@ void BroadcastKernelForDifferentVecSize(
         break;
       }
       case VecSizeS: {
-        LaunchBroadcastKernelWithInt64IndexHelper<InT,
-                                                  OutT,
+        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                                                   Functor,
                                                   kArity,
                                                   NumOuts,
@@ -912,7 +825,7 @@ void BroadcastKernelForDifferentVecSize(
   }
 }
 
-// FIXME: delete (ElementwiseType ET & typename InT)
+// FIXME: delete (ElementwiseType ET)
 // default: axis = -1
 template <ElementwiseType ET,
           typename InT,
@@ -961,7 +874,7 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, kArity, NumOuts>(
+  BroadcastKernelForDifferentVecSize<ET, OutT, Functor, kArity, NumOuts>(
       ctx, ins, outs, axis, func);
 }
 
