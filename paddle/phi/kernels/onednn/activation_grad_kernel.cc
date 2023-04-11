@@ -247,10 +247,9 @@ template <typename T, typename Context>
 void Relu6GradKernel(const Context& dev_ctx,
                      const DenseTensor& out,
                      const DenseTensor& dout,
-                     float threshold,
                      DenseTensor* dx) {
   Relu6OneDNNGradUseOutFunctor<T> functor;
-  functor(dev_ctx, out, dout, 0, threshold, dx);
+  functor(dev_ctx, out, dout, 0, 6, dx);
 }
 
 }  // namespace phi

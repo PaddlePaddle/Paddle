@@ -1505,10 +1505,7 @@ struct Relu6Functor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Relu6GradFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() { return {{}}; }
   template <typename Device,
             typename X,
             typename Out,
