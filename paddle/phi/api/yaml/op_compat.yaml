@@ -806,12 +806,16 @@
     out : Out
 
 - op : flatten (flatten_contiguous_range)
+  backward : flatten_grad (flatten_contiguous_range_grad)
   inputs :
     x : X
   outputs :
     {out : Out, xshape : XShape}
   attrs :
     {start_axis : start_axis, stop_axis : stop_axis}
+  extra :
+    outputs : [xshape]
+  manual_signature : [flatten, flatten_grad]
 
 - op : flip
   inputs :
@@ -1416,6 +1420,12 @@
     x : X
   outputs :
     out : Out
+
+- op : merged_momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
 - op : meshgrid
   backward : meshgrid_grad

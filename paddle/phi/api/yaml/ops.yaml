@@ -660,6 +660,19 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flatten
+  args : (Tensor x, int start_axis = 1, int stop_axis = 1)
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : FlattenWithXShapeInferMeta
+  kernel :
+    func : flatten
+    data_type : x
+  inplace : (x -> out)
+  view : (x -> out)
+  intermediate : xshape
+  backward : flatten_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
@@ -1176,6 +1189,17 @@
     func : UnchangedInferMeta
   kernel :
     func : merge_selected_rows {selected_rows -> selected_rows}
+
+- op : merged_momentum_
+  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
+  output : Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
+  infer_meta :
+    func : MergedMomentumInferMeta
+  kernel :
+    func : merged_momentum
+    data_type : param
+  optional: master_param, master_param_out
+  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
 - op : meshgrid
   args : (Tensor[] inputs)
