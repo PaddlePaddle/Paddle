@@ -329,11 +329,14 @@ void TransStride(const Context& dev_ctx,
                  phi::DenseTensor* from,
                  phi::DenseTensor* to) {
   if (to) {
-    PD_VISIT_ALL_TYPES(
-        to->dtype(), "StridedCopyKernel", ([&] {
-          phi::StridedCopyKernel<data_t, Context>(
-              dev_ctx, *from, phi::vectorize<int64_t>(to->strides()), to);
-        }));
+    PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                         phi::StridedCopyKernel<data_t, Context>(
+                             dev_ctx,
+                             *from,
+                             phi::vectorize<int64_t>(to->dims()),
+                             phi::vectorize<int64_t>(to->strides()),
+                             to);
+                       }));
   }
 }
 
@@ -347,6 +350,7 @@ void TransStride(const Context& dev_ctx,
                            phi::StridedCopyKernel<data_t, Context>(
                                dev_ctx,
                                *from[i],
+                               phi::vectorize<int64_t>(to[i]->dims()),
                                phi::vectorize<int64_t>(to[i]->strides()),
                                to[i]);
                          }));
@@ -358,34 +362,43 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  phi::DenseTensor* from,
                  phi::DenseTensor* to) {
   if (to) {
-    auto* cpu_ctx = static_cast<phi::CPUContext*>(dev_ctx);
+    auto* cpu_ctx = dynamic_cast<phi::CPUContext*>(dev_ctx);
     if (cpu_ctx) {
-      PD_VISIT_ALL_TYPES(
-          to->dtype(), "StridedCopyKernel", ([&] {
-            phi::StridedCopyKernel<data_t, phi::CPUContext>(
-                *cpu_ctx, *from, phi::vectorize<int64_t>(to->strides()), to);
-          }));
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::CPUContext>(
+                               *cpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to);
+                         }));
       return;
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+    auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     if (gpu_ctx) {
-      PD_VISIT_ALL_TYPES(
-          to->dtype(), "StridedCopyKernel", ([&] {
-            phi::StridedCopyKernel<data_t, phi::GPUContext>(
-                *gpu_ctx, *from, phi::vectorize<int64_t>(to->strides()), to);
-          }));
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                               *gpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to);
+                         }));
       return;
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    auto* xpu_ctx = static_cast<phi::XPUContext*>(dev_ctx);
+    auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
     if (xpu_ctx) {
-      PD_VISIT_ALL_TYPES(
-          to->dtype(), "StridedCopyKernel", ([&] {
-            phi::StridedCopyKernel<data_t, phi::XPUContext>(
-                *xpu_ctx, *from, phi::vectorize<int64_t>(to->strides()), to);
-          }));
+      PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
+                           phi::StridedCopyKernel<data_t, phi::XPUContext>(
+                               *xpu_ctx,
+                               *from,
+                               phi::vectorize<int64_t>(to->dims()),
+                               phi::vectorize<int64_t>(to->strides()),
+                               to);
+                         }));
       return;
     }
 #endif
@@ -397,24 +410,26 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  const std::vector<phi::DenseTensor*>& to) {
   for (size_t i = 0; i < to.size(); i++) {
     if (to[i]) {
-      auto* cpu_ctx = static_cast<phi::CPUContext*>(dev_ctx);
+      auto* cpu_ctx = dynamic_cast<phi::CPUContext*>(dev_ctx);
       if (cpu_ctx) {
         PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
                              phi::StridedCopyKernel<data_t, phi::CPUContext>(
                                  *cpu_ctx,
                                  *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
                                  phi::vectorize<int64_t>(to[i]->strides()),
                                  to[i]);
                            }));
         continue;
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      auto* gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+      auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
       if (gpu_ctx) {
         PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
                              phi::StridedCopyKernel<data_t, phi::GPUContext>(
                                  *gpu_ctx,
                                  *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
                                  phi::vectorize<int64_t>(to[i]->strides()),
                                  to[i]);
                            }));
@@ -422,12 +437,13 @@ void TransStride(phi::DeviceContext* dev_ctx,
       }
 #endif
 #ifdef PADDLE_WITH_XPU
-      auto* xpu_ctx = static_cast<phi::XPUContext*>(dev_ctx);
+      auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
       if (xpu_ctx) {
         PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {
                              phi::StridedCopyKernel<data_t, phi::XPUContext>(
                                  *xpu_ctx,
                                  *from[i],
+                                 phi::vectorize<int64_t>(to[i]->dims()),
                                  phi::vectorize<int64_t>(to[i]->strides()),
                                  to[i]);
                            }));
