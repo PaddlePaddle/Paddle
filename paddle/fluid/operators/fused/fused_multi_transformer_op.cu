@@ -973,6 +973,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     phi::DenseTensor *buf0 = nullptr;
     phi::DenseTensor *buf1 = nullptr;
+    
+    if (token_num == 0) {
+      return;
+    }
 
     // step0:  x   --> buf1
     // step1: buf1 --> buf0
