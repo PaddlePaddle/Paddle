@@ -248,9 +248,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
         predict_infer = output_tensor.copy_to_cpu()
         predict = np.array(predict).flatten()
         predict_infer = np.array(predict_infer).flatten()
-        check_output_allclose(
-            predict, predict_infer, "predict", rtol=5e-5, atol=1e-2
-        )
+        check_output_allclose(predict, predict_infer, "predict")
         paddle.disable_static()
 
     def test_func_double_grad_dynamic(self):

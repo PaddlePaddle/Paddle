@@ -275,7 +275,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 predictor.get_output_names()[0]
             )
             predict_infer = output_tensor.copy_to_cpu()
-            check_output_allclose(predict, predict_infer, "predict", rtol=5e-5)
+            predict = np.array(predict).flatten()
+            predict_infer = np.array(predict_infer).flatten()
+            check_output_allclose(predict, predict_infer, "predict")
         paddle.disable_static()
 
     def test_double_grad_dynamic(self):
