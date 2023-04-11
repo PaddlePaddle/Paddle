@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
 
@@ -114,13 +115,14 @@ void SumCsrGradKernel(const Context& dev_ctx,
     if (x.dims().size() == 2) {
       int value_index = 0;
       for (int k = 0; k < x.dims()[0]; ++k) {
-        if (x_crows_data[k] != x_crows_data[k + 1]) {
-          T value = dout_values.data<T>()[value_index];
-          for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-            dx_values->data<T>()[i] = value;
-          }
-          value_index += 1;
+        if (x_crows_data[k] == x_crows_data[k + 1]) {
+          continue;
         }
+        T value = dout_values.data<T>()[value_index];
+        for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
+          dx_values->data<T>()[i] = value;
+        }
+        value_index += 1;
       }
     } else {
       int dout_value_index = 0;
@@ -129,14 +131,15 @@ void SumCsrGradKernel(const Context& dev_ctx,
         for (auto k = batch * (x.dims()[1] + 1);
              k < batch * (x.dims()[1] + 1) + x.dims()[1];
              ++k) {
-          if (x_crows_data[k] != x_crows_data[k + 1]) {
-            T value = dout_values.data<T>()[dout_value_index];
-            for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-              dx_values->data<T>()[dx_value_index] = value;
-              dx_value_index++;
-            }
-            dout_value_index++;
+          if (x_crows_data[k] == x_crows_data[k + 1]) {
+            continue;
           }
+          T value = dout_values.data<T>()[dout_value_index];
+          for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
+            dx_values->data<T>()[dx_value_index] = value;
+            dx_value_index++;
+          }
+          dout_value_index++;
         }
       }
     }
