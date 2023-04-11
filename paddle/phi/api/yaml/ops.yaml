@@ -218,6 +218,16 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : bilinear_tensor_product
+  args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  output : Tensor
+  infer_meta :
+    func : BilinearInferMeta
+  kernel :
+    func : bilinear
+  optional : bias
+  backward : bilinear_tensor_product_grad
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -379,6 +389,18 @@
     func : cross
     data_type : x
   backward : cross_grad
+
+# Part of python API paddle.nn.functional.cross_entropy
+- op : cross_entropy_with_softmax
+  args : (Tensor input, Tensor label, bool soft_label=false, bool use_softmax=true, bool numeric_stable_mode=true, int ignore_index=-100, int axis=-1)
+  output : Tensor(softmax), Tensor(loss)
+  inplace : (input -> softmax)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxInferMeta
+  kernel :
+    func : cross_entropy_with_softmax
+    data_type : input
+  backward : cross_entropy_with_softmax_grad
 
 - op : cumprod
   args : (Tensor x,  int dim)
@@ -1462,6 +1484,17 @@
   kernel :
     func : searchsorted
     data_type : sorted_sequence
+
+- op : segment_pool
+  args : (Tensor x, Tensor segment_ids, str pooltype="SUM")
+  output : Tensor(out), Tensor(summed_ids)
+  infer_meta :
+    func : SegmentPoolInferMeta
+  kernel :
+    func : segment_pool
+    data_type : x
+  intermediate : summed_ids
+  backward : segment_pool_grad
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
