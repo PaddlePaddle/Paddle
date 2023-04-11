@@ -218,7 +218,8 @@ def train(to_static, enable_prim, enable_cinn):
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
     train_losses = run(resnet, data_loader, optimizer, 'train')
-    eval_losses = run(resnet, data_loader, optimizer, 'eval')
+    if to_static and enable_prim and enable_cinn:
+        eval_losses = run(resnet, data_loader, optimizer, 'eval')
     return train_losses
 
 
