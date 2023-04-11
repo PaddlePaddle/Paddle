@@ -19,9 +19,23 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, copy_bits_from_float_to_uint16
 
 from paddle.fluid import core
+
+
+def convert_float_to_uint16(float_list, data_format="NCHW"):
+    if data_format == "NHWC":
+        float_list = np.transpose(float_list, [0, 4, 1, 2, 3])
+
+    new_output = []
+    for x in np.nditer(float_list):
+        new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+    new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
+
+    if data_format == "NHWC":
+        new_output = np.transpose(new_output, [0, 2, 3, 4, 1])
+    return new_output
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -282,17 +296,16 @@ class TestConv3DTransposeOp(OpTest):
                 'Input': convert_float_to_uint16(input),
                 'Filter': convert_float_to_uint16(filter),
             }
-            self.inputs_fp32 = {
-                'Input': input,
-                'Filter': filter,
-            }
+            output = convert_float_to_uint16(
+                output, data_format=self.data_format
+            )
 
         else:
-            output = output.astype(self.dtype)
             self.inputs = {
                 'Input': input,
                 'Filter': filter,
             }
+            output = output.astype(self.dtype)
 
         self.outputs = {'Output': output}
 
