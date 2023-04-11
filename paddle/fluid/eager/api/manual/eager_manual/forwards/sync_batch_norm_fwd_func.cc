@@ -172,14 +172,15 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                              data_layout,
                                              use_global_stats,
                                              trainable_statistics);
+  std::string forward_trace = "";
   // Check NaN and Inf if needed
-  std::string filename = __FILE__;
-  std::string line = std::to_string(__LINE__);
-  std::string function_name = __FUNCTION__;
-  std::string forward_trace =
-      filename + " " + line + " " + function_name + "\n";
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
+    std::string filename = __FILE__;
+    std::string line = std::to_string(__LINE__);
+    std::string function_name = __FUNCTION__;
+    std::string forward_trace =
+        filename + " " + line + " " + function_name + "\n";
     forward_trace =
         egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
     try {
@@ -242,7 +243,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
         std::shared_ptr<SyncBatchNormGradNode>(new SyncBatchNormGradNode(6, 5));
 
     // Set forward's stack
-    grad_node->SetForwardTrace(forward_trace);
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(forward_trace);
+    }
 
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
     // SetAttributes if needed

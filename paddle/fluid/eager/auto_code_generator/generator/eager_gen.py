@@ -297,7 +297,9 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
     // Node Construction
 {}
     // Set for forward trace
-{}
+  if (FLAGS_check_nan_inf) {{
+  {}
+  }}
     // SetAttributes if needed
 {}
     // Set TensorWrappers for Forward Inputs if needed
@@ -487,12 +489,13 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   }}"""
 
 CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
-  std::string filename = __FILE__;
-  std::string line = std::to_string(__LINE__);
-  std::string function_name = __FUNCTION__;
-  std::string forward_trace = filename+" " + line+" "+function_name+"\\n";
+  std::string forward_trace ="";
   if (FLAGS_check_nan_inf) {{
       egr::CheckTensorHasNanOrInf("{}", {});
+      std::string filename = __FILE__;
+      std::string line = std::to_string(__LINE__);
+      std::string function_name = __FUNCTION__;
+      forward_trace = filename+" " + line+" "+function_name+"\\n";
       forward_trace = egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
       try{{
        PADDLE_ENFORCE(false,

@@ -110,14 +110,14 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                                                  dilations,
                                                  groups,
                                                  data_format);
-  std::string filename = __FILE__;
-  std::string line = std::to_string(__LINE__);
-  std::string function_name = __FUNCTION__;
-  std::string forward_trace =
-      filename + " " + line + " " + function_name + "\n";
+  std::string forward_trace = "";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
+    std::string filename = __FILE__;
+    std::string line = std::to_string(__LINE__);
+    std::string function_name = __FUNCTION__;
+    forward_trace = filename + " " + line + " " + function_name + "\n";
     forward_trace =
         egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
     try {
@@ -154,7 +154,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
         std::shared_ptr<Conv2dGradNodeFinal>(new Conv2dGradNodeFinal(1, 2));
 
     // Set forward's stack
-    grad_node->SetForwardTrace(forward_trace);
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(forward_trace);
+    }
 
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
