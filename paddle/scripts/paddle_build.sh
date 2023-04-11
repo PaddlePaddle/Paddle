@@ -795,7 +795,7 @@ set -x
                 exit 8;
             fi
         fi
-
+set +x
         EXIT_CODE=0;
 
         tmpfile_rand=`date +%s%N`
@@ -811,13 +811,9 @@ set -x
         fi
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
-        
         if [[ "$on_precision" == "0" ]];then
-            echo "----::$disable_ut_quickly"
             ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
-            echo "----1::$UT_list_prec"
-            echo "----2:$UT_list_prec_1"
             ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
