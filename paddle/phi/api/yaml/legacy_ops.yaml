@@ -774,15 +774,6 @@
     func : lstsq
     data_type : x
 
-- op : lu
-  args : (Tensor x, bool pivot)
-  output : Tensor(out), Tensor(pivots), Tensor(infos)
-  infer_meta :
-    func : LUInferMeta
-  kernel :
-    func : lu
-  backward : lu_grad
-
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor

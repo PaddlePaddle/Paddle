@@ -532,15 +532,6 @@
   kernel :
     func : logsumexp_grad
 
-- backward_op : lu_grad
-  forward : lu (Tensor x, bool pivot) -> Tensor(out), Tensor(pivots), Tensor(infos)
-  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : LUGradInferMeta
-  kernel :
-    func : lu_grad
-
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, bool transpose_x=false, bool transpose_y=false)
