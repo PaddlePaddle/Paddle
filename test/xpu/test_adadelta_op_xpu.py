@@ -48,11 +48,13 @@ class XPUTestAdadelta(XPUOpTestWrapper):
             rho = 0.95
             epsilon = 1e-6
 
+            learning_rate = 1.0
             self.inputs = {
                 'Param': param,
                 'Grad': grad,
                 'AvgSquaredGrad': avg_squared_grad,
                 'AvgSquaredUpdate': avg_squared_update,
+                'LearningRate': np.array([learning_rate]).astype("float32"),
             }
 
             self.attrs = {'rho': rho, 'epsilon': epsilon}
@@ -103,11 +105,13 @@ class XPUTestAdadelta(XPUOpTestWrapper):
             rho = 0.95
             epsilon = 1e-6
 
+            learning_rate = 1.0
             self.inputs = {
                 'Param': param,
                 'Grad': grad,
                 'AvgSquaredGrad': avg_squared_grad,
                 'AvgSquaredUpdate': avg_squared_update,
+                'LearningRate': np.array([learning_rate]).astype("float32"),
             }
 
             avg_squared_grad_out = rho * avg_squared_grad + (
