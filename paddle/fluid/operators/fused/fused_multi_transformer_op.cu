@@ -741,7 +741,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     } else {
       token_num = bsz_seq;
     }
-    if (token_num == 0) return;
 
     auto *padding_offset_data =
         encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
