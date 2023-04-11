@@ -14,205 +14,206 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
 from paddle.fluid.framework import default_main_program
-
-np.random.seed(1234)
-
-# class TestFusedFFNOp(OpTest):
-#     def getDtype(self):
-#         self.dtype = "float32"
-#         self.layer_norm_dtype = "float32"
-
-#     def getShape(self):
-#         self.batch_size = np.random.randint(1, 32)
-#         self.query_length = np.random.randint(32, 128)
-#         self.d_model = np.random.randint(32, 512)
-#         self.dim_feedforward = np.random.randint(32, 512)
-
-#     def getDiff(self):
-#         self.rtol = 1e-3
-#         # FIXME(limin29): Because there is a problem with the test precision
-#         #  on A100, atol is temporarily set to 1e-2, and it will be
-#         #  changed back after the precision problem is solved.
-#         self.atol = 1e-2
-#         if "V100" in paddle.device.cuda.get_device_name():
-#             self.atol = 1e-4
-
-#     def getActivation(self):
-#         self.act_method = "gelu"
-
-#     def getNormalizeBefore(self):
-#         self.pre_layer_norm = False
-
-#     def setUp(self):
-#         paddle.disable_static()
-#         self.__class__.op_type = "fused_feedforward"
-#         # check grad in test_out_and_grad()
-#         self.__class__.no_need_check_grad = True
-#         self.getDtype()
-#         self.getShape()
-#         self.getDiff()
-#         self.getActivation()
-#         self.getNormalizeBefore()
-#         paddle.set_default_dtype(self.dtype)
-#         self.weight_attr = None
-#         self.bias_attr = None
-
-#         self.weight_attrs = transformer._convert_param_attr_to_list(
-#             self.weight_attr, 2
-#         )
-#         self.bias_attrs = transformer._convert_param_attr_to_list(
-#             self.bias_attr, 2
-#         )
-#         self.linear1 = Linear(
-#             self.d_model,
-#             self.dim_feedforward,
-#             self.weight_attrs[1],
-#             bias_attr=self.bias_attrs[1],
-#         )
-#         self.linear2 = Linear(
-#             self.dim_feedforward,
-#             self.d_model,
-#             self.weight_attrs[1],
-#             bias_attr=self.bias_attrs[1],
-#         )
-
-#         paddle.set_default_dtype(self.layer_norm_dtype)
-#         self.norm1 = LayerNorm(self.d_model)
-#         self.norm2 = LayerNorm(self.d_model)
-#         self.dropout = Dropout(0.0, mode="upscale_in_train")
-#         self.dropout1 = Dropout(0.0, mode="upscale_in_train")
-#         self.dropout2 = Dropout(0.0, mode="upscale_in_train")
-#         self.activation = getattr(F, self.act_method)
-
-#         self.src = np.random.random(
-#             (self.batch_size, self.query_length, self.d_model)
-#         ).astype(self.dtype)
-#         self.dout = np.random.random(
-#             (self.batch_size, self.query_length, self.d_model)
-#         ).astype(self.dtype)
-
-#     def Base(self):
-#         paddle.disable_static()
-#         tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
-#         residual = tensor_src
-#         if self.pre_layer_norm:
-#             ln1_out = self.norm1(tensor_src)
-#             linear2_out = self.linear2(
-#                 self.dropout(self.activation(self.linear1(ln1_out)))
-#             )
-#             dropout2_out = residual + self.dropout2(linear2_out)
-#             paddle.autograd.backward(
-#                 [dropout2_out], [paddle.to_tensor(self.dout)], True
-#             )
-#             return dropout2_out, tensor_src.grad
-#         else:
-#             linear2_out = self.linear2(
-#                 self.dropout(self.activation(self.linear1(tensor_src)))
-#             )
-#             dropout2_out = residual + self.dropout2(linear2_out)
-#             dropout2_out = self.norm2(dropout2_out)
-#             paddle.autograd.backward(
-#                 [dropout2_out], [paddle.to_tensor(self.dout)], True
-#             )
-#             return dropout2_out, tensor_src.grad
-
-#     def FusedFFN(self):
-#         paddle.disable_static()
-#         linear1_weight = paddle.to_tensor(
-#             self.linear1.weight, stop_gradient=False
-#         )
-#         linear1_bias = paddle.to_tensor(self.linear1.bias, stop_gradient=False)
-#         linear2_weight = paddle.to_tensor(
-#             self.linear2.weight, stop_gradient=False
-#         )
-#         linear2_bias = paddle.to_tensor(self.linear2.bias, stop_gradient=False)
-#         ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
-#         ln1_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
-#         ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
-#         ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
-#         x = paddle.to_tensor(self.src, stop_gradient=False)
-#         out = incubate_f.fused_feedforward(
-#             x,
-#             None,
-#             None,
-#             linear1_weight,
-#             linear2_weight,
-#             linear1_bias,
-#             linear2_bias,
-#             ln1_scale,
-#             ln1_bias,
-#             ln2_scale,
-#             ln2_bias,
-#             0.0,
-#             0.0,
-#             activation=self.act_method,
-#             pre_layer_norm=self.pre_layer_norm,
-#         )
-#         paddle.autograd.backward([out], [paddle.to_tensor(self.dout)])
-#         return out, x.grad
-
-#     def test_out_and_grad(self):
-#         default_main_program().random_seed = 42
-#         base_out, base_grad = self.Base()
-#         fused_out, fused_grad = self.FusedFFN()
-#         np.testing.assert_allclose(
-#             base_out.numpy(), fused_out.numpy(), rtol=self.rtol, atol=self.atol
-#         )
-#         np.testing.assert_allclose(
-#             base_grad.numpy(),
-#             fused_grad.numpy(),
-#             rtol=self.rtol,
-#             atol=self.atol,
-#         )
+from paddle.nn.layer import transformer
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
 
 
-# class TestFusedFFNOpFp16(TestFusedFFNOp):
-#     def getDtype(self):
-#         self.dtype = "float16"
-#         self.layer_norm_dtype = "float32"
+class TestFusedFFNOp(OpTest):
+    def getDtype(self):
+        self.dtype = "float32"
+        self.layer_norm_dtype = "float32"
 
-#     def getDiff(self):
-#         self.rtol = 1e-1
-#         self.atol = 1e-2
+    def getShape(self):
+        self.batch_size = np.random.randint(1, 32)
+        self.query_length = np.random.randint(32, 128)
+        self.d_model = np.random.randint(32, 512)
+        self.dim_feedforward = np.random.randint(32, 512)
 
-#     def getShape(self):
-#         self.batch_size = 4
-#         self.query_length = 32
-#         self.d_model = 128
-#         self.dim_feedforward = 256
+    def getDiff(self):
+        self.rtol = 1e-3
+        # FIXME(limin29): Because there is a problem with the test precision
+        #  on A100, atol is temporarily set to 1e-2, and it will be
+        #  changed back after the precision problem is solved.
+        self.atol = 1e-2
+        if "V100" in paddle.device.cuda.get_device_name():
+            self.atol = 1e-4
+
+    def getActivation(self):
+        self.act_method = "gelu"
+
+    def getNormalizeBefore(self):
+        self.pre_layer_norm = False
+
+    def setUp(self):
+        paddle.disable_static()
+        self.__class__.op_type = "fused_feedforward"
+        # check grad in test_out_and_grad()
+        self.__class__.no_need_check_grad = True
+        self.getDtype()
+        self.getShape()
+        self.getDiff()
+        self.getActivation()
+        self.getNormalizeBefore()
+        paddle.set_default_dtype(self.dtype)
+        self.weight_attr = None
+        self.bias_attr = None
+
+        self.weight_attrs = transformer._convert_param_attr_to_list(
+            self.weight_attr, 2
+        )
+        self.bias_attrs = transformer._convert_param_attr_to_list(
+            self.bias_attr, 2
+        )
+        self.linear1 = Linear(
+            self.d_model,
+            self.dim_feedforward,
+            self.weight_attrs[1],
+            bias_attr=self.bias_attrs[1],
+        )
+        self.linear2 = Linear(
+            self.dim_feedforward,
+            self.d_model,
+            self.weight_attrs[1],
+            bias_attr=self.bias_attrs[1],
+        )
+
+        paddle.set_default_dtype(self.layer_norm_dtype)
+        self.norm1 = LayerNorm(self.d_model)
+        self.norm2 = LayerNorm(self.d_model)
+        self.dropout = Dropout(0.0, mode="upscale_in_train")
+        self.dropout1 = Dropout(0.0, mode="upscale_in_train")
+        self.dropout2 = Dropout(0.0, mode="upscale_in_train")
+        self.activation = getattr(F, self.act_method)
+
+        self.src = np.random.random(
+            (self.batch_size, self.query_length, self.d_model)
+        ).astype(self.dtype)
+        self.dout = np.random.random(
+            (self.batch_size, self.query_length, self.d_model)
+        ).astype(self.dtype)
+
+    def Base(self):
+        paddle.disable_static()
+        tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
+        residual = tensor_src
+        if self.pre_layer_norm:
+            ln1_out = self.norm1(tensor_src)
+            linear2_out = self.linear2(
+                self.dropout(self.activation(self.linear1(ln1_out)))
+            )
+            dropout2_out = residual + self.dropout2(linear2_out)
+            paddle.autograd.backward(
+                [dropout2_out], [paddle.to_tensor(self.dout)], True
+            )
+            return dropout2_out, tensor_src.grad
+        else:
+            linear2_out = self.linear2(
+                self.dropout(self.activation(self.linear1(tensor_src)))
+            )
+            dropout2_out = residual + self.dropout2(linear2_out)
+            dropout2_out = self.norm2(dropout2_out)
+            paddle.autograd.backward(
+                [dropout2_out], [paddle.to_tensor(self.dout)], True
+            )
+            return dropout2_out, tensor_src.grad
+
+    def FusedFFN(self):
+        paddle.disable_static()
+        linear1_weight = paddle.to_tensor(
+            self.linear1.weight, stop_gradient=False
+        )
+        linear1_bias = paddle.to_tensor(self.linear1.bias, stop_gradient=False)
+        linear2_weight = paddle.to_tensor(
+            self.linear2.weight, stop_gradient=False
+        )
+        linear2_bias = paddle.to_tensor(self.linear2.bias, stop_gradient=False)
+        ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
+        ln1_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
+        ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
+        ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
+        x = paddle.to_tensor(self.src, stop_gradient=False)
+        out = incubate_f.fused_feedforward(
+            x,
+            linear1_weight,
+            linear2_weight,
+            linear1_bias,
+            linear2_bias,
+            ln1_scale,
+            ln1_bias,
+            ln2_scale,
+            ln2_bias,
+            0.0,
+            0.0,
+            activation=self.act_method,
+            pre_layer_norm=self.pre_layer_norm,
+        )
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)])
+        return out, x.grad
+
+    def test_out_and_grad(self):
+        default_main_program().random_seed = 42
+        base_out, base_grad = self.Base()
+        fused_out, fused_grad = self.FusedFFN()
+        np.testing.assert_allclose(
+            base_out.numpy(), fused_out.numpy(), rtol=self.rtol, atol=self.atol
+        )
+        np.testing.assert_allclose(
+            base_grad.numpy(),
+            fused_grad.numpy(),
+            rtol=self.rtol,
+            atol=self.atol,
+        )
 
 
-# class TestFusedFFNOpFp64(TestFusedFFNOp):
-#     def getDtype(self):
-#         self.dtype = "float64"
-#         self.layer_norm_dtype = "float64"
+class TestFusedFFNOpFp16(TestFusedFFNOp):
+    def getDtype(self):
+        self.dtype = "float16"
+        self.layer_norm_dtype = "float32"
+
+    def getDiff(self):
+        self.rtol = 1e-1
+        self.atol = 1e-2
+
+    def getShape(self):
+        self.batch_size = 4
+        self.query_length = 32
+        self.d_model = 128
+        self.dim_feedforward = 256
 
 
-# class TestFusedFFNOpActivation(TestFusedFFNOp):
-#     def getActivation(self):
-#         self.act_method = "relu"
+class TestFusedFFNOpFp64(TestFusedFFNOp):
+    def getDtype(self):
+        self.dtype = "float64"
+        self.layer_norm_dtype = "float64"
 
 
-# class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
-#     def getNormalizeBefore(self):
-#         self.pre_layer_norm = True
+class TestFusedFFNOpActivation(TestFusedFFNOp):
+    def getActivation(self):
+        self.act_method = "relu"
 
-#     def getShape(self):
-#         self.batch_size = 1
-#         self.query_length = 1
-#         self.d_model = 8
-#         self.dim_feedforward = 8
+
+class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
+    def getNormalizeBefore(self):
+        self.pre_layer_norm = True
+
+    def getShape(self):
+        self.batch_size = 1
+        self.query_length = 1
+        self.d_model = 8
+        self.dim_feedforward = 8
 
 
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
-        default_main_program().random_seed = 234
+        default_main_program().random_seed = 42
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1
@@ -228,12 +229,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
         linear1_bias = paddle.static.data(
             name='linear1_bias', shape=[dim_feedforward]
         )
-        dropout1_seed_tensor = paddle.static.data(
-            name='dropout1_seed_tensor', shape=[1], dtype="int32"
-        )
-        dropout2_seed_tensor = paddle.static.data(
-            name='dropout2_seed_tensor', shape=[1], dtype="int32"
-        )
         linear2_weight = paddle.static.data(
             name='linear2_weight', shape=[dim_feedforward, d_model], dtype=dtype
         )
@@ -245,8 +240,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
 
         fused_out = incubate_f.fused_feedforward(
             x,
-            None,
-            None,
             linear1_weight,
             linear2_weight,
             linear1_bias,
@@ -255,8 +248,8 @@ class APITestStaticFusedFFN(unittest.TestCase):
             ln1_bias,
             ln2_scale,
             ln2_bias,
-            0.1,
-            0.1,
+            0.0,
+            0.0,
             activation="relu",
             pre_layer_norm=False,
         )
@@ -293,145 +286,98 @@ class APITestStaticFusedFFN(unittest.TestCase):
         ln2_scale_data = np.ones(d_model).astype(layer_norm_dtype)
         ln2_bias_data = np.zeros(d_model).astype(layer_norm_dtype)
 
-        dropout1_seed_data = np.asarray([234]).astype("int32")
-        dropout2_seed_data = np.asarray([234]).astype("int32")
-
-        res_list = [fused_out, fused_out, ln_out]
+        res_list = [fused_out, ln_out]
         real_res = []
 
-        fetch = exe.run(
-            feed={
-                'x': x_data,
-                'dropout1_seed_tensor': dropout1_seed_data,
-                'dropout2_seed_tensor': dropout2_seed_data,
-                'linear1_weight': linear1_weight_data,
-                'linear1_bias': linear1_bias_data,
-                'linear2_weight': linear2_weight_data,
-                'linear2_bias': linear2_bias_data,
-                'ln1_scale': ln1_scale_data,
-                'ln1_bias': ln1_bias_data,
-                'ln2_scale': ln2_scale_data,
-                'ln2_bias': ln2_bias_data,
-            },
-            fetch_list=[fused_out],
-        )
-        real_res.append(fetch)
-
-        fetch = exe.run(
-            feed={
-                'x': x_data,
-                'dropout1_seed_tensor': dropout1_seed_data,
-                'dropout2_seed_tensor': dropout2_seed_data,
-                'linear1_weight': linear1_weight_data,
-                'linear1_bias': linear1_bias_data,
-                'linear2_weight': linear2_weight_data,
-                'linear2_bias': linear2_bias_data,
-                'ln1_scale': ln1_scale_data,
-                'ln1_bias': ln1_bias_data,
-                'ln2_scale': ln2_scale_data,
-                'ln2_bias': ln2_bias_data,
-            },
-            fetch_list=[fused_out],
-        )
-        real_res.append(fetch)
-
-        print("real_res[0]: ", real_res[0])
-        print()
-        print()
-        print("real_res[1]: ", real_res[1])
-
-        # for res in res_list:
-        #     fetch = exe.run(
-        #         feed={
-        #             'x': x_data,
-        #             'linear1_weight': linear1_weight_data,
-        #             'linear1_bias': linear1_bias_data,
-        #             'linear2_weight': linear2_weight_data,
-        #             'linear2_bias': linear2_bias_data,
-        #             'ln1_scale': ln1_scale_data,
-        #             'ln1_bias': ln1_bias_data,
-        #             'ln2_scale': ln2_scale_data,
-        #             'ln2_bias': ln2_bias_data,
-        #         },
-        #         fetch_list=[res],
-        #     )
-        # dropout1_seed_data = np.asarray([456]).astype("int32")
-        # dropout2_seed_data = np.asarray([678]).astype("int32")
-        # real_res.append(fetch)
-        print(len(res_list), "&&&" * 20)
+        for res in res_list:
+            fetch = exe.run(
+                feed={
+                    'x': x_data,
+                    'linear1_weight': linear1_weight_data,
+                    'linear1_bias': linear1_bias_data,
+                    'linear2_weight': linear2_weight_data,
+                    'linear2_bias': linear2_bias_data,
+                    'ln1_scale': ln1_scale_data,
+                    'ln1_bias': ln1_bias_data,
+                    'ln2_scale': ln2_scale_data,
+                    'ln2_bias': ln2_bias_data,
+                },
+                fetch_list=[res],
+            )
+            real_res.append(fetch)
         np.testing.assert_allclose(
             real_res[0], real_res[1], rtol=1e-05, atol=0.001
         )
 
 
-# class TestFusedFFNOpError(unittest.TestCase):
-#     def test_errors(self):
-#         paddle.enable_static()
-#         with paddle.static.program_guard(
-#             paddle.static.Program(), paddle.static.Program()
-#         ):
+class TestFusedFFNOpError(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
-#             def test_dtype():
-#                 x = paddle.static.data(
-#                     name='x', shape=[1, 10, 10], dtype="int32"
-#                 )
-#                 linear1_weight = paddle.static.data(
-#                     name='linear1_weight', shape=[1, 10, 10], dtype="float32"
-#                 )
-#                 linear2_weight = paddle.static.data(
-#                     name='linear2_weight', shape=[1, 10, 10], dtype="float32"
-#                 )
-#                 incubate_f.fused_feedforward(x, None, None, linear1_weight, linear2_weight)
+            def test_dtype():
+                x = paddle.static.data(
+                    name='x', shape=[1, 10, 10], dtype="int32"
+                )
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight', shape=[1, 10, 10], dtype="float32"
+                )
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight', shape=[1, 10, 10], dtype="float32"
+                )
+                incubate_f.fused_feedforward(x, linear1_weight, linear2_weight)
 
-#             self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype)
 
-#             def test_dropout_rate_type():
-#                 x = paddle.static.data(
-#                     name='x1', shape=[1, 10, 10], dtype="float32"
-#                 )
-#                 linear1_weight = paddle.static.data(
-#                     name='linear1_weight1', shape=[10, 10], dtype="float32"
-#                 )
-#                 linear2_weight = paddle.static.data(
-#                     name='linear2_weight1', shape=[10, 10], dtype="float32"
-#                 )
-#                 incubate_f.fused_feedforward(
-#                     x, None, None, linear1_weight, linear2_weight, dropout1_rate="a"
-#                 )
+            def test_dropout_rate_type():
+                x = paddle.static.data(
+                    name='x1', shape=[1, 10, 10], dtype="float32"
+                )
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight1', shape=[10, 10], dtype="float32"
+                )
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight1', shape=[10, 10], dtype="float32"
+                )
+                incubate_f.fused_feedforward(
+                    x, linear1_weight, linear2_weight, dropout1_rate="a"
+                )
 
-#             self.assertRaises(TypeError, test_dropout_rate_type)
+            self.assertRaises(TypeError, test_dropout_rate_type)
 
-#             def test_dropout_rate_value():
-#                 x = paddle.static.data(
-#                     name='x2', shape=[1, 10, 10], dtype="float32"
-#                 )
-#                 linear1_weight = paddle.static.data(
-#                     name='linear1_weight2', shape=[10, 10], dtype="float32"
-#                 )
-#                 linear2_weight = paddle.static.data(
-#                     name='linear2_weight2', shape=[10, 10], dtype="float32"
-#                 )
-#                 incubate_f.fused_feedforward(
-#                     x, None, None, linear1_weight, linear2_weight, dropout2_rate=-1
-#                 )
+            def test_dropout_rate_value():
+                x = paddle.static.data(
+                    name='x2', shape=[1, 10, 10], dtype="float32"
+                )
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight2', shape=[10, 10], dtype="float32"
+                )
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight2', shape=[10, 10], dtype="float32"
+                )
+                incubate_f.fused_feedforward(
+                    x, linear1_weight, linear2_weight, dropout2_rate=-1
+                )
 
-#             self.assertRaises(ValueError, test_dropout_rate_value)
+            self.assertRaises(ValueError, test_dropout_rate_value)
 
-#             def test_dropout_mode():
-#                 x = paddle.static.data(
-#                     name='x3', shape=[1, 10, 10], dtype="float32"
-#                 )
-#                 linear1_weight = paddle.static.data(
-#                     name='linear1_weight3', shape=[10, 10], dtype="float32"
-#                 )
-#                 linear2_weight = paddle.static.data(
-#                     name='linear2_weight3', shape=[10, 10], dtype="float32"
-#                 )
-#                 incubate_f.fused_feedforward(
-#                     x, None, None, linear1_weight, linear2_weight, mode='test'
-#                 )
+            def test_dropout_mode():
+                x = paddle.static.data(
+                    name='x3', shape=[1, 10, 10], dtype="float32"
+                )
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight3', shape=[10, 10], dtype="float32"
+                )
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight3', shape=[10, 10], dtype="float32"
+                )
+                incubate_f.fused_feedforward(
+                    x, linear1_weight, linear2_weight, mode='test'
+                )
 
-#             self.assertRaises(ValueError, test_dropout_mode)
+            self.assertRaises(ValueError, test_dropout_mode)
 
 
 if __name__ == "__main__":
