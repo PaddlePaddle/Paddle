@@ -2241,6 +2241,15 @@
         support_tensor : true
   manual_signature : [uniform]
 
+- op : unique
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, indices : Indices, inverse : Index, counts : Counts}
+  get_expected_kernel_type :
+    unique : GetUniqueExpectedKernelType
+  manual_signature : [unique]
+
 - op : unique_consecutive
   inputs :
     x : X
