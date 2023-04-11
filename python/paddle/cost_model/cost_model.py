@@ -58,7 +58,8 @@ class CostModel:
         exe = paddle.static.Executor(place)
 
         exe.run(startup_program)
-        paddle.fluid.profiler.start_profiler("All")
+        p = paddle.profiler.Profiler()
+        p.start()
         exe.run(main_program, feed={"X": x}, fetch_list=[])
 
         cost_model = core.CostModel()

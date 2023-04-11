@@ -263,7 +263,6 @@ def check_public_api():
         paddle.text,
         paddle.utils,
         paddle.utils.download,
-        paddle.utils.profiler,
         paddle.utils.cpp_extension,
         paddle.sysconfig,
         paddle.vision,
