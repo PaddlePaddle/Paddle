@@ -691,7 +691,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'X':
       out.setf(std::ios::uppercase);
-      [[fallthrough]];
+      break;
 
     case 'x':
     case 'p':
@@ -700,7 +700,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'E':
       out.setf(std::ios::uppercase);
-      [[fallthrough]];
+      break;
     case 'e':
       out.setf(std::ios::scientific, std::ios::floatfield);
       out.setf(std::ios::dec, std::ios::basefield);
@@ -708,14 +708,14 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
     case 'F':
       out.setf(std::ios::uppercase);
 
-      [[fallthrough]];
+      break;
 
     case 'f':
       out.setf(std::ios::fixed, std::ios::floatfield);
       break;
     case 'G':
       out.setf(std::ios::uppercase);
-      [[fallthrough]];
+      break;
 
     case 'g':
       out.setf(std::ios::dec, std::ios::basefield);
