@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
