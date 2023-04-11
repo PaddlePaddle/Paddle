@@ -160,8 +160,6 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    # sqrt_var = sqrt(var_tmp3)
-    # out = difference / sqrt_var
     rsqrt_var = rsqrt(var_tmp3)
     out = difference * rsqrt_var
 
@@ -540,7 +538,6 @@ def sqrt_composite(x):
 
     y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
     res = pow(x, y)
-    # res = sqrt(x)
     return res if not is_amp else cast(res, "float16")
 
 
@@ -607,7 +604,6 @@ def rsqrt_composite(x):
         x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     res = pow(x, y)
-    # res = rsqrt(x)
     return res if not is_amp else cast(res, "float16")
 
 
