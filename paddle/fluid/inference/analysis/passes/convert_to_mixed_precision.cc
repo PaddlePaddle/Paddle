@@ -102,7 +102,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
   framework::ProgramDesc mixed_program_desc;
   framework::ir::GraphToProgram(*main_graph_, &mixed_program_desc);
 
-  auto SerializeParams = [&] {
+  auto SerializeParams = [&](const std::string& path) {
     auto IsPersistable = [](const framework::VarDesc* var) {
       if (var->Persistable() &&
           var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
@@ -133,22 +133,22 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
     auto* op = save_block->AppendOp();
     op->SetType("save_combine");
     op->SetInput("X", save_var_list);
-    op->SetAttr("file_path", mixed_params_file_);
+    op->SetAttr("file_path", path);
     op->CheckAttrs();
 
     framework::Executor exe(platform::CPUPlace{});
     exe.Run(save_program, &scope_, 0, true, true);
   };
 
-  auto StrToBinary = [](const std::string& path, const std::string& str) {
+  auto SerializeProg = [&](const std::string& path) {
+    auto str = mixed_program_desc.Proto()->SerializeAsString();
     std::ofstream file(path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());
     file.close();
   };
 
-  StrToBinary(mixed_model_file_,
-              mixed_program_desc.Proto()->SerializeAsString());
-  SerializeParams();
+  SerializeProg(mixed_model_file_);
+  SerializeParams(mixed_params_file_);
 }
 
 bool OpSupportPrecision(const std::string& op_type,
