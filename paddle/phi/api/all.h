@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/include/tensor_utils.h"
 
 // phi common headers
 #include "paddle/phi/common/backend.h"

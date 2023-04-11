@@ -260,6 +260,17 @@
     param : [low, high, shape, dtype]
     data_type : dtype
 
+- op : randperm
+  args : (int n, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : RandpermInferMeta
+    param : [n, dtype]
+  kernel :
+    func : randperm
+    param : [n, dtype]
+    data_type : dtype
+
 - op : reduce
   args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
   output : Tensor(out)
@@ -308,6 +319,17 @@
   kernel :
     func : triu_indices
     param : [row, col, offset, dtype]
+    data_type : dtype
+
+- op : truncated_gaussian_random
+  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype=DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
     data_type : dtype
 
 - op : uniform

@@ -36,3 +36,4 @@ from . import dist_reduce_sum_p
 from . import dist_shape
 from . import dist_assign
 from . import dist_scale
+from . import dist_dropout
