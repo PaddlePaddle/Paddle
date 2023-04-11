@@ -147,13 +147,15 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
+  using x_indices_dtype = DataTypeToCppType<x.indices().dtype()>::type;
   if (axis_dim == 0) {
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
-      out_indices = Empty<int64_t, Context>(dev_ctx, {x_dims.size(), 1});
+      out_indices =
+          Empty<x_indices_dtype, Context>(dev_ctx, {x_dims.size(), 1});
     } else {
       out_dims = make_ddim({1});
-      out_indices = Empty<int64_t, Context>(dev_ctx, {1, 1});
+      out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {1, 1});
     }
     phi::funcs::SetConstant<Context, T>(dev_ctx, out_indices, 0);
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
@@ -172,12 +174,13 @@ void SumCooKernel(const Context& dev_ctx,
     }
     out_dims = make_ddim(dims);
 
-    out_indices = Empty<int64_t, Context>(dev_ctx, {out_dims.size(), x.nnz()});
+    out_indices =
+        Empty<x_indices_dtype, Context>(dev_ctx, {out_dims.size(), x.nnz()});
     out_values = Empty<T, Context>(dev_ctx, {x.nnz()});
 
-    const auto* x_indices_data = x_indices.data<int64_t>();
+    const auto* x_indices_data = x_indices.data<x_indices_dtype>();
     const auto* x_values_data = x_values.data<T>();
-    auto* out_indices_data = out_indices.data<int64_t>();
+    auto* out_indices_data = out_indices.data<x_indices_dtype>();
     auto* out_values_data = out_values.data<T>();
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
