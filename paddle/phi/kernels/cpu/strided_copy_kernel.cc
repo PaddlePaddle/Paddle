@@ -24,31 +24,46 @@ namespace phi {
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
+                       const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& out_strides,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = phi::make_ddim(out_strides);
+  meta.dims = phi::make_ddim(dims);
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
+  int input_rank = input.dims().size();
+  const int64_t* input_dims = input.dims().Get();
+  const int64_t* input_strides = input.strides().Get();
+
   T* output_data = dev_ctx.template Alloc<T>(out);
-  int rank = input.dims().size();
-  auto dims = input.dims();
-  auto input_stride = input.strides();
-  auto output_stride = meta.strides;
+  int output_rank = meta.dims.size();
+  const int64_t* output_dims = meta.dims.Get();
+  const int64_t* output_strides = meta.strides.Get();
+
+  PADDLE_ENFORCE_EQ(input.numel(),
+                    out->numel(),
+                    phi::errors::InvalidArgument(
+                        "Input numel(%d) must be equal with out numel(%d).",
+                        input.numel(),
+                        out->numel()));
+
   auto numel = input.numel();
 
   for (int64_t i = 0; i < numel; i++) {
     int64_t input_offset = 0;
-    int64_t output_offset = 0;
     int64_t index_tmp = i;
-    for (int dim = rank - 1; dim >= 0; --dim) {
-      int64_t mod = index_tmp % dims[dim];
-      index_tmp = index_tmp / dims[dim];
-      input_offset += mod * input_stride[dim];
-      output_offset += mod * output_stride[dim];
+    for (int dim = input_rank - 1; dim >= 0; --dim) {
+      input_offset += (index_tmp % input_dims[dim]) * input_strides[dim];
+      index_tmp = index_tmp / input_dims[dim];
     }
-
+    int64_t output_offset = 0;
+    index_tmp = i;
+    for (int dim = output_rank - 1; dim >= 0; --dim) {
+      output_offset += (index_tmp % output_dims[dim]) * output_strides[dim];
+      index_tmp = index_tmp / output_dims[dim];
+    }
     output_data[output_offset] = input_data[input_offset];
   }
 }

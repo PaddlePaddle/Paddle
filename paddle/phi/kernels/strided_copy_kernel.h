@@ -26,18 +26,20 @@ namespace phi {
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
+                       const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& out_strides,
                        DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor StridedCopy(const Context& dev_ctx,
                         const DenseTensor& input,
-                        const std::vector<int64_t> out_strides) {
+                        const std::vector<int64_t>& dims,
+                        const std::vector<int64_t>& out_strides) {
   DenseTensor dense_out;
   MetaTensor meta_input(input);
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
-  StridedCopyKernel<T, Context>(dev_ctx, input, out_strides, &dense_out);
+  StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_strides, &dense_out);
   return dense_out;
 }
 
