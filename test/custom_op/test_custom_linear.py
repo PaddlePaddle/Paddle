@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 import paddle.nn.functional as F
@@ -99,15 +99,6 @@ class TestCustomLinearJit(unittest.TestCase):
         self.np_weight = np.full([2, 4], fill_value=0.5, dtype="float32")
         self.np_bias = np.ones([4], dtype="float32")
 
-    def check_output(self, out, pd_out, name):
-        np.testing.assert_array_equal(
-            out,
-            pd_out,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -132,12 +123,10 @@ class TestCustomLinearJit(unittest.TestCase):
                     self.np_weight,
                     self.np_bias,
                 )
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(
-                    custom_weight_grad, pd_weight_grad, "weight_grad"
-                )
-                self.check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_weight_grad, pd_weight_grad, "weight_grad")
+                check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
 
     def test_dynamic(self):
         for device in self.devices:
@@ -168,12 +157,10 @@ class TestCustomLinearJit(unittest.TestCase):
                     self.np_weight,
                     self.np_bias,
                 )
-                self.check_output(custom_out, pd_out, "custom_out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(
-                    custom_weight_grad, pd_weight_grad, "weight_grad"
-                )
-                self.check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
+                check_output(custom_out, pd_out, "custom_out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_weight_grad, pd_weight_grad, "weight_grad")
+                check_output(custom_bias_grad, pd_bias_grad, "bias_grad")
 
 
 if __name__ == "__main__":
