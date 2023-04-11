@@ -1431,6 +1431,12 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
+
 - op : multi_dot
   backward : multi_dot_grad
   inputs :
