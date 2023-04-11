@@ -54,7 +54,7 @@ def _print_operator_stats(op_count_dict):
         "{:-^17}>".format(" Other Calls "),
     )
     if op_count_dict is not None and isinstance(op_count_dict, dict):
-        for op_type in op_count_dict:
+        for op_type in sorted(op_count_dict):
             # fp16, bf16, fp32, other
             value = op_count_dict[op_type]
             if isinstance(value, list):
