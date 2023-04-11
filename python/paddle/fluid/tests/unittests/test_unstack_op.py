@@ -164,7 +164,7 @@ class TestUnStackBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         with fluid.dygraph.guard():
