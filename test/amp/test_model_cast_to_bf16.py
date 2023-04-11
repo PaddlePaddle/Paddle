@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import fluid, nn
 from paddle.fluid import core
 from paddle.static import amp
 
@@ -202,6 +202,54 @@ class TestModelCastBF16(unittest.TestCase):
             ),
             startup_prog=fluid.default_startup_program(),
         )
+
+
+class SimpleNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+        self.linear = nn.Linear(in_features=6, out_features=10)
+
+    def forward(self, x):
+        out = self.conv(x)
+        out = nn.functional.relu(out)
+        out = self.linear(out)
+        out = nn.functional.softmax(out)
+        return out
+
+
+def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
+    main_program = paddle.static.Program()
+    startup_program = paddle.static.Program()
+    with paddle.utils.unique_name.guard():
+        with paddle.static.program_guard(main_program, startup_program):
+            model = SimpleNet()
+            x = paddle.static.data(
+                name='input', shape=[None, 1, 28, 28], dtype='float32'
+            )
+            out = model(x)
+            loss = paddle.mean(out)
+            optimizer = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+                beta1=0.78,
+                beta2=0.836,
+                epsilon=1e-4,
+                weight_decay=0.01,
+                multi_precision=True,
+            )
+            if use_amp:
+                optimizer = paddle.static.amp.amp_decorate(
+                    optimizer, level=amp_level, dtype=amp_dtype
+                )
+            optimizer.minimize(loss)
+    return main_program, startup_program
+
+
+class TestProgramBF16(unittest.TestCase):
+    def test_amp_bf16_o2(self):
+        main_program, startup_program = _build_model(True, "bfloat16", "O2")
+        print(main_program)
 
 
 if __name__ == '__main__':
