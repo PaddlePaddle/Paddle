@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
@@ -25,7 +25,7 @@ paddle.enable_static()
 
 #  test the compatibility of new executor: run old
 #  and new executor twice and check the result.
-#  please override the _get_feeds() and build_prgram()
+#  please override the _get_feeds() and build_prgram(), run_dygraph_once()
 class TestCompatibility(unittest.TestCase):
     def setUp(self):
         self.place = (
@@ -78,26 +78,53 @@ class TestCompatibility(unittest.TestCase):
             ret.append(exe.run(main_program, feed=feed, fetch_list=fetch_vars))
         return ret
 
-    def run_raw_executor(self, feed):
-        with framework._enable_standalone_executor(False):
-            out = self._run(feed)
+    def run_dygraph_once(self, feed):
+        x = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=0.1)
+        y = paddle.tensor.fill_constant(shape=[1], dtype='float32', value=0.23)
+        if x < y:
+            out = [
+                paddle.tensor.fill_constant(
+                    shape=[1, 2], dtype='int32', value=1
+                ).numpy(),
+                paddle.tensor.fill_constant(
+                    shape=[2, 3], dtype='bool', value=True
+                ).numpy(),
+            ]
+        else:
+            out = [
+                paddle.tensor.fill_constant(
+                    shape=[3, 4], dtype='float32', value=3
+                ).numpy(),
+                paddle.tensor.fill_constant(
+                    shape=[4, 5], dtype='int64', value=2
+                ).numpy(),
+            ]
         return out
 
+    def run_dygraph(self, feed):
+        ret = []
+        for _ in range(self.iter_run):
+            ret.append(self.run_dygraph_once(feed))
+        return ret
+
     def run_new_executor(self, feed):
-        with framework._enable_standalone_executor(True):
-            out = self._run(feed)
+        out = self._run(feed)
         return out
 
     def test_with_feed(self):
         feed = self._get_feed()
+        paddle.enable_static()
         res = self.run_new_executor(feed)
-        gt = self.run_raw_executor(feed)
+        paddle.disable_static()
+
+        gt = self.run_dygraph(feed)
+
         for x, y in zip(gt, res):
             if isinstance(x, list):
                 for tx, ty in zip(x, y):
                     np.testing.assert_array_equal(tx, ty)
             elif isinstance(x, np.ndarray):
-                np.testing.assert_array_equal(tx, ty)
+                np.testing.assert_array_equal(x, y)
             else:
                 raise Exception("Not Implement!")
 
@@ -128,6 +155,12 @@ class TestWhile(TestCompatibility):
 
             exe = paddle.static.Executor(paddle.CPUPlace())
         return main_program, startup_program, i
+
+    def run_dygraph_once(self, feed):
+        i = 1
+        while i < 10:
+            i = i + 1
+        return [i]
 
 
 if __name__ == "__main__":
