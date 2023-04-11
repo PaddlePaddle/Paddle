@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/phi/kernels/funcs/sequence_pooling.h"
+#include "paddle/fluid/operators/math/sequence_pooling.h"
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
@@ -78,7 +78,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
   }
 
   // call functor
-  phi::funcs::SequencePoolGradFunctor<DeviceContext, T>()(
+  paddle::operators::math::SequencePoolGradFunctor<DeviceContext, T>()(
       context, "SUM", out_grad, &in_grad);
 
   if (place == phi::CPUPlace()) {
