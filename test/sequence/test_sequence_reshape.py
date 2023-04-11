@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 
-sys.path.append("../")
+sys.path.append("../legacy_test")
 from eager_op_test import OpTest
 
 

@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-sys.path.append("../")
+sys.path.append("../legacy_test")
 from eager_op_test import OpTest
 
 
