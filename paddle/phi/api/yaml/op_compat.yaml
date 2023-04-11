@@ -44,6 +44,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : adagrad_
+  inputs :
+    { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
