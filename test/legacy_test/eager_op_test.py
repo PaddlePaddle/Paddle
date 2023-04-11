@@ -23,7 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
-from op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
