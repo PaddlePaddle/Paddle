@@ -640,13 +640,45 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
+    def _sorted_params_grads_by_name(self, params_grads):
+        sorted_params_grads = []
+
+        import re
+
+        params_grads_dict = {}
+
+        for p, g in params_grads:
+            p_name = p.name
+            tensor_name_re = re.search(r'_\d*\.', p_name)
+            tensor_name = p_name[: tensor_name_re.span()[0]]
+            if tensor_name in params_grads_dict.keys():
+                params_grads_dict[tensor_name].append([p, g])
+            else:
+                params_grads_dict[tensor_name] = [[p, g]]
+
+        def sort_pg_pair(ele):
+            p = ele[0]
+            p_name = p.name
+            p_num = int(re.search(r'_(\d*)\.', p_name).group(1))
+            return p_num, p_name
+
+        for ele in sorted(params_grads_dict.keys()):
+
+            params_grads_dict[ele].sort(key=sort_pg_pair)
+            sorted_params_grads.extend(params_grads_dict[ele])
+
+        return sorted_params_grads
+
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        for p, g in params_grads:
+
+        sorted_params_grads = self._sorted_params_grads_by_name(params_grads)
+
+        for p, g in sorted_params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
@@ -660,6 +692,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
             elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = merge_selected_rows(g)
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
+
+            # paddle.fluid.core.check_numerics("add_n_input_grad", g)
+            # paddle.fluid.core.check_numerics("add_n_input", p)
 
             sum_square = _squared_l2_norm(merge_grad)
             if (
@@ -695,6 +730,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = paddle.add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
+
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
@@ -721,13 +757,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             # TODO(wangxi): use inplace elementwise_mul
             if need_clip:
+                new_g = _cast_to_mp_type_if_enabled(g)
                 clip_input = (
-                    clip_var.astype(g.dtype)
-                    if clip_var.dtype != g.dtype
+                    clip_var.astype(new_g.dtype)
+                    if clip_var.dtype != new_g.dtype
                     else clip_var
                 )
-                new_grad = paddle.multiply(g, clip_input)
-                params_and_grads.append((p, new_grad))
+                new_g = paddle.multiply(new_g, clip_input)
+
+                if new_g.dtype != g.dtype:
+                    new_g = new_g.astype(g.dtype)
+
+                params_and_grads.append((p, new_g))
             else:
                 params_and_grads.append((p, g))
 
