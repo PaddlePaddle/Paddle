@@ -20,7 +20,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import _non_static_mode, in_dygraph_mode
+from paddle.fluid import _non_static_mode, core, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -808,6 +808,9 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
         self.score_threshold = 2.0
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
     def test_check_output(self):
         self.__class__.op_type = "multiclass_nms3"
@@ -870,12 +873,18 @@ class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
     def set_argument(self):
         # Here set 0.08 to make output box size less than keep_top_k
         self.score_threshold = 0.08
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
     def set_argument(self):
         # Here set 2.0 to test the case there is no outputs.
