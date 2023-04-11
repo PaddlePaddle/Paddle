@@ -2442,9 +2442,9 @@ class TestSundryAPI(unittest.TestCase):
         out2.retain_grads()
         out2.backward()
 
-        self.assertEqual(out1.shape, ())
+        self.assertEqual(out1.shape, [])
         self.assertEqual(out1, 1)
-        self.assertEqual(out2.shape, ())
+        self.assertEqual(out2.shape, [])
         self.assertEqual(out2, 2.5)
 
 
@@ -4360,9 +4360,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out1, out2])
 
-        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0].shape, [])
         self.assertEqual(res[0], 1)
-        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1].shape, [])
         self.assertEqual(res[1], 2.5)
 
 
