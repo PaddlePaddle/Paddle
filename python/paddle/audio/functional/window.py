@@ -37,12 +37,6 @@ window_function_register = WindowFunctionRegister()
 
 
 @window_function_register.register()
-def _cat(x: List[Tensor], data_type: str) -> Tensor:
-    l = [paddle.to_tensor(_, data_type) for _ in x]
-    return paddle.concat(l)
-
-
-@window_function_register.register()
 def _acosh(x: Union[Tensor, float]) -> Tensor:
     if isinstance(x, float):
         return math.log(x + math.sqrt(x**2 - 1))
