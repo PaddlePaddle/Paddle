@@ -21,7 +21,7 @@ namespace ir {
 // OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
-                             ir::DictionaryAttribute attibute) {
+                             ir::DictionaryAttribute attribute) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -51,7 +51,8 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     }
   }
   // 3.2. Construct Operation.
-  Operation *op = new (base_ptr) Operation(num_results, num_operands, attibute);
+  Operation *op =
+      new (base_ptr) Operation(num_results, num_operands, attribute);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -115,13 +116,13 @@ void Operation::destroy() {
 
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
-                     ir::DictionaryAttribute attibute) {
-  if (!attibute) {
+                     ir::DictionaryAttribute attribute) {
+  if (!attribute) {
     throw("unexpected null attribute dictionary");
   }
   num_results_ = num_results;
   num_operands_ = num_operands;
-  attibute_ = attibute;
+  attribute_ = attribute;
 }
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) {

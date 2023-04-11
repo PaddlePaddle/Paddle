@@ -78,13 +78,13 @@ TEST(value_test, value_test) {
   ir::detail::OpOperandImpl *op4_first_input =
       reinterpret_cast<ir::detail::OpOperandImpl *>(
           reinterpret_cast<uintptr_t>(op4) + sizeof(ir::Operation));
-  EXPECT_EQ(static_cast<ir::Value>(op1_first_output).impl()->first_user(),
+  EXPECT_EQ(static_cast<ir::Value>(op1_first_output).impl()->first_use(),
             op4_first_input);
   ir::detail::OpOperandImpl *op3_first_input =
       reinterpret_cast<ir::detail::OpOperandImpl *>(
           reinterpret_cast<uintptr_t>(op3) + sizeof(ir::Operation));
-  EXPECT_EQ(op4_first_input->next_user(), op3_first_input);
-  EXPECT_EQ(op3_first_input->next_user(), nullptr);
+  EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
+  EXPECT_EQ(op3_first_input->next_use(), nullptr);
 
   // destroy
   std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;

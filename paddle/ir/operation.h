@@ -28,7 +28,7 @@ class alignas(8) Operation final {
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
                            const std::vector<ir::Type> &output_types,
-                           ir::DictionaryAttribute attibute);
+                           ir::DictionaryAttribute attribute);
 
   void destroy();
 
@@ -39,9 +39,9 @@ class alignas(8) Operation final {
  private:
   Operation(uint32_t num_results,
             uint32_t num_operands,
-            ir::DictionaryAttribute attibute);
+            ir::DictionaryAttribute attribute);
 
-  ir::DictionaryAttribute attibute_;
+  ir::DictionaryAttribute attribute_;
 
   uint32_t num_results_ = 0;
 
