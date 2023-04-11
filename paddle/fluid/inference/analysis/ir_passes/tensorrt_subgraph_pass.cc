@@ -377,8 +377,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                              &max_shape_tensor,
                                              &opt_shape_tensor);
       } else {
-        int fd =
-            creat(shape_range_info_path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT);
         close(fd);
       }
     }

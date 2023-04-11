@@ -350,7 +350,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           auto *engine = trt_engine->engine();
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
-          // is_shape_tensor = trt_engine->engine()->isShapeInferenceIO(name);
         }
         if ((t.dtype() == phi::DataType::INT32 ||
              t.dtype() == phi::DataType::INT64) &&
