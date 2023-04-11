@@ -33,13 +33,18 @@ list(
   device_guard.cc
   stream.cc
   event.cc
-  device_base.cc
   device_manager.cc
   context_pool.cc)
 
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_CUSTOM_DEVICE)
+  list(APPEND BACKENDS_SRCS device_base.cc)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
-       custom/custom_device_op_list.cc)
+       custom/custom_device_op_list.cc device_base.cc)
 endif()
 
 collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})

@@ -512,7 +512,11 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[
+
+package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+shutil.copy('${PHI_LIB}', libs_path)
+
+package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]

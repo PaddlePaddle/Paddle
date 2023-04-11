@@ -885,7 +885,13 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
+
     package_data['paddle.libs'] = [
+        ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
+    ]
+    shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    package_data['paddle.libs'] += [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]

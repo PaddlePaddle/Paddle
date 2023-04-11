@@ -51,10 +51,6 @@ if(WITH_ASCEND_CL)
   list(APPEND PHI_DEPS npu_hccl)
 endif()
 
-#if(WITH_MKLML)
-#list(APPEND PHI_DEPS mklml)
-#endif()
-
 if(WITH_FLASHATTN)
   list(APPEND PHI_DEPS flashattn)
 endif()
@@ -118,6 +114,17 @@ else()
     phi SHARED
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
+endif()
+
+if(WIN32)
+  set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  set(PHI_LIB
+      "${CMAKE_CURRENT_BINARY_DIR}/phi.dll"
+      CACHE FILEPATH "PHI Library" FORCE)
+else()
+  set(PHI_LIB
+      "${CMAKE_CURRENT_BINARY_DIR}/libphi.so"
+      CACHE FILEPATH "PHI Library" FORCE)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)

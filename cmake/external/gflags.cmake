@@ -78,7 +78,7 @@ else()
                -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-               -DBUILD_STATIC_LIBS=ON
+               -DBUILD_SHARED=ON
                -DCMAKE_INSTALL_PREFIX=${GFLAGS_INSTALL_DIR}
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                -DBUILD_TESTING=OFF
@@ -91,7 +91,7 @@ else()
     BUILD_BYPRODUCTS ${GFLAGS_LIBRARIES})
 endif()
 
-add_library(gflags STATIC IMPORTED GLOBAL)
+add_library(gflags SHARED IMPORTED GLOBAL)
 set_property(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
 add_dependencies(gflags extern_gflags)
 

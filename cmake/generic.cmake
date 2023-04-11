@@ -452,7 +452,6 @@ function(cc_test_build TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
       glog
       phi)
     add_dependencies(
@@ -462,8 +461,8 @@ function(cc_test_build TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
-      glog)
+      glog
+      phi)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
@@ -772,7 +771,6 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
       glog
       phi
       ${os_dependency_modules})
@@ -783,7 +781,7 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

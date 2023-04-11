@@ -5,7 +5,7 @@ cc_test(
        elementwise_add_op
        activation_op
        softmax_op
-       softmax
+       phi
        scope
        device_context
        enforce

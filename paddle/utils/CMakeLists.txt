@@ -7,7 +7,7 @@ cc_test(
 cc_test(
   small_vector_test
   SRCS small_vector_test.cc
-  DEPS gtest gflags)
+  DEPS gtest phi)
 cc_test(
   variant_test
   SRCS variant_test.cc

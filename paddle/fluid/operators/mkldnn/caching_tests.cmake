@@ -5,9 +5,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     activation_op
     softmax_op
     conv_op
-    im2col
-    vol2col
-    softmax
+    phi
     scope
     device_context
     enforce)
