@@ -3921,12 +3921,12 @@ def gaussian_nll_loss(
 
     Args:
         input (Tensor): input tensor, :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
-          dimensions. Expectation of the Gaussian distribution, available dtype is float32, float64.
+            dimensions. Expectation of the Gaussian distribution, available dtype is float32, float64.
         label (Tensor): target label tensor, :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
-          but with one dimension equal to 1 (to allow for broadcasting). Sample from the Gaussian distribution, available dtype is float32, float64.
+            but with one dimension equal to 1 (to allow for broadcasting). Sample from the Gaussian distribution, available dtype is float32, float64.
         variance (Tensor): tensor of positive variance(s), :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
-          with one dimension equal to 1, or same shape as the input but with one fewer
-          dimension (to allow for broadcasting). One for each of the expectations
+            with one dimension equal to 1, or same shape as the input but with one fewer
+            dimension (to allow for broadcasting). One for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
