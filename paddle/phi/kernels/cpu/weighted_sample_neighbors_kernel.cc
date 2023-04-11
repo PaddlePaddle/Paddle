@@ -22,8 +22,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-template <typename T>
 
+template <typename T>
 struct GraphWeightedNode {
   T node_id;
   float weight_key;
