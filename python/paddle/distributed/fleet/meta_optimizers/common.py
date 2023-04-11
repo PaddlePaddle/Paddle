@@ -196,7 +196,7 @@ class CollectiveHelper:
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
-        elif core.is_compiled_with_npu():
+        elif core.is_compiled_with_custom_device('npu'):
             block.append_op(
                 type='c_gen_hccl_id',
                 inputs={},

@@ -22,7 +22,8 @@ from google.protobuf import text_format
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, debugger
+from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
+from paddle.fluid import core
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
 from paddle.framework import io_utils
@@ -133,7 +134,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
 def graphviz(block, output_dir="", filename='debug'):
     dot_path = os.path.join(output_dir, filename + '.dot')
     pdf_path = os.path.join(output_dir, filename + '.pdf')
-    debugger.draw_block_graphviz(block, path=dot_path)
+    draw_block_graphviz(block, path=dot_path)
     cmd = ["dot", "-Tpdf", dot_path, "-o", pdf_path]
     p = subprocess.Popen(
         cmd,

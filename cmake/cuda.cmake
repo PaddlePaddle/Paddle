@@ -58,7 +58,8 @@ function(detect_installed_gpus out_variable)
       "}\n")
 
     execute_process(
-      COMMAND "${CUDA_NVCC_EXECUTABLE}" "--run" "${cufile}"
+      COMMAND "${CUDA_NVCC_EXECUTABLE}" "-ccbin=${CMAKE_C_COMPILER}" "--run"
+              "${cufile}"
       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
       RESULT_VARIABLE nvcc_res
       OUTPUT_VARIABLE nvcc_out

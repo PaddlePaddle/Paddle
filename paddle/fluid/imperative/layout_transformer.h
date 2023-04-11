@@ -404,10 +404,16 @@ class ArgmaxOpTransformer
           case paddle::framework::proto::AttrType::INT: {
             auto axis = PADDLE_GET_CONST(int, (*attrs)["axis"]);
             (*attrs)["axis"] = static_cast<int>(perm[axis]);
+#ifdef LINUX
+            __attribute__((fallthrough));
+#endif
           }
           case paddle::framework::proto::AttrType::LONG: {
             auto axis = PADDLE_GET_CONST(int64_t, (*attrs)["axis"]);
             (*attrs)["axis"] = static_cast<int64_t>(perm[axis]);
+#ifdef LINUX
+            __attribute__((fallthrough));
+#endif
           }
           default:
             VLOG(4) << "The data_type of axis is Error, axis must be int or "

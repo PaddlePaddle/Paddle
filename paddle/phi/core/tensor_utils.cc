@@ -317,6 +317,16 @@ void Copy(const Context& dev_ctx,
   dst->set_dims(src.dims());
 }
 
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const TensorArray& src,
+          Place dst_place,
+          bool blocking,
+          TensorArray* dst) {
+  // NOTE(Ruibiao): implements Copy() for TensorArray when needed.
+  PADDLE_THROW(errors::Unimplemented("Copy for TensorArray is unimplemented."));
+}
+
 template void Copy(const CPUContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
@@ -363,6 +373,18 @@ template void Copy(const DeviceContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SparseCsrTensor* dst);
+
+template void Copy(const CPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
+
+template void Copy(const DeviceContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template void Copy(const GPUContext& dev_ctx,
@@ -385,6 +407,11 @@ template void Copy(const GPUContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SparseCsrTensor* dst);
+template void Copy(const GPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -393,6 +420,11 @@ template void Copy(const XPUContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const XPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -401,6 +433,11 @@ template void Copy(const CustomContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const CustomContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -409,6 +446,11 @@ template void Copy(const OneDNNContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const OneDNNContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 template <typename T>

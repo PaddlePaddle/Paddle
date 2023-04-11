@@ -25,8 +25,10 @@ PD_REGISTER_KERNEL(momentum,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
 }
 
 PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
@@ -36,6 +38,8 @@ PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
 }
