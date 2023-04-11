@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.distributed.auto_parallel.process_group import (
+    get_all_process_groups,
+)
 from paddle.framework import _apply_pass as _apply_cpp_pass
 from paddle.framework import core
 from paddle.static import Executor
@@ -119,8 +122,26 @@ class FusedLinearWithMpScalePass(CPPPassWrapper):
     def cpp_name(self):
         return "fused_linear_with_mp_scale_pass"
 
+    @property
+    def cpp_attr_types(self):
+        return {"nranks_map": "map[int, int]"}
+
     def _type(self):
         return PassType.FUSION_OPT
+
+    def _apply_single_impl(self, main_program, startup_program, context):
+        all_groups = get_all_process_groups()
+        ring_id_2_nranks = {}
+        for group in all_groups:
+            ring_id_2_nranks[group.id] = group.nranks
+        self.set_attr("nranks_map", ring_id_2_nranks)
+        _apply_cpp_pass(
+            main_program,
+            startup_program,
+            self.cpp_name,
+            self._attrs,
+            self.cpp_attr_types,
+        )
 
 
 @register_pass("fuse_adamw")

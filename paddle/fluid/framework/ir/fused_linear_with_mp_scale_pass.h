@@ -40,8 +40,8 @@ class FuseLinearWithMPScalePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  ir::Graph *FusedLinearFwd(ir::Graph *graph, bool is_training) const;
-  ir::Graph *FusedLinearBwd(ir::Graph *graph, bool without_x_gradient) const;
+  ir::Graph *FusedLinearFwd(ir::Graph *graph) const;
+  ir::Graph *FusedLinearBwd(ir::Graph *graph) const;
 
   ir::Graph *FusedLinearWithMpScaleFwd(ir::Graph *graph) const;
   ir::Graph *FusedLinearWithMpScaleBwd(ir::Graph *graph) const;

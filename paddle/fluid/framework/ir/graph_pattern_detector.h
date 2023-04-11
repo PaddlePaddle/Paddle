@@ -1033,6 +1033,59 @@ struct ElewiseAddMatmulAct : public PatternBase {
   PATTERN_DECL_NODE(act_grad_dx);
 };
 
+// The following patterns are used to fuse linear of ColumnParallelLinear.
+// formula: F.linear(x)
+// op: c_identity + matmul_v2 + elementwise_add
+// named nodes: c_identity, matmul, elementwise_add
+//              c_identity_out, matmul_w, matmul_out,
+//              ele_bias, elewise_add_out
+struct FusedLinear : public PatternBase {
+  FusedLinear(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mp_fused_linear") {}
+
+  PDNode* operator()(PDNode* x_var);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(c_identity);
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(ele_add);
+  // declare variable node's name
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(ele_add_out);
+  PATTERN_DECL_NODE(ele_add_bias);
+};
+
+// The following patterns are used to fuse linear_grad of ColumnParallelLinear.
+// formula: the backward of F.linear(x)
+// op: elementwise_add_grad + matmul_v2_grad + c_allreduce_sum
+// named nodes: ele_add_grad, matmul_grad, c_allreduce_sum
+//              ele_add_x, ele_add_bias, ele_add_x_grad, ele_add_bias_grad
+//              matmul_x, matmul_w, matmul_x_grad, matmul_w_grad
+//              c_allreduce_sum_out
+struct FusedLinearGrad : public PatternBase {
+  FusedLinearGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mp_fused_linear_grad") {}
+
+  PDNode* operator()(PDNode* out_grad);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad);
+  PATTERN_DECL_NODE(matmul_grad);
+  PATTERN_DECL_NODE(c_allreduce_sum);
+  // declare variable node's name
+  PATTERN_DECL_NODE(ele_add_x);
+  PATTERN_DECL_NODE(ele_add_bias);
+  PATTERN_DECL_NODE(ele_add_x_grad);
+  PATTERN_DECL_NODE(ele_add_bias_grad);
+  PATTERN_DECL_NODE(matmul_x);
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_x_grad);
+  PATTERN_DECL_NODE(matmul_w_grad);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
+};
+
 // The following patterns are used to fuse linear of RowParallelLinear.
 // Meanwhile, it adds MpScale on bias of linear.
 // formula: F.linear(x)
@@ -1040,9 +1093,9 @@ struct ElewiseAddMatmulAct : public PatternBase {
 // named nodes: matmul, c_allreduce_sum, elementwise_add
 //              matmul_w, matmul_out, c_allreduce_sum_out
 //              ele_bias, elewise_add_out
-struct LinearMpScale : public PatternBase {
-  LinearMpScale(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "linear_mp_scale") {}
+struct FusedLinearMpScale : public PatternBase {
+  FusedLinearMpScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mp_fused_linear_mp_scale") {}
 
   PDNode* operator()(PDNode* linear_x_var);
 
@@ -1055,7 +1108,7 @@ struct LinearMpScale : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
   PATTERN_DECL_NODE(c_allreduce_sum_out);
   PATTERN_DECL_NODE(ele_add_out);
-  PATTERN_DECL_NODE(ele_bias);
+  PATTERN_DECL_NODE(ele_add_bias);
 };
 
 // The following patterns are used to fuse linear_grad of RowParallelLinear.
@@ -1065,9 +1118,9 @@ struct LinearMpScale : public PatternBase {
 //              ele_add_x, ele_add_bias, ele_add_x_grad, ele_add_bias_grad
 //              matmul_x, matmul_w, matmul_x_grad, matmul_w_grad
 //              c_identity_out
-struct LinearMpScaleGrad : public PatternBase {
-  LinearMpScaleGrad(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "linear_mp_scale_grad") {}
+struct FusedLinearMpScaleGrad : public PatternBase {
+  FusedLinearMpScaleGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mp_fused_linear_mp_scale_grad") {}
 
   PDNode* operator()(PDNode* out_grad);
 
@@ -2214,7 +2267,7 @@ struct AddSupportInt8 : public PatternBase {
 // 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
 // -> residual_add (pre_layer_norm)
 // 2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
-// -> layer_norm (pOST_layer_norm)
+// -> layer_norm (post_layer_norm)
 // other cases: may delete residual_add, dropout1, dropout2 operators
 struct FusedFeedForwardFwd : public PatternBase {
   FusedFeedForwardFwd(PDPattern* pattern, const std::string& name_scope)

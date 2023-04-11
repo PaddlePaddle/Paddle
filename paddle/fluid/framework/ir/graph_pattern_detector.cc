@@ -1837,11 +1837,92 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
   return matmul_grad;
 }
 
+// Used for ColumnParallelLinear.
+// Replace nn.Linear with FusedLinear.
+PDNode *patterns::FusedLinear::operator()(
+    paddle::framework::ir::PDNode *x_var) {
+  auto *c_identity_op =
+      pattern->NewNode(c_identity_repr())->assert_is_op("c_identity");
+  auto *c_identity_out = pattern->NewNode(c_identity_out_repr())
+                             ->assert_is_op_output("c_identity", "Out")
+                             ->assert_is_op_input("matmul_v2", "X");
+
+  auto *matmul_op = pattern->NewNode(matmul_repr())->assert_is_op("matmul_v2");
+  auto *matmul_w_var =
+      pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
+  auto *matmul_out_var = pattern->NewNode(matmul_out_repr())
+                             ->assert_is_op_output("matmul_v2", "Out")
+                             ->assert_is_op_input("elementwise_add", "X");
+
+  auto *ele_add_op =
+      pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
+  auto *ele_add_bias_var = pattern->NewNode(ele_add_bias_repr())
+                               ->assert_is_op_input("elementwise_add", "Y");
+  auto *ele_add_out_var = pattern->NewNode(ele_add_out_repr())
+                              ->assert_is_op_output("elementwise_add", "Out");
+
+  c_identity_op->LinksFrom({x_var}).LinksTo({c_identity_out});
+  matmul_op->LinksFrom({c_identity_out, matmul_w_var})
+      .LinksTo({matmul_out_var});
+  ele_add_op->LinksFrom({matmul_out_var, ele_add_bias_var})
+      .LinksTo({ele_add_out_var});
+
+  return ele_add_out_var;
+}
+
+// Used for ColumnParallelLinear Grad.
+PDNode *patterns::FusedLinearGrad::operator()(
+    paddle::framework::ir::PDNode *out_grad) {
+  auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_repr())
+                              ->assert_is_op("elementwise_add_grad");
+  auto *ele_add_x_var = pattern->NewNode(ele_add_x_repr())
+                            ->assert_is_op_input("elementwise_add_grad", "X");
+  auto *ele_add_bias_var =
+      pattern->NewNode(ele_add_bias_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y");
+  auto *ele_add_x_grad =
+      pattern->NewNode(ele_add_x_grad_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"))
+          ->assert_is_op_input("matmul_v2_grad", GradVarName("Out"));
+  auto *ele_add_bias_grad =
+      pattern->NewNode(ele_add_bias_grad_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
+
+  auto *matmul_grad_op =
+      pattern->NewNode(matmul_grad_repr())->assert_is_op("matmul_v2_grad");
+  auto *matmul_x_var = pattern->NewNode(matmul_x_repr())
+                           ->assert_is_op_input("matmul_v2_grad", "X");
+  auto *matmul_w_var = pattern->NewNode(matmul_w_repr())
+                           ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *matmul_x_grad =
+      pattern->NewNode(matmul_x_grad_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"))
+          ->assert_is_op_input("c_allreduce_sum", "X");
+  auto *matmul_w_grad =
+      pattern->NewNode(matmul_w_grad_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+
+  auto *c_allreduce_sum_op =
+      pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
+  auto *c_allreduce_sum_out =
+      pattern->NewNode(c_allreduce_sum_out_repr())
+          ->assert_is_op_output("c_allreduce_sum", "Out");
+
+  ele_add_grad_op->LinksFrom({out_grad, ele_add_x_var, ele_add_bias_var})
+      .LinksTo({ele_add_x_grad, ele_add_bias_grad});
+  matmul_grad_op->LinksFrom({ele_add_x_grad, matmul_x_var, matmul_w_var})
+      .LinksTo({matmul_x_grad, matmul_w_grad});
+  c_allreduce_sum_op->LinksFrom({matmul_x_grad}).LinksTo({c_allreduce_sum_out});
+
+  return c_allreduce_sum_out;
+}
+
 // Used for RowParallelLinear.
 // Replace nn.Linear with FusedLinear,
 // meanwile scale bias with 1 / mp_degree.
-PDNode *patterns::LinearMpScale::operator()(
-    paddle::framework::ir::PDNode *linear_x_var) {
+PDNode *patterns::FusedLinearMpScale::operator()(
+    paddle::framework::ir::PDNode *x_var) {
+  x_var->assert_is_op_input("matmul_v2", "X");
   auto *matmul = pattern->NewNode(matmul_repr())->assert_is_op("matmul_v2");
   auto *matmul_w_var =
       pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
@@ -1856,25 +1937,26 @@ PDNode *patterns::LinearMpScale::operator()(
       pattern->NewNode(c_allreduce_sum_out_repr())
           ->assert_is_op_output("c_allreduce_sum", "Out");
 
-  auto *ele_add =
+  auto *ele_add_op =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
-  auto *ele_bias_var = pattern->NewNode(ele_bias_repr())
-                           ->assert_is_op_input("elementwise_add", "Y");
-  auto *ele_out_var = pattern->NewNode(ele_add_out_repr())
-                          ->assert_is_op_output("elementwise_add", "Out");
+  auto *ele_add_bias_var = pattern->NewNode(ele_add_bias_repr())
+                               ->assert_is_op_input("elementwise_add", "Y");
+  auto *ele_add_out_var = pattern->NewNode(ele_add_out_repr())
+                              ->assert_is_op_output("elementwise_add", "Out");
 
-  matmul->LinksFrom({linear_x_var, matmul_w_var}).LinksTo({matmul_out_var});
+  matmul->LinksFrom({x_var, matmul_w_var}).LinksTo({matmul_out_var});
   c_allreduce_sum_op->LinksFrom({matmul_out_var})
       .LinksTo({c_allreduce_sum_out_var});
-  ele_add->LinksFrom({c_allreduce_sum_out_var, ele_bias_var})
-      .LinksTo({ele_out_var});
+  ele_add_op->LinksFrom({c_allreduce_sum_out_var, ele_add_bias_var})
+      .LinksTo({ele_add_out_var});
 
-  return ele_out_var;
+  return ele_add_out_var;
 }
 
 // Used for RowParallelLinear Grad.
-PDNode *patterns::LinearMpScaleGrad::operator()(
+PDNode *patterns::FusedLinearMpScaleGrad::operator()(
     paddle::framework::ir::PDNode *out_grad) {
+  out_grad->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
   auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_repr())
                               ->assert_is_op("elementwise_add_grad");
   auto *ele_add_bias_var =
