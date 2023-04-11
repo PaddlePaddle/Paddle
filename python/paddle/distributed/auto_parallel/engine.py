@@ -777,9 +777,9 @@ class Engine:
                     process_group.instantiate()
 
     def _initialize(self, mode):
-        place = _get_device()
-        if isinstance(place, paddle.framework.CUDAPlace):
-            place = paddle.framework.CUDAPlace(
+        self._place = _get_device()
+        if isinstance(self._place, paddle.framework.CUDAPlace):
+            self._place = paddle.framework.CUDAPlace(
                 paddle.distributed.ParallelEnv().dev_id
             )
 
@@ -791,10 +791,12 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         if self._dygraph_mode:
             dist_main_program = dist_context.dist_main_programs[self._cur_rank]
-            self.program_helper.init(dist_main_program, place, dist_context)
+            self.program_helper.init(
+                dist_main_program, self._place, dist_context
+            )
 
         if self._executor is None:
-            self._executor = paddle.static.Executor(place)
+            self._executor = paddle.static.Executor(self._place)
             uninitialized = []
             dist_startup_prog = dist_context.dist_startup_programs[
                 self._cur_rank
