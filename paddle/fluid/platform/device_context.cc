@@ -33,11 +33,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/device_context.h"
-#include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
-#endif
-
 namespace paddle {
 namespace platform {
 
@@ -224,18 +219,6 @@ void EmplaceDeviceContexts(
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-      EmplaceDeviceContext<MLUDeviceContext>(
-          place_to_device_context,
-          place,
-          disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
-#else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("MLUPlace is not supported. Please "
-                                          "re-compile with WITH_MLU option."));
 #endif
     } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU

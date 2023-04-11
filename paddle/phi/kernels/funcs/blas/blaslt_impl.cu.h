@@ -105,13 +105,12 @@ struct MatmulDescriptor {
     is_cached = obj.is_cached;
   }
 
-  ~MatmulDescriptor() {
+  ~MatmulDescriptor() PADDLE_MAY_THROW {
     if (!is_cached) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutDestroy(out_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(out_desc));
       delete algo;
 
       op_desc = nullptr;
