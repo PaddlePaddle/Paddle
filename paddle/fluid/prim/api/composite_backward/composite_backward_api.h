@@ -978,6 +978,15 @@ void group_norm_grad(const Tensor& x,
                                               data_layout));
   }
   Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+
   // auto x_dims = y.dims();
   std::vector<int64_t> x_dims = phi::vectorize<int64_t>(x.dims());
   auto add_axis = std::vector<int64_t>({-1});
@@ -998,8 +1007,9 @@ void group_norm_grad(const Tensor& x,
   auto bias_ptr = bias.get_ptr();
   auto inv_std = sqrt<T>(1.0 / (variance + epsilon));
   auto dtype = x_data.dtype();
-  auto sum_y_grad_mul_x = sum<T>(out_grad * x, reduce_axis, dtype, false);
-  auto sum_y_grad = sum<T>(out_grad, reduce_axis, dtype, false);
+  auto sum_y_grad_mul_x =
+      sum<T>(out_grad_data * x_data, reduce_axis, dtype, false);
+  auto sum_y_grad = sum<T>(out_grad_data, reduce_axis, dtype, false);
   if (x_grad) {
     Tensor d1;
     Tensor d2;
@@ -1030,10 +1040,14 @@ void group_norm_grad(const Tensor& x,
     p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
     p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
     p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
-    auto tmp_1 = reshape<T>(out_grad, whole_group_shape) * p1;
+    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
-    auto x_grad_tmp = tmp_1 + tmp_2;
-    x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
+    auto x_grad_data = tmp_1 + tmp_2;
+    x_grad_data = reshape<T>(x_grad_data, x.shape());
+    if (x.dtype() == phi::DataType::FLOAT16) {
+      x_grad_data = cast<T>(x_grad_data, x.dtype());
+    }
+
     set_output<T>(x_grad_tmp, x_grad);
   }
   if (scale_grad) {
