@@ -37,7 +37,7 @@ RUN bash /build_scripts/install_trt.sh
 # # So install a newer version here.
 RUN bash /build_scripts/install_patchelf.sh
 
-RUN bash rm -rf /build_scripts
+RUN rm -rf /build_scripts
 
 # install cmake
 WORKDIR /home
