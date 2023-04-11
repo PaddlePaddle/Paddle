@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 from paddle import fluid
@@ -84,6 +85,117 @@ def _cal_mean_variance(x, epsilon, mean_shape):
     return mean, var
 
 
+def instance_norm_wrapper(x, weight=None, bias=None, esp=1e-05):
+    return paddle.nn.functional.instance_norm(
+        x, None, None, weight, bias, True, 0.9, esp
+    )
+
+
+class TestInstanceNormOp(OpTest):
+    def setUp(self):
+        self.op_type = "instance_norm"
+        self.prim_op_type = "comp"
+        self.python_api = instance_norm_wrapper
+        self.public_python_api = instance_norm_wrapper
+        self.python_out_sig = ['Y']
+        self.rev_comp_rtol = 1e-04
+        self.rev_comp_atol = 1e-04
+        self.init_test_case()
+        ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
+            self.x_np,
+            self.scale_np,
+            self.bias_np,
+            self.epsilon,
+            self.mean_np,
+            self.var_np,
+        )
+        ref_var_np = 1 / np.sqrt(ref_var_np_tmp + self.epsilon)
+        self.inputs = {
+            'X': self.x_np,
+            'Scale': self.scale_np,
+            'Bias': self.bias_np,
+        }
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {
+            'Y': ref_y_np,
+            'SavedMean': ref_mean_np,
+            'SavedVariance': ref_var_np,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, check_prim=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_eager=True,
+            check_prim=True,
+        )
+
+    def test_check_output_cpu(self):
+        self.check_output_with_place(
+            core.CPUPlace(), atol=1e-05, check_eager=True, check_prim=True
+        )
+
+    def test_check_grad_cpu(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_eager=True,
+            check_prim=True,
+        )
+
+    def test_check_output_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), atol=1e-05, check_eager=True, check_prim=True
+            )
+
+    def test_check_grad_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_eager=True,
+                check_prim=True,
+            )
+
+    def init_test_case(self):
+        x_shape = [2, 100, 4, 5]
+        n, c, h, w = x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        self.epsilon = 1e-05
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.random.random_sample(scale_shape).astype(dtype)
+        self.bias_np = np.random.random_sample(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
+
+
+class TestInstanceNormCase1(TestInstanceNormOp):
+    def init_test_case(self):
+        x_shape = [2, 100, 4, 5]
+        n, c, h, w = x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        self.epsilon = 1e-05
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.ones(scale_shape).astype(dtype)
+        self.bias_np = np.zeros(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
+
+
 class TestInstanceNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.epsilon = 1e-5
@@ -112,6 +224,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
     def test_forward_backward(self):
         def test_with_place(place, shape):
+            paddle.enable_static()
             epsilon = self.epsilon
             n, c, h, w = shape[0], shape[1], shape[2], shape[3]
             scale_shape = [c]
@@ -207,6 +320,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             for id, name in enumerate(self.fetch_list):
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passes: ", str(place))
+            paddle.disable_static()
 
         places = [core.CPUPlace()]
 
@@ -234,6 +348,7 @@ class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
 
 class TestInstanceNormOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # the input of instance_norm must be Variable.
             x1 = fluid.create_lod_tensor(
@@ -246,14 +361,17 @@ class TestInstanceNormOpError(unittest.TestCase):
                 name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.static.nn.instance_norm, x2)
+        paddle.disable_static()
 
 
 class TestInstanceNormOpErrorCase1(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # the first dimension of input for instance_norm must between [2d, 5d]
             x = paddle.static.data(name='x', shape=[3], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
+        paddle.disable_static()
 
 
 class TestElasticNormOp(unittest.TestCase):
