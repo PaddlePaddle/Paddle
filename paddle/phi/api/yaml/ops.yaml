@@ -32,6 +32,18 @@
     func : acosh
   backward : acosh_grad
 
+- op : adagrad_
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, Tensor master_param, float epsilon = 1.0e-6f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdagradInferMeta
+  kernel :
+    func : adagrad {dense, dense, dense, dense, dense -> dense, dense, dense}
+           adagrad_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense -> dense, dense, dense}
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
+
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
   output : Tensor
@@ -648,6 +660,19 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flatten
+  args : (Tensor x, int start_axis = 1, int stop_axis = 1)
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : FlattenWithXShapeInferMeta
+  kernel :
+    func : flatten
+    data_type : x
+  inplace : (x -> out)
+  view : (x -> out)
+  intermediate : xshape
+  backward : flatten_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
@@ -1165,6 +1190,17 @@
   kernel :
     func : merge_selected_rows {selected_rows -> selected_rows}
 
+- op : merged_momentum_
+  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
+  output : Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
+  infer_meta :
+    func : MergedMomentumInferMeta
+  kernel :
+    func : merged_momentum
+    data_type : param
+  optional: master_param, master_param_out
+  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
+
 - op : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
@@ -1183,6 +1219,18 @@
   kernel :
     func : mode
   backward : mode_grad
+
+- op : momentum_
+  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
+  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func : MomentumInferMeta
+  kernel :
+    func : momentum {dense, dense, dense, dense, dense -> dense, dense, dense},
+           momentum_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense -> dense, dense, dense}
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
 - op : multi_dot
   args : (Tensor[] x)
@@ -1412,6 +1460,16 @@
     func : renorm
   backward : renorm_grad
 
+- op : reverse
+  args : (Tensor x, IntArray axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+    data_type : x
+  backward : reverse_grad
+
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
   output : Tensor(out)
@@ -1484,6 +1542,17 @@
   kernel :
     func : searchsorted
     data_type : sorted_sequence
+
+- op : segment_pool
+  args : (Tensor x, Tensor segment_ids, str pooltype="SUM")
+  output : Tensor(out), Tensor(summed_ids)
+  infer_meta :
+    func : SegmentPoolInferMeta
+  kernel :
+    func : segment_pool
+    data_type : x
+  intermediate : summed_ids
+  backward : segment_pool_grad
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
