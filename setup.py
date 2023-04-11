@@ -469,7 +469,7 @@ def get_cinn_version():
                 .communicate()[0]
                 .strip()
             )
-            if cinn_commit != "":
+            if len(cinn_commit) > 0:
                 cinn_git_version = cinn_commit
         except:
             pass
