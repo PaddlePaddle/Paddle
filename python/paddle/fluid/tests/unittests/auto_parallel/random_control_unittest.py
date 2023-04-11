@@ -27,7 +27,7 @@ from paddle.distributed.fleet import auto
 
 def dy_broadcast_helper(tensor):
     _legacy_C_ops.c_broadcast(
-        tensor, tensor, 'root', 1, 'use_calc_stream', True, 'ring_id', 0
+        tensor, tensor, 'root', 1, 'use_calc_stream', True, 'ring_id', 1000
     )
     _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
 
