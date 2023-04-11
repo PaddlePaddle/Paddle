@@ -143,7 +143,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              "correct and will be "
              "removed in future. For Tensor contain only one element, Please "
              "modify "
-             " 'Tensor.numpy()[0]' to 'Tensor.item()' as soon as "
+             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
              "possible, "
              "otherwise 'Tensor.numpy()[0]' will raise error in future.";
       py_rank = 1;
@@ -980,7 +980,14 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  auto ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* ptr = nullptr;
+  if (self->tensor.is_selected_rows()) {
+    auto* selected_rows =
+        static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+    ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+  } else {
+    ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           platform::errors::InvalidArgument(
                               "%s is not a DenseTensor.", self->tensor.name()));

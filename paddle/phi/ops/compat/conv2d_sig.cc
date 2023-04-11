@@ -42,7 +42,7 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_grad_grad",
+  return KernelSignature("conv2d_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",

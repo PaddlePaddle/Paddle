@@ -100,9 +100,7 @@ def _get_global_group():
 
 def _add_new_group(group):
     if group.id in _GroupManager.group_map_by_id:
-        raise RuntimeError(
-            "The group with id {} already exist.".format(group.id)
-        )
+        raise RuntimeError(f"The group with id {group.id} already exist.")
     _GroupManager.group_map_by_id[group.id] = group
 
 
@@ -195,7 +193,7 @@ def destroy_process_group(group=None):
     group = _get_global_group() if group is None else group
     assert (
         group.id in _GroupManager.group_map_by_id
-    ), "Destroy group with id {} is invalid.".format(group.id)
+    ), f"Destroy group with id {group.id} is invalid."
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
     else:
@@ -228,7 +226,7 @@ def get_group(id=0):
 
     if id in _GroupManager.group_map_by_id:
         return _GroupManager.group_map_by_id[id]
-    warnings.warn("Group {} is not initialized.".format(id))
+    warnings.warn(f"Group {id} is not initialized.")
     return None
 
 

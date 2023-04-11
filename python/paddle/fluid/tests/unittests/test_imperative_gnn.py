@@ -176,7 +176,7 @@ class TestDygraphGNN(unittest.TestCase):
         np.testing.assert_allclose(
             static_weight, model2_gc_weight_value, rtol=1e-05
         )
-        sys.stderr.write('%s %s\n' % (static_loss, loss_value))
+        sys.stderr.write(f'{static_loss} {loss_value}\n')
 
 
 if __name__ == '__main__':

@@ -299,7 +299,7 @@ def find_true_prev_op(ops, cur_op, var_name):
         if not len(prev_op) == 1:
             raise ValueError(
                 "There must be only one previous op "
-                "that outputs {0} variable".format(var_name)
+                f"that outputs {var_name} variable"
             )
         else:
             return prev_op[0]
@@ -611,7 +611,7 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
         if param.name in fp16_var_names:
-            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
+            _logger.debug(f"---- cast {param.name} to fp16 dtype ----")
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), place)
@@ -751,8 +751,8 @@ def update_role_var_grad(main_prog, params_grads):
                 op._remove_attr("op_role_var")
             else:
                 raise ValueError(
-                    "The cast op {0} must be in BACKWARD role "
-                    "and have op_role_var attr.".format(op)
+                    f"The cast op {op} must be in BACKWARD role "
+                    "and have op_role_var attr."
                 )
 
             fp16_grad_name = op.input(op.input_names[0])[0]
@@ -774,9 +774,9 @@ def update_role_var_grad(main_prog, params_grads):
             post_ops = find_true_post_op(block.ops, op, g.name)
             if post_ops:
                 raise ValueError(
-                    "The cast op {0}'s output should not be"
+                    f"The cast op {op}'s output should not be"
                     "used by a non-optimize op, however, it"
-                    "is used by {1}".format(op, post_ops[0])
+                    f"is used by {post_ops[0]}"
                 )
             # add new op in the python and cpp at the same time
             new_op_desc = block.desc.append_op()
@@ -792,6 +792,6 @@ def update_role_var_grad(main_prog, params_grads):
             block.ops.append(new_op)
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
+                raise ValueError(f"The op {op} is not in program")
             block._remove_op(op_idx, sync=False)
     block._sync_with_cpp()

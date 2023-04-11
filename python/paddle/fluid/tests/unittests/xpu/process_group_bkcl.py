@@ -48,9 +48,9 @@ class TestProcessGroupFp32(unittest.TestCase):
 
         pg = init_process_group()
         sys.stdout.write(
-            "rank {}: size {} name {}\n".format(pg.rank(), pg.size(), pg.name())
+            f"rank {pg.rank()}: size {pg.size()} name {pg.name()}\n"
         )
-        sys.stdout.write("rank {}: test new group api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test new group api ok\n")
 
         # TODO(zhangxiaoci) allreduce unittest raise error
         # test allreduce sum
@@ -92,7 +92,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             paddle.device.xpu.synchronize()
             assert np.array_equal(broadcast_result, tensor_y)
 
-        sys.stdout.write("rank {}: test broadcast api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test broadcast api ok\n")
 
         # test barrier
         # rank 0
@@ -103,7 +103,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = pg.barrier(device_id)
             task.wait()
 
-        sys.stdout.write("rank {}: test barrier api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test barrier api ok\n")
 
         # test allgather
         # rank 0
@@ -134,7 +134,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         assert np.array_equal(tensor_x, out_1)
         assert np.array_equal(tensor_y, out_2)
-        sys.stdout.write("rank {}: test allgather api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test allgather api ok\n")
 
         if pg.rank() == 0:
             task = pg.all_gather(tensor_x, tensor_out)
@@ -152,7 +152,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         assert np.array_equal(tensor_x, out_1)
         assert np.array_equal(tensor_y, out_2)
-        sys.stdout.write("rank {}: test allgather api2 ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test allgather api2 ok\n")
 
         # test Reduce
         # rank 0
@@ -173,7 +173,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             assert np.array_equal(tensor_x, sum_result)
         assert np.array_equal(tensor_y, old_tensor_y)
-        sys.stdout.write("rank {}: test reduce sum api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test reduce sum api ok\n")
 
         # test reduce_scatter
         in_shape = list(self.shape)
@@ -199,9 +199,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(need_result0, tensor_out)
         else:
             assert np.array_equal(need_result1, tensor_out)
-        sys.stdout.write(
-            "rank {}: test reduce_scatter sum api ok\n".format(pg.rank())
-        )
+        sys.stdout.write(f"rank {pg.rank()}: test reduce_scatter sum api ok\n")
 
         # test send async api
         # rank 0
@@ -247,7 +245,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = dist.recv(tensor_y, 0, sync_op=True)
             assert np.array_equal(tensor_y, tensor_x) and tensor_y.shape == []
 
-        sys.stdout.write("rank {}: test send api ok\n".format(pg.rank()))
+        sys.stdout.write(f"rank {pg.rank()}: test send api ok\n")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):

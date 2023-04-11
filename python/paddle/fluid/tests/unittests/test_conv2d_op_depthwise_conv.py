@@ -426,7 +426,7 @@ def create_test_fp16_class(parent, grad_check=True):
                     place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestDepthwiseConvFP16.__name__ = cls_name
     globals()[cls_name] = TestDepthwiseConvFP16
 
@@ -479,7 +479,7 @@ def create_test_bf16_class(parent, atol=1e-2):
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestDepthwiseConvBF16.__name__ = cls_name
     globals()[cls_name] = TestDepthwiseConvBF16
 
@@ -520,7 +520,7 @@ def create_test_channel_last_fp16_class(parent, grad_check=True):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLastFP16")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLastFP16")
     TestChannelLastFP16.__name__ = cls_name
     globals()[cls_name] = TestChannelLastFP16
 

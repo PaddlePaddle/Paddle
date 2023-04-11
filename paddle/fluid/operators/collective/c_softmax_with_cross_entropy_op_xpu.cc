@@ -33,12 +33,12 @@ template <typename DeviceContext, typename T>
 class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const int ignore_index = ctx.Attr<int>("ignore_index");
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
     PADDLE_ENFORCE_LT(ignore_index,
                       0,
                       platform::errors::InvalidArgument(
                           "When SoftmaxWithCrossEntropy run on XPU, "
-                          "ignore_index should be <=0, however it's %d",
+                          "ignore_index should be <=0, however it's %ld",
                           ignore_index));
     const int rid = ctx.Attr<int>("ring_id");
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
@@ -131,12 +131,25 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
+      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
+                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
+                               N * D,
+                               -64.,
+                               0.);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
+        N,
+        0.0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
@@ -322,6 +335,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
+      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
+                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
+                               N * D,
+                               -64.,
+                               0.);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target
@@ -460,12 +480,12 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
-    const int ignore_index = context.Attr<int>("ignore_index");
+    const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
     PADDLE_ENFORCE_LT(ignore_index,
                       0,
                       platform::errors::InvalidArgument(
                           "When SoftmaxWithCrossEntropy run on XPU, "
-                          "ignore_index should be <=0, however it's %d",
+                          "ignore_index should be <=0, however it's %ld",
                           ignore_index));
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<DeviceContext>();

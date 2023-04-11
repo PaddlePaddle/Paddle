@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -600,7 +600,7 @@ class TestStridedSliceAPI(unittest.TestCase):
             feed={
                 "x": input,
                 'starts': np.array([-3, 0, 2]).astype("int32"),
-                'ends': np.array([3, 2147483648, -1]).astype("int64"),
+                'ends': np.array([3, 2147483647, -1]).astype("int32"),
                 'strides': np.array([1, 1, 1]).astype("int32"),
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
@@ -721,14 +721,14 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
-                msg="gradient_1:\n{} \ngradient_2:\n{}".format(g, g2),
+                msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",
             )
 
     def is_grads_equal_zeros(self, grads):
         for g in grads:
             self.assertTrue(
                 self.grad_equal(np.zeros_like(g), g),
-                msg="The gradient should be zeros, but received \n{}".format(g),
+                msg=f"The gradient should be zeros, but received \n{g}",
             )
 
     def create_case(self, net):
@@ -1009,6 +1009,78 @@ class TestStridedSliceFloat16(unittest.TestCase):
         np.testing.assert_allclose(output_np_fp16, output_np_fp32)
 
         np.testing.assert_allclose(x_grad_np_fp16, x_grad_np_fp32)
+
+
+class TestStrideSliceFP16Op(OpTest):
+    def setUp(self):
+        self.initTestCase()
+        self.op_type = 'strided_slice'
+        self.dtype = np.float16
+        self.python_api = paddle.strided_slice
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+
+        self.inputs = {'Input': self.input.astype(self.dtype)}
+        self.outputs = {'Out': self.output}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'strides': self.strides,
+            'infer_flags': self.infer_flags,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad({'Input'}, 'Out', check_eager=True)
+
+    def initTestCase(self):
+        self.input = np.random.rand(100)
+        self.axes = [0]
+        self.starts = [-4]
+        self.ends = [-3]
+        self.strides = [1]
+        self.infer_flags = [1]
+
+
+class TestStrideSliceBF16Op(OpTest):
+    def setUp(self):
+        self.initTestCase()
+        self.op_type = 'strided_slice'
+        self.dtype = np.uint16
+        self.python_api = paddle.strided_slice
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+
+        self.inputs = {
+            'Input': convert_float_to_uint16(self.input.astype(np.float32))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.output)}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'strides': self.strides,
+            'infer_flags': self.infer_flags,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad({'Input'}, 'Out', check_eager=True)
+
+    def initTestCase(self):
+        self.input = np.random.rand(100)
+        self.axes = [0]
+        self.starts = [-4]
+        self.ends = [-3]
+        self.strides = [1]
+        self.infer_flags = [1]
 
 
 if __name__ == "__main__":

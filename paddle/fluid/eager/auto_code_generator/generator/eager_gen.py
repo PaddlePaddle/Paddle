@@ -57,6 +57,7 @@ black_ops_list = [
     "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
+    "sync_batch_norm_",
 ]
 
 

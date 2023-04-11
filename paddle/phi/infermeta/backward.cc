@@ -25,7 +25,11 @@ void AffineGridGradInferMeta(const MetaTensor& output_grad,
                              MetaTensor* input_grad) {
   if (input_grad) {
     auto output_dims = output_grad.dims();
-    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    if (output_dims.size() == 4) {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    } else {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 3, 4}));
+    }
   }
 }
 
@@ -215,6 +219,19 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
+                                  const MetaTensor& out_grad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* y_grad) {
+  if (x_grad != nullptr) {
+    x_grad->share_meta(out_grad);
+  }
+
+  if (y_grad != nullptr) {
+    y_grad->share_meta(out_grad);
+  }
+}
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,
@@ -320,6 +337,15 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   if (x_grad != nullptr) {
     x_grad->set_dims(dims);
     x_grad->set_dtype(out_v.dtype());
+  }
+}
+
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  (void)x;
+  if (weight) {
+    out->share_dims(weight);
   }
 }
 
@@ -883,6 +909,18 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
+}
+
+void PreluGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        MetaTensor* dx,
+                        MetaTensor* dy) {
+  if (dx) {
+    dx->share_dims(x);
+  }
+  if (dy) {
+    dy->share_dims(y);
+  }
 }
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,

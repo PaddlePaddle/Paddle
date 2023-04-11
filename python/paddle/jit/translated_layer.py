@@ -21,10 +21,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
@@ -519,9 +515,7 @@ class _ProgramHolder:
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = paddle.scale(
-                    var, 1.0, name="translated_layer/scale_{}".format(i)
-                )
+                var = paddle.scale(var, 1.0, name=f"translated_layer/scale_{i}")
                 scale_output_vars.append(var)
         # 2. update output names & descs
         for i, var in enumerate(scale_output_vars):
@@ -978,10 +972,7 @@ def _run_dygraph(instance, input, program_holder):
             )
         )
 
-    use_interpretorcore = (
-        _is_enable_standalone_executor()
-        and _is_dy2st_enable_standalone_executor()
-    )
+    use_interpretorcore = True
     attrs.extend(('use_interpretorcore', use_interpretorcore))
     if use_interpretorcore:
         attrs.extend(
@@ -1000,7 +991,7 @@ def _run_dygraph(instance, input, program_holder):
         tmp_scope_vec,
         _valid_vars(double_grad_vars),
         None,
-        *attrs
+        *attrs,
     )
 
     # NOTE: [ why need set param's gradient type here ]

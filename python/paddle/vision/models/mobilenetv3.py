@@ -407,7 +407,7 @@ def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
     else:
         model = MobileNetV3Small(scale=scale, **kwargs)
     if pretrained:
-        arch = "{}_x{}".format(arch, scale)
+        arch = f"{arch}_x{scale}"
         assert (
             arch in model_urls
         ), "{} model do not have a pretrained model now, you should set pretrained=False".format(

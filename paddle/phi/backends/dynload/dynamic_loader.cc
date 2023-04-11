@@ -522,24 +522,6 @@ void* GetNCCLDsoHandle() {
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
 #endif
 }
-void* GetHCCLDsoHandle() {
-  std::string warning_msg(
-      "You may need to install 'hccl2' from Huawei official website: "
-      "before install PaddlePaddle.");
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.dylib", true, {}, warning_msg);
-#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
-  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
-
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_hccl_dir, "libhccl.so", true, {}, warning_msg);
-#else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
-#endif
-}
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

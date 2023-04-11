@@ -44,7 +44,7 @@ static __global__ void GPUBoxClip(const T *input,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -74,6 +74,6 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(box_clip,
-                        ops::GPUBoxClipKernel<phi::GPUContext, float>,
-                        ops::GPUBoxClipKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    box_clip, GPU, ALL_LAYOUT, ops::GPUBoxClipKernel, float, double) {}
