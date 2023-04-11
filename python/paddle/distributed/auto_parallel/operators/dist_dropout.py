@@ -132,7 +132,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
 
                 # insert seed op
                 seed_var = main_block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
+                    name=paddle.fluid.unique_name.generate_with_ignorable_key(
                         ".".join(["tensor_parallel_seed", 'tmp'])
                     ),
                     dtype=paddle.int32,
