@@ -1512,6 +1512,7 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    float threshold = 6;
     dx.device(d) =
         dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
                    .template cast<T>();
