@@ -2066,6 +2066,37 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(1.0))
 
+    def test_einsum(self):
+        a = paddle.full([3], 1)
+        a.stop_gradient = False
+        b = paddle.full([3], 2)
+        b.stop_gradient = False
+        c = paddle.full([3, 3], 3)
+        c.stop_gradient = False
+        d = paddle.full([3, 3], 4)
+        d.stop_gradient = False
+        sum_a = paddle.einsum('i->', a)
+        sum_a.backward()
+        inner_a_b = paddle.einsum('i,i', a, b)
+        inner_a_b.backward()
+        trace_c = paddle.einsum('ii', c)
+        trace_c.backward()
+        sum_c = paddle.einsum('ij->', c)
+        sum_c.backward()
+        inner_c_d = paddle.einsum('ij,ij', c, d)
+        inner_c_d.backward()
+
+        self.assertEqual(sum_a.shape, [])
+        np.testing.assert_allclose(sum_a, np.array(3))
+        self.assertEqual(inner_a_b.shape, [])
+        np.testing.assert_allclose(inner_a_b, np.array(6))
+        self.assertEqual(trace_c.shape, [])
+        np.testing.assert_allclose(trace_c, np.array(9))
+        self.assertEqual(sum_c.shape, [])
+        np.testing.assert_allclose(sum_c, np.array(27))
+        self.assertEqual(inner_c_d.shape, [])
+        np.testing.assert_allclose(inner_c_d, np.array(108))
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
