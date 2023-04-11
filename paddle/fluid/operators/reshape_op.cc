@@ -572,6 +572,13 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Reshape2OpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+  }
+};
+
 class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
@@ -736,6 +743,7 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
                   ops::Reshape2CompositeGradOpMaker,
+                  ops::Reshape2OpVarTypeInference,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,
                   ops::Reshape2GradOp,
