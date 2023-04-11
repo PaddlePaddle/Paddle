@@ -13,19 +13,16 @@
 # limitations under the License.
 
 import os
-import sys
 import tempfile
 import unittest
 
 import numpy as np
+from bert_tokenizer import BertTokenizer
 
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.fluid.framework import _non_static_mode, core
 from paddle.fluid.layer_helper import LayerHelper
-
-sys.path.append("./tokenizer")
-from tokenizer.bert_tokenizer import BertTokenizer
 
 
 def to_string_tensor(string_values, name):
