@@ -1960,7 +1960,7 @@ class SoftMarginLoss(Layer):
 class GaussianNLLLoss(Layer):
     r"""Create a callable object of 'GaussianNLLLoss' to calculate Gaussian negative log likelihood loss.
 
-    This class create a callable object of Gaussian negative log likelihood loss among ``input``,``variance`` and
+    This class create a callable object of Gaussian negative log likelihood loss among ``input``, ``variance`` and
     ``label``. Note that the ``label`` is treated as samples from Gaussian distributions.
     This class is used to train a neural network predicts
     the ``input`` and ``variance`` of a gaussian distribution that ``label`` are supposed to
