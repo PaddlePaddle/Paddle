@@ -21,7 +21,9 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+namespace phi {
 template <typename T>
+
 struct GraphWeightedNode {
   T node_id;
   float weight_key;
@@ -43,8 +45,6 @@ struct GraphWeightedNode {
     return n1.weight_key > n2.weight_key;
   }
 };
-
-namespace phi {
 
 template <typename T>
 void SampleWeightedNeighbors(
