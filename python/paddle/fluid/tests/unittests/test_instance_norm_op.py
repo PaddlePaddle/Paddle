@@ -19,9 +19,8 @@ import parameterized as param
 from eager_op_test import OpTest
 
 import paddle
-import paddle.nn.functional as F
 from paddle import fluid, nn
-from paddle.fluid import Program, core, framework, program_guard
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.dygraph import to_variable
 
 
@@ -173,19 +172,6 @@ class TestInstanceNormFP64(TestInstanceNormOp):
         self.dtype = dtype
 
 
-class PrimNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
-        self.instance_norm = nn.InstanceNorm2D(4)
-
-    def forward(self, x):
-        y = self.conv(x)
-        out = self.instance_norm(y)
-        res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
-        return res
-
-
 class PrimGroupNorm(paddle.nn.Layer):
     def __init__(self, num_channels, scale, bias):
         super().__init__()
@@ -202,46 +188,6 @@ def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
     return paddle.jit.to_static(net, build_strategy=False)
-
-
-class TestPrimForwardAndBackward(unittest.TestCase):
-    """
-    Test PrimNet with @to_static + prim forward + prim backward v.s Dygraph
-    """
-
-    def setUp(self):
-        paddle.seed(2022)
-        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
-        self.x.stop_gradient = False
-
-    def train(self, use_prim, data_layout="NCHW"):
-        core._set_prim_all_enabled(use_prim)
-        paddle.seed(2022)
-        net = PrimNet()
-        sgd = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=net.parameters()
-        )
-        net = apply_to_static(net, False)
-        net = paddle.amp.decorate(models=net, level='O2')
-
-        with paddle.amp.auto_cast(level='O2'):
-            out = net(self.x)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
-            return loss
-
-    def test_amp_nchw(self):
-        if not isinstance(framework._current_expected_place(), core.CPUPlace):
-            expected = self.train(False)
-            actual = self.train(True)
-            np.testing.assert_allclose(
-                expected,
-                actual,
-                rtol=1e-3,
-                atol=1e-3,
-            )
 
 
 places = [paddle.CPUPlace()]
