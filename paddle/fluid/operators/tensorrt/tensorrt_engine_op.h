@@ -347,7 +347,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         // mistakes, but it doesn't matter.
         auto is_shape_tensor = t.numel() <= 7 && t.numel() >= 1;
         if (trt_engine->engine()) {
-          is_shape_tensor = trt_engine->GetITensor(name)->isShapeTensor();
+          auto *engine = trt_engine->engine();
+          is_shape_tensor =
+              engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+          // is_shape_tensor = trt_engine->engine()->isShapeInferenceIO(name);
         }
         if ((t.dtype() == phi::DataType::INT32 ||
              t.dtype() == phi::DataType::INT64) &&
@@ -436,9 +439,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           PrepareTRTEngine(*anc, trt_engine);
           // update shape_range_info_pbtxt
-          LOG(INFO) << "JZZ write in file0";
           if (!shape_range_info_path_.empty()) {
-            LOG(INFO) << "JZZ write in file1";
             inference::UpdateShapeRangeInfo(shape_range_info_path_,
                                             trt_engine->min_input_shape(),
                                             trt_engine->max_input_shape(),
