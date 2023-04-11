@@ -1021,7 +1021,7 @@ void group_norm_grad(const Tensor& x,
       d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
                .sum(std::vector<int64_t>({2}), dtype, false);
       p1 = reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})) *
-           reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num}))
+           reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num}));
     } else {
       d1 = (reshape<T>(sum_y_grad_mul_x, shape_group))
                .sum(std::vector<int64_t>({2}), dtype, false);
@@ -1048,7 +1048,7 @@ void group_norm_grad(const Tensor& x,
       x_grad_data = cast<T>(x_grad_data, x.dtype());
     }
 
-    set_output<T>(x_grad_tmp, x_grad);
+    set_output<T>(x_grad_data, x_grad);
   }
   if (scale_grad) {
     if (scale_ptr) {
