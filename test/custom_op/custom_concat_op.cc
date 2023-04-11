@@ -17,8 +17,7 @@
 #include "concat_and_split.h"  // NOLINT
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) \
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, #x " must be a CPU Tensor.")
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 
 int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PD_CHECK(axis >= -rank && axis < rank,

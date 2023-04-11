@@ -99,9 +99,7 @@ def train(args):
     relu_out2_list = np.array(relu_out2_list)
     rank = paddle.distributed.get_rank()
     np.savez(
-        os.path.join(
-            args.output_dir, 'train_{}_{}.npz'.format(rank, args.use_custom_op)
-        ),
+        os.path.join(args.output_dir, f'train_{rank}_{args.use_custom_op}.npz'),
         losses=losses,
         relu_out1_list=relu_out1_list,
         relu_out2_list=relu_out2_list,
@@ -136,9 +134,7 @@ def eval(args):
 
     rank = paddle.distributed.get_rank()
     np.savez(
-        os.path.join(
-            args.output_dir, 'eval_{}_{}.npz'.format(rank, args.use_custom_op)
-        ),
+        os.path.join(args.output_dir, f'eval_{rank}_{args.use_custom_op}.npz'),
         losses=losses,
         relu_out1_list=relu_out1_list,
         relu_out2_list=relu_out2_list,

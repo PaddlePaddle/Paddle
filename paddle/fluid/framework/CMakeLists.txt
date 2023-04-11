@@ -362,7 +362,10 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-
+cc_test(
+  op_desc_test
+  SRCS op_desc_test.cc
+  DEPS proto_desc)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -538,7 +541,8 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr)
+       dist_attr
+       scalar)
 
 cc_library(
   op_registry
@@ -615,7 +619,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_executor_desc_py_proto
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -647,7 +651,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS index_dataset_py_proto
+    DEPENDS fleet_proto_init index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py

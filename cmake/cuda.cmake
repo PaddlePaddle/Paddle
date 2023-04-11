@@ -58,7 +58,8 @@ function(detect_installed_gpus out_variable)
       "}\n")
 
     execute_process(
-      COMMAND "${CUDA_NVCC_EXECUTABLE}" "--run" "${cufile}"
+      COMMAND "${CUDA_NVCC_EXECUTABLE}" "-ccbin=${CMAKE_C_COMPILER}" "--run"
+              "${cufile}"
       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
       RESULT_VARIABLE nvcc_res
       OUTPUT_VARIABLE nvcc_out
@@ -171,7 +172,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     else()
       if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
         set(cuda_arch_bin "80")
-      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
+      else()
         set(cuda_arch_bin "80 86")
       endif()
     endif()

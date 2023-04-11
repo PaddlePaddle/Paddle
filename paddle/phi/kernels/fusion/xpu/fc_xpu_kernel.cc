@@ -45,9 +45,9 @@ void FcXPUKernel(const Context& ctx,
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
-  if (act_type == 5) {
+  if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_alpha;
-  } else if (act_type == 15) {
+  } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
     act.hard_sigmoid_slope = act_alpha;
   }
   int r =

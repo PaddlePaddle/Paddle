@@ -1102,7 +1102,7 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
 
     def test_save_load_empty_layer(self):
         layer = EmptyLayer()
-        x = paddle.to_tensor(np.random.random((10)).astype('float32'))
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
         out = layer(x)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1124,8 +1124,8 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
 
     def test_save_load_no_param_layer(self):
         layer = NoParamLayer()
-        x = paddle.to_tensor(np.random.random((5)).astype('float32'))
-        y = paddle.to_tensor(np.random.random((5)).astype('float32'))
+        x = paddle.to_tensor(np.random.random(5).astype('float32'))
+        y = paddle.to_tensor(np.random.random(5).astype('float32'))
         out = layer(x, y)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1433,7 +1433,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         result_11 = layer_finetune(inps1)
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
-        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+        self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 
 
 # NOTE(weixin): When there are multiple test functions in an

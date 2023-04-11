@@ -565,6 +565,7 @@ def exp(x, name=None):
             [
                 'int32',
                 'int64',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',

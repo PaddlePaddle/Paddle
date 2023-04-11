@@ -78,7 +78,7 @@ class XPUTestRandpermOp(XPUOpTestWrapper):
             self.use_xpu = True
             self.use_mkldnn = False
             self.inputs = {}
-            self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
+            self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
             self.attrs = {
                 "n": self.n,
                 "dtype": convert_dtype(self.dtype),

@@ -20,7 +20,7 @@ from eager_op_test import OpTest
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
 
 
 def call_nonzero(x):

@@ -110,6 +110,19 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fuse_adamw")
+class FuseAdamWPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_adamw_op_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
     def __init__(self):

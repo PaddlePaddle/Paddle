@@ -35,7 +35,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
         num_inf = np.sum(np.isinf(out))
-        print("[reference] num_nan={}, num_inf={}".format(num_nan, num_inf))
+        print(f"[reference] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def get_num_nan_inf(
@@ -73,9 +73,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
                                             num_nan = int(err_str.split("=")[1])
                                         elif "num_inf" in err_str:
                                             num_inf = int(err_str.split("=")[1])
-                print(
-                    "[paddle] num_nan={}, num_inf={}".format(num_nan, num_inf)
-                )
+                print(f"[paddle] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def test_num_nan_inf(self):

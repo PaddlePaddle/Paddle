@@ -33,14 +33,14 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         elif X.ndim == 2:
             X = X.T
         else:
-            dim = [i for i in range(len(X.shape))]
+            dim = list(range(len(X.shape)))
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
             Y = Y.reshape((Y.size,))
         else:
-            dim = [i for i in range(len(Y.shape))]
+            dim = list(range(len(Y.shape)))
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
@@ -355,7 +355,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     max_relative_error=max_relative_error,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name
     globals()[cls_name] = TestMatMulOpFp16Case
 
@@ -432,7 +432,7 @@ def create_test_bf16_class(parent, atol=0.01):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestMatMulOpBf16Case.__name__ = cls_name
     globals()[cls_name] = TestMatMulOpBf16Case
 

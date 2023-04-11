@@ -21,7 +21,7 @@ __all__ = []
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
     for arg, value in sorted(vars(ctx.args).items()):
-        ctx.logger.info("%s: %s" % (arg, value))
+        ctx.logger.info(f"{arg}: {value}")
     ctx.logger.info("--------------------------------------------------")
 
 
@@ -46,11 +46,9 @@ def collective_compatible(ctx):
     if 'PADDLE_TRAINER_ENDPOINTS' in ctx.envs:
         eps = ctx.envs['PADDLE_TRAINER_ENDPOINTS'].split(',')
         hosts = {h.split(':')[0] for h in eps}
-        ctx.args.master = eps[0] if ':' in eps[0] else '{}:6768'.format(eps[0])
+        ctx.args.master = eps[0] if ':' in eps[0] else f'{eps[0]}:6768'
         ctx.args.nnodes = len(hosts)
-        ctx.logger.info(
-            'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps)
-        )
+        ctx.logger.info(f'args reset by env PADDLE_TRAINER_ENDPOINTS\n{eps}')
 
     if 'DISTRIBUTED_TRAINER_ENDPOINTS' in ctx.envs:
         eps = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')
@@ -58,13 +56,13 @@ def collective_compatible(ctx):
         ctx.args.master = eps[0]
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
-            'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps)
+            f'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{eps}'
         )
 
 
 def rewrite_host_ip(ctx):
     if ctx.args.host is not None and "." in ctx.args.host:
-        ctx.logger.warning('Host ip reset to {}'.format(ctx.args.host))
+        ctx.logger.warning(f'Host ip reset to {ctx.args.host}')
         ctx.node.ip = ctx.args.host
 
 

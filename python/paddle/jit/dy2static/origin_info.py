@@ -315,7 +315,7 @@ def update_op_callstack_with_origin_info(program):
             callstack[i] = '  File "{}", line {}, in {}'.format(
                 filepath, lineno, funcname
             )
-            callstack[i + 1] = '    {}'.format(code)
+            callstack[i + 1] = f'    {code}'
 
         return callstack
 

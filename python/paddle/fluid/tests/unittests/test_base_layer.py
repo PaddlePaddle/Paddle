@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import EagerParamBase, ParamBase, in_dygraph_mode
+from paddle.fluid.framework import EagerParamBase
 
 
 class L1(paddle.nn.Layer):
@@ -184,14 +184,9 @@ class TestBuffer(unittest.TestCase):
             with self.assertRaisesRegex(
                 TypeError, "buffer should be a Paddle.Tensor"
             ):
-                if in_dygraph_mode():
-                    net.register_buffer(
-                        "buffer_name", EagerParamBase([2, 2], 'float32')
-                    )
-                else:
-                    net.register_buffer(
-                        "buffer_name", ParamBase([2, 2], 'float32')
-                    )
+                net.register_buffer(
+                    "buffer_name", EagerParamBase([2, 2], 'float32')
+                )
 
             with self.assertRaisesRegex(
                 KeyError, "name of buffer can not contain"
@@ -208,10 +203,7 @@ class TestBuffer(unittest.TestCase):
                 net.register_buffer("attr_name", var)
 
             del net.attr_name
-            if in_dygraph_mode():
-                net.attr_name = EagerParamBase([2, 2], 'float32')
-            else:
-                net.attr_name = ParamBase([2, 2], 'float32')
+            net.attr_name = EagerParamBase([2, 2], 'float32')
             with self.assertRaisesRegex(KeyError, "already exists"):
                 net.register_buffer("attr_name", var)
 
@@ -278,11 +270,8 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.buffers()), 1)
             self.assertEqual(len(net.state_dict()), 0)
 
-            # Re-assign a ParamBase will remove the buffer.
-            if in_dygraph_mode():
-                net.buffer_name = EagerParamBase([2, 2], 'float32')
-            else:
-                net.buffer_name = ParamBase([2, 2], 'float32')
+            # Re-assign a EagerParamBase will remove the buffer.
+            net.buffer_name = EagerParamBase([2, 2], 'float32')
             self.assertEqual(len(net.buffers()), 0)
             self.assertEqual(len(net.state_dict()), 1)
 
@@ -403,12 +392,9 @@ class TestLayerTo(unittest.TestCase):
             paddle.fluid.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            if in_dygraph_mode():
-                self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
-            else:
-                self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
+            self.assertTrue(
+                isinstance(p, paddle.fluid.framework.EagerParamBase)
+            )
 
         if paddle.fluid.is_compiled_with_cuda():
             self.linear.to(device=paddle.CUDAPlace(0))
@@ -435,14 +421,9 @@ class TestLayerTo(unittest.TestCase):
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0
             )
             for p in self.linear.parameters():
-                if in_dygraph_mode():
-                    self.assertTrue(
-                        isinstance(p, paddle.fluid.framework.EagerParamBase)
-                    )
-                else:
-                    self.assertTrue(
-                        isinstance(p, paddle.fluid.framework.ParamBase)
-                    )
+                self.assertTrue(
+                    isinstance(p, paddle.fluid.framework.EagerParamBase)
+                )
 
         self.linear.to(device=paddle.CPUPlace())
         self.assertTrue(self.linear.weight.place.is_cpu_place())
@@ -489,12 +470,9 @@ class TestLayerTo(unittest.TestCase):
             paddle.fluid.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            if in_dygraph_mode():
-                self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
-            else:
-                self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
+            self.assertTrue(
+                isinstance(p, paddle.fluid.framework.EagerParamBase)
+            )
 
     def func_test_to_api_numpy_dtype(self):
         self.linear.to(dtype=np.float64)
@@ -527,12 +505,9 @@ class TestLayerTo(unittest.TestCase):
             paddle.fluid.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            if in_dygraph_mode():
-                self.assertTrue(
-                    isinstance(p, paddle.fluid.framework.EagerParamBase)
-                )
-            else:
-                self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
+            self.assertTrue(
+                isinstance(p, paddle.fluid.framework.EagerParamBase)
+            )
 
     def func_test_to_api_none_buffer(self):
         model = paddle.nn.Linear(2, 4)
