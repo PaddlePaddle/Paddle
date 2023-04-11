@@ -49,8 +49,8 @@ RUN apt-get update && \
   apt-get install -y python3.8 python3.8-dev python3.8-distutils \
   python3.9 python3.9-dev python3.9-distutils \
   python3.10 python3.10-dev python3.10-distutils && \
-  rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
-  rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
+  ln -sf /usr/bin/python3.9 /usr/bin/python && \
+  ln -sf /usr/bin/python3.9 /usr/bin/python3
 
 
 WORKDIR /home
@@ -71,8 +71,8 @@ RUN python3.10 setup.py install && \
 WORKDIR /home
 RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
     rm -r setuptools-50.3.2 pip-20.0.1
-RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
-  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
+RUN ln -sf /usr/local/bin/pip3.9 /usr/local/bin/pip && \
+    ln -sf /usr/local/bin/pip3.9 /usr/local/bin/pip3
 
 
 # remove them when apt-get support 2.27 and higher version
