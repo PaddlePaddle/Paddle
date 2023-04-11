@@ -17,7 +17,6 @@ register_unity_group(
   assert_op.cc
   assign_value_op.cc
   attention_lstm_op.cc
-  average_accumulates_op.cc
   batch_fc_op.cc
   bce_loss_op.cc
   beam_search_op.cc
@@ -385,7 +384,6 @@ register_unity_group(
   conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
-  average_accumulates_op.cu
   conj_op.cu
   correlation_op.cu)
 register_unity_group(
