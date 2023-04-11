@@ -294,7 +294,6 @@ static void UniqueDimsCUDATensor(const Context& context,
     std::iota(permute.begin(), permute.end(), 0);
     permute[axis] = 0;
     permute[0] = axis;
-    std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
     in_trans_dims_vec[axis] = in.dims()[0];
     in_trans_dims_vec[0] = in.dims()[axis];
     in_trans_dims = phi::make_ddim(in_trans_dims_vec);
