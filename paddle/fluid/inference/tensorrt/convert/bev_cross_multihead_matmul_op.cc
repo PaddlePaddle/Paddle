@@ -40,73 +40,75 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     auto* input_q = engine_->GetITensor(op_desc.Input("InputQ").front());
     auto* input_k = engine_->GetITensor(op_desc.Input("InputK").front());
     auto* input_v = engine_->GetITensor(op_desc.Input("InputV").front());
-#define DEBUG 1
-#ifdef DEBUG
     auto in_dim = input_q->getDimensions();
-    std::cout << "input_q=";
-    for (int i = 0; i < in_dim.nbDims; i++) {
-      std::cout << in_dim.d[i] << ":";  // NLE
-    }
-    std::cout << std::endl;
-
-    in_dim = input_k->getDimensions();
-    std::cout << "input_k=";
-    for (int i = 0; i < in_dim.nbDims; i++) {
-      std::cout << in_dim.d[i] << ":";
-    }
-    std::cout << std::endl;
-#endif
-    // getDimensions();
     nvinfer1::ITensor* input_q_shape_tensor = Shape(input_q);
     auto output_name = op_desc.Output("Out")[0];
-    std::cout << "#######=" << output_name << std::endl;
-    // add  concat layer, refer to concat_op.cc
-    std::vector<nvinfer1::ITensor*> itensors;
-    itensors.push_back(input_k);
-    itensors.push_back(input_v);
-    auto* kv_layer_before = TRT_ENGINE_ADD_LAYER(
-        engine_, Concatenation, itensors.data(), itensors.size());
-    kv_layer_before->setAxis(2);
-
-    // add shuffle
-    auto* kv_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *kv_layer_before->getOutput(0));
 
     // NLE -> NLHD
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
     int q_length = PADDLE_GET_CONST(int, op_desc.GetAttr("q_length"));
     int kv_length = PADDLE_GET_CONST(int, op_desc.GetAttr("kv_length"));
-    int head_size = in_dim.d[in_dim.nbDims - 1] / head_number;
+    int k_length = kv_length;
+    int v_length = kv_length;
 
+    // reshape q
+    auto* reshape_q_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_q);
+
+    std::vector<nvinfer1::ITensor*> mha_input_q_tensor_shape;
+    mha_input_q_tensor_shape.push_back(
+        GetEleTensorOfShape(input_q_shape_tensor, 0));
+    mha_input_q_tensor_shape.push_back(
+        GetEleTensorOfShape(input_q_shape_tensor, 1));
+    mha_input_q_tensor_shape.push_back(Add1DConstantLayer(head_number));
+    mha_input_q_tensor_shape.push_back(Add1DConstantLayer(-1));
+    reshape_q_layer->setInput(1, *Concat(mha_input_q_tensor_shape));
+    reshape_q_layer->setName(
+        ("shuffle_after_q(Output: " + output_name + ")").c_str());
+
+    // reshape k
+    auto* reshape_k_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_k);
+    // auto reshape_k = get_tensor_shape({batch_size, kv_length, head_number, 1,
+    // head_size});
+    std::vector<nvinfer1::ITensor*> reshape_k;
+    reshape_k.push_back(GetEleTensorOfShape(input_q_shape_tensor, 0));
+    reshape_k.push_back(Add1DConstantLayer(kv_length));
+    reshape_k.push_back(Add1DConstantLayer(head_number));
+    reshape_k.push_back(Add1DConstantLayer(1));
+    reshape_k.push_back(Add1DConstantLayer(-1));
+    reshape_k_layer->setInput(1, *Concat(reshape_k));
+    kv_layer->setName(("shuffle_after_k(Output: " + output_name + ")").c_str());
+
+    // reshape v
+    auto* reshape_v_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_v);
+    std::vector<nvinfer1::ITensor*> reshape_v;
+    reshape_v.push_back(GetEleTensorOfShape(input_q_shape_tensor, 0));
+    reshape_v.push_back(Add1DConstantLayer(kv_length));
+    reshape_v.push_back(Add1DConstantLayer(head_number));
+    reshape_v.push_back(Add1DConstantLayer(1));
+    reshape_v.push_back(Add1DConstantLayer(-1));
+    reshape_v_layer->setInput(1, *Concat(reshape_v));
+    kv_layer->setName(("shuffle_after_v(Output: " + output_name + ")").c_str());
+
+    // add concat layer, refer to concat_op.cc
+    std::vector<nvinfer1::ITensor*> itensors;
+    itensors.push_back(reshape_k_layer->getOutput(0));
+    itensors.push_back(reshape_v_layer->getOutput(0));
+    auto* kv_layer_before = TRT_ENGINE_ADD_LAYER(
+        engine_, Concatenation, itensors.data(), itensors.size());
+    kv_layer_before->setAxis(3);
+
+    // add shuffle
+    auto* kv_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *kv_layer_before->getOutput(0));
     std::vector<nvinfer1::ITensor*> reshape;
-
-#ifdef DEBUG
-    std::cout << "head number: " << head_number << " "
-              << "head size: " << head_size << std::endl;
-#endif
     reshape.push_back(GetEleTensorOfShape(input_q_shape_tensor, 0));
     reshape.push_back(Add1DConstantLayer(kv_length));
     reshape.push_back(Add1DConstantLayer(head_number));
     reshape.push_back(Add1DConstantLayer(2));
-    reshape.push_back(Add1DConstantLayer(head_size));
+    reshape.push_back(Add1DConstantLayer(-1));
     kv_layer->setInput(1, *Concat(reshape));
     kv_layer->setName(
         ("bev_multihead_matmul_kv(Output: " + output_name + ")").c_str());
-    std::cout << "kv_layer end" << std::endl;
-
-    // reshape q
-    auto* reshape_q_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_q);
-    std::vector<nvinfer1::ITensor*> mha_input_q_tensor_shape;
-    for (int i = 0; i < 4; i++) {
-      mha_input_q_tensor_shape.push_back(Add1DConstantLayer(1));
-    }
-    mha_input_q_tensor_shape[0] = GetEleTensorOfShape(input_q_shape_tensor, 0);
-    mha_input_q_tensor_shape[1] = GetEleTensorOfShape(input_q_shape_tensor, 1);
-    mha_input_q_tensor_shape[2] = Add1DConstantLayer(head_number);
-    mha_input_q_tensor_shape[3] = Add1DConstantLayer(head_size);
-    reshape_q_layer->setInput(1, *Concat(mha_input_q_tensor_shape));
-    reshape_q_layer->setName(
-        ("shuffle_after_q(Output: " + output_name + ")").c_str());
 
     // add cross_attention_plugin
     auto creator = GetPluginRegistry()->getPluginCreator("fMHCA", "1");
@@ -127,7 +129,6 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     plugin_inputs.emplace_back(kv_layer->getOutput(0));
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin);
-    std::cout << "plugin end" << std::endl;
     // add shuffle
     auto* reshape_after_mha_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
