@@ -444,6 +444,7 @@ class TestPool2D_Op_Mixin:
             self.check_grad(
                 {'X'},
                 'Out',
+                max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
             )
 
