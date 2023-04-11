@@ -212,21 +212,21 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
 
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_dense_tensor,
     CPU,
     ALL_LAYOUT,
     paddle::operators::FeedDenseTensorKernel<phi::CPUContext>,
     ALL_DTYPE) {}
 
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_GENERALPD_REGISTER_KERNEL_FOR_ALL_DTYPE_KERNEL(
     feed_sparse_coo_tensor,
     CPU,
     ALL_LAYOUT,
     paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>,
     ALL_DTYPE) {}
 
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_strings,
     CPU,
     ALL_LAYOUT,
@@ -234,38 +234,38 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_dense_tensor,
     GPU,
     ALL_LAYOUT,
     paddle::operators::FeedDenseTensorKernel<phi::GPUContext>,
     ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     GPU,
     ALL_LAYOUT,
     paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>,
     ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_strings,
     GPU,
     ALL_LAYOUT,
     paddle::operators::FeedStringsKernel<phi::GPUContext>,
     ALL_DTYPE) {}
 #elif defined(PADDLE_WITH_XPU)
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_dense_tensor,
     XPU,
     ALL_LAYOUT,
     paddle::operators::FeedDenseTensorKernel<phi::XPUContext>,
     ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     XPU,
     ALL_LAYOUT,
     paddle::operators::FeedSparseCooTensorKernel<phi::XPUContext>,
     ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_strings,
     XPU,
     ALL_LAYOUT,
@@ -273,13 +273,13 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_DTYPE) {}
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_dense_tensor,
     Custom,
     ALL_LAYOUT,
     paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
     ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_strings,
     Custom,
     ALL_LAYOUT,
