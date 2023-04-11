@@ -13,6 +13,7 @@
 
 from paddle import static
 from paddle.fluid import core
+from paddle.framework import _global_flags
 from paddle.framework.ir import apply_build_strategy
 from paddle.utils import unique_name
 
@@ -147,13 +148,17 @@ class RawProgramOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
-        pass_attrs = {"use_cuda": True}
-        apply_build_strategy(
-            self.main_program,
-            self.startup_program,
-            self.user_defined_strategy.build_strategy._copy(),
-            pass_attrs,
-        )
+        if _global_flags()['FLAGS_apply_pass_to_program']:
+            pass_attrs = {"use_cuda": True}
+            build_strategy = self.user_defined_strategy.build_strategy._copy()
+            build_strategy.fuse_all_optimizer_ops = False
+            apply_build_strategy(
+                self.main_program,
+                self.startup_program,
+                build_strategy,
+                pass_attrs,
+            )
+            self.program._pass_applied = True
         if self.nranks == 1:
             return optimize_ops, params_grads
         self._init_process_group()
