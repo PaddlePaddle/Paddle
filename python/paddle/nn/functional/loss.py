@@ -1016,7 +1016,6 @@ def hsigmoid_loss(
         attrs = {
             "num_classes": num_classes,
             "is_sparse": is_sparse,
-            "remote_prefetch": is_sparse,
         }
 
         inputs = {
