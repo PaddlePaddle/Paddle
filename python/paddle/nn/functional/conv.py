@@ -16,7 +16,7 @@ from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
-    is_compiled_with_npu,
+    is_compiled_with_custom_device,
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
@@ -466,7 +466,7 @@ def conv1d(
         use_cudnn = False
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
+    if is_compiled_with_custom_device('npu'):
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:
@@ -756,7 +756,7 @@ def conv2d(
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
+    if is_compiled_with_custom_device('npu'):
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:

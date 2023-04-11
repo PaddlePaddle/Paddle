@@ -691,6 +691,9 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'X':
       out.setf(std::ios::uppercase);
+#ifdef LINUX
+      __attribute__((fallthrough));
+#endif
     case 'x':
     case 'p':
       out.setf(std::ios::hex, std::ios::basefield);
@@ -698,17 +701,27 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'E':
       out.setf(std::ios::uppercase);
+#ifdef LINUX
+      __attribute__((fallthrough));
+#endif
     case 'e':
       out.setf(std::ios::scientific, std::ios::floatfield);
       out.setf(std::ios::dec, std::ios::basefield);
       break;
     case 'F':
       out.setf(std::ios::uppercase);
+#ifdef LINUX
+      __attribute__((fallthrough));
+#endif
     case 'f':
       out.setf(std::ios::fixed, std::ios::floatfield);
       break;
     case 'G':
       out.setf(std::ios::uppercase);
+#ifdef LINUX
+      __attribute__((fallthrough));
+#endif
+
     case 'g':
       out.setf(std::ios::dec, std::ios::basefield);
       // As in boost::format, let stream decide float format.

@@ -1954,13 +1954,29 @@ def empty_like(x, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2246,8 +2262,6 @@ def _memcpy(input, place=None, output=None):
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
-        elif p.is_npu_place():
-            dst_place_type = 4
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
