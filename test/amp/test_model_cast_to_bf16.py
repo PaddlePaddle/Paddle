@@ -247,9 +247,51 @@ def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
 
 
 class TestProgramBF16(unittest.TestCase):
+    def test_amp_bf16_o1(self):
+        main_program, startup_program = _build_model(True, "bfloat16", "O1")
+        self.assertEqual(main_program.num_blocks, 1)
+
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+
+        op_stats_dict = op_stats_list[0]
+        expected_bf16_calls = {
+            "conv2d": 1,
+            "matmul_v2": 1,
+            "elementwise_add": 2,
+            "relu": 1,
+            "softmax": 0,
+            "reduce_mean": 0,
+            "squared_l2_norm": 0,
+            "elementwise_mul": 0,
+            "sum": 0,
+            "adamw": 0,
+        }
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(op_stats_dict[op_type].bf16_calls, value)
+
     def test_amp_bf16_o2(self):
         main_program, startup_program = _build_model(True, "bfloat16", "O2")
-        print(main_program)
+        self.assertEqual(main_program.num_blocks, 1)
+
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+
+        op_stats_dict = op_stats_list[0]
+        expected_bf16_calls = {
+            "conv2d": 1,
+            "matmul_v2": 1,
+            "elementwise_add": 2,
+            "relu": 1,
+            "softmax": 1,
+            "reduce_mean": 1,
+            "squared_l2_norm": 4,
+            "elementwise_mul": 4,
+            "sum": 1,
+            "adamw": 4,
+        }
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(op_stats_dict[op_type].bf16_calls, value)
 
 
 if __name__ == '__main__':
