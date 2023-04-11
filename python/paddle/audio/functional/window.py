@@ -298,7 +298,7 @@ def _bohman(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     w = (1 - fac) * paddle.cos(math.pi * fac) + 1.0 / math.pi * paddle.sin(
         math.pi * fac
     )
-    w = _cat([0, w, 0], dtype)
+    w = paddle.stack([0, w, 0])
 
     return _truncate(w, needs_trunc)
 
