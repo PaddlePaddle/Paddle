@@ -75,23 +75,19 @@ class CumsumOpConverter : public OpConverter {
 
     for (int i = 1; i < rank; i++) {
       if (i == axis) {
-        std::vector<nvinfer1::ITensor*> strides_itensors;
-        strides_itensors.push_back(strides_tensor);
-        strides_itensors.push_back(axisLength);
+        std::vector<nvinfer1::ITensor*> strides_itensors = {strides_tensor,
+                                                            axisLength};
         strides_tensor = Concat(strides_itensors);
-        std::vector<nvinfer1::ITensor*> sizes_itensors;
-        sizes_itensors.push_back(sizes_tensor);
-        sizes_itensors.push_back(Add1DConstantLayer(1));
+        std::vector<nvinfer1::ITensor*> sizes_itensors = {
+            sizes_tensor, Add1DConstantLayer(1)};
         sizes_tensor = Concat(sizes_itensors);
       } else {
         auto currLength = getAxisLength(input_x_tensor, i, false);
-        std::vector<nvinfer1::ITensor*> strides_itensors;
-        strides_itensors.push_back(strides_tensor);
-        strides_itensors.push_back(Add1DConstantLayer(1));
+        std::vector<nvinfer1::ITensor*> strides_itensors = {
+            strides_tensor, Add1DConstantLayer(1)};
         strides_tensor = Concat(strides_itensors);
-        std::vector<nvinfer1::ITensor*> sizes_itensors;
-        sizes_itensors.push_back(sizes_tensor);
-        sizes_itensors.push_back(currLength);
+        std::vector<nvinfer1::ITensor*> sizes_itensors = {sizes_tensor,
+                                                          currLength};
         sizes_tensor = Concat(sizes_itensors);
       }
     }
@@ -124,7 +120,6 @@ class CumsumOpConverter : public OpConverter {
     // creat ZeroTensor
     std::vector<float> zero_vec{0.f};
     auto zero = Add1DConstantLayer(zero_vec);
-
     auto cast = TRT_ENGINE_ADD_LAYER(engine_, Identity, *zero);
     cast->setOutputType(0, inputSliced_output->getType());
 
@@ -135,6 +130,7 @@ class CumsumOpConverter : public OpConverter {
                *BroadcastTensors(cast->getOutput(0), inputSliced_output),
                nvinfer1::ElementWiseOperation::kPROD)
                ->getOutput(0);
+
     auto runningSum = loop->addRecurrence(*zero);
     auto runningSumTensor = runningSum->getOutput(0);
     auto curSum = TRT_ENGINE_ADD_LAYER(engine_,
