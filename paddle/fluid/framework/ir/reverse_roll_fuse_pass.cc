@@ -156,6 +156,11 @@ int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
     int window_len = window_size_h * window_size_w;
     int input_resolution = reshape2_10_attr_shape[1] * window_size_h;
 
+if(reshaep2_50_out->Name() == "reshape2_419.tmp_0")
+{
+  return;
+}
+
     auto shift_size = 0;
     if (with_roll) {
       std::vector<int64_t> roll_40_op_attr_shifts = PADDLE_GET_CONST(

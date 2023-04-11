@@ -1212,6 +1212,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "roll") {
+      
+      return false;
 #if !IS_TRT_VERSION_GE(7000)
       VLOG(3) << "roll converter does not support trt versions below 7.0";
       return false;
