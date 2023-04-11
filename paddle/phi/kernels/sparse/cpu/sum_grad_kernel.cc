@@ -100,11 +100,10 @@ void SumCsrGradKernel(const Context& dev_ctx,
   *dx_crows = x_crows;
   *dx_cols = x_cols;
 
+  phi::funcs::SetConstant<Context, T> set_constant;
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
-    for (int i = 0; i < dx->nnz(); ++i) {
-      dx_values->data<T>()[i] = value;
-    }
+    set_constant(dev_ctx, dx_values, value);
   } else {
     PADDLE_ENFORCE_EQ(axis[0],
                       -1,
@@ -119,9 +118,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
           continue;
         }
         T value = dout_values.data<T>()[value_index];
-        for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-          dx_values->data<T>()[i] = value;
-        }
+        set_constant(dev_ctx, dx_values, value);
         value_index += 1;
       }
     } else {

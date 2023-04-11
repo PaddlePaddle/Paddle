@@ -147,7 +147,9 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
-  using x_indices_dtype = DataTypeToCppType<x.indices().dtype()>::type;
+  using x_indices_dtype = int64_t;
+  //  using x_indices_dtype =
+  //      typename DataTypeToCppType<x.indices().dtype()>::type;
   if (axis_dim == 0) {
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
@@ -157,7 +159,8 @@ void SumCooKernel(const Context& dev_ctx,
       out_dims = make_ddim({1});
       out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {1, 1});
     }
-    phi::funcs::SetConstant<Context, T>(dev_ctx, out_indices, 0);
+    phi::funcs::SetConstant<Context, T> set_out_indices;
+    set_out_indices(dev_ctx, &out_indices, static_cast<T>(0));
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
