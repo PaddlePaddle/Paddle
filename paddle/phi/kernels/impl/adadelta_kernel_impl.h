@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/adadelta_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
