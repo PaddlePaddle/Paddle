@@ -246,6 +246,10 @@ def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
     return main_program, startup_program
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestProgramBF16(unittest.TestCase):
     def test_amp_bf16_o1(self):
         main_program, startup_program = _build_model(True, "bfloat16", "O1")
@@ -256,7 +260,7 @@ class TestProgramBF16(unittest.TestCase):
 
         op_stats_dict = op_stats_list[0]
         expected_bf16_calls = {
-            "conv2d": 1,
+            "conv2d": 1 if paddle.device.get_cudnn_version() > 8100 else 0,
             "matmul_v2": 1,
             "elementwise_add": 2,
             "relu": 1,
@@ -278,17 +282,18 @@ class TestProgramBF16(unittest.TestCase):
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
 
         op_stats_dict = op_stats_list[0]
+        num_bf16_grads = 4 if paddle.device.get_cudnn_version() > 8100 else 3
         expected_bf16_calls = {
-            "conv2d": 1,
+            "conv2d": 1 if paddle.device.get_cudnn_version() > 8100 else 0,
             "matmul_v2": 1,
             "elementwise_add": 2,
             "relu": 1,
             "softmax": 1,
             "reduce_mean": 1,
-            "squared_l2_norm": 4,
-            "elementwise_mul": 4,
+            "squared_l2_norm": num_bf16_grads,
+            "elementwise_mul": num_bf16_grads,
             "sum": 1,
-            "adamw": 4,
+            "adamw": num_bf16_grads,
         }
         for op_type, value in expected_bf16_calls.items():
             self.assertEqual(op_stats_dict[op_type].bf16_calls, value)
