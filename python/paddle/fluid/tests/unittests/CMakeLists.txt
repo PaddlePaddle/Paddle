@@ -552,8 +552,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
