@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import sys
-
 import numpy as np
+import random
 
 import paddle
 from paddle.distributed.fleet import auto
@@ -23,14 +22,17 @@ from paddle.distributed.fleet import auto
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTForPretraining,
     GPTModel,
+    GPTForPretraining,
     GPTPretrainingCriterion,
 )
 
+sequence_len = 512
+vocab_size = 1000
+
 
 class FakeDataset(paddle.io.Dataset):
-    def __init__(self, num_samples, vocab_size=1000, sequence_len=512):
+    def __init__(self, num_samples):
         self.num_samples = num_samples
         self.sequence_len = sequence_len
         self.vocab_size = vocab_size
@@ -54,7 +56,7 @@ class FakeDataset(paddle.io.Dataset):
         return self.num_samples
 
 
-def create_data_holder(batch_size, vocab_size=1000, sequence_len=512):
+def create_data_holder(batch_size):
     tokens = paddle.static.InputSpec(
         name="tokens", shape=[batch_size, sequence_len], dtype='int64'
     )
