@@ -436,7 +436,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           PrepareTRTEngine(*anc, trt_engine);
           // update shape_range_info_pbtxt
+          LOG(INFO) << "JZZ write in file0";
           if (!shape_range_info_path_.empty()) {
+            LOG(INFO) << "JZZ write in file1";
             inference::UpdateShapeRangeInfo(shape_range_info_path_,
                                             trt_engine->min_input_shape(),
                                             trt_engine->max_input_shape(),
