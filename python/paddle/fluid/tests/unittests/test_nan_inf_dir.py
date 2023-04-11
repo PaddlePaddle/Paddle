@@ -146,6 +146,9 @@ class TestNanInfDirCheckResult(unittest.TestCase):
     def test_check_op_list(self):
         import paddle
 
+        num_nan = 0
+        num_inf = 0
+
         checker_config = paddle.amp.debugging.TensorCheckerConfig(
             enable=True,
             debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_AND_ABORT,
