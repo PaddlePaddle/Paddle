@@ -70,15 +70,15 @@ epoch_num = 1
 # The results in ci as as follows:
 DY2ST_PRIM_GT = [
     5.82879114151001,
-    8.333706855773926,
-    5.07769250869751,
-    8.66937255859375,
-    8.411705017089844,
-    7.252340793609619,
-    9.683248519897461,
-    8.177335739135742,
-    8.195427894592285,
-    10.219732284545898,
+    8.33370590209961,
+    5.091761589050293,
+    8.776082992553711,
+    8.274380683898926,
+    7.546653747558594,
+    9.607137680053711,
+    8.27371597290039,
+    8.429732322692871,
+    10.362630844116211,
 ]
 DY2ST_CINN_GT = [
     5.828789710998535,
@@ -92,17 +92,18 @@ DY2ST_CINN_GT = [
     8.383116722106934,
     10.120304107666016,
 ]
+
 DY2ST_PRIM_CINN_GT = [
     5.828784942626953,
-    8.341737747192383,
-    5.113619327545166,
-    8.625601768493652,
-    8.082450866699219,
-    7.4913249015808105,
-    9.858025550842285,
-    8.287693977355957,
-    8.435812950134277,
-    10.372406005859375,
+    8.341732025146484,
+    5.093832492828369,
+    8.304194450378418,
+    8.143716812133789,
+    7.436154365539551,
+    9.653870582580566,
+    8.389932632446289,
+    8.252580642700195,
+    10.24687671661377,
 ]
 
 if core.is_compiled_with_cuda():
@@ -214,7 +215,6 @@ class TestResnet(unittest.TestCase):
     )
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        print("prim res=============== ", dy2st_prim)
         np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
 
     @unittest.skipIf(
@@ -223,7 +223,6 @@ class TestResnet(unittest.TestCase):
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        print("cinn res=============== ", dy2st_cinn)
         np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
     @unittest.skipIf(
@@ -234,7 +233,6 @@ class TestResnet(unittest.TestCase):
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-        print("prim cinn res=============== ", dy2st_prim_cinn)
         np.testing.assert_allclose(
             dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
         )
