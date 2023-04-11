@@ -159,7 +159,7 @@ def log(x, name=None):
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log"
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], "log"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())

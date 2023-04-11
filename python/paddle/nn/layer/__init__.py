@@ -72,6 +72,7 @@ from .loss import CrossEntropyLoss  # noqa: F401
 from .loss import MSELoss  # noqa: F401
 from .loss import L1Loss  # noqa: F401
 from .loss import NLLLoss  # noqa: F401
+from .loss import PoissonNLLLoss  # noqa: F401
 from .loss import BCELoss  # noqa: F401
 from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401

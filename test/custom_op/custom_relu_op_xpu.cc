@@ -96,8 +96,6 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
                                    ddout.size());
                              }));
 
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
-
   return {ddout};
 }
 
@@ -135,8 +133,6 @@ std::vector<paddle::Tensor> relu_xpu_double_backward(
   auto condition = paddle::experimental::greater_than(out, zeros);
 
   ddout = paddle::multiply(ddx, paddle::where(condition, ones, zeros));
-
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
 
   return {ddout};
 }

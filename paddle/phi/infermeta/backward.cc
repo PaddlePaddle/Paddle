@@ -25,7 +25,11 @@ void AffineGridGradInferMeta(const MetaTensor& output_grad,
                              MetaTensor* input_grad) {
   if (input_grad) {
     auto output_dims = output_grad.dims();
-    input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    if (output_dims.size() == 4) {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
+    } else {
+      input_grad->set_dims(phi::make_ddim({output_dims[0], 3, 4}));
+    }
   }
 }
 
