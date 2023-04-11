@@ -66,6 +66,13 @@ void StridedCopyKernel(const Context& dev_ctx,
   const int64_t* output_dims = meta.dims.Get();
   const int64_t* output_strides = meta.strides.Get();
 
+  PADDLE_ENFORCE_EQ(input.dims(),
+                    out->numel(),
+                    phi::errors::InvalidArgument(
+                        "Input shape(%s) must be equal with out shape(%s).",
+                        input.dims(),
+                        out->dims()));
+
   PADDLE_ENFORCE_EQ(input.numel(),
                     out->numel(),
                     phi::errors::InvalidArgument(
