@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
