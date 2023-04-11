@@ -15,6 +15,7 @@
 from collections import defaultdict
 
 import paddle
+import paddle.static.amp.fp16_utils as amp_utils
 from paddle.common_ops_import import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
@@ -47,7 +48,23 @@ __amp_skip_ops__ = [
     'cast',
 ]
 __target_dtype__ = None
-__amp_utils__ = None
+
+
+def _dtype_to_str(dtype):
+    """
+    Convert specific variable type to its corresponding string.
+
+    Args:
+        dtype (VarType): Variable type.
+    """
+    if dtype == core.VarDesc.VarType.FP16:
+        # TODO(Xreki): change the returned str to "bf16" for BF16 data type.
+        # Currently too many codes use "cast_fp16" as key.
+        return 'fp16'
+    elif dtype == core.VarDesc.VarType.BF16:
+        return 'bf16'
+    else:
+        return 'fp32'
 
 
 def set_op_dtype_to_fp16(op):
@@ -214,7 +231,7 @@ class FP16State:
                         self._op_fp16_dict[op.desc.original_id()] = True
                     return
 
-            if __amp_utils__._need_keep_fp32(
+            if amp_utils._need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
                 self._op_fp16_dict[op.desc.original_id()] = False
@@ -248,7 +265,7 @@ class FP16State:
         # a trick which make the LOD_TENSOR_ARRAY to the float32 in while block to reset the LOD_TENSOR_ARRAY
         if (
             var is None
-            or var.type not in __amp_utils__._valid_types
+            or var.type not in amp_utils._valid_types
             or "array_" in var_name
         ):
             return
@@ -286,7 +303,7 @@ class FP16State:
                         out_var = block.vars.get(out_var_name)
                         if (
                             out_var is None
-                            or out_var.type not in __amp_utils__._valid_types
+                            or out_var.type not in amp_utils._valid_types
                         ):
                             continue
                         if out_var.dtype == __target_dtype__:
@@ -305,7 +322,7 @@ class FP16State:
                         out_var = block.vars.get(out_var_name)
                         if (
                             out_var is None
-                            or out_var.type not in __amp_utils__._valid_types
+                            or out_var.type not in amp_utils._valid_types
                         ):
                             continue
                         if out_var.dtype == __target_dtype__:
@@ -395,16 +412,14 @@ class FP16State:
                 in_var = block._find_var_recursive(in_var_name)
                 if (
                     in_var is None
-                    or in_var.type not in __amp_utils__._valid_types
+                    or in_var.type not in amp_utils._valid_types
                     or in_var.dtype == dst_dtype
                 ):
                     continue
 
                 if in_var.dtype == src_dtype:
                     cast_name = (
-                        in_var.name
-                        + '.cast_'
-                        + __amp_utils__._dtype_to_str(dst_dtype)
+                        in_var.name + '.cast_' + _dtype_to_str(dst_dtype)
                     )
                     cast_var = block.vars.get(cast_name)
                     self.forward_input_cast_ops[op.desc.original_id()] += [
@@ -757,18 +772,12 @@ class FP16Pass(AMPPass):
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
         # swith enviroment for fp16 / bf16.
-        if self.target_dtype == "float16":
-            import paddle.static.amp.fp16_utils as amp_utils
 
-            AMPList = amp_utils.AutoMixedPrecisionLists
+        if self.target_dtype == "float16":
             __target_dtype = core.VarDesc.VarType.FP16
 
         elif self.target_dtype == "bfloat16":
-            from paddle.static.amp.bf16 import amp_utils
-
-            AMPList = amp_utils.AutoMixedPrecisionListsBF16
             __target_dtype = core.VarDesc.VarType.BF16
-
         else:
             raise NotImplementedError(
                 "target dtype [{}] is for amp o2 not supported yet.".format(
@@ -777,14 +786,23 @@ class FP16Pass(AMPPass):
             )
         global __target_dtype__
         __target_dtype__ = __target_dtype
-        global __amp_utils__
-        __amp_utils__ = amp_utils
-        amp_list = AMPList(
+        amp_list = amp_utils.AutoMixedPrecisionLists(
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
-            None,
+            dtype=self.target_dtype,
         )
-
+        amp_list.unsupported_list -= {
+            "conditional_block_grad",
+            "conditional_block",
+            "conditional_block_infer",
+            "select_input",
+            "while",
+            "while_grad",
+            "cast",
+            "tensor_array_to_tensor",
+            "lod_array_length",
+            "write_to_array",
+        }
         # NOTE don't not change input data dtype, since it is controled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
