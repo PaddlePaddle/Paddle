@@ -236,7 +236,8 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
   // handle inplace map
-  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
+  ctx.UpdatePlainOutputs(
+      grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::OpMetaInfoHelper::GetKernelFn(kernel_map.at(op_type_)[1]))(&ctx);
   ctx.AssignInplaceOutputs();
 
@@ -443,7 +444,8 @@ RunCustomOpDoubleGradNode::operator()(
   VLOG(7) << "Run Kernel of Grad Custom Op: " << name();
 
   // handle inplace map
-  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
+  ctx.UpdatePlainOutputs(
+      grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::OpMetaInfoHelper::GetKernelFn(kernel_map.at(op_type_)[2]))(&ctx);
   ctx.AssignInplaceOutputs();
 

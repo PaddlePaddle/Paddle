@@ -541,4 +541,5 @@ REGISTER_OPERATOR(faster_tokenizer,
                   ops::FasterTokenizerOp,
                   ops::FasterTokenizerOpMaker);
 
-REGISTER_OP_CPU_KERNEL(faster_tokenizer, ops::FasterTokenizerKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    faster_tokenizer, CPU, ALL_LAYOUT, ops::FasterTokenizerKernel, int64_t) {}

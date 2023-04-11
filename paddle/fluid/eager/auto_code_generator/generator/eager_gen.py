@@ -277,6 +277,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {}
   // Forward API Call
 {}
+  // Check NaN and Inf if needed
+{}
   // Get Outputs
 {}
   VLOG(4) << \"Finish AD API: {}";
@@ -1675,6 +1677,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
                     check_inplace_str,
