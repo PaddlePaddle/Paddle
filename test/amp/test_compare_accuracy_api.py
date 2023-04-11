@@ -54,7 +54,7 @@ class TestCompareAccuracyApi(unittest.TestCase):
 
         out_excel = "compary_accuracy_out_excel.csv"
         print(os.path.abspath(out_excel))
-        paddle.amp.compare_accuracy.compare_accuracy(
+        paddle.amp.accuracy_compare.compare_accuracy(
             path1, path2, out_excel, loss_scale=1, dump_all_tensors=False
         )
 
