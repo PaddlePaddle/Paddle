@@ -432,6 +432,8 @@ class Engine:
             ), "user_fetches must be a list, but receive {}".format(
                 type(user_fetches).__name__
             )
+        else:
+            user_fetches = []
         fetch_names = []
         fetch_indices = []
 
@@ -458,7 +460,8 @@ class Engine:
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
             _process_fetch_group("outputs", fetch_vars["outputs"])
-        for var_name in user_fetches or []:
+        for usr_fetch in user_fetches:
+            var_name = _to_name_str(usr_fetch)
             fetch(var_name)
         user_fetches_collection = [
             item[1] for item in get_collection(CollectionNames.FETCHES)
