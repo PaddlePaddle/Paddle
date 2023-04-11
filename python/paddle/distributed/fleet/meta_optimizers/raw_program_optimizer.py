@@ -158,7 +158,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 build_strategy,
                 pass_attrs,
             )
-            self.program._pass_applied = True
+            self.main_program._pass_applied = True
         if self.nranks == 1:
             return optimize_ops, params_grads
         self._init_process_group()
