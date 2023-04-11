@@ -26,6 +26,8 @@ RUN apt-get update --allow-unauthenticated && \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool gcc g++ make
 
+COPY tools/dockerfile/build_scripts /build_scripts 
+
 # Downgrade gcc&&g++
 <install_gcc>
 
@@ -34,6 +36,8 @@ RUN bash /build_scripts/install_trt.sh
 # # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # # So install a newer version here.
 RUN bash /build_scripts/install_patchelf.sh
+
+RUN bash rm -rf /build_scripts
 
 # install cmake
 WORKDIR /home

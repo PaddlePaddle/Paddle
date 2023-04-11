@@ -95,8 +95,7 @@ function make_centos_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro \&\& pip3.10 install PyGithub distro" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
-    COPY tools/dockerfile/build_scripts /build_scripts \\
-    RUN bash /build_scripts/install_gcc.sh gcc122 \&\& rm -rf /build_scripts \\
+    RUN bash /build_scripts/install_gcc.sh gcc122 \\
     RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
     RUN ln -sf /usr/local/gcc-12.2/bin/gcc /usr/local/bin/gcc \\
     RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/local/bin/g++ \\
