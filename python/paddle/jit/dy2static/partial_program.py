@@ -27,7 +27,12 @@ from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    _out_grad_names,
+    _param_grad_names,
+    backend_guard,
+)
 
 __all__ = []
 
@@ -197,6 +202,7 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
+        self._backend = kwargs.get('backend', None)
 
     def __call__(self, inputs):
         """
@@ -287,6 +293,8 @@ class PartialProgramLayer:
                 amp_program, self._amp_list
             )
         if is_infer_mode:
+            if self._hooker:
+                amp_program = self._hooker.after_infer(amp_program)
             return amp_program
         else:
             train_amp_program = self._append_backward_desc(amp_program)
@@ -634,10 +642,9 @@ class PartialProgramLayer:
 
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
-            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
-            core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            backward.gradients(targets=targets, inputs=[])
+            with backend_guard(self._backend):
+                backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(

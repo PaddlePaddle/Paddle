@@ -330,6 +330,9 @@ class PipelineLayer(nn.Layer):
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
 
+        # Defaults to 1234 to initialize layer parameters
+        self._base_seed = 1234
+
         if recompute_interval > 0:
             assert (
                 recompute_ctx is not None
@@ -626,8 +629,21 @@ class PipelineLayer(nn.Layer):
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
 
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
+
+            # NOTE(shenliang03): need set different seeds for pipeline parameters initialization.
+            # Since the parameters of model_parallel are controlled by its own RNG_STATE_TRACKER,
+            # only non-mp parameters in pp are controlled here.
+            paddle.seed(self._base_seed + layer_index)
+
             if isinstance(layer, nn.Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
@@ -666,6 +682,8 @@ class PipelineLayer(nn.Layer):
             else:
                 run_function.append(layer)
 
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):

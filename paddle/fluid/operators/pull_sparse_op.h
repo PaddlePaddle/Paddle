@@ -66,7 +66,7 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
                                                 &grads);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -74,7 +74,7 @@ class PullSparseCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
