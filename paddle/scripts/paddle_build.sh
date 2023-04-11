@@ -3915,9 +3915,6 @@ function main() {
         ;;
       cicheck_py37)
         export PY_VERSION=3.9
-        export PYTHON_ABI=cp39-cp39
-        export PATH=/opt/_internal/cpython-3.9.0/bin:/usr/local/ssl:/usr/local/gcc-12.2/bin:/usr/local/go/bin:/root/gopath/bin:/opt/rh/devtoolset-2/root/usr/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/java/jdk1.8.0_192/bin
-        export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib:/usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
         pip3.9 config set global.cache-dir "/home/data/cfs/.cache/pip"
         pip3.9 install -r "${work_dir}/python/requirements.txt"
         pip3.9 install -r "${work_dir}/python/unittest_py/requirements.txt"
