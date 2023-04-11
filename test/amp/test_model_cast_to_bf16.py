@@ -260,7 +260,7 @@ class TestProgramBF16(unittest.TestCase):
 
         op_stats_dict = op_stats_list[0]
         expected_bf16_calls = {
-            "conv2d": 1 if paddle.device.get_cudnn_version() > 8100 else 0,
+            "conv2d": 1,
             "matmul_v2": 1,
             "elementwise_add": 2,
             "relu": 1,
