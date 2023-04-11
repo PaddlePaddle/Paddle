@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -23,7 +24,8 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/visit_type.h"
-
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 namespace phi {
 namespace funcs {
 namespace sparse {
@@ -57,6 +59,79 @@ inline rocsparse_operation GetTransposeOperation(const bool trans) {
 template <typename TensorType>
 inline rocsparse_spmm_alg GetSpMMAlgorithm(const TensorType& x) {
   return rocsparse_spmm_alg_default;
+}
+
+template <typename T, typename IntT>
+void CsrToCooGPUKernel(const GPUContext& dev_ctx,
+                       const phi::SparseCsrTensor& x,
+                       SparseCooTensor* out) {
+  const DDim& x_dims = x.dims();
+  const int64_t non_zero_num = x.cols().numel();
+  const auto& csr_crows = Cast<IntT>(dev_ctx, x.crows(), DataType::INT32);
+  const auto& csr_cols = Cast<IntT>(dev_ctx, x.cols(), DataType::INT32);
+  const auto& csr_values = x.values();
+  const int* csr_crows_data = csr_crows.template data<int>();
+  const int* csr_cols_data = csr_cols.template data<int>();
+  const T* csr_values_data = csr_values.data<T>();
+  int64_t sparse_dim = 2;
+  if (x_dims.size() == 3) {
+    sparse_dim = 3;
+  }
+
+  DenseTensor indices = phi::Empty<int>(dev_ctx, {sparse_dim, non_zero_num});
+  DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, csr_values);
+
+  int* coo_indices = indices.data<int>();
+  int* coo_rows_data = coo_indices;
+  int* coo_cols_data = coo_rows_data + non_zero_num;
+  T* coo_values_data = values.data<T>();
+
+  int rows = x_dims[0];
+
+  dev_ctx.CusparseCall([&](rocsparse_handle handle) {
+    phi::dynload::rocsparse_csr2coo(handle,
+                                    csr_crows_data,
+                                    non_zero_num,
+                                    rows,
+                                    coo_rows_data,
+                                    rocsparse_index_base_zero);
+  });
+
+  phi::backends::gpu::GpuMemcpyAsync(coo_cols_data,
+                                     csr_cols_data,
+                                     sizeof(int) * non_zero_num,
+                                     gpuMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(coo_values_data,
+                                     csr_values_data,
+                                     sizeof(T) * non_zero_num,
+                                     gpuMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+
+  if (std::is_same<IntT, int64_t>::value)
+    indices = Cast<int>(dev_ctx, indices, DataType::INT64);
+  out->SetMember(indices, values, x_dims, true);
+}
+
+template <typename T>
+void CsrToCooKernel(const phi::GPUContext& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "CsrToCooGPUKernel", ([&] {
+                                 CsrToCooGPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
+}
+
+template <typename T>
+SparseCooTensor CsrToCoo(const phi::GPUContext& dev_ctx,
+                         const SparseCsrTensor& x) {
+  DenseTensor indices;
+  DenseTensor values;
+  SparseCooTensor coo(indices, values, x.dims());
+  MetaTensor meta_out(&coo);
+  phi::UnchangedInferMeta(x, &meta_out);
+  CsrToCooKernel<T>(dev_ctx, x, &coo);
+  return coo;
 }
 
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/

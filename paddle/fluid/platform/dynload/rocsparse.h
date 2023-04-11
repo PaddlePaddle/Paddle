@@ -41,7 +41,8 @@ namespace dynload {
 #define ROCSPARSE_ROUTINE_EACH(__macro) \
   __macro(rocsparse_create_handle);     \
   __macro(rocsparse_destroy_handle);    \
-  __macro(rocsparse_set_stream);
+  __macro(rocsparse_set_stream);        \
+  __macro(rocsparse_csr2coo);
 
 ROCSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_ROCSPARSE_WRAP)
 

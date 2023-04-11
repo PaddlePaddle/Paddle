@@ -51,7 +51,11 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
 #endif
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), &dx_csr);
+#ifdef PADDLE_WITH_HIP
+    phi::funcs::sparse::CsrToCooKernel<T>(dev_ctx, dx_csr, dx);
+#elif defined(PADDLE_WITH_CUDA)
     CsrToCooKernel<T, Context>(dev_ctx, dx_csr, dx);
+#endif
   }
 
   // dy{Dense} = x'{SparseCoo} * dout{Dense}
