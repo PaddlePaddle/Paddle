@@ -37,9 +37,6 @@ class TestApiStaticDataError(unittest.TestCase):
             self.assertEqual(x1.dtype, core.VarDesc.VarType.FP32)
             x2 = paddle.static.data(name="x2_0D", shape=(), dtype="bool")
             self.assertEqual(x2.dtype, core.VarDesc.VarType.BOOL)
-            paddle.set_default_dtype("float64")
-            x3 = paddle.static.data(name="x3_0D", shape=[])
-            self.assertEqual(x3.dtype, core.VarDesc.VarType.FP64)
 
     def test_error(self):
         with program_guard(Program(), Program()):

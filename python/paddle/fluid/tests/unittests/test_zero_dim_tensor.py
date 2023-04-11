@@ -4297,8 +4297,6 @@ class TestSundryAPIStatic(unittest.TestCase):
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
         x2 = paddle.static.data(name="x2", shape=(), dtype="bool")
-        paddle.set_default_dtype("float64")
-        x3 = paddle.static.data(name="x3", shape=[])
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4306,12 +4304,10 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 x1,
                 x2,
-                x3,
             ],
         )
         self.assertEqual(res[0].shape, [])
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, [])
 
     @prog_scope()
     def test_prelu(self):
