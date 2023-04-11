@@ -165,7 +165,11 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
     auto op_desc = op_node->Op();
-    auto use_cutlass = op_desc->GetAttrIfExists<bool>("use_cutlass");
+    bool use_cutlass = false;
+    if (op_desc->HasAttr("use_cutlass")) {
+      use_cutlass = op_desc->GetAttrIfExists<bool>("use_cutlass");
+    }
+
     return use_cutlass && cutlass_enable;
   };
 
