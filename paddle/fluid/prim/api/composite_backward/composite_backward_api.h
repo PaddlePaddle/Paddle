@@ -1485,7 +1485,11 @@ void batch_norm_grad(const Tensor& x,
         }
         break;
       }
+#ifdef LINUX
+      __attribute__((fallthrough));
+#endif
     }
+
     default:
       PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
                                                 data_layout));
