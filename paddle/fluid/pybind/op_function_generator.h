@@ -348,7 +348,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Var3Out",   "MaxInput1", "MaxFilter1", "MaxInput2",    "MaxFilter2",
       "MaxInput3", "MaxFilter3"}},
     {"custom_fused_dense",
-      {"Y",}},
+      {"Y", "GeluIn"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are

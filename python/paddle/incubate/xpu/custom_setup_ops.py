@@ -33,10 +33,35 @@ __all__ = ['custom_fused_dense']
 # std::string activation = ctx.Attr<std::string>("activation");
 
 
-def custom_fused_dense(x, y, bias, transx, transy, use_addto):
+def custom_fused_gelu_dense(x, y, bias, transx, transy, activation):
     if _non_static_mode():
-        return _legacy_C_ops.custom_fused_dense(x, y, bias, out, nullptr,
-                                                transx, transy, "linear")
+        return _legacy_C_ops.custom_fused_dense(x, y, bias,
+                                                transx, transy, activation)
+
+    helper = LayerHelper('custom_fused_dense', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    gelu_in = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='custom_fused_dense',
+                     inputs={
+                         'X': x,
+                         'Y': y,
+                         'Bias': bias,
+                     },
+                     outputs={
+                         'Out': out,
+                         'GeluIn': gelu_in,
+                     },
+                     attrs={
+                         'transx': transx,
+                         'transy': transy,
+                         'activation': activation,
+                     })
+    return out
+
+def custom_fused_dense(x, y, bias, transx, transy, activation):
+    if _non_static_mode():
+        return _legacy_C_ops.custom_fused_dense(x, y, bias,
+                                                transx, transy, activation)
 
     helper = LayerHelper('custom_fused_dense', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -44,16 +69,15 @@ def custom_fused_dense(x, y, bias, transx, transy, use_addto):
                      inputs={
                          'X': x,
                          'Y': y,
-                         'Bias': bias
+                         'Bias': bias,
                      },
                      outputs={
                          'Out': out,
-                         'reserve_space': 'nullptr'
                      },
                      attrs={
                          'transx': transx,
                          'transy': transy,
-                         'use_addto': use_addto
+                         'activation': activation,
                      })
     return out
 
@@ -153,7 +177,7 @@ def acc_merge(acc, total, out, step):
 
 def custom_lr(x, out, base_lr, max_step):
     if _non_static_mode():
-        return _legacy_C_ops.custom_fused_dense(x, out, base_lr, max_step)
+        return _legacy_C_ops.custom_lr(x, out, base_lr, max_step)
 
     helper = LayerHelper('custom_lr', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

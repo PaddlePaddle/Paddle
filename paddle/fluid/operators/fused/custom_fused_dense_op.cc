@@ -104,13 +104,13 @@ class CustomFusedDenseOp : public framework::OperatorWithKernel {
               activation));
     }
 
-    if (activation == "none" && ctx->HasOutput("ReserveSpace")) {
+    if (activation == "none" && ctx->HasOutput("GeluIn")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The ReserveSpace would not be used when activation = \"none\""));
+          "The GeluIn would not be used when activation = \"none\""));
     }
 
     // cublasLt's restriction for auxiliary.
-    if (ctx->HasOutput("ReserveSpace") && activation != "none") {
+    if (ctx->HasOutput("GeluIn") && activation != "none") {
       int min_size_of_n = activation == "relu" ? 128 : 8;
       int N_size = transy ? y_dims[0] : y_dims[1];
       PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
@@ -141,8 +141,8 @@ class CustomFusedDenseOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     // Note (Ming Huang): Reserve space of relu is a bit-mask,
     // which cannot pass nan_and_inf checking if shape is set.
-    if (activation == "gelu" && ctx->HasOutput("ReserveSpace")) {
-      ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
+    if (activation == "gelu" && ctx->HasOutput("GeluIn")) {
+      ctx->SetOutputDim("GeluIn", phi::make_ddim(out_dims));
     }
   }
 
@@ -163,7 +163,7 @@ class CustomFusedDenseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Bias", "The input tensor bias of Out = Act((X * Y) + Bias).");
 
     AddOutput("Out", "The output tensor Out of Out = Act((X * Y) + Bias).");
-    AddOutput("ReserveSpace",
+    AddOutput("GeluIn",
               R"DOC(Reserve GPU space to place
         auxiliary data pointer. It is used to pass auxiliary data pointer
         for custom_fused_dense op. If not given (empty string), the
@@ -293,11 +293,11 @@ class CustomFusedDenseGradOp : public framework::OperatorWithKernel {
               activation_grad));
     }
 
-    if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
+    if (activation_grad != "none" && !ctx->HasInput("GeluIn")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
                         platform::errors::InvalidArgument(
-                            "The ReserveSpace should not be empty. "
+                            "The GeluIn should not be empty. "
                             "when activation_grad == {relu_grad, gelu_grad}."));
     }
 
@@ -336,7 +336,7 @@ class CustomFusedDenseGradOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input grad tensor to Out of Out = (Act(X) * Y) + bias");
     AddInput("X", "The input tensor X of Out = (Act(X) * Y) + bias");
     AddInput("Y", "The input tensor Y of Out = (Act(X) * Y) + bias");
-    AddInput("ReserveSpace",
+    AddInput("GeluIn",
              R"DOC(A GPU space to fetch
         auxiliary data pointer. It is used to pass auxiliary data pointer
         for custom_fused_dense_grad op. If not given (empty string), the
@@ -397,7 +397,7 @@ class CustomFusedDenseOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     if (act_type != "none") {
-      op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
+      op->SetInput("GeluIn", this->Output("GeluIn"));
     }
     op->SetInput("DOut", this->OutputGrad("Out"));
 
