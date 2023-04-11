@@ -44,6 +44,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : adagrad_
+  inputs :
+    { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
@@ -261,6 +267,12 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bilinear_tensor_product
+  inputs :
+    {x : X, y : Y,weight: Weight, bias: Bias}
+  outputs :
+    {out : Out}
 
 - op : bitwise_and
   inputs :
@@ -794,12 +806,16 @@
     out : Out
 
 - op : flatten (flatten_contiguous_range)
+  backward : flatten_grad (flatten_contiguous_range_grad)
   inputs :
     x : X
   outputs :
     {out : Out, xshape : XShape}
   attrs :
     {start_axis : start_axis, stop_axis : stop_axis}
+  extra :
+    outputs : [xshape]
+  manual_signature : [flatten, flatten_grad]
 
 - op : flip
   inputs :
@@ -1425,6 +1441,12 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
+
 - op : multi_dot
   backward : multi_dot_grad
   inputs :
@@ -1733,6 +1755,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op : reverse
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  manual_signature : [reverse]
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -1798,6 +1831,13 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : segment_pool
+  backward : segment_pool_grad
+  inputs :
+    {x : X, segment_ids : SegmentIds}
+  outputs :
+    {out : Out, summed_ids : SummedIds}
 
 - op : selu
   backward : selu_grad
