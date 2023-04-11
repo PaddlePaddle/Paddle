@@ -247,31 +247,6 @@ class TensorRTEngine {
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         model_precision_(model_precision),
         logger_(logger) {
-    if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
-        optim_input_shape_.size() != 0) {
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(),
-          max_input_shape_.size(),
-          platform::errors::InvalidArgument(
-              "The min_input_shape_'s size(%d) should be equal to the "
-              "size(%d) of max_input_shape_",
-              min_input_shape_.size(),
-              max_input_shape_.size()));
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(),
-          optim_input_shape_.size(),
-          platform::errors::InvalidArgument(
-              "The min_input_shape_'s size(%d) should be equal to the "
-              "size(%d) of optim_input_shape_",
-              min_input_shape_.size(),
-              optim_input_shape_.size()));
-#if IS_TRT_VERSION_GE(6000)
-      with_dynamic_shape_ = true;
-#else
-      LOG(WARNING) << "Using dynamic shape of TRT need ensure that the TRT "
-                      "version should be at least 6.";
-#endif
-    }
     dy::initLibNvInferPlugins(&logger, "");
   }
 

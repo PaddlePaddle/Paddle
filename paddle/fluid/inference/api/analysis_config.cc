@@ -1434,7 +1434,7 @@ bool AnalysisConfig::shape_range_info_collected() const {
 }
 
 void AnalysisConfig::EnableTunedTensorRtDynamicShape(
-    const std::string shape_range_info_path, bool allow_build_at_runtime) {
+    const std::string &shape_range_info_path, bool allow_build_at_runtime) {
   shape_range_info_path_ = shape_range_info_path;
   trt_allow_build_at_runtime_ = allow_build_at_runtime;
   trt_tuned_dynamic_shape_ = true;

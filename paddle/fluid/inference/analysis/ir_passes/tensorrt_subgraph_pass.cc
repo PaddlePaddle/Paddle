@@ -354,7 +354,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
-    if (shape_range_info_path != "") {
+    if (!shape_range_info_path.empty()) {
       VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
       inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                            &min_input_shape,
