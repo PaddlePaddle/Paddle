@@ -2192,6 +2192,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+
+if (dtype != framework::proto::VarType::FP32) {
+  return false;
+}
+
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
@@ -2237,14 +2243,19 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
       }
 
-#if IS_TRT_VERSION_LT(7000)
+
       auto dtype = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_LT(7000)
       if (dtype != framework::proto::VarType::FP32) {
         VLOG(3) << "reduce op input data type must be float32 using TensorRT "
                    "< 7.0";
         return false;
       }
 #endif
+if (dtype ==  framework::proto::VarType::BOOL)
+{
+  return false;
+}
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
@@ -2401,6 +2412,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto* block = desc.Block();
+      return false;
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
