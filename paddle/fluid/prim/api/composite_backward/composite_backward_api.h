@@ -362,7 +362,7 @@ void elementwise_pow_grad(const Tensor& x,
     // dy = lnx * x^y
     auto lnx = log<T>(x);
     auto x_pow_y = elementwise_pow<T>(x, y);
-    auto dy_res = lnx * x_pow_y;
+    auto dy_res = lnx * x_pow_y * out_grad;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -382,7 +382,7 @@ void elementwise_pow_grad(const Tensor& x,
     // dx = y * x^(y-1)
     auto tmp_z = y - 1.0;
     auto x_pow_z = elementwise_pow<T>(x, tmp_z);
-    auto dx_res = y * x_pow_z;
+    auto dx_res = y * x_pow_z * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
