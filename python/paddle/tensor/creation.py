@@ -1289,6 +1289,14 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
+    out_shape = None
+    if not in_dygraph_mode() and (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1320,13 +1328,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',
