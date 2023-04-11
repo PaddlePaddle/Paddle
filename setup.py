@@ -685,6 +685,11 @@ def options_process(args, build_options):
 def get_cmake_generator():
     if os.getenv("GENERATOR"):
         cmake_generator = os.getenv("GENERATOR")
+        if os.system('ninja --version') == 0:
+            print("Ninja has been installed,use ninja to compile Paddle now.")
+        else:
+            print("Ninja has not been installed,install it now.")
+            os.system('python -m pip install ninja')
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -1457,10 +1462,12 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
-        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
 
     for dependency in python_dependcies_module:
-        if dependency not in installed_packages:
+        if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
