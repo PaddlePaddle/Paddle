@@ -728,9 +728,9 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : expand_as (expand_as_v2)
+  backward : expand_as_grad (expand_as_v2_grad)
   inputs :
-    x : X
-    y : Y
+    {x : X, y : Y}
   outputs :
     out : Out
 
