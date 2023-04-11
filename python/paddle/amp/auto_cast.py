@@ -213,6 +213,9 @@ def pure_fp16_initialize(models):
                     paddle.nn.BatchNorm3D,
                     paddle.nn.LayerNorm,
                     paddle.nn.SyncBatchNorm,
+                    paddle.nn.InstanceNorm1D,
+                    paddle.nn.InstanceNorm2D,
+                    paddle.nn.InstanceNorm3D,
                 ),
             ):
                 continue
