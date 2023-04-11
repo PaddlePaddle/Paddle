@@ -741,9 +741,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     } else {
       token_num = bsz_seq;
     }
-
     auto *padding_offset_data =
         encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
+
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
@@ -797,7 +797,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
     auto fmha_compute =
         FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
-    auto src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+    auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
     // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
@@ -807,21 +807,14 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       cache_offset = pre_caches[0]->dims()[3];
     }
 
-    int time_step_tmp = 0;
     auto out_seq_len = seq_len;
     if (time_step) {
-      int time_step_value = 0;
-      if (time_step->place() == platform::CPUPlace()) {
-        time_step_value = time_step->data<int>()[0];
-      } else {
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                &time_step_value,
-                                dev_ctx.GetPlace(),
-                                time_step->data(),
-                                sizeof(int),
-                                dev_ctx.stream());
-        dev_ctx.Wait();
-      }
+      PADDLE_ENFORCE_EQ(time_step->place(),
+                        platform::CPUPlace(),
+                        platform::errors::PreconditionNotMet(
+                            "The place of input(TimeStep) must be CPUPlace."));
+      // cache_seq_len
+      int time_step_value = time_step->data<int>()[0];
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
                         platform::errors::PreconditionNotMet(
@@ -834,7 +827,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
-      time_step_tmp = time_step_value;
     } else {
       out_seq_len += cache_offset;
     }
@@ -1059,7 +1051,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 max_seq_len,
                 num_head,
                 dim_head,
-                time_step_tmp,
+                time_step->data<int>()[0],
                 rotary_emb_dims,
                 1. / sqrt(dim_head));
 
