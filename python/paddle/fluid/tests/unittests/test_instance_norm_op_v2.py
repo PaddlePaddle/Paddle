@@ -351,7 +351,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.x.stop_gradient = False
 
     def train(self, use_amp, data_layout="NCHW"):
-        core._set_prim_all_enabled(False)
         paddle.seed(2022)
         net = PrimNet()
         sgd = paddle.optimizer.SGD(
