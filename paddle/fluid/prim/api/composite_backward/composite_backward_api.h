@@ -1485,7 +1485,7 @@ void batch_norm_grad(const Tensor& x,
         }
         break;
       }
-[[fallthrough]];
+      [[fallthrough]];
     }
 
     default:
