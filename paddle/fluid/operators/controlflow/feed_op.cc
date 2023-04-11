@@ -219,7 +219,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     paddle::operators::FeedDenseTensorKernel<phi::CPUContext>,
     ALL_DTYPE) {}
 
-PD_REGISTER_GENERALPD_REGISTER_KERNEL_FOR_ALL_DTYPE_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     CPU,
     ALL_LAYOUT,
