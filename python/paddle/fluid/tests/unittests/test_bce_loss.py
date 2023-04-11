@@ -281,6 +281,7 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFloat16(TestBceLossOp):
     def setUp(self):
+        self.init_test_case()
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype(
             "float16"
         )
