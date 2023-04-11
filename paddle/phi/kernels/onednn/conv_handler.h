@@ -714,11 +714,14 @@ class ConvOneDNNHandlerT
                                funcs::OneDNNGetDataType<K>(),
                                GetWeightsFormat(groups, is_conv3d));
 
-      const auto weight_desc =
-          is_dw_fuse ? this->fwd_pd_->query_md(
-                           dnnl::query::exec_arg_md,
-                           DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_WEIGHTS)
-                     : this->fwd_pd_->weights_desc();
+      auto weight_desc = is_dw_fuse
+                             ? this->fwd_pd_->query_md(
+                                   dnnl::query::exec_arg_md,
+                                   DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_WEIGHTS)
+                             : this->fwd_pd_->weights_desc();
+      if (is_dw_fuse) {
+        weight_desc = weight_desc.reshape(user_src_md.dims());
+      }
       const std::string suffix =
           is_dw_fuse ? "@dw_weights_mem_p" : "@weights_mem_p";
 
@@ -782,11 +785,14 @@ class ConvOneDNNHandlerT
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
 
-      const auto bias_mem_desc =
-          is_dw_fuse ? this->fwd_pd_->query_md(
-                           dnnl::query::exec_arg_md,
-                           DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_BIAS)
-                     : this->fwd_pd_->bias_desc();
+      auto bias_mem_desc = is_dw_fuse
+                               ? this->fwd_pd_->query_md(
+                                     dnnl::query::exec_arg_md,
+                                     DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_BIAS)
+                               : this->fwd_pd_->bias_desc();
+      if (is_dw_fuse) {
+        bias_mem_desc = bias_mem_desc.reshape(bias->mem_desc().dims());
+      }
       const auto bias_suffix = is_dw_fuse ? "@dw_bias_mem_p" : "@bias_mem_p";
       return this->AcquireMemoryWithReorder(
           bias->mem_desc(),

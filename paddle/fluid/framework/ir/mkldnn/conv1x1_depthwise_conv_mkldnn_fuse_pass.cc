@@ -219,7 +219,6 @@ void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
       ConvertToFusedOp(conv_op);
     }
 
-    std::cout << "------ fuse -------------\n";
     conv_op->SetInput("FilterDW", {depthwise_conv_weights->Name()});
 
     int stride =

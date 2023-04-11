@@ -117,8 +117,8 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
             : "";
 
     if (dev_ctx.HasDnnAttr("fuse_activation_dw") &&
-        PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation")) !=
-            "") {
+        PADDLE_GET_CONST(std::string,
+                         dev_ctx.GetDnnAttr("fuse_activation_dw")) != "") {
       fuse_alpha =
           dev_ctx.HasDnnAttr("fuse_alpha_dw")
               ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha_dw"))

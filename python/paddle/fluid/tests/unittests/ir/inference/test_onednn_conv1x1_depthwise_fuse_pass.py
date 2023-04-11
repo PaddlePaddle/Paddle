@@ -26,7 +26,8 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "VALID", "SAME"]))
+        padding_algorithm_depthwise = draw(st.sampled_from(["EXPLICIT"]))
         groups = 1
         filter_channel = 1
         in_channel = groups * filter_channel
@@ -51,8 +52,11 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
         )
         paddings_depthwise = [1, 1]
         strides = [1, 1]
+        dilations_depthwise = [1, 1]
 
-        x_shape = [batch_size, in_channel, 4, 4]
+        h = draw(st.integers(min_value=4, max_value=16))
+        w = draw(st.integers(min_value=4, max_value=16))
+        x_shape = [batch_size, in_channel, h, w]
         filter1x1_shape = [out_channel, in_channel, 1, 1]
         filter_depthwise_shape = [
             out_channel_depthwise,
@@ -94,17 +98,15 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             outputs={
                 "Output": ["depth_conv2d_out"],
             },
-            attrs={
-                'data_format': data_format,
-                'dilations': dilations,
-                'padding_algorithm': padding_algorithm,
-                'groups': groups_depthwise,
-                'paddings': paddings_depthwise,
-                'strides': strides,
-                'use_mkldnn': True,
-                'has_bias': False,
-                'is_test': True,
-            },
+            data_format=data_format,
+            dilations=dilations_depthwise,
+            padding_algorithm=padding_algorithm_depthwise,
+            groups=groups_depthwise,
+            paddings=paddings_depthwise,
+            strides=strides,
+            use_mkldnn=True,
+            has_bias=False,
+            is_test=True,
         )
 
         program_config = ProgramConfig(
