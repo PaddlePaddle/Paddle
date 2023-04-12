@@ -221,6 +221,8 @@ class TestAudioFuncitons(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
+        if len(self.waveform.shape) == 0:
+            self.waveform = [self.waveform]
         feature_librosa = librosa.core.stft(
             y=self.waveform,
             n_fft=n_fft,
@@ -273,6 +275,8 @@ class TestAudioFuncitons(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
+        if len(self.waveform.shape) == 0:
+            self.waveform = [self.waveform]
         # librosa
         # Get stft result from librosa.
         stft_matrix = librosa.core.stft(

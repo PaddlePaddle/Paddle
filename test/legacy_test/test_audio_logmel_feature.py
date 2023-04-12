@@ -65,7 +65,8 @@ class TestFeatures(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
-
+        if len(self.waveform.shape) == 0:
+            self.waveform = [self.waveform]
         # librosa:
         feature_librosa = librosa.feature.melspectrogram(
             y=self.waveform,
@@ -114,7 +115,8 @@ class TestFeatures(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
-
+        if len(self.waveform.shape) == 0:
+            self.waveform = [self.waveform]
         # librosa:
         np_dtype = getattr(np, dtype)
         feature_librosa = librosa.feature.mfcc(
