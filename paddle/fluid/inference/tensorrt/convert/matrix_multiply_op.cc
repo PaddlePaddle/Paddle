@@ -181,6 +181,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
             engine_->SetTensorDynamicRange(input1, x_scale);
           }
         }
+        x_rank = y_rank;
       } else {
         std::vector<nvinfer1::ITensor*> before_shape_tensors;
         nvinfer1::ITensor* input_shape_tensor = Shape(input2);
@@ -208,17 +209,27 @@ class MatrixMultiplyOpConverter : public OpConverter {
           }
         }
       }
+      y_rank = x_rank;
     }
 
-    bool transpose_x = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_x"));
-    bool transpose_y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_y"));
+    nvinfer1::MatrixOperation matrix_operation_x;
+    nvinfer1::MatrixOperation matrix_operation_y;
 
-    nvinfer1::MatrixOperation matrix_operation_x =
-        transpose_x ? nvinfer1::MatrixOperation::kTRANSPOSE
-                    : nvinfer1::MatrixOperation::kNONE;
-    nvinfer1::MatrixOperation matrix_operation_y =
-        transpose_y ? nvinfer1::MatrixOperation::kTRANSPOSE
-                    : nvinfer1::MatrixOperation::kNONE;
+    if (x_rank == 1) {
+      matrix_operation_x = nvinfer1::MatrixOperation::kVECTOR;
+    } else {
+      bool transpose_x = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_x"));
+      matrix_operation_x = transpose_x ? nvinfer1::MatrixOperation::kTRANSPOSE
+                                       : nvinfer1::MatrixOperation::kNONE;
+    }
+
+    if (y_rank == 1) {
+      matrix_operation_y = nvinfer1::MatrixOperation::kVECTOR;
+    } else {
+      bool transpose_y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_y"));
+      matrix_operation_y = transpose_y ? nvinfer1::MatrixOperation::kTRANSPOSE
+                                       : nvinfer1::MatrixOperation::kNONE;
+    }
 
     nvinfer1::ILayer* layer = nullptr;
     layer = TRT_ENGINE_ADD_LAYER(engine_,
