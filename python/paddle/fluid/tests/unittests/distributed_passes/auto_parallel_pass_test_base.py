@@ -25,7 +25,7 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
 sys.path.append("..")
-import auto_parallel_gpt_model as modeling
+import Paddle.test.legacy_test.auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
     GPTModel,

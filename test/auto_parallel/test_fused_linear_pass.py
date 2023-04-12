@@ -23,7 +23,7 @@ import paddle
 from paddle.distributed.fleet import auto
 
 sys.path.append("..")
-from test_sparse_addmm_op import get_cuda_version
+from python.paddle.fluid.tests.unittests.test_sparse_addmm_op import get_cuda_version
 
 
 def apply_pass(use_fused_passes=False, fused_passes_list=[]):
