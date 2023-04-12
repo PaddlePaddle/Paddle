@@ -34,4 +34,67 @@ class OpBase {
   Operation *operation_;
 };
 
+///
+/// \brief OpTrait
+///
+template <class ConcreteTrait>
+class OpTraitBase : public OpBase {
+ public:
+  OpTraitBase::OpTraitBase(Operation *op) : OpBase(op) {}
+
+  static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
+};
+
+class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
+ public:
+  explicit ReadOnlyTrait(Operation *op) : OpTraitBase<ReadOnlyTrait>(op) {}
+};
+
+///
+/// \brief OpInterface
+///
+template <typename ConcreteInterface>
+class OpInterfaceBase : public OpBase {
+ public:
+  using Concept = typename ConcreteInterface::Concept;
+
+  OpInterfaceBase(Operation *op, Concept *impl) : OpBase(op), impl_(impl) {}
+
+  Concept *impl() { return impl_; }
+
+  static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+ protected:
+  Concept *impl_;
+};
+
+class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
+ public:
+  struct Concept {
+    explicit Concept(void (*infer_shape)(Operation *))
+        : infer_shape_(infer_shape) {}
+    void (*infer_shape_)(Operation *);
+  };
+
+  template <class ConcreteOp>
+  struct Model : public Concept {
+    static void InferShape(Operation *op) {
+      ConcreteOp concret_op = ir::dyn_cast<ConcreteOp>(op);
+      if (concret_op == nullptr) throw("concret_op is nullptr");
+      concret_op.InferShape();
+    }
+
+    Model() : Concept(InferShape) {
+      if (sizeof(Model) != sizeof(Concept)) {
+        throw("sizeof(Model) != sizeof(Concept)")
+      }
+    }
+  };
+
+  InferShapeInterface(Operation *op, Concept *impl)
+      : OpInterfaceBase(op, impl) {}
+
+  void InferShape() { impl_->infer_shape_(operation()); }
+};
+
 }  // namespace ir

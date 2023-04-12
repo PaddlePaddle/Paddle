@@ -75,6 +75,12 @@ Operation *Value::GetDefiningOp() const {
 
 std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
 
+Value::use_iterator Value::begin() const {
+  return ir::OpOperand(impl_->first_use());
+}
+
+Value::use_iterator Value::end() const { return Value::use_iterator(); }
+
 // OpResult
 bool OpResult::classof(Value value) {
   return ir::isa<detail::OpResultImpl>(value.impl());
