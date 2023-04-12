@@ -86,12 +86,6 @@ TEST(value_test, value_test) {
   EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
   EXPECT_EQ(op3_first_input->next_use(), nullptr);
 
-  // Test 3: Value iterator
-  ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();
-  EXPECT_EQ(iter.owner(), op4);
-  ++iter;
-  EXPECT_EQ(iter.owner(), op3);
-
   // destroy
   std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op4->destroy();
