@@ -253,6 +253,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bilinear (bilinear_tensor_product)
+  inputs :
+    {x : X, y : Y,weight: Weight, bias: Bias}
+  outputs :
+    {out : Out}
+
 - op : bilinear_interp (bilinear_interp_v2)
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
   inputs :
@@ -261,12 +267,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : bilinear_tensor_product
-  inputs :
-    {x : X, y : Y,weight: Weight, bias: Bias}
-  outputs :
-    {out : Out}
 
 - op : bitwise_and
   inputs :
