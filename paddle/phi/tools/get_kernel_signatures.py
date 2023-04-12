@@ -101,12 +101,12 @@ class KernelSignatureSearcher:
 
     def search_kernel_signature(self):
         for file in os.listdir(self.search_path):
-            if not file.endswith("_kernel.h"):
-                continue
-            file_content = open(osp.join(self.search_path, file), 'r').read()
-            match_results = re.findall(self.kernel_sig_pattern, file_content)
-            for match_result in match_results:
-                self.func_signature_map[match_result[1]] = match_result[0]
+            if file.endswith("_kernel.h"):
+                f = open(osp.join(self.search_path, file), 'r')
+                file_content = f.read()
+                results = re.findall(self.kernel_sig_pattern, file_content)
+                for match_result in results:
+                    self.func_signature_map[match_result[1]] = match_result[0]
 
     def search_kernel_registration(self, path):
         self.processed_file_path = osp.join(
