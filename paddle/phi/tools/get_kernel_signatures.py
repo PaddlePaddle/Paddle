@@ -49,9 +49,9 @@ class KernelSignatureSearcher:
     kernel_sig_pattern = (
         r'(template <typename [\w\s,]+>[\s\n]*void (\w+Kernel)\([^\)]+\))'
     )
-    kernel_reg_pattern = r'PD_REGISTER_(GENERAL_)?KERNEL\([\s\n]*(\w+),[\s\n]*(\w+),[\s\n]*(\w+),[\s\n]*([\w:<>]+),[^\)]*\)'
+    kernel_reg_pattern = r'PD_REGISTER_KERNEL(_FOR_ALL_DTYPE)?\([\s\n]*(\w+),[\s\n]*(\w+),[\s\n]*(\w+),[\s\n]*([\w:<>]+)[^\)]*\)'
     macro_kernel_reg_pattern = (
-        r'#define \w+\([^\)]*\)[\s\n\\]*PD_REGISTER_(GENERAL_)?KERNEL'
+        r'#define \w+\([^\)]*\)[\s\n\\]*PD_REGISTER_KERNEL(_FOR_ALL_DTYPE)?'
     )
 
     srcs_dir = ['cpu', 'gpu', 'xpu', 'onednn', 'gpudnn', 'kps']
@@ -78,7 +78,7 @@ class KernelSignatureSearcher:
         )
         return pd.merge(
             kernel_func_df, func_signature_df, on='kernel_func', how='left'
-        )
+        )[['kernel_name', 'kernel_signature']]
 
     def search_kernel_signature(self):
         for file in os.listdir(self.base_path):
