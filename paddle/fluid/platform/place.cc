@@ -33,6 +33,10 @@ bool is_xpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::XPU;
 }
 
+
+
+=======
+>>>>>>> 944fac0232 (remove is_mlu_place is_npu(_pinned)_place)
 bool is_ipu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::IPU;
 }
