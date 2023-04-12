@@ -2267,6 +2267,48 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [2, 3, 12, 12])
         self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
 
+    def test_unstack(self):
+        x1 = paddle.full([1], 0)
+        x2 = paddle.full([2], 2)
+        x1.retain_grads()
+        x2.retain_grads()
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.unstack(x1, 0)
+        out1.retain_grads()
+        out1.backward()
+        [out2_1, out2_2] = paddle.unstack(x2, 0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.numpy(), 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2_1.shape, [])
+        self.assertEqual(out2_1.numpy(), 2)
+        self.assertEqual(out2_1.grad.shape, [])
+        self.assertEqual(out2_2.shape, [])
+        self.assertEqual(out2_2.numpy(), 2)
+        self.assertEqual(out2_2.grad.shape, [])
+
+    def test_unbind(self):
+        x1 = paddle.full([1], 0)
+        x2 = paddle.full([2], 2)
+        x1.retain_grads()
+        x2.retain_grads()
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out1 = paddle.unbind(x1, 0)
+        out1.retain_grads()
+        out1.backward()
+        [out2_1, out2_2] = paddle.unstack(x2, 0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.numpy(), 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2_1.shape, [])
+        self.assertEqual(out2_1.numpy(), 2)
+        self.assertEqual(out2_1.grad.shape, [])
+        self.assertEqual(out2_2.shape, [])
+        self.assertEqual(out2_2.numpy(), 2)
+        self.assertEqual(out2_2.grad.shape, [])
+
     def test_maseked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2280,6 +2322,23 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(y.grad.shape, [1])
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(x.grad.numpy(), 1)
+
+    def test_squeeze(self):
+        x1 = paddle.full([], 2)
+        x1.stop_gradient = False
+        x1.retain_grads()
+        out1 = paddle.squeeze(x1, axis=0)
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+
+        x2 = paddle.full([], 0, dtype='int32')
+        out2 = paddle.squeeze(x1, axis=x2)
+        out2.retain_grads()
+        out2.backward()
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(x1.grad.shape, [])
 
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
