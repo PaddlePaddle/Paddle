@@ -67,17 +67,17 @@ def _get_reduce_op(reduce_op, func_name):
             return framework.core.ReduceOp.PRODUCT
     else:
         if reduce_op == ReduceOp.SUM:
-            return 'c_{}_sum'.format(func_name)
+            return f'c_{func_name}_sum'
         elif reduce_op == ReduceOp.MAX:
-            return 'c_{}_max'.format(func_name)
+            return f'c_{func_name}_max'
         elif reduce_op == ReduceOp.MIN:
-            return 'c_{}_min'.format(func_name)
+            return f'c_{func_name}_min'
         elif reduce_op == ReduceOp.PROD:
-            return 'c_{}_prod'.format(func_name)
+            return f'c_{func_name}_prod'
         else:
-            return 'c_{}'.format(func_name)
+            return f'c_{func_name}'
 
-    raise ValueError("Unknown reduce_op type for {}.".format(func_name))
+    raise ValueError(f"Unknown reduce_op type for {func_name}.")
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
@@ -182,4 +182,4 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             gdst,
         )
     else:
-        raise ValueError("Unknown parameter: {}.".format(op))
+        raise ValueError(f"Unknown parameter: {op}.")

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -77,11 +77,11 @@ class TestLabelSmoothOpBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ["X"], "Out", check_eager=True)
+        self.check_grad_with_place(place, ["X"], "Out")
 
 
 class TestLabelSmoothFP16OP(TestLabelSmoothOp):

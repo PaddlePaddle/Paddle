@@ -208,7 +208,7 @@ class TestIRPassBase(unittest.TestCase):
                 loss_value2 = self.executor.run(
                     main2, feed=feed, fetch_list=[loss2]
                 )[0]
-            self.assertEqual(loss_value1, loss_value2, "batch {}".format(idx))
+            self.assertEqual(loss_value1, loss_value2, f"batch {idx}")
 
 
 if __name__ == "__main__":

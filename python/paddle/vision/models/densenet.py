@@ -131,7 +131,7 @@ class DenseBlock(nn.Layer):
         for layer in range(num_layers):
             self.dense_layer_func.append(
                 self.add_sublayer(
-                    "{}_{}".format(name, layer + 1),
+                    f"{name}_{layer + 1}",
                     DenseLayer(
                         num_channels=pre_channel,
                         growth_rate=growth_rate,
@@ -274,7 +274,7 @@ class DenseNet(nn.Layer):
         for i, num_layers in enumerate(block_config):
             self.dense_block_func_list.append(
                 self.add_sublayer(
-                    "db_conv_{}".format(i + 2),
+                    f"db_conv_{i + 2}",
                     DenseBlock(
                         num_channels=pre_num_channels,
                         num_layers=num_layers,
@@ -292,7 +292,7 @@ class DenseNet(nn.Layer):
             if i != len(block_config) - 1:
                 self.transition_func_list.append(
                     self.add_sublayer(
-                        "tr_conv{}_blk".format(i + 2),
+                        f"tr_conv{i + 2}_blk",
                         TransitionLayer(
                             num_channels=pre_num_channels,
                             num_output_features=num_features // 2,

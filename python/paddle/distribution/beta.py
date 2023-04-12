@@ -60,13 +60,13 @@ class Beta(exponential_family.ExponentialFamily):
             # scale input
             beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
             print(beta.mean)
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.50000000])
             print(beta.variance)
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.12500000])
             print(beta.entropy())
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.12500000])
 
             # tensor input with broadcast
@@ -84,10 +84,10 @@ class Beta(exponential_family.ExponentialFamily):
 
     def __init__(self, alpha, beta):
         if isinstance(alpha, numbers.Real):
-            alpha = paddle.full(shape=[1], fill_value=alpha)
+            alpha = paddle.full(shape=[], fill_value=alpha)
 
         if isinstance(beta, numbers.Real):
-            beta = paddle.full(shape=[1], fill_value=beta)
+            beta = paddle.full(shape=[], fill_value=beta)
 
         self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 

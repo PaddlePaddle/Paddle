@@ -349,10 +349,10 @@ class AttrReader {
   const AttributeMap* default_attrs_;
 };
 
-paddle::experimental::Scalar make_scalar_from_proto(const proto::Scalar& v);
-proto::Scalar make_scalar_proto(const paddle::experimental::Scalar& v);
-paddle::experimental::Scalar make_scalar_from_attribute(const Attribute& v);
-std::vector<paddle::experimental::Scalar> make_scalars_from_attribute(
+paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v);
+proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
+paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v);
+std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
     const Attribute& v);
 void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
                              AttributeMap* attrs);

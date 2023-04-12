@@ -16,7 +16,10 @@ import re
 
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import _convert_into_variable
+from paddle.fluid.dygraph.base import (
+    _convert_into_variable,
+    in_declarative_mode,
+)
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow
 from paddle.fluid.layers.control_flow import while_loop
@@ -40,8 +43,6 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    from paddle.fluid.dygraph.base import in_declarative_mode
-
     if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
         """
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
@@ -54,7 +55,7 @@ def indexable(x, code=None):
     if isinstance(x, Variable):
         return x
     elif hasattr(x, '__iter__'):
-        return [i for i in x]
+        return list(x)
     elif hasattr(x, '__len__') and hasattr(
         x, '__getitem__'
     ):  # used for customed type and non-iterable type.
@@ -574,14 +575,14 @@ class VariableTuple:
 
 
 def convert_enumerate(*args):
-    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    has_variable = any(isinstance(x, Variable) for x in args)
     if has_variable:
         return VariableTuple(*args)
     return enumerate(*args)
 
 
 def convert_range(*args):
-    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    has_variable = any(isinstance(x, Variable) for x in args)
     if has_variable:
         if len(args) == 1:
             return paddle.arange(0, args[0], 1, paddle.int64)
@@ -724,7 +725,7 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval('{}(var)'.format(dtype))
+        return eval(f'{dtype}(var)')
 
 
 def convert_assert(cond, message=""):

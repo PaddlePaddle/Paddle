@@ -321,15 +321,15 @@ def print_desc_error_message(error_message):
         "Op desc error for the changes of Inputs/Outputs/Attrs of OPs:\n"
     )
     for op_name in error_message:
-        print("For OP '{}':".format(op_name))
+        print(f"For OP '{op_name}':")
 
         # 1. print inputs error message
         Inputs_error = error_message.get(op_name, {}).get(INPUTS, {})
         for name in Inputs_error.get(ADD_DISPENSABLE, {}):
-            print(" * The added Input '{}' is not dispensable.".format(name))
+            print(f" * The added Input '{name}' is not dispensable.")
 
         for name in Inputs_error.get(DELETE, {}):
-            print(" * The Input '{}' is deleted.".format(name))
+            print(f" * The Input '{name}' is deleted.")
 
         for name in Inputs_error.get(CHANGE, {}):
             changed_args = Inputs_error.get(CHANGE, {}).get(name, {})
@@ -358,10 +358,10 @@ def print_desc_error_message(error_message):
         # 2. print outputs error message
         Outputs_error = error_message.get(op_name, {}).get(OUTPUTS, {})
         for name in Outputs_error.get(ADD_DISPENSABLE, {}):
-            print(" * The added Output '{}' is not dispensable.".format(name))
+            print(f" * The added Output '{name}' is not dispensable.")
 
         for name in Outputs_error.get(DELETE, {}):
-            print(" * The Output '{}' is deleted.".format(name))
+            print(f" * The Output '{name}' is deleted.")
 
         for name in Outputs_error.get(CHANGE, {}):
             changed_args = Outputs_error.get(CHANGE, {}).get(name, {})
@@ -390,12 +390,10 @@ def print_desc_error_message(error_message):
         # 3. print attrs error message
         attrs_error = error_message.get(op_name, {}).get(ATTRS, {})
         for name in attrs_error.get(ADD_WITH_DEFAULT, {}):
-            print(
-                " * The added attr '{}' doesn't set default value.".format(name)
-            )
+            print(f" * The added attr '{name}' doesn't set default value.")
 
         for name in attrs_error.get(DELETE, {}):
-            print(" * The attr '{}' is deleted.".format(name))
+            print(f" * The attr '{name}' is deleted.")
 
         for name in attrs_error.get(CHANGE, {}):
             changed_args = attrs_error.get(CHANGE, {}).get(name, {})
@@ -430,7 +428,7 @@ def print_version_error_message(error_message):
         "Operator registration error for the changes of Inputs/Outputs/Attrs of OPs:\n"
     )
     for op_name in error_message:
-        print("For OP '{}':".format(op_name))
+        print(f"For OP '{op_name}':")
 
         # 1. print inputs error message
         inputs_error = error_message.get(op_name, {}).get(INPUTS, {})
