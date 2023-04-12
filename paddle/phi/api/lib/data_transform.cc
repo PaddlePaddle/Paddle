@@ -239,6 +239,12 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
+
+    if (dense_tensor.canNotUse) {
+      LOG(WARNING) << "Stride Test Log 17: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+    }
+
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
@@ -281,6 +287,13 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 
   for (const auto& input : inputs) {
     const auto& tensor_in = input.impl();
+    phi::DenseTensor& dense_tensor =
+        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if (dense_tensor.canNotUse) {
+      LOG(WARNING) << "Stride Test Log 18: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+    }
+
     if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
         (!NeedTransformPlace(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
@@ -326,6 +339,12 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
   if (tensor_in) {
     phi::SelectedRows& selected_rows =
         *static_cast<phi::SelectedRows*>(tensor_in.get());
+
+    if (selected_rows.mutable_value()->canNotUse) {
+      LOG(WARNING) << "Stride Test Log 19: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+    }
+
     if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
         (!NeedTransformPlace(
             selected_rows.place(), target_args_def.backend, transform_flag))) {
