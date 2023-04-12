@@ -1172,8 +1172,8 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_shape(self):
         out = paddle.shape(self.x)
-        self.assertEqual(out.shape, [0])
         np.testing.assert_array_equal(out.numpy(), np.array([]))
+        self.assertEqual(out.shape, [0])
 
     def test_equal_scalar(self):
         x = paddle.rand([])
@@ -1797,32 +1797,6 @@ class TestSundryAPI(unittest.TestCase):
             # check grad shape with 1D repeats
             self.assertEqual(x.grad.shape, [])
 
-    def test_sigmoid_focal_loss(self):
-        logit = paddle.to_tensor(
-            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]],
-            dtype='float32',
-            stop_gradient=False,
-        )
-        logit.retain_grads()
-        label = paddle.to_tensor(
-            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
-        )
-        fg_num_0 = paddle.full([], 2.0)
-        fg_num_1 = paddle.full([1], 2.0)
-
-        out0 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_0)
-        out1 = F.sigmoid_focal_loss(logit, label, normalizer=fg_num_1)
-        out0.retain_grads()
-
-        np.testing.assert_array_equal(
-            out0.numpy(),
-            out1.numpy(),
-        )
-
-        out0.backward()
-        self.assertEqual(out0.grad.shape, [1])
-        self.assertEqual(logit.grad.shape, [2, 3])
-
     def test_allclose(self):
         # 1) x is 0D
         x = paddle.full([], 0.5)
@@ -2284,6 +2258,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1.0)
 
+    @prog_scope()
     def test_argmin(self):
         # 1) x is 0D
         x = paddle.rand([])
@@ -2946,6 +2921,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out2.shape, ())
         self.assertEqual(out3.shape, ())
 
+    @prog_scope()
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
@@ -3568,16 +3544,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], np.array(2))
 
     @prog_scope()
-    def _test_shape(self):
+    def test_shape(self):
         x = paddle.full([], 0.5)
         out = paddle.shape(x)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        # 0-Size should be [ np.array([]) ], its [None] now
-        self.assertEqual(res[0].shape, (0))
         np.testing.assert_array_equal(res[0], np.array([]))
+        self.assertEqual(res[0].shape, (0,))
 
+    @prog_scope()
     def test_broadcast_tensors(self):
         # 1) x is 0D, y is 0D
         x1 = paddle.full([], 2.0)
@@ -4305,6 +4281,76 @@ class TestDistribution(unittest.TestCase):
         # self.assertEqual(d.prob(self.x).shape, [])
         # self.assertEqual(d.log_prob(self.x).shape, [])
         # self.assertEqual(d.entropy().shape, [])
+
+
+class TestLossAPI(unittest.TestCase):
+    def test_sigmoid_focal_loss(self):
+        logit = paddle.to_tensor(
+            [[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]],
+            dtype='float32',
+            stop_gradient=False,
+        )
+        logit.retain_grads()
+        label = paddle.to_tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
+        fg_num_0 = paddle.full([], 2.0)
+        fg_num_1 = paddle.full([1], 2.0)
+
+        out0 = F.sigmoid_focal_loss(
+            logit, label, normalizer=fg_num_0, reduction='mean'
+        )
+        out1 = F.sigmoid_focal_loss(
+            logit, label, normalizer=fg_num_1, reduction='mean'
+        )
+        out0.retain_grads()
+
+        np.testing.assert_array_equal(
+            out0.numpy(),
+            out1.numpy(),
+        )
+
+        out0.backward()
+        self.assertEqual(out0.shape, [])
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out0.grad.shape, [])
+        self.assertEqual(logit.grad.shape, [2, 3])
+
+
+class TestLossAPIStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_sigmoid_focal_loss(self):
+        logit = paddle.rand([2, 3])
+        logit.stop_gradient = False
+
+        label = paddle.randint(0, 1, [2, 3]).astype('float32')
+        label.stop_gradient = False
+
+        fg_num_0 = paddle.full([], 2.0)
+        fg_num_1 = paddle.full([1], 2.0)
+
+        out0 = F.sigmoid_focal_loss(
+            logit, label, normalizer=fg_num_0, reduction='mean'
+        )
+        out1 = F.sigmoid_focal_loss(
+            logit, label, normalizer=fg_num_1, reduction='mean'
+        )
+        paddle.static.append_backward(out0.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out0, out1, out0.grad_name, logit.grad_name]
+        )
+        np.testing.assert_allclose(res[0], res[1])
+        # because use paddle.mean
+        # self.assertEqual(res[0].shape, ())
+        # self.assertEqual(res[1].shape, ())
+        # self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, (2, 3))
 
 
 if __name__ == "__main__":
