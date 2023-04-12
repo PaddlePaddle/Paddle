@@ -44,6 +44,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : adagrad_
+  inputs :
+    { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
@@ -63,6 +69,14 @@
 
 - op : affine_grid
   backward : affine_grid_grad
+  inputs :
+    input : Theta
+  outputs :
+    out : Output
+  int_array:
+    output_shape :
+      data_type : int
+      tensor_name : OutputShape
   extra :
     attrs : [bool use_cudnn = true]
 
@@ -109,6 +123,26 @@
   outputs :
     out : Out
 
+- op : argmax(arg_max)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
+- op : argmin(arg_min)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int64_t
+      support_tensor : true
+
 - op : argsort
   inputs :
     x : X
@@ -152,6 +186,11 @@
   manual_signature : [assign, assign_grad]
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
+
+- op : assign_value
+  outputs :
+    out : Out
+  manual_signature : [assign_value]
 
 - op : atan
   inputs :
@@ -228,6 +267,12 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bilinear_tensor_product
+  inputs :
+    {x : X, y : Y,weight: Weight, bias: Bias}
+  outputs :
+    {out : Out}
 
 - op : bitwise_and
   inputs :
@@ -310,6 +355,12 @@
       tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : clip_by_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : complex
   backward : complex_grad
@@ -423,6 +474,13 @@
   outputs :
     out : Out
 
+- op : cross_entropy_with_softmax (softmax_with_cross_entropy)
+  backward : cross_entropy_with_softmax_grad (softmax_with_cross_entropy_grad)
+  inputs :
+    {input : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cumprod
   backward : cumprod_grad
   inputs :
@@ -447,6 +505,12 @@
   backward : data_norm_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : decode_jpeg
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
@@ -575,6 +639,15 @@
   outputs :
     out : Out
 
+- op : eigvalsh
+  backward : eigvalsh_grad
+  inputs :
+    {x : X}
+  outputs :
+    {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
+  attrs :
+    uplo : UPLO
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -601,6 +674,15 @@
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : empty
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
 
 - op : equal
   inputs :
@@ -730,12 +812,16 @@
     out : Out
 
 - op : flatten (flatten_contiguous_range)
+  backward : flatten_grad (flatten_contiguous_range_grad)
   inputs :
     x : X
   outputs :
     {out : Out, xshape : XShape}
   attrs :
     {start_axis : start_axis, stop_axis : stop_axis}
+  extra :
+    outputs : [xshape]
+  manual_signature : [flatten, flatten_grad]
 
 - op : flip
   inputs :
@@ -1198,6 +1284,37 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : logcumsumexp
+  backward : logcumsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_not
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logical_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : logical_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : logit
   inputs :
     x : X
@@ -1247,15 +1364,21 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
-             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
-             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
+
+- op : matrix_nms
+  inputs :
+    {bboxes : BBoxes, scores : Scores}
+  outputs :
+    {out : Out, index : Index, roisnum : RoisNum}
+  get_expected_kernel_type :
+    matrix_nms : GetMatrixNmsExpectedKernelType
 
 - op : matrix_power
   inputs :
@@ -1312,6 +1435,12 @@
   outputs :
     out : Out
 
+- op : merged_momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
+
 - op : meshgrid
   backward : meshgrid_grad
   inputs :
@@ -1331,6 +1460,12 @@
     x : X
   outputs :
     {out : Out, indices : Indices}
+
+- op : momentum_
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
 - op : multi_dot
   backward : multi_dot_grad
@@ -1553,6 +1688,22 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
+- op : randint
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  manual_signature : [randint]
+
+- op : randperm
+  outputs :
+    out : Out
+  extra :
+    attrs : [int seed = 0]
+
 - op : real
   backward : real_grad
   inputs :
@@ -1630,6 +1781,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op : reverse
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  manual_signature : [reverse]
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -1695,6 +1857,13 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : segment_pool
+  backward : segment_pool_grad
+  inputs :
+    {x : X, segment_ids : SegmentIds}
+  outputs :
+    {out : Out, summed_ids : SummedIds}
 
 - op : selu
   backward : selu_grad
@@ -2053,6 +2222,10 @@
   outputs :
     out : Out
 
+- op : truncated_gaussian_random
+  outputs :
+    out : Out
+
 - op : unbind
   inputs :
     input : X
@@ -2064,6 +2237,32 @@
     x : X
   outputs :
     out : Y
+
+- op : uniform (uniform_random)
+  outputs :
+    out : Out
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+  scalar :
+      min :
+        data_type : float
+        support_tensor : true
+      max :
+        data_type : float
+        support_tensor : true
+  manual_signature : [uniform]
+
+- op : unique
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, indices : Indices, inverse : Index, counts : Counts}
+  get_expected_kernel_type :
+    unique : GetUniqueExpectedKernelType
+  manual_signature : [unique]
 
 - op : unique_consecutive
   inputs :
@@ -2112,6 +2311,13 @@
   outputs :
     {scores : Scores, path : Path}
 
+- op : warpctc
+  backward : warpctc_grad
+  inputs :
+    {logits : Logits, label : Label, logits_length : LogitsLength, labels_length : LabelLength}
+  outputs :
+    {warpctcgrad : WarpCTCGrad, loss : Loss}
+
 - op : where
   backward : where_grad
   inputs :
@@ -2128,5 +2334,12 @@
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
     {x: X, label: Label}
+  outputs :
+    out : Out
+
+- op: squared_l2_norm
+  backward: squared_l2_norm_grad
+  inputs :
+    x : X
   outputs :
     out : Out

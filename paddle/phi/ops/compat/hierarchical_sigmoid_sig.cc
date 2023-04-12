@@ -28,7 +28,7 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes", "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else if (ctx.IsSelectedRowsOutput("W@GRAD")) {
     return KernelSignature("hsigmoid_loss_grad_sr",
@@ -40,7 +40,7 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes", "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
