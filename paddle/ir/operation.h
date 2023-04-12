@@ -16,7 +16,7 @@
 
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/type.h"
-#include "paddle/ir/value.h"
+#include "paddle/ir/value_impl.h"
 
 namespace ir {
 
@@ -35,6 +35,12 @@ class alignas(8) Operation final {
   ir::OpResult GetResultByIndex(uint32_t index);
 
   std::string print();
+
+  ir::DictionaryAttribute attribute() { return attribute_; }
+
+  uint32_t num_results() { return num_results_; }
+
+  uint32_t num_operands() { return num_operands_; }
 
  private:
   Operation(uint32_t num_results,

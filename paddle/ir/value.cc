@@ -13,11 +13,85 @@
 // limitations under the License.
 
 #include "paddle/ir/value.h"
+#include "paddle/ir/value_impl.h"
 
 namespace ir {
+// Operand
+OpOperand::OpOperand(const detail::OpOperandImpl *impl)
+    : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
+
+OpOperand &OpOperand::operator=(const OpOperand &rhs) {
+  if (this == &rhs) return *this;
+  impl_ = rhs.impl_;
+  return *this;
+}
+
+OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
+  if (this->impl_ == impl) return *this;
+  impl_ = const_cast<detail::OpOperandImpl *>(impl);
+  return *this;
+}
+
+bool OpOperand::operator==(OpOperand other) const {
+  return impl_ == other.impl_;
+}
+
+bool OpOperand::operator!=(OpOperand other) const {
+  return impl_ != other.impl_;
+}
+
+bool OpOperand::operator!() const { return impl_ == nullptr; }
+
+OpOperand::operator bool() const { return impl_; }
+
+detail::OpOperandImpl *OpOperand::impl() const { return impl_; }
+
+// Value
+Value::Value(const detail::ValueImpl *impl)
+    : impl_(const_cast<detail::ValueImpl *>(impl)) {}
+
+bool Value::operator==(const Value &other) const {
+  return impl_ == other.impl_;
+}
+
+bool Value::operator!=(const Value &other) const {
+  return impl_ != other.impl_;
+}
+
+bool Value::operator!() const { return impl_ == nullptr; }
+
+Value::operator bool() const { return impl_; }
+
+detail::ValueImpl *Value::impl() const { return impl_; }
+
+ir::Type Value::type() const { return impl_->type(); }
+
+void Value::SetType(ir::Type type) { impl_->SetType(type); }
+
 Operation *Value::GetDefiningOp() const {
   if (auto result = dyn_cast<OpResult>()) return result.owner();
   return nullptr;
+}
+
+std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
+
+Value::use_iterator Value::begin() const {
+  return ir::OpOperand(impl_->first_use());
+}
+
+Value::use_iterator Value::end() const { return use_iterator(); }
+
+// OpResult
+bool OpResult::classof(Value value) {
+  return ir::isa<detail::OpResultImpl>(value.impl());
+}
+
+Operation *OpResult::owner() const { return impl()->owner(); }
+
+uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
+
+detail::OpResultImpl *OpResult::impl() const {
+  return reinterpret_cast<detail::OpResultImpl *>(impl_);
 }
 
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
@@ -26,9 +100,39 @@ uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
   return index <= max_inline_index ? index : max_inline_index;
 }
 
-std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
-
+// details
 namespace detail {
+ir::Operation *OpOperandImpl::owner() const { return owner_; }
+
+ir::detail::OpOperandImpl *OpOperandImpl::next_use() { return next_use_; }
+
+OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
+    : source_(source), owner_(owner) {
+  prev_use_addr_ = source.impl()->first_use_addr();
+  next_use_ = source.impl()->first_use();
+  if (next_use_) {
+    next_use_->prev_use_addr_ = &next_use_;
+  }
+  source.impl()->SetFirstUse(this);
+}
+
+void OpOperandImpl::remove_from_ud_chain() {
+  if (!prev_use_addr_) return;
+  if (prev_use_addr_ == source_.impl()->first_use_addr()) {
+    /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
+    /// storage index information, so need to be updated using the SetFirstUse
+    /// method here.
+    source_.impl()->SetFirstUse(next_use_);
+  } else {
+    *prev_use_addr_ = next_use_;
+  }
+  if (next_use_) {
+    next_use_->prev_use_addr_ = prev_use_addr_;
+  }
+}
+
+OpOperandImpl::~OpOperandImpl() { remove_from_ud_chain(); }
+
 uint32_t ValueImpl::index() const {
   uint32_t index =
       reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & 0x07;
@@ -81,7 +185,5 @@ ir::Operation *OpResultImpl::owner() const {
   return reinterpret_cast<Operation *>(
       const_cast<OpInlineResultImpl *>(inline_result));
 }
-
 }  // namespace detail
-
 }  // namespace ir
