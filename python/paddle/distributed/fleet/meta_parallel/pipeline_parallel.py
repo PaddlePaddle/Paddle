@@ -64,6 +64,7 @@ class PipelineParallel(MetaParallelBase):
         self._virtual_pp_rank = None
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
+        self._delay_scale_loss = False
 
         p2p.initialize_p2p_groups(
             hcg, self._using_cache, self._enable_partial_send_recv
@@ -310,7 +311,7 @@ class PipelineParallel(MetaParallelBase):
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
-                    if self.accumulate_steps > 1:
+                    if self.accumulate_steps > 1 and not self._delay_scale_loss:
                         output_tensor = output_tensor / self.accumulate_steps
 
                     if self.total_loss is None:
@@ -413,7 +414,11 @@ class PipelineParallel(MetaParallelBase):
             assert (
                 self.total_loss is not None
             ), "train_batch() in last stage should obtain vaild loss"
-            loss = self.total_loss.detach()
+            loss = (
+                self.total_loss.detach()
+                if not self._delay_scale_loss
+                else self.total_loss / self.accumulate_steps
+            )
             is_fp32 = (
                 paddle.full([], 1, 'int64')
                 if loss.dtype == paddle.float32
@@ -447,6 +452,14 @@ class PipelineParallel(MetaParallelBase):
         return loss
 
     def _optimizer_step(self):
+        if self._delay_scale_loss:
+            for p in self._layers.parameters():
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    p.main_grad.scale_(1.0 / self.accumulate_steps)
+                elif p.grad is not None:
+                    p.grad.scale_(1.0 / self.accumulate_steps)
+
         if self.scaler:
             self.scaler.step(self.optimizer)
             self.scaler.update()
