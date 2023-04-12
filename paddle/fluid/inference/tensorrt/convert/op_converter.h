@@ -427,6 +427,41 @@ class OpConverter {
     return shuffle->getOutput(0);
   }
 
+  nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
+                                     const int nbDims) {
+    auto oldShape = Shape(input);
+    auto oldShapeDims = oldShape->getDimensions();
+    const int rank = oldShapeDims.nbDims;
+    if (rank > nbDims) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot broadcast a higher rank tensor to a lower rank tensor."));
+    }
+    if (rank < nbDims) {
+      nvinfer1::ITensor* concat_shape_tensor;
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(nbDims - rank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(oldShape);
+      concat_shape_tensor = Concat(itensors);
+      input = Reshape(input, concat_shape_tensor);
+    }
+    return input;
+  }
+
+  nvinfer1::ITensor* BroadcastTensors(nvinfer1::ITensor* a,
+                                      nvinfer1::ITensor* b) {
+    const int aDims = a->getDimensions().nbDims;
+    const int bDims = b->getDimensions().nbDims;
+    if (aDims == bDims) {
+      VLOG(3) << "Broadcast two equal rank tensors";
+    }
+    if (aDims > bDims) {
+      return BroadcastTensor(b, aDims);
+    }
+    return BroadcastTensor(a, bDims);
+  }
+
   // Concat not make rank changed
   nvinfer1::ITensor* Concat(const std::vector<nvinfer1::ITensor*>& inputs,
                             int axis = 0) {

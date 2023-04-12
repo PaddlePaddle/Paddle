@@ -11,7 +11,7 @@
   backward : abs_grad
 
 - op : adadelta_
-  args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor master_param, float rho, float epsilon, bool multi_precision)
+  args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
   infer_meta :
     func : AdadeltaInferMeta
@@ -153,16 +153,6 @@
     data_type : dtype
     backend : place > output
 
-- op : average_accumulates_
-  args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
-  output : Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates), Tensor(out_old_num_accumulates), Tensor(out_num_updates)
-  infer_meta:
-    func : AverageAccumulatesInferMeta
-  kernel :
-    func : average_accumulates {dense, dense, dense, dense, dense ,dense, dense -> dense, dense, dense, dense, dense, dense}
-    data_type : param
-  inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
-
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
@@ -231,14 +221,6 @@
     func : ClassCenterSampleInferMeta
   kernel :
     func : class_center_sample
-
-- op : clip_by_norm
-  args : (Tensor x, float max_norm)
-  output : Tensor(out)
-  infer_meta :
-    func : ClipByNormInferMeta
-  kernel :
-    func : clip_by_norm
 
 - op : coalesce_tensor
   args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
@@ -684,7 +666,7 @@
   backward : heaviside_grad
 
 - op : hsigmoid_loss
-  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
+  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
   infer_meta :
     func : HSigmoidLossInferMeta
@@ -883,17 +865,6 @@
     func : merged_adam
     data_type : param
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
-
-- op : merged_momentum_
-  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
-  output : Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
-  infer_meta :
-    func : MergedMomentumInferMeta
-  optional: master_param
-  kernel :
-    func : merged_momentum
-    data_type : param
-  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
@@ -1228,15 +1199,6 @@
   kernel :
     func : split_with_num
   backward : split_with_num_grad
-
-- op : squared_l2_norm
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : SquaredL2NormInferMeta
-  kernel :
-    func : squared_l2_norm
-  backward : squared_l2_norm_grad
 
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
