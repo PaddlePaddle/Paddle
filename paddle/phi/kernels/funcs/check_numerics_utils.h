@@ -14,7 +14,9 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_MKLML
 #include <omp.h>
+#endif
 #include <fstream>
 
 #include "gflags/gflags.h"
