@@ -41,7 +41,7 @@ class TestElementwiseOp(OpTest):
         self.if_enable_cinn()
 
     def init_dtype(self):
-        self.dtype = "float64"
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -102,13 +102,16 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
@@ -133,7 +136,7 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         self.enable_cinn = False
 
 
-class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseOp):
+class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -143,7 +146,7 @@ class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_ZeroDim1(TestElementwiseOp):
+class TestElementwiseSubBF16OP_ZeroDim1(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -201,7 +204,7 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         self.enable_cinn = False
 
 
-class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseOp):
+class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -211,7 +214,7 @@ class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_ZeroDim2(TestElementwiseOp):
+class TestElementwiseSubBF16OP_ZeroDim2(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -269,7 +272,7 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         self.enable_cinn = False
 
 
-class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseOp):
+class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -279,7 +282,7 @@ class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_ZeroDim3(TestElementwiseOp):
+class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -380,7 +383,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
         self.if_check_prim()
 
 
-class TestElementwiseSubFP16OP_scalar(TestElementwiseOp):
+class TestElementwiseSubFP16OP_scalar(TestElementwiseSubOp_scalar):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -390,7 +393,7 @@ class TestElementwiseSubFP16OP_scalar(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_scalar(TestElementwiseOp):
+class TestElementwiseBF16OP_scalar(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -437,7 +440,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
         self.if_check_prim()
 
 
-class TestElementwiseSubFP16OP_Vectorr(TestElementwiseOp):
+class TestElementwiseSubFP16OP_Vectorr(TestElementwiseSubOp_Vector):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -447,7 +450,7 @@ class TestElementwiseSubFP16OP_Vectorr(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_Vector(TestElementwiseOp):
+class TestElementwiseBF16OP_Vector(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -479,7 +482,7 @@ class TestElementwiseBF16OP_Vector(TestElementwiseOp):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
-class TestElementwiseSubOp_broadcast_O(TestElementwiseOp):
+class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
@@ -519,7 +522,7 @@ class TestElementwiseSubOp_broadcast_O(TestElementwiseOp):
         )
 
 
-class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseOp):
+class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseSubOp_broadcast_0):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -529,7 +532,7 @@ class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_broadcast_0(TestElementwiseOp):
+class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -561,7 +564,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseOp):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
 
 
-class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_O):
+class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
@@ -577,7 +580,7 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_O):
         }
 
 
-class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseOp):
+class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseSubOp_broadcast_1):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -640,7 +643,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
         self.check_prim = True
 
 
-class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseOp):
+class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseSubOp_broadcast_2):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -710,7 +713,7 @@ class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
         self.attrs = {'axis': 1}
 
 
-class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_O):
+class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.python_api = paddle.subtract
@@ -726,7 +729,7 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp_broadcast_O):
         }
 
 
-class TestElementwiseSubFP16OP_broadcast_3(TestElementwiseOp):
+class TestElementwiseSubFP16OP_broadcast_3(TestElementwiseSubOp_broadcast_3):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -775,7 +778,7 @@ class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
         self.check_prim = True
 
 
-class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseOp):
+class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseSubOp_broadcast_4):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -798,7 +801,7 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
         self.check_prim = True
 
 
-class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseOp):
+class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseSubOp_commonuse_1):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -808,7 +811,7 @@ class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_commonuse_1(TestElementwiseOp):
+class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -849,7 +852,7 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
         self.check_prim = True
 
 
-class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseOp):
+class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseSubOp_commonuse_2):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -859,7 +862,7 @@ class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_commonuse_2(TestElementwiseOp):
+class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
@@ -904,7 +907,9 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
         self.check_prim = True
 
 
-class TestElementwiseSubFP16OP_xsize_lessthan_ysize(TestElementwiseOp):
+class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
+    TestElementwiseSubOp_xsize_lessthan_ysize
+):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -914,7 +919,7 @@ class TestElementwiseSubFP16OP_xsize_lessthan_ysize(TestElementwiseOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and do not support bfloat16",
 )
-class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseOp):
+class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.uint16
