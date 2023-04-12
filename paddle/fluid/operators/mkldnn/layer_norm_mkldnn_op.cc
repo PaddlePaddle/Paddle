@@ -47,24 +47,24 @@ class LayerNormOneDNNHandler
                           const phi::DenseTensor* shift) {
     auto scale_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
-        phi::funcs::to_void_cast<T>(scale->data<T>()));
+        phi::funcs::to_void_cast<float>(scale->data<float>()));
     auto shift_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
-        phi::funcs::to_void_cast<T>(shift->data<T>()));
+        phi::funcs::to_void_cast<float>(shift->data<float>()));
 
     return std::make_tuple(scale_memory, shift_memory);
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
-    T* mean_data = mean->mutable_data<T>(this->place_,
-                                         this->fwd_pd_->mean_desc().get_size());
+    float* mean_data = mean->mutable_data<float>(
+        this->place_, this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             mean_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       phi::DenseTensor* variance) {
-    T* variance_data = variance->mutable_data<T>(
+    float* variance_data = variance->mutable_data<float>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
                                             variance_data);

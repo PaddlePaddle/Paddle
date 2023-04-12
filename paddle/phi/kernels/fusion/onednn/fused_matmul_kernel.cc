@@ -139,17 +139,6 @@ class FusedMatmulOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  float ComputeOutputScale(float matmul_alpha,
-                           const float scale_x,
-                           const float scale_y,
-                           const float scale_in_eltwise,
-                           const float scale_out,
-                           const bool force_fp32_output) {
-    float f_scale_out = force_fp32_output ? 1.0f : scale_out;
-    matmul_alpha *= f_scale_out / (scale_x * scale_y);
-    return matmul_alpha;
-  }
-
   dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
                                          const DenseTensor *residual_data,
                                          const float matmul_alpha,
@@ -165,14 +154,16 @@ class FusedMatmulOneDNNHandler
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float computed_scale_out = ComputeOutputScale(matmul_alpha,
-                                                  scale_x,
-                                                  scale_y,
-                                                  scale_in_eltwise,
-                                                  scale_out,
-                                                  force_fp32_output);
-    if (computed_scale_out != 1.0f) {
+    if (scale_x != 1.0f) {
       matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
+    }
+
+    if (scale_y != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_WEIGHTS, 0);
+    }
+
+    if (!force_fp32_output && scale_out != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_DST, 0);
     }
 
     if (residual_data) {
@@ -183,7 +174,7 @@ class FusedMatmulOneDNNHandler
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
       if (scale_in_eltwise != 0.0f) {
-        float sum_scale = scale_out / scale_in_eltwise;
+        float sum_scale = 1.f / scale_in_eltwise;
         post_operations.append_sum(sum_scale);
       }
     }
@@ -279,6 +270,37 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
+  }
+
+  if (scale_x != 1.0f) {
+    dnnl::memory::desc src_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto src_scales_mem =
+        std::make_shared<dnnl::memory>(src_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(src_scales_mem->get_data_handle()) =
+        1.f / scale_x;
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *src_scales_mem});
+  }
+
+  if (scale_y != 1.0f) {
+    dnnl::memory::desc wei_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto wei_scales_mem =
+        std::make_shared<dnnl::memory>(wei_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(wei_scales_mem->get_data_handle()) =
+        1.f / scale_y;
+    matmul_args.insert(
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, *wei_scales_mem});
+  }
+
+  if (!force_fp32_output && scale_out != 1.0f) {
+    dnnl::memory::desc dst_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto dst_scales_mem =
+        std::make_shared<dnnl::memory>(dst_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(dst_scales_mem->get_data_handle()) =
+        1.f / scale_out;
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, *dst_scales_mem});
   }
 
   auto &astream = OneDNNContext::tls().get_stream();
