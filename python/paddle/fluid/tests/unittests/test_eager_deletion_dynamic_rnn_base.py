@@ -21,8 +21,8 @@ import unittest
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def train(network, use_cuda, batch_size=32, pass_num=2):
@@ -79,9 +79,7 @@ class TestBase(unittest.TestCase):
             return
 
         for use_cuda in [True, False]:
-            print(
-                'network: {}, use_cuda: {}'.format(self.net.__name__, use_cuda)
-            )
+            print(f'network: {self.net.__name__}, use_cuda: {use_cuda}')
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 with fluid.scope_guard(core.Scope()):
                     train(self.net, use_cuda)

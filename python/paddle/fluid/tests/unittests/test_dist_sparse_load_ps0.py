@@ -20,9 +20,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class SparseLoadOp(unittest.TestCase):

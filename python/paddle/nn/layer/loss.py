@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +15,7 @@
 import paddle
 
 # TODO: define loss functions of neural network
-import paddle.fluid as fluid
-from paddle import in_dynamic_mode
+from paddle import fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from .. import functional as F
@@ -879,6 +877,99 @@ class NLLLoss(Layer):
             label,
             weight=self._weight,
             ignore_index=self._ignore_index,
+            reduction=self._reduction,
+            name=self._name,
+        )
+
+
+class PoissonNLLLoss(Layer):
+    r"""Generate a callable object of 'PoissonNLLLoss' to calculate the
+    Poisson negative log likelihood loss between Input(input) and
+    Input(label). Notes that Input(input) is the expectation of underlying
+    Poisson distribution and Input(label) is the random samples from the
+    Poisson distribution
+
+
+    Poisson negative log likelihood loss is calculated as follows:
+
+    .. math::
+        \text{loss}(\text{input}, \text{label}) = \text{input} - \text{label} * \log(\text{label}) + \log(\text{label!})
+
+    The last term can be approximated with Stirling formula. This approximation term is used when :attr:`full` is ``True``.
+    The approximation is added when label values are more than 1 and omitted when the labels are less than or equal to 1.
+
+    Parameters:
+         log_input (bool, optional):
+            Whether to the treat input tensor as log input.
+            If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
+            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})` .
+            Default: ``True``.
+         full (bool, optional):
+            Whether to compute full loss.
+            If ``True``, the Stirling approximation term is added.
+            If ``False``, the Stirling approximation is dropped.
+            Default: ``False``.
+         epsilon (float, optional):
+            A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
+            Default: 1e-8.
+         reduction (str, optional):
+            Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
+         name (str, optional):
+            Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input (Tensor): The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
+        - label (Tensor): The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
+        - output (Tensor): scalar if :attr:`reduction` is ``'mean'`` (default) or ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same shape as the input
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            poisson_nll_loss = paddle.nn.loss.PoissonNLLLoss()
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            loss = poisson_nll_loss(input, label)
+
+    """
+
+    def __init__(
+        self,
+        log_input=True,
+        full=False,
+        epsilon=1e-8,
+        reduction="mean",
+        name=None,
+    ):
+        if epsilon <= 0:
+            raise ValueError(
+                "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+                % epsilon
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in PoissonNLLLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction
+            )
+        super().__init__()
+        self._log_input = log_input
+        self._full = full
+        self._epsilon = epsilon
+        self._reduction = reduction
+        self._name = name
+
+    def forward(self, input, label):
+        return F.poisson_nll_loss(
+            input,
+            label,
+            log_input=self._log_input,
+            full=self._full,
+            epsilon=self._epsilon,
             reduction=self._reduction,
             name=self._name,
         )

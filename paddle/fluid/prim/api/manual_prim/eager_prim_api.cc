@@ -32,5 +32,6 @@ template <>
 Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
   return ::cast_ad_func(x, dtype);
 }
+
 }  // namespace prim
 }  // namespace paddle

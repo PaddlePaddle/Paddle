@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -104,9 +104,9 @@ class TestAllocContinuousSpace(OpTest):
             out[0:length] = input[1].flatten()
             inputs.append(out)
 
-        coalesce_tensor_var = np.concatenate([input for input in inputs])
+        coalesce_tensor_var = np.concatenate(list(inputs))
         if set_constant:
-            coalesce_tensor_var = np.ones((len(coalesce_tensor_var))) * constant
+            coalesce_tensor_var = np.ones(len(coalesce_tensor_var)) * constant
             outputs = [
                 (out[0], np.ones(out[1].shape).astype(self.dtype) * constant)
                 for out in outputs

@@ -55,10 +55,6 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
-if (WITH_MLU)
-    add_subdirectory(mlu)
-endif()
-
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
@@ -96,43 +92,32 @@ endif()
 
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils backward_infermeta sparse_backward_infermeta static_prim_api get_expected_kernel_func)
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op eye_op quantize_linear_op
-        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
+        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
-op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc run_program_op_npu.cc DEPS executor_cache ${OP_HEADER_DEPS})
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
-    if(WITH_ROCM)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
-    # warpctc_op needs cudnn 7 above
-    elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
-    else()
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-    endif()
+    op_library(activation_op SRCS activation_op.cc activation_op.kps soft_relu_op.cu DEPS ${OP_HEADER_DEPS})
+elseif (WITH_XPU_KP)
+    op_library(activation_op SRCS activation_op.cc activation_op.kps DEPS ${OP_HEADER_DEPS})
+else()
+    op_library(activation_op SRCS activation_op.cc DEPS ${OP_HEADER_DEPS})
+endif()
+
+if (WITH_GPU OR WITH_ROCM)
     op_library(sync_batch_norm_op)
     if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) )
         op_library(sparse_attention_op)
     endif()
-else()
-    op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-endif()
-
-if (WITH_ASCEND_CL)
-  op_library(sync_batch_norm_op)
-endif()
-
-if (WITH_MLU)
-  op_library(sync_batch_norm_op)
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
-op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
@@ -154,6 +139,10 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} process_group_nccl)
+endif()
 if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
 endif()
@@ -164,14 +153,7 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
-if (WITH_ASCEND)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ascend_wrapper)
-endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
-endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(unsqueeze_op DEPS reshape_op)
@@ -185,7 +167,7 @@ set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
+cc_test(assign_op_test SRCS assign_op_test.cc DEPS generated_static_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
@@ -207,18 +189,10 @@ if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
 
-if (WITH_ASCEND_CL)
-  cc_test(range_op_npu_test SRCS range_op_npu_test.cc DEPS op_registry range_op scope device_context enforce executor)
-  cc_test(expand_op_npu_test SRCS expand_op_npu_test.cc DEPS op_registry expand_op eigen_function scope device_context enforce executor compare_op)
-endif()
-
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
 cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
-if (WITH_ASCEND_CL)
-    cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
-endif()
 
 
 if(WITH_MKLDNN)
@@ -234,7 +208,7 @@ if(WITH_UNITY_BUILD)
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()
 
-if (WITH_GPU OR WITH_ASCEND_CL)
+if (WITH_GPU)
 cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
 endif()
 

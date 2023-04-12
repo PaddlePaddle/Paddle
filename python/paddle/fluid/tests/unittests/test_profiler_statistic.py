@@ -14,8 +14,8 @@
 
 import unittest
 
-import paddle.profiler as profiler
-import paddle.profiler.profiler_statistic as profiler_statistic
+from paddle import profiler
+from paddle.profiler import profiler_statistic
 
 
 class HostPythonNode:

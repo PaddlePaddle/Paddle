@@ -41,6 +41,22 @@ elseif(LINUX)
   endif()
 endif()
 
+if(CMAKE_COMPILER_IS_GNUCC)
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GCC_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
+  if(GCC_VERSION GREATER_EQUAL "12.0")
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
+         complex_header)
+    set(EIGEN_PATCH_COMMAND
+        patch -d ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/SSE/ <
+        ${complex_header})
+  endif()
+endif()
+
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
 

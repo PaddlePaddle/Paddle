@@ -34,7 +34,6 @@ from paddle.distributed.auto_parallel.utils import (
     ring_id_to_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.static import default_main_program
 from paddle.utils import unique_name
 
@@ -97,8 +96,7 @@ class DataParallelOptimizationPass(PassBase):
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
-        if _is_enable_standalone_executor():
-            self.gradient_sync_stream = "gradient_sync_stream"
+        self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
@@ -158,7 +156,7 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), "Unexpected: comm op [{}] has NOT ring id.".format(str(op))
+                ), f"Unexpected: comm op [{str(op)}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
@@ -208,12 +206,10 @@ class DataParallelOptimizationPass(PassBase):
     def _all_dp_groups_same_degree(self):
         return (
             len(
-                set(
-                    [
-                        len(group.ranks)
-                        for group in self._group_to_grad_name_map.keys()
-                    ]
-                )
+                {
+                    len(group.ranks)
+                    for group in self._group_to_grad_name_map.keys()
+                }
             )
             == 1
         )
@@ -318,8 +314,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _calc_wait_comms(self):
 
-        if _is_enable_standalone_executor():
-            return
+        return
 
         block = default_main_program().global_block()
 
@@ -430,7 +425,7 @@ class DataParallelOptimizationPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            grad_names = set([grad.name for grad in group.gradients])
+            grad_names = {grad.name for grad in group.gradients}
             return len(vars_.intersection(grad_names)) > 0
 
         for i, op in enumerate(ops):
@@ -485,9 +480,7 @@ class DataParallelOptimizationPass(PassBase):
 
             # create coalesce tensor
             group.coalesce_var = block.create_var(
-                name=unique_name.generate(
-                    self.coalesce_prefix + '_{}'.format(i)
-                ),
+                name=unique_name.generate(self.coalesce_prefix + f'_{i}'),
                 dtype=group.dtype,
                 persistable=False,
                 stop_gradient=True,
@@ -505,7 +498,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), "should found scale op but found {}".format(str(scale_op))
+                ), f"should found scale op but found {str(scale_op)}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -551,7 +544,7 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexpected: try to remove op {}".format(str(block.ops[idx]))
+                ), f"Unexpected: try to remove op {str(block.ops[idx])}"
                 block._remove_op(idx, False)
 
             # insert coalesce op
@@ -606,7 +599,7 @@ class DataParallelOptimizationPass(PassBase):
         # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
         # in future when only one executor stay.
 
-        if not _is_enable_standalone_executor() or len(grad_groups) == 0:
+        if len(grad_groups) == 0:
             return
         block = default_main_program().global_block()
 
@@ -645,7 +638,7 @@ class DataParallelOptimizationPass(PassBase):
                     )
 
         # insert dependency op
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, op_role in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
@@ -721,9 +714,7 @@ class DataParallelOptimizationPass(PassBase):
                     len(individual_grads)
                 )
             )
-            self._logger.debug(
-                "individual gradient {}".format(individual_grads)
-            )
+            self._logger.debug(f"individual gradient {individual_grads}")
 
 
 class GradientsGroup:

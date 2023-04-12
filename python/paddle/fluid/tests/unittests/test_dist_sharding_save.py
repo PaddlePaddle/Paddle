@@ -85,7 +85,7 @@ class TestDistMnistFleetSave(TestDistBase):
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_sharding_save.py", delta=1e-5)

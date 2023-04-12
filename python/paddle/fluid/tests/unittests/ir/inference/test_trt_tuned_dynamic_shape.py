@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.inference import Config, create_predictor
 
 

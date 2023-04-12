@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/quant_transpose2_dequant_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -21,15 +22,15 @@ namespace framework {
 namespace ir {
 
 void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
-    Graph *graph) const {
+    Graph *graph, const std::string &transpose_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;
-  patterns::QuantTranspose2 quant_transpose2_pattern(gpd.mutable_pattern(),
-                                                     name_scope);
-  quant_transpose2_pattern();
+  patterns::QuantTranspose quant_transpose2_pattern(gpd.mutable_pattern(),
+                                                    name_scope);
+  quant_transpose2_pattern(transpose_type);
 
   int found_patterns_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -42,10 +43,10 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     GET_IR_NODE_FROM_SUBGRAPH(quant_op, quant_op, quant_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, quant_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        transpose2_op, transpose2_op, quant_transpose2_pattern);
+        transpose_op, transpose_op, quant_transpose2_pattern);
 
-    if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
-        !(PADDLE_GET_CONST(bool, transpose2_op->Op()->GetAttr("use_mkldnn")))) {
+    if (!transpose_op->Op()->HasAttr("use_mkldnn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")))) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with quantize.";
       return;
@@ -60,8 +61,9 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
             ? PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Shift"))
             : 0;
 
-    transpose2_op->Op()->SetAttr("scale", scale);
-    transpose2_op->Op()->SetAttr("shift", shift);
+    ConvertToFusedOp(transpose_op->Op());
+    transpose_op->Op()->SetAttr("scale", scale);
+    transpose_op->Op()->SetAttr("shift", shift);
 
     bool is_negative_output =
         quant_op->Op()->HasAttr("is_negative_input")
@@ -81,11 +83,11 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     } else {
       output_dtype = "uint8";
     }
-    transpose2_op->Op()->SetAttr("output_data_type", output_dtype);
-    transpose2_op->Op()->SetInput("X",
-                                  std::vector<std::string>({quant_in->Name()}));
+    transpose_op->Op()->SetAttr("output_data_type", output_dtype);
+    transpose_op->Op()->SetInput("X",
+                                 std::vector<std::string>({quant_in->Name()}));
 
-    IR_NODE_LINK_TO(quant_in, transpose2_op);
+    IR_NODE_LINK_TO(quant_in, transpose_op);
     GraphSafeRemoveNodes(graph, {quant_op, quant_out});
     found_patterns_count++;
   };
@@ -98,15 +100,15 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
 }
 
 void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
-    Graph *graph) const {
+    Graph *graph, const std::string &transpose_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;
-  patterns::Transpose2Dequant transpose2_dequant_pattern(gpd.mutable_pattern(),
-                                                         name_scope);
-  transpose2_dequant_pattern();
+  patterns::TransposeDequant transpose2_dequant_pattern(gpd.mutable_pattern(),
+                                                        name_scope);
+  transpose2_dequant_pattern(transpose_type);
 
   int found_patterns_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -116,7 +118,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(
-        transpose2_op, transpose2_op, transpose2_dequant_pattern);
+        transpose_op, transpose_op, transpose2_dequant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         dequant_in, dequant_in, transpose2_dequant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -124,8 +126,8 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
     GET_IR_NODE_FROM_SUBGRAPH(
         dequant_out, dequant_out, transpose2_dequant_pattern);
 
-    if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
-        !(PADDLE_GET_CONST(bool, transpose2_op->Op()->GetAttr("use_mkldnn")))) {
+    if (!transpose_op->Op()->HasAttr("use_mkldnn") ||
+        !(PADDLE_GET_CONST(bool, transpose_op->Op()->GetAttr("use_mkldnn")))) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with dequantize.";
       return;
@@ -141,13 +143,14 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))
             : 0;
 
-    transpose2_op->Op()->SetAttr("scale", reorder_scale);
-    transpose2_op->Op()->SetAttr("shift", shift);
-    transpose2_op->Op()->SetAttr("output_data_type", std::string("fp32"));
-    transpose2_op->Op()->SetOutput(
+    ConvertToFusedOp(transpose_op->Op());
+    transpose_op->Op()->SetAttr("scale", reorder_scale);
+    transpose_op->Op()->SetAttr("shift", shift);
+    transpose_op->Op()->SetAttr("output_data_type", std::string("fp32"));
+    transpose_op->Op()->SetOutput(
         "Out", std::vector<std::string>({dequant_out->Name()}));
 
-    IR_NODE_LINK_TO(transpose2_op, dequant_out);
+    IR_NODE_LINK_TO(transpose_op, dequant_out);
     GraphSafeRemoveNodes(graph, {dequant_in, dequant_op});
     found_patterns_count++;
   };
@@ -161,12 +164,29 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
 }
 
 void FuseQuantTranspose2DequantOneDNNPass::ApplyImpl(Graph *graph) const {
-  FuseQuantizeTranspose2(graph);
-  FuseTranspose2Dequantize(graph);
+  FuseQuantizeTranspose2(graph, "fused_transpose");
+  FuseTranspose2Dequantize(graph, "fused_transpose");
+  FuseQuantizeTranspose2(graph, "transpose2");
+  FuseTranspose2Dequantize(graph, "transpose2");
 }
 
 FuseQuantTranspose2DequantOneDNNPass::FuseQuantTranspose2DequantOneDNNPass() {
   AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("fused_transpose"))
       .AddInput("X")
       .IsTensor()
       .End()

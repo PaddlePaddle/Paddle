@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CTCAlignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -33,7 +33,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    auto input_dims = input->dims();
+    auto input_dims = phi::vectorize<int>(input->dims());
     const T* input_data = input->data<T>();
 
     // support tensor input, no lod information

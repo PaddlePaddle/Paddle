@@ -1314,6 +1314,40 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    float,
                    phi::dtype::float16) {}
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+
+PD_REGISTER_KERNEL(batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
+}
+
+PD_REGISTER_KERNEL(batch_norm_grad_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormGradRawKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
+}
+#else
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1341,18 +1375,18 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-
+#endif
 #endif
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
 #else
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,

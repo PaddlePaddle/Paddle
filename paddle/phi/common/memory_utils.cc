@@ -77,6 +77,19 @@ void GpuMemoryUsage(size_t* available, size_t* total) {
 
 void InitDevices() { MemoryUtils::Instance().InitDevices(); }
 
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  MemoryUtils::Instance().EmplaceDeviceContexts(
+      place_to_device_context,
+      places,
+      disable_setting_default_stream_for_allocator,
+      stream_priority);
+}
+
 }  // namespace memory_utils
 
 }  // namespace phi

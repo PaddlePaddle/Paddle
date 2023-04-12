@@ -17,10 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -68,7 +67,7 @@ class TestApiWhileLoop(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
             )
@@ -113,7 +112,7 @@ class TestApiWhileLoop(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
             )
@@ -203,8 +202,8 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
-            j = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
+            j = paddle.zeros(shape=[1], dtype='int64')
             init = paddle.static.data(
                 name='init', shape=[3, 3], dtype='float32'
             )
@@ -374,9 +373,9 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
             x = paddle.static.data(name='x', shape=[10], dtype='float32')
             x.stop_gradient = False
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
-            init = layers.zeros(shape=[10], dtype='float32')
+            init = paddle.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
             mem_array.stop_gradient = False
@@ -384,7 +383,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
             paddle.tensor.array_write(d2, i, array=data_array)
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
             array_len = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=1

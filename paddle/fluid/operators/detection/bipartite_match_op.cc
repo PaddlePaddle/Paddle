@@ -64,7 +64,7 @@ bool DistPairDescend(std::tuple<int, int, T> pair1,
   return std::get<2>(pair1) > std::get<2>(pair2);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
@@ -318,6 +318,10 @@ REGISTER_OPERATOR(
     ops::BipartiteMatchOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(bipartite_match,
-                       ops::BipartiteMatchKernel<float>,
-                       ops::BipartiteMatchKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bipartite_match,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BipartiteMatchKernel,
+                          float,
+                          double) {}
