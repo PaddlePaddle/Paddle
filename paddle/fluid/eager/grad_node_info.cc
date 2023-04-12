@@ -114,6 +114,10 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
     dense_tensor = static_cast<phi::DenseTensor*>(fwd_out.impl().get());
+  } else if (phi::DistTensor::classof(fwd_out.impl().get())) {
+    dense_tensor = static_cast<phi::DistTensor*>(fwd_out.impl().get())
+                       ->local_tensor()
+                       .get();
   } else if (phi::SparseCooTensor::classof(fwd_out.impl().get())) {
     phi::SparseCooTensor* coo_tensor =
         static_cast<phi::SparseCooTensor*>(fwd_out.impl().get());

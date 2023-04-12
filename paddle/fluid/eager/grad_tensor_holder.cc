@@ -80,6 +80,13 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
       if (t.is_dense_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      } else if (t.is_dist_tensor()) {
+        // TODO(liuzhenhai): polish it, use full like
+        paddle::Tensor tmp =
+            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        auto dtensor = std::make_shared<phi::DistTensor>(
+            std::dynamic_pointer_cast<phi::DenseTensor>(tmp.impl()));
+        buffer_[slot_id][rank].set_impl(dtensor);
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::sparse::full_like(t, 1, t.dtype());
