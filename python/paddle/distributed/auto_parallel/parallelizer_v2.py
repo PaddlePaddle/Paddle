@@ -25,6 +25,7 @@ from .reshard import Resharder
 from .partitioner import Partitioner
 from .utils import set_grad_var_shape
 from .process_group import get_world_process_group
+from .random import init_auto_parallel_rng
 from ..utils.log_utils import get_logger
 
 
@@ -84,6 +85,9 @@ class Parallelizer:
             ) = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads
             )
+
+            init_auto_parallel_rng()
+
             self._logger.debug(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode
