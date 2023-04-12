@@ -425,7 +425,8 @@ void BindOpDesc(pybind11::module *m) {
                     &pd::OpDesc::SetDistAttr,
                     pybind11::return_value_policy::reference)
       .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
-      .def("outputs", &pd::OpDesc::Outputs);
+      .def("outputs", &pd::OpDesc::Outputs)
+      .def("get_attr_map", &pd::OpDesc::GetAttrMap);
 
   pybind11::class_<paddle::experimental::Scalar> scalar(*m, "Scalar", "");
   scalar.def(py::init<bool>())

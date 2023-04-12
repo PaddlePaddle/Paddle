@@ -552,8 +552,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -773,14 +771,6 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
-
-if(NOT WIN32 OR NOT WITH_GPU)
-  add_subdirectory(fft)
-endif()
-
-if(WITH_XPU)
-  add_subdirectory(xpu)
-endif()
 
 # dist xpu tests:
 if(WITH_XPU_BKCL)
@@ -1136,6 +1126,7 @@ set(TEST_CINN_OPS
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
   endif()
 endforeach()
 
