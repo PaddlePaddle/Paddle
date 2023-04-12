@@ -42,10 +42,10 @@ namespace sparse {
 #endif
 """
         self.kernels_lists = {
-            "hnn": "static std::vector<fp16_gather_gemm_scatter> fp16_nn_kernels = {",
-            "snn": "static std::vector<fp32_gather_gemm_scatter> fp32_nn_kernels = {",
-            "snt": "static std::vector<fp32_gather_gemm_scatter> fp32_nt_kernels = {",
-            "stn": "static std::vector<fp32_gather_gemm_scatter> fp32_tn_kernels = {",
+            "hnn": "static std::vector<gather_hgemm_scatter> fp16_nn_kernels = {",
+            "snn": "static std::vector<gather_sgemm_scatter> fp32_nn_kernels = {",
+            "snt": "static std::vector<gather_sgemm_scatter> fp32_nt_kernels = {",
+            "stn": "static std::vector<gather_sgemm_scatter> fp32_tn_kernels = {",
         }
 
     def __enter__(self):
