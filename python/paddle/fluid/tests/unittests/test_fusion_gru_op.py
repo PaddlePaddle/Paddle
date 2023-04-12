@@ -20,7 +20,7 @@ from eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_gru_op import gru
 
 sys.path.append("../../../../../test/legacy_test")
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION, fc
+from test_fusion_lstm_op import ACTIVATION, fc
 
 
 def fusion_gru(
