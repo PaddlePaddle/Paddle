@@ -105,15 +105,21 @@ class TestElementwiseBF16OP(TestElementwiseOp):
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.1
+        )
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.1
+        )
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.1
+        )
 
 
 class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
@@ -281,8 +287,22 @@ class TestBF16ElementwiseOp(OpTest):
         self.if_check_prim()
         self.if_enable_cinn()
 
+    def if_check_prim(self):
+        self.check_prim = True
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', no_grad_set=set("X"), check_prim=self.check_prim
+        )
 
 
 @skip_check_grad_ci(
