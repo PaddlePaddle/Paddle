@@ -1684,6 +1684,12 @@
       tensors_name : ShapeTensorList
   manual_signature : [randint]
 
+- op : randperm
+  outputs :
+    out : Out
+  extra :
+    attrs : [int seed = 0]
+
 - op : real
   backward : real_grad
   inputs :
@@ -2234,6 +2240,15 @@
         data_type : float
         support_tensor : true
   manual_signature : [uniform]
+
+- op : unique
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, indices : Indices, inverse : Index, counts : Counts}
+  get_expected_kernel_type :
+    unique : GetUniqueExpectedKernelType
+  manual_signature : [unique]
 
 - op : unique_consecutive
   inputs :

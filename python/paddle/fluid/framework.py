@@ -2916,14 +2916,35 @@ class Operator:
                 for m in proto.outputs:
                     if (m.name not in outputs) and m.dispensable:
                         continue
-                    if not ((m.name in outputs) or m.dispensable):
-                        raise ValueError(
-                            (
-                                "Incorrect setting for output(s) of "
-                                "operator \"%s\", should set: [%s]."
+
+                    # FIXME: The outputs of primitive operator currently
+                    # doesn't include intermediate output as it will be dropped
+                    # in operator codegen, such as xshape output of reshape2.
+                    # It will fixed when the operator codegen support
+                    # intermediate output.
+                    if core._is_bwd_prim_enabled():
+                        if not (
+                            (m.name in outputs)
+                            or m.dispensable
+                            or m.intermediate
+                        ):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
                             )
-                            % (type, m.name)
-                        )
+                    else:
+                        if not ((m.name in outputs) or m.dispensable):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
+                            )
+
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue
