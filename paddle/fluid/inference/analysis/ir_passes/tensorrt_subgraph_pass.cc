@@ -350,6 +350,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
@@ -467,6 +468,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
+  op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -583,6 +585,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode,
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
+                  with_dynamic_shape,
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
@@ -604,7 +607,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
-  trt_engine->SetWithDynamicShape(Get<bool>("with_dynamic_shape"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -630,7 +632,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   // If with_dynamic_shape is configured，but min_input_shape is empty,
   // create trt engine in runtime instead of in pass.
-  if (Get<bool>("with_dynamic_shape") && min_input_shape.empty()) {
+  if (with_dynamic_shape && min_input_shape.empty()) {
     return;
   }
 

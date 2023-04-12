@@ -189,6 +189,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int predictor_id_;
   int device_id_;
   bool allow_build_at_runtime_{false};
+  bool with_dynamic_shape_{false};
   std::string shape_range_info_path_;
   std::string model_opt_cache_dir_;
   bool use_static_engine_;
@@ -217,6 +218,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     predictor_id_ = Attr<int>("predictor_id");
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    with_dynamic_shape_ = Attr<bool>("with_dynamic_shape");
     use_static_engine_ = Attr<bool>("use_static_engine");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
@@ -515,6 +517,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                     precision_mode_,
                                                     calib_res->calib_.get(),
                                                     dev_place.device,
+                                                    true,
                                                     min_input_shape,
                                                     max_input_shape,
                                                     opt_input_shape,
@@ -829,6 +832,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                       precision_mode_,
                       calibrator_.get(),
                       device_id_,
+                      with_dynamic_shape_,
                       min_input_shape_,
                       max_input_shape_,
                       opt_input_shape_);

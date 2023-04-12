@@ -224,6 +224,7 @@ class TensorRTEngine {
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
+      bool with_dynamic_shape = false,
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
@@ -238,6 +239,7 @@ class TensorRTEngine {
         precision_(precision),
         calibrator_(calibrator),
         device_id_(device_id),
+        with_dynamic_shape_(with_dynamic_shape),
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
@@ -416,9 +418,6 @@ class TensorRTEngine {
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
-  void SetWithDynamicShape(bool with_dynamic_shape) {
-    with_dynamic_shape_ = with_dynamic_shape;
-  }
   void SetWithInterleaved(bool with_interleaved) {
     with_interleaved_ = with_interleaved;
   }
@@ -709,6 +708,7 @@ class TensorRTEngine {
   int max_profile_num_{1};
   int cur_profile_num_{0};
   std::unordered_map<PredictorID, int> profile_index_;
+  bool with_dynamic_shape_{false};
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
@@ -745,9 +745,6 @@ class TensorRTEngine {
 
   std::unordered_map<std::string, paddle::any> attrs_;
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
-
-  // For dynamic shape
-  bool with_dynamic_shape_{false};
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
@@ -811,6 +808,7 @@ class TRTEngineManager {
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
+      bool with_dynamic_shape = false,
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
@@ -825,6 +823,7 @@ class TRTEngineManager {
                                  precision,
                                  calibrator,
                                  device_id,
+                                 with_dynamic_shape,
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
