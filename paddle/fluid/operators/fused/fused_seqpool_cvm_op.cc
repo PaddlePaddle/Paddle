@@ -290,7 +290,13 @@ REGISTER_OPERATOR(fused_seqpool_cvm,
                   ops::FusedSeqpoolCVMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_seqpool_cvm_grad, ops::FusedSeqpoolCVMGradOp)
 
-REGISTER_OP_CPU_KERNEL(fused_seqpool_cvm,
-                       ops::FusedSeqpoolCVMOpCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(fused_seqpool_cvm_grad,
-                       ops::FusedSeqpoolCVMGradOpCPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(fused_seqpool_cvm,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedSeqpoolCVMOpCPUKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(fused_seqpool_cvm_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedSeqpoolCVMGradOpCPUKernel,
+                          float) {}

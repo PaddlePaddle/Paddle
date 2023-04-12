@@ -65,28 +65,6 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<paddle::experimental::Scalar>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUAttribute = paddle::variant<paddle::blank,
-                                     int,
-                                     float,
-                                     std::string,
-                                     std::vector<int>,
-                                     std::vector<float>,
-                                     std::vector<std::string>,
-                                     bool,
-                                     std::vector<bool>,
-                                     BlockDesc*,
-                                     int64_t,
-                                     std::vector<BlockDesc*>,
-                                     std::vector<int64_t>,
-                                     std::vector<double>,
-                                     VarDesc*,
-                                     std::vector<VarDesc*>,
-                                     std::vector<std::vector<int64_t>>>;
-
-using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
-#endif
-
 using OpCreator =
     std::function<OperatorBase*(const std::string& /*type*/,
                                 const VariableNameMap& /*inputs*/,

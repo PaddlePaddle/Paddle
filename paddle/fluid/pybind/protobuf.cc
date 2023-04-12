@@ -372,7 +372,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("_set_int32_attr", &pd::OpDesc::SetPlainAttr<int>)
       .def("_set_int64_attr", &pd::OpDesc::SetPlainAttr<int64_t>)
       .def("_set_float32_attr", &pd::OpDesc::SetPlainAttr<float>)
-      //  .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
+      .def("_set_float64_attr", &pd::OpDesc::SetPlainAttr<double>)
       .def("_set_str_attr", &pd::OpDesc::SetPlainAttr<std::string>)
 
       .def("_set_bools_attr", &pd::OpDesc::SetPlainAttr<std::vector<bool>>)
@@ -425,7 +425,8 @@ void BindOpDesc(pybind11::module *m) {
                     &pd::OpDesc::SetDistAttr,
                     pybind11::return_value_policy::reference)
       .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
-      .def("outputs", &pd::OpDesc::Outputs);
+      .def("outputs", &pd::OpDesc::Outputs)
+      .def("get_attr_map", &pd::OpDesc::GetAttrMap);
 
   pybind11::class_<paddle::experimental::Scalar> scalar(*m, "Scalar", "");
   scalar.def(py::init<bool>())

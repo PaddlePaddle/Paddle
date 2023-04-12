@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 

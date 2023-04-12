@@ -164,9 +164,8 @@ REGISTER_OPERATOR(fsp,
                   ops::FSPGradOpMaker<paddle::framework::OpDesc>,
                   ops::FSPGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
-REGISTER_OP_CPU_KERNEL(fsp,
-                       ops::FSPOpKernel<phi::CPUContext, float>,
-                       ops::FSPOpKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(fsp_grad,
-                       ops::FSPGradOpKernel<phi::CPUContext, float>,
-                       ops::FSPGradOpKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    fsp, CPU, ALL_LAYOUT, ops::FSPOpKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    fsp_grad, CPU, ALL_LAYOUT, ops::FSPGradOpKernel, float, double) {}

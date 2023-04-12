@@ -20,6 +20,7 @@
 #include <thrust/scan.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
@@ -76,6 +77,8 @@ PD_REGISTER_KERNEL(masked_select,
                    float,
                    double,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }
