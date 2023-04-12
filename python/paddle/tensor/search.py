@@ -616,8 +616,8 @@ def where(condition, x=None, y=None, name=None):
 
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
-        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
-        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of uint16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of uint16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -727,7 +727,7 @@ def index_sample(x, index):
 
     Args:
         x (Tensor): The source input tensor with 2-D shape. Supported data type is
-            int32, int64, float16, float32, float64.
+            int32, int64, uint16, float16, float32, float64.
         index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
             Data type is int32 or int64.
 
