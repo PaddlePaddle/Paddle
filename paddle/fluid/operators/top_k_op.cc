@@ -150,7 +150,11 @@ class TopkInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     ctx->SyncTypeAndDataType("X", "Out");
-    ctx->SyncTypeAndDataType("K", "Indices");
+    if (ctx->HasInput("K")) {
+      ctx->SyncTypeAndDataType("K", "Indices");
+    } else {
+      ctx->SetOutputDataTypes("Indices", framework::proto::VarType::INT32);
+    }
   }
 };
 
