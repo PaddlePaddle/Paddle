@@ -18,6 +18,7 @@ import sys
 import unittest
 
 import numpy as np
+from utils import check_output, check_output_allclose
 
 import paddle
 from paddle import static
@@ -183,13 +184,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             pd_out = custom_relu_static(
                 self.custom_op, self.device, dtype, x, False
             )
-            np.testing.assert_array_equal(
-                out,
-                pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
-            )
+            check_output(out, pd_out, "out")
 
     def test_dynamic(self):
         for dtype in self.dtypes:
@@ -200,20 +195,8 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             pd_out, pd_x_grad = custom_relu_dynamic(
                 self.custom_op, self.device, dtype, x, False
             )
-            np.testing.assert_array_equal(
-                out,
-                pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
-            )
-            np.testing.assert_array_equal(
-                x_grad,
-                pd_x_grad,
-                err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                    x_grad, pd_x_grad
-                ),
-            )
+            check_output(out, pd_out, "out")
+            check_output(x_grad, pd_x_grad, "x_grad")
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
@@ -237,14 +220,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
                 feed={feed_target_names[0]: np_data},
                 fetch_list=fetch_targets,
             )
-            np.testing.assert_allclose(
-                predict,
-                predict_infer,
-                atol=1e-2,
-                err_msg='custom op predict: {},\n custom op infer predict: {}'.format(
-                    predict, predict_infer
-                ),
-            )
+            check_output(predict, predict_infer, "predict")
         paddle.disable_static()
 
     def test_static_save_and_run_inference_predictor(self):
@@ -272,15 +248,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
         predict_infer = output_tensor.copy_to_cpu()
         predict = np.array(predict).flatten()
         predict_infer = np.array(predict_infer).flatten()
-        np.testing.assert_allclose(
-            predict,
-            predict_infer,
-            rtol=5e-5,
-            atol=1e-2,
-            err_msg="custom op predict: {},\n custom op infer predict: {}".format(
-                predict, predict_infer
-            ),
-        )
+        check_output_allclose(predict, predict_infer, "predict")
         paddle.disable_static()
 
     def test_func_double_grad_dynamic(self):
@@ -292,20 +260,8 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
                 self.custom_op, self.device, dtype, x, False
             )
-            np.testing.assert_array_equal(
-                out,
-                pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
-            )
-            np.testing.assert_array_equal(
-                dx_grad,
-                pd_dx_grad,
-                err_msg='custom op dx grad: {},\n paddle api dx grad: {}'.format(
-                    dx_grad, pd_dx_grad
-                ),
-            )
+            check_output(out, pd_out, "out")
+            check_output(dx_grad, pd_dx_grad, "dx_grad")
 
     def test_with_dataloader(self):
         paddle.disable_static()
@@ -328,14 +284,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
         for batch_id, (image, _) in enumerate(train_loader()):
             out = self.custom_op(image)
             pd_out = paddle.nn.functional.relu(image)
-            np.testing.assert_allclose(
-                out,
-                pd_out,
-                atol=1e-2,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
-            )
+            check_output_allclose(out, pd_out, "out", atol=1e-2)
 
             if batch_id == 5:
                 break
