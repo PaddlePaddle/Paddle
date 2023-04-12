@@ -1071,6 +1071,28 @@
   kernel :
     func : matrix_power_grad
 
+- backward_op : max_pool2d_with_index_grad
+  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : MaxPoolWithIndexGradInferMeta
+    no_need_buffer : x
+  kernel :
+    func : max_pool2d_with_index_grad
+    data_type : out
+
+- backward_op : max_pool3d_with_index_grad
+  forward : max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : MaxPoolWithIndexGradInferMeta
+    no_need_buffer : x
+  kernel :
+    func : max_pool3d_with_index_grad
+    data_type : out
+
 - backward_op : maxout_grad
   forward : maxout(Tensor x, int groups, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int groups, int axis)
@@ -1984,25 +2006,3 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
-
-- backward_op : max_pool2d_with_index_grad
-  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : MaxPoolWithIndexGradInferMeta
-    no_need_buffer : x
-  kernel :
-    func : max_pool2d_with_index_grad
-    data_type : out
-
-- backward_op : max_pool3d_with_index_grad
-  forward : max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : MaxPoolWithIndexGradInferMeta
-    no_need_buffer : x
-  kernel :
-    func : max_pool3d_with_index_grad
-    data_type : out

@@ -14,8 +14,9 @@
 
 import argparse
 
-import yaml
 from api_gen import ForwardAPI
+
+import yaml
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'

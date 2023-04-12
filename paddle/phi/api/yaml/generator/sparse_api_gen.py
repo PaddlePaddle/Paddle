@@ -14,9 +14,10 @@
 
 import argparse
 
-import yaml
 from api_base import PREFIX_TENSOR_NAME
 from api_gen import ForwardAPI
+
+import yaml
 
 
 class SparseAPI(ForwardAPI):

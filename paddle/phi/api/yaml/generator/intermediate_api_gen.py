@@ -14,9 +14,10 @@
 
 import argparse
 
-import yaml
 from api_gen import ForwardAPI
 from sparse_api_gen import SparseAPI
+
+import yaml
 
 
 def header_include():

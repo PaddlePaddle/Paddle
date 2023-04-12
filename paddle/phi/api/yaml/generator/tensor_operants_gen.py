@@ -14,8 +14,9 @@
 
 import argparse
 
-import yaml
 from api_gen import ForwardAPI
+
+import yaml
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",

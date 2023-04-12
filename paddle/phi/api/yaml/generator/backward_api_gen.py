@@ -15,8 +15,9 @@
 import argparse
 import re
 
-import yaml
 from api_base import BaseAPI
+
+import yaml
 
 
 class BackwardAPI(BaseAPI):

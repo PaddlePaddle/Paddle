@@ -14,9 +14,10 @@
 
 import argparse
 
-import yaml
 from backward_api_gen import BackwardAPI
 from sparse_api_gen import SparseAPI
+
+import yaml
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):

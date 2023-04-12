@@ -15,8 +15,9 @@
 import argparse
 import re
 
-import yaml
 from api_base import PREFIX_TENSOR_NAME, BaseAPI
+
+import yaml
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",
