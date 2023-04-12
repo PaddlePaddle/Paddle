@@ -214,11 +214,15 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         type="cast",
                         inputs={"X": in_var},
                         outputs={"Out": out_var},
+                        # Only forward program will be inserted cast op, but some ops
+                        # has no op_role attr, so here set it direcly. eg. resnet_unit.
                         attrs={
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
                             "op_device": op_device,
-                            "op_role": op.attr("op_role"),
+                            "op_role": int(
+                                core.op_proto_and_checker_maker.OpRole.Forward
+                            ),
                         },
                     )
                     num_cast_ops += 1
@@ -263,7 +267,7 @@ def _insert_cast_post_op(
 >>>>>>> polish code
 
     for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
-        if op.has_attr(attr_name):
+        if op.has_attr(attr_name) and is_float_dtype(op.attr(attr_name)):
             op._set_attr(attr_name, dest_dtype)
 
     return num_cast_ops
@@ -414,6 +418,15 @@ def set_var_dst_dtype(op, var_names, block, global_block, need_set_dtype):
         in_var = None
 =======
 
+def is_float_dtype(dtype):
+    return (
+        dtype == core.VarDesc.VarType.FP32
+        or dtype == core.VarDesc.VarType.FP16
+        or dtype == core.VarDesc.VarType.BF16
+        or dtype == core.VarDesc.VarType.FP64
+    )
+
+
 def set_var_dst_dtype(
     op, var_names, block, global_block, dtype, need_set_dtype
 ):
@@ -424,25 +437,15 @@ def set_var_dst_dtype(
         try:
             var = block._var_recursive(var_name)
         except ValueError as e:
-            _logger.debug(
-                "-- {}, try to get it in the global block --".format(e)
-            )
+            _logger.debug(f"-- {e}, try to get it in the global block --")
             var = global_block.var(var_name)
             if var is not None:
                 _logger.debug(
-                    "-- var {} is got in the global block --".format(var_name)
+                    f"-- var {var_name} is got in the global block --"
                 )
 
-            if var is None or var.type not in _valid_types:
-                continue
-
-        def is_float_dtype(dtype):
-            return (
-                dtype == core.VarDesc.VarType.FP32
-                or var.dtype == core.VarDesc.VarType.FP16
-                or var.dtype == core.VarDesc.VarType.BF16
-                or dtype == core.VarDesc.VarType.FP64
-            )
+        if var is None or var.type not in _valid_types:
+            continue
 
         if is_float_dtype(var.dtype):
             low_precison_var_names.add(var_name)
@@ -483,7 +486,7 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
 
     for param in all_parameters:
         if param.name not in keep_fp32_var_names:
-            _logger.debug("-- set param {} to {} --.".format(param.name, dtype))
+            _logger.debug(f"-- set param {param.name} to {dtype} --.")
             param.desc.set_dtype(dtype)
 
 
@@ -519,8 +522,8 @@ def get_promote_dtype(op, amp_dtype, block):
         # if this op has inputs
         if in_name:
             for in_var_name in op.input(in_name):
-                in_var = block.var(in_var_name)
-                if in_var.dtype == core.VarDesc.VarType.FP32:
+                in_var = block._find_var_recursive(in_var_name)
+                if in_var and in_var.dtype == core.VarDesc.VarType.FP32:
                     dst_dtype = core.VarDesc.VarType.FP32
                     break
         else:
@@ -625,12 +628,26 @@ def cast_model_to_fp16(
         level=level,
     )
 
+    def need_process(op):
+        need_process = True
+        if op.type in ["cast", "create_py_reader", "read"]:
+            need_process = False
+        else:
+            for attr_name in ['out_dtype', 'dtype']:
+                if op.has_attr(attr_name) and is_float_dtype(
+                    op.attr(attr_name)
+                ):
+                    need_process = False
+
+        return need_process
+
     # step 2: divide op into different sets according to the black/unsupported and white lists.
     for block in program.blocks:
         ops = block.ops
         for op in ops:
-            _logger.debug("-- process op: {}  --".format(op))
-            if op.type == 'create_py_reader' or op.type == 'read':
+            _logger.debug(f"-- process op: {op}  --")
+            if not need_process(op):
+                _logger.debug("---- The op does not need to be processed ----.")
                 continue
             if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
                 keep_fp32_ops.add(op)
