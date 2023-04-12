@@ -28,6 +28,7 @@ list(
   multihead_matmul_roformer_op.cc
   flash_multihead_matmul_op.cc
   cross_multihead_matmul_op.cc
+  qk_multihead_matmul_op.cc
   grid_sampler_op.cc
   shuffle_channel_op.cc
   fill_any_like_op.cc
@@ -105,6 +106,7 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  cumsum_op.cc
   temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

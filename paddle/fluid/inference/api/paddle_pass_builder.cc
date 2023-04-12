@@ -108,6 +108,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
+      "trt_qk_multihead_matmul_fuse_pass",            //
       "layernorm_shift_partition_fuse_pass",          //
       "merge_layernorm_fuse_pass",                    //
 #if !defined _WIN32
@@ -275,6 +276,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "transpose_flatten_concat_fuse_pass",  //
         "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
+        "delete_cast_op_pass",                 //
         "inplace_op_var_pass",                 // should be the last pass.
   });
 
