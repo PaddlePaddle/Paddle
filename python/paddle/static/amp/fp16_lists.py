@@ -60,20 +60,43 @@ def get_low_precision_vartype(dtype):
         )
 
 
-def _get_unsupported_list(dtype):
+def get_low_precision_dtypestr(dtype):
+    if isinstance(dtype, str):
+        return check_amp_dtype(dtype)
+    elif isinstance(dtype, core.VarDesc.VarType):
+        if dtype == core.VarDesc.VarType.FP16:
+            return "float16"
+        elif dtype == core.VarDesc.VarType.BF16:
+            return "bfloat16"
+        else:
+            raise ValueError(
+                "If enable AMP, dtype should be core.VarDesc.VarType.FP16 or core.VarDesc.VarType.BF16."
+            )
+    else:
+        raise TypeError(
+            "The type of dtype is expected to be string or core.VarDesc.VarType, but recieved {}.".format(
+                type(dtype)
+            )
+        )
+
+
+def _get_sys_unsupported_list(dtype):
     var_type = get_low_precision_vartype(dtype)
 
     # The set of ops that don't support fp16 calculation
-    # lookup_table fp16 is slower than fp32, though fp16 is supported.
     _sys_unsupported_list = []
-    # _sys_unsupported_bf16_list = []
     if core.is_compiled_with_xpu():
         _, _, _sys_unsupported_list = core.op_supported_infos('XPU', var_type)
     elif core.is_compiled_with_custom_device('npu'):
         _, _, _sys_unsupported_list = core.op_supported_infos('NPU', var_type)
     else:
         _, _, _sys_unsupported_list = core.op_supported_infos('GPU', var_type)
+    return _sys_unsupported_list
 
+
+def _get_unsupported_list(dtype):
+    # The set of ops that don't support fp16 calculation
+    _sys_unsupported_list = _get_sys_unsupported_list(dtype)
     unsupported_list = _extra_unsupported_list | _sys_unsupported_list
     return unsupported_list
 
@@ -109,7 +132,7 @@ class AutoMixedPrecisionLists:
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
-    def _update_list(self):
+    def _update_list(self, dtype="float16"):
         """
         Update black and white list according to users' custom list.
         """
@@ -117,7 +140,7 @@ class AutoMixedPrecisionLists:
             for op_name in self._custom_white_list:
                 if op_name in self._custom_black_list:
                     raise ValueError(
-                        "Custom white list overlap " "custom black list"
+                        f"The given custom_white_list overlaps custom_black_list with < {op_name} >!"
                     )
         if self._custom_white_list:
             for op_name in self._custom_white_list:
@@ -136,6 +159,11 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
+        # Remove the unsupported op_name in white_list.
+        sys_unsupported_list = _get_sys_unsupported_list(dtype)
+        for op_name in sys_unsupported_list:
+            if op_name in self.white_list:
+                self.white_list.remove(op_name)
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all

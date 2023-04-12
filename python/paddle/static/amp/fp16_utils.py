@@ -22,7 +22,7 @@ from paddle.fluid import core, framework, global_scope
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-from .fp16_lists import AutoMixedPrecisionLists
+from .fp16_lists import AutoMixedPrecisionLists, get_low_precision_dtypestr
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -438,7 +438,8 @@ def cast_model_to_fp16(
     """
 
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists()
+        dtype = get_low_precision_dtypestr(dest_type)
+        amp_lists = AutoMixedPrecisionLists(dtype)
     amp_lists.unsupported_list -= {
         "conditional_block_grad",
         "conditional_block",
