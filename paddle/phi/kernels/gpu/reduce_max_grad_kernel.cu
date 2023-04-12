@@ -16,7 +16,48 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/reduce_max_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ReduceMaxGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
+                         const IntArray& dims,
+                         bool keep_dim,
+                         bool reduce_all,
+                         DenseTensor* x_grad) {
+  dev_ctx.Alloc(x_grad, x.dtype());
+  auto dims_data = dims.GetData();
+  reduce_all = recompute_reduce_all(x, dims_data, reduce_all);
+
+  // get reduce_dim
+  int dim_size = x.dims().size();
+
+  // make equal_out
+  phi::DenseTensor* equal_out = new phi::DenseTensor();
+  equal_out->Resize(x.dims());
+  dev_ctx.template Alloc<T>(equal_out);
+
+  // compute
+  // 1. equal_out = Equal(x, y)
+  std::vector<const phi::DenseTensor*> equal_inputs = {&out, &x};
+  std::vector<phi::DenseTensor*> equal_outputs = {equal_out};
+  funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+      dev_ctx, equal_inputs, &equal_outputs, 0, funcs::EqualFunctor<T>());
+
+  // 2. dx = dout * 1
+  std::vector<const phi::DenseTensor*> mul_inputs = {&out_grad, equal_out};
+  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
+  funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+      dev_ctx, mul_inputs, &mul_outputs, 0, funcs::MultiplyFunctor<T>());
+  delete equal_out;
+}
+}  // namespace phi
 
 PD_REGISTER_KERNEL(max_grad,
                    GPU,

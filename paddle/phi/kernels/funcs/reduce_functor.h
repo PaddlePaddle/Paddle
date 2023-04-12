@@ -173,8 +173,8 @@ struct MaxOrMinGradFunctor {
                   const Dim& dim,
                   int size) {
     auto equals = (*x) == y->broadcast(dim);
-    auto ones = dx->constant(1.0f);
-    auto zeros = dx->constant(0.0f);
+    auto ones = dx->constant(1);
+    auto zeros = dx->constant(0);
     // If there are multiple minimum or maximum elements, the subgradient of
     // each is the set [0, 1], and we pass gradient to all of them here.
     dx->device(place) = dy->broadcast(dim).reshape(x->dimensions()) *
