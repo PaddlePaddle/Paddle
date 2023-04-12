@@ -1873,6 +1873,8 @@ PDNode *patterns::FusedLinear::operator()(
 // Used for ColumnParallelLinear Grad.
 PDNode *patterns::FusedLinearGrad::operator()(
     paddle::framework::ir::PDNode *out_grad) {
+  std::unordered_set<std::string> allreduce_sum_ops{"c_allreduce_sum",
+                                                    "mp_allreduce_sum"};
   auto *ele_add_grad_op = pattern->NewNode(ele_add_grad_repr())
                               ->assert_is_op("elementwise_add_grad");
   auto *ele_add_x_var = pattern->NewNode(ele_add_x_repr())
@@ -1897,24 +1899,24 @@ PDNode *patterns::FusedLinearGrad::operator()(
   auto *matmul_x_grad =
       pattern->NewNode(matmul_x_grad_repr())
           ->assert_is_op_output("matmul_v2_grad", GradVarName("X"))
-          ->assert_is_op_input("c_allreduce_sum", "X");
+          ->assert_is_ops_input(allreduce_sum_ops, "X");
   auto *matmul_w_grad =
       pattern->NewNode(matmul_w_grad_repr())
           ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
 
-  auto *c_allreduce_sum_op =
-      pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
-  auto *c_allreduce_sum_out =
-      pattern->NewNode(c_allreduce_sum_out_repr())
-          ->assert_is_op_output("c_allreduce_sum", "Out");
+  auto *allreduce_sum_op =
+      pattern->NewNode(allreduce_sum_repr())->assert_is_ops(allreduce_sum_ops);
+  auto *allreduce_sum_out =
+      pattern->NewNode(allreduce_sum_out_repr())
+          ->assert_is_ops_output(allreduce_sum_ops, "Out");
 
   ele_add_grad_op->LinksFrom({out_grad, ele_add_x_var, ele_add_bias_var})
       .LinksTo({ele_add_x_grad, ele_add_bias_grad});
   matmul_grad_op->LinksFrom({ele_add_x_grad, matmul_x_var, matmul_w_var})
       .LinksTo({matmul_x_grad, matmul_w_grad});
-  c_allreduce_sum_op->LinksFrom({matmul_x_grad}).LinksTo({c_allreduce_sum_out});
+  allreduce_sum_op->LinksFrom({matmul_x_grad}).LinksTo({allreduce_sum_out});
 
-  return c_allreduce_sum_out;
+  return allreduce_sum_out;
 }
 
 // Used for RowParallelLinear.
@@ -1922,6 +1924,8 @@ PDNode *patterns::FusedLinearGrad::operator()(
 // meanwile scale bias with 1 / mp_degree.
 PDNode *patterns::FusedLinearMpScale::operator()(
     paddle::framework::ir::PDNode *x_var) {
+  std::unordered_set<std::string> allreduce_sum_ops{"c_allreduce_sum",
+                                                    "mp_allreduce_sum"};
   x_var->assert_is_op_input("matmul_v2", "X");
   auto *matmul = pattern->NewNode(matmul_repr())->assert_is_op("matmul_v2");
   auto *matmul_w_var =
@@ -1929,13 +1933,14 @@ PDNode *patterns::FusedLinearMpScale::operator()(
   auto *matmul_out_var = pattern->NewNode(matmul_out_repr())
                              ->assert_is_op_output("matmul_v2", "Out")
                              ->AsIntermediate()
-                             ->assert_is_op_input("c_allreduce_sum", "X");
+                             ->assert_is_ops_input(allreduce_sum_ops, "X");
 
-  auto *c_allreduce_sum_op =
-      pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
-  auto *c_allreduce_sum_out_var =
-      pattern->NewNode(c_allreduce_sum_out_repr())
-          ->assert_is_op_output("c_allreduce_sum", "Out");
+  auto *allreduce_sum_op =
+      pattern->NewNode(allreduce_sum_repr())->assert_is_ops(allreduce_sum_ops);
+  auto *allreduce_sum_out_var =
+      pattern->NewNode(allreduce_sum_out_repr())
+          ->assert_is_ops_output(allreduce_sum_ops, "Out")
+          ->assert_is_op_input("elementwise_add", "X");
 
   auto *ele_add_op =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
@@ -1945,9 +1950,9 @@ PDNode *patterns::FusedLinearMpScale::operator()(
                               ->assert_is_op_output("elementwise_add", "Out");
 
   matmul->LinksFrom({x_var, matmul_w_var}).LinksTo({matmul_out_var});
-  c_allreduce_sum_op->LinksFrom({matmul_out_var})
-      .LinksTo({c_allreduce_sum_out_var});
-  ele_add_op->LinksFrom({c_allreduce_sum_out_var, ele_add_bias_var})
+  allreduce_sum_op->LinksFrom({matmul_out_var})
+      .LinksTo({allreduce_sum_out_var});
+  ele_add_op->LinksFrom({allreduce_sum_out_var, ele_add_bias_var})
       .LinksTo({ele_add_out_var});
 
   return ele_add_out_var;

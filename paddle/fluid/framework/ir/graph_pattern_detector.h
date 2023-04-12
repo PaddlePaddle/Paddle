@@ -1059,11 +1059,11 @@ struct FusedLinear : public PatternBase {
 
 // The following patterns are used to fuse linear_grad of ColumnParallelLinear.
 // formula: the backward of F.linear(x)
-// op: elementwise_add_grad + matmul_v2_grad + c_allreduce_sum
-// named nodes: ele_add_grad, matmul_grad, c_allreduce_sum
+// op: elementwise_add_grad + matmul_v2_grad + allreduce_sum
+// named nodes: ele_add_grad, matmul_grad, allreduce_sum
 //              ele_add_x, ele_add_bias, ele_add_x_grad, ele_add_bias_grad
 //              matmul_x, matmul_w, matmul_x_grad, matmul_w_grad
-//              c_allreduce_sum_out
+//              allreduce_sum_out
 struct FusedLinearGrad : public PatternBase {
   FusedLinearGrad(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "mp_fused_linear_grad") {}
@@ -1073,7 +1073,7 @@ struct FusedLinearGrad : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(ele_add_grad);
   PATTERN_DECL_NODE(matmul_grad);
-  PATTERN_DECL_NODE(c_allreduce_sum);
+  PATTERN_DECL_NODE(allreduce_sum);
   // declare variable node's name
   PATTERN_DECL_NODE(ele_add_x);
   PATTERN_DECL_NODE(ele_add_bias);
@@ -1083,15 +1083,15 @@ struct FusedLinearGrad : public PatternBase {
   PATTERN_DECL_NODE(matmul_w);
   PATTERN_DECL_NODE(matmul_x_grad);
   PATTERN_DECL_NODE(matmul_w_grad);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(allreduce_sum_out);
 };
 
 // The following patterns are used to fuse linear of RowParallelLinear.
 // Meanwhile, it adds MpScale on bias of linear.
 // formula: F.linear(x)
-// op: matmul_v2 + c_allreduce_sum + elementwise_add
-// named nodes: matmul, c_allreduce_sum, elementwise_add
-//              matmul_w, matmul_out, c_allreduce_sum_out
+// op: matmul_v2 + allreduce_sum + elementwise_add
+// named nodes: matmul, allreduce_sum, elementwise_add
+//              matmul_w, matmul_out, allreduce_sum_out
 //              ele_bias, elewise_add_out
 struct FusedLinearMpScale : public PatternBase {
   FusedLinearMpScale(PDPattern* pattern, const std::string& name_scope)
@@ -1102,11 +1102,11 @@ struct FusedLinearMpScale : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(matmul);
   PATTERN_DECL_NODE(ele_add);
-  PATTERN_DECL_NODE(c_allreduce_sum);
+  PATTERN_DECL_NODE(allreduce_sum);
   // declare variable node's name
   PATTERN_DECL_NODE(matmul_w);
   PATTERN_DECL_NODE(matmul_out);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(allreduce_sum_out);
   PATTERN_DECL_NODE(ele_add_out);
   PATTERN_DECL_NODE(ele_add_bias);
 };

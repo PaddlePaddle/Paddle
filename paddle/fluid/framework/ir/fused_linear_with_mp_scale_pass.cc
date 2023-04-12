@@ -89,7 +89,7 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearFwd(ir::Graph *graph) const {
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     std::string activation = "none";
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
-    fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("X", {c_identity_out->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Bias", {ele_add_bias->Name()});
     fused_gemm_epilogue_op_desc.SetOutput("Out", {ele_add_out->Name()});
@@ -100,12 +100,12 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearFwd(ir::Graph *graph) const {
     fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
-    IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
+    IR_NODE_LINK_TO(c_identity_out, gemm_epilogue_node);
     IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);
     IR_NODE_LINK_TO(ele_add_bias, gemm_epilogue_node);
     IR_NODE_LINK_TO(gemm_epilogue_node, ele_add_out);
 
-    GraphSafeRemoveNodes(g, {matmul_op, ele_add_op, c_identity_op});
+    GraphSafeRemoveNodes(g, {matmul_op, ele_add_op});
     found_fused_linear_count++;
   };
 
@@ -158,9 +158,9 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearBwd(ir::Graph *graph) const {
         matmul_w_grad, matmul_w_grad, fused_linear_grad_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
-        c_allreduce_sum_op, c_allreduce_sum, fused_linear_grad_pattern);
+        allreduce_sum_op, allreduce_sum, fused_linear_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        c_allreduce_sum_out, c_allreduce_sum_out, fused_linear_grad_pattern);
+        allreduce_sum_out, allreduce_sum_out, fused_linear_grad_pattern);
 
     std::vector<int64_t> matmul_grad_x_shape = matmul_x->Var()->GetShape();
     std::vector<int64_t> matmul_grad_w_shape = matmul_w->Var()->GetShape();
@@ -256,9 +256,9 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearWithMpScaleFwd(
         matmul_out, matmul_out, linear_with_mp_scale_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
-        c_allreduce_sum_op, c_allreduce_sum, linear_with_mp_scale_pattern);
+        allreduce_sum_op, allreduce_sum, linear_with_mp_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        c_allreduce_sum_out, c_allreduce_sum_out, linear_with_mp_scale_pattern);
+        allreduce_sum_out, allreduce_sum_out, linear_with_mp_scale_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
         ele_add_op, ele_add, linear_with_mp_scale_pattern);
@@ -295,7 +295,7 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearWithMpScaleFwd(
     // ring_id to nranks map.
     auto nranks_map = this->Get<std::map<int, int>>("nranks_map");
     int ring_id =
-        PADDLE_GET_CONST(int, c_allreduce_sum_op->Op()->GetAttr("ring_id"));
+        PADDLE_GET_CONST(int, allreduce_sum_op->Op()->GetAttr("ring_id"));
     float mp_degree = 1.0f / static_cast<float>(nranks_map[ring_id]);
     std::cout << "ring_id: " << ring_id << ", mp_degree: " << mp_degree
               << std::endl;
@@ -308,7 +308,7 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearWithMpScaleFwd(
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Bias", {scaled_bias->Name()});
-    fused_gemm_epilogue_op_desc.SetOutput("Out", {c_allreduce_sum_out->Name()});
+    fused_gemm_epilogue_op_desc.SetOutput("Out", {allreduce_sum_out->Name()});
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
@@ -316,13 +316,11 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearWithMpScaleFwd(
     fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
     auto *gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
-    OpDesc new_c_allreduce_sum_op_desc(c_allreduce_sum_op->Op()->Block());
+    OpDesc new_c_allreduce_sum_op_desc(allreduce_sum_op->Op()->Block());
     new_c_allreduce_sum_op_desc.SetType("c_allreduce_sum");
-    new_c_allreduce_sum_op_desc.SetInput("X", {c_allreduce_sum_out->Name()});
+    new_c_allreduce_sum_op_desc.SetInput("X", {allreduce_sum_out->Name()});
     new_c_allreduce_sum_op_desc.SetOutput("Out", {ele_add_out->Name()});
-    new_c_allreduce_sum_op_desc.SetAttr(
-        "use_model_parallel",
-        c_allreduce_sum_op->Op()->GetAttr("use_model_parallel"));
+    new_c_allreduce_sum_op_desc.SetAttr("use_model_parallel", true);
     auto *new_c_allreduce_sum_op =
         g->CreateOpNode(&new_c_allreduce_sum_op_desc);
 
@@ -332,12 +330,12 @@ ir::Graph *FuseLinearWithMPScalePass::FusedLinearWithMpScaleFwd(
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
     IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);
     IR_NODE_LINK_TO(scaled_bias, gemm_epilogue_node);
-    IR_NODE_LINK_TO(gemm_epilogue_node, c_allreduce_sum_out);
+    IR_NODE_LINK_TO(gemm_epilogue_node, allreduce_sum_out);
 
-    IR_NODE_LINK_TO(c_allreduce_sum_out, new_c_allreduce_sum_op);
+    IR_NODE_LINK_TO(allreduce_sum_out, new_c_allreduce_sum_op);
     IR_NODE_LINK_TO(new_c_allreduce_sum_op, ele_add_out);
 
-    GraphSafeRemoveNodes(g, {matmul_op, ele_add_op, c_allreduce_sum_op});
+    GraphSafeRemoveNodes(g, {matmul_op, ele_add_op, allreduce_sum_op});
     found_linear_with_mp_scale_count++;
   };
 
