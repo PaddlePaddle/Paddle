@@ -2220,7 +2220,7 @@
   inputs :
     {x : X, img_size : ImgSize}
   outputs :
-    {boxes : Boxes, scores : Scoes}
+    {boxes : Boxes, scores : Scores}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
