@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -988,7 +986,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
     auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
     auto *ctx = static_cast<GPUContext *>(
-        paddle::platform::DeviceContextPool::Instance().Get(gplace));
+        phi::DeviceContextPool::Instance().Get(gplace));
     phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1012,8 +1010,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   dim3 grid_size = dim3(n);
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *ctx = static_cast<GPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(gplace));
+  auto *ctx =
+      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
   ElemwiseGradBroadcast2CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1544,19 +1542,19 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int *out_dims_array_gpu =
       reinterpret_cast<int *>(y_strides_array_gpu + max_dim);
 
-  paddle::memory::Copy(gplace,
-                       x_strides_array_gpu,
-                       cplace,
-                       x_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(gplace,
-                       y_strides_array_gpu,
-                       cplace,
-                       y_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(
+  memory_utils::Copy(gplace,
+                     x_strides_array_gpu,
+                     cplace,
+                     x_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(gplace,
+                     y_strides_array_gpu,
+                     cplace,
+                     y_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(
       gplace, out_dims_array_gpu, cplace, out_dims_array, bytes, ctx.stream());
 
   const int out_size = std::accumulate(
@@ -1573,18 +1571,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *x_dims_order_gpu =
         reinterpret_cast<int *>(x_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         x_strides_order_gpu,
-                         cplace,
-                         x_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         x_dims_order_gpu,
-                         cplace,
-                         x_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_strides_order_gpu,
+                       cplace,
+                       x_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_dims_order_gpu,
+                       cplace,
+                       x_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DX_OP, Tout>
         <<<x_blocks, x_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,
@@ -1612,18 +1610,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *y_dims_order_gpu =
         reinterpret_cast<int *>(y_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         y_strides_order_gpu,
-                         cplace,
-                         y_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         y_dims_order_gpu,
-                         cplace,
-                         y_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_strides_order_gpu,
+                       cplace,
+                       y_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_dims_order_gpu,
+                       cplace,
+                       y_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DY_OP, Tout>
         <<<y_blocks, y_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,

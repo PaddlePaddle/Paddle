@@ -142,7 +142,7 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
         (reserve_space == NULL)
             ? (reinterpret_cast<const XPUType*>(NULL))
             : (reinterpret_cast<const XPUType*>(reserve_space->data<T>()));
-    XPUType* d_act_input_ptr;
+    XPUType* d_act_input_ptr = NULL;
     if (activation != "none") {
       d_act_input_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(dout->numel());
       dout_fc_ptr = d_act_input_ptr;

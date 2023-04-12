@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -122,14 +122,17 @@ void FusionRepeatedFCReluOpMaker::Make() {
 }
 
 template <typename T>
-static void fc_relu(
-    const T* x, const T* w, const T* b, T* y, const jit::matmul_attr_t& attr) {
-  auto matmul =
-      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
-          attr);
-  auto addbias_relu =
-      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
-          attr.n);
+static void fc_relu(const T* x,
+                    const T* w,
+                    const T* b,
+                    T* y,
+                    const phi::jit::matmul_attr_t& attr) {
+  auto matmul = phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>,
+                                      platform::CPUPlace>::Cache()
+                    .At(attr);
+  auto addbias_relu = phi::jit::KernelFuncs<phi::jit::VAddReluTuple<T>,
+                                            platform::CPUPlace>::Cache()
+                          .At(attr.n);
   matmul(x, w, y, &attr);
   T* dst = y;
   for (int i = 0; i < attr.m; ++i) {
@@ -138,7 +141,7 @@ static void fc_relu(
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -150,9 +153,9 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 
-    auto i_dims = in->dims();
+    auto i_dims = phi::vectorize<int>(in->dims());
     const auto& w_dims = weights[0]->dims();
-    jit::matmul_attr_t attr;
+    phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
     attr.k = w_dims[0];
@@ -198,6 +201,9 @@ REGISTER_OPERATOR(fusion_repeated_fc_relu,
                   ops::FusionRepeatedFCReluOp,
                   ops::FusionRepeatedFCReluOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_repeated_fc_relu,
-                       ops::FusionRepeatedFCReluKernel<float>,
-                       ops::FusionRepeatedFCReluKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_repeated_fc_relu,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionRepeatedFCReluKernel,
+                          float,
+                          double) {}

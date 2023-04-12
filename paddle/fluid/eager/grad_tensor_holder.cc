@@ -29,11 +29,10 @@ void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
       paddle::experimental::zeros_like(buffer_[slot_id][rank]);
 }
 
-void GradTensorHolder::CopyValueFromTensor(
-    size_t slot_id,
-    size_t rank,
-    const paddle::experimental::Tensor& t,
-    bool fill_one) {
+void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
+                                           size_t rank,
+                                           const paddle::Tensor& t,
+                                           bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -56,7 +55,7 @@ void GradTensorHolder::CopyValueFromTensor(
           buffer_[slot_id].size(),
           rank));
   if (!fill_one) {
-    paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
+    paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
       buffer_tensor.copy_(t, t.place(), false);
@@ -97,7 +96,7 @@ void GradTensorHolder::CopyValueFromTensor(
 
 void GradTensorHolder::add(size_t slot_id,
                            size_t rank,
-                           const paddle::experimental::Tensor& t,
+                           const paddle::Tensor& t,
                            bool create_graph) {
   if (!t.initialized()) {
     VLOG(3) << "No need to do accumulate for uninitialized t.";
@@ -122,7 +121,7 @@ void GradTensorHolder::add(size_t slot_id,
           buffer_[slot_id].size(),
           rank));
 
-  paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
+  paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
   // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
   // remove framework::Variable
   // related code later.
@@ -150,35 +149,33 @@ void GradTensorHolder::add(size_t slot_id,
         if (create_graph || t.is_custom_device()) {
           buffer_tensor = add_ad_func(t, buffer_tensor);
         } else {
-          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
-              t, &buffer_tensor);
+          paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
         // add_dygraph_function once it's supported
-        paddle::experimental::Tensor new_buffer(
-            std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+        paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
+                                  "tmp_accumulator");
         paddle::imperative::SelectedRowsAddTensor(
             buffer_tensor, t, &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
       }
     } else if (t.is_sparse_coo_tensor()) {
       auto t_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
-      paddle::experimental::Tensor t_values(
+      paddle::Tensor t_values(
           std::make_shared<phi::DenseTensor>(t_sparse->non_zero_elements()));
       // In fact, the gradient of SparseTensor is still a SparseTensor
       if (buffer_tensor.is_sparse_coo_tensor()) {
         auto buffer_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(
             buffer_tensor.impl());
-        paddle::experimental::Tensor buffer_values(
-            std::make_shared<phi::DenseTensor>(
-                buffer_sparse->non_zero_elements()));
+        paddle::Tensor buffer_values(std::make_shared<phi::DenseTensor>(
+            buffer_sparse->non_zero_elements()));
         if (create_graph || t.is_custom_device()) {
           buffer_values = add_ad_func(t_values, buffer_values);
         } else {
-          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
-              t_values, &buffer_values);
+          paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
+                                                        &buffer_values);
         }
       }
     } else {
@@ -189,8 +186,8 @@ void GradTensorHolder::add(size_t slot_id,
         paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
       } else {
         buffer_tensor =
-            std::move(*paddle::imperative::SelectedRowsMerge<
-                      paddle::experimental::Tensor>(t, buffer_tensor));
+            std::move(*paddle::imperative::SelectedRowsMerge<paddle::Tensor>(
+                t, buffer_tensor));
       }
     }
   }

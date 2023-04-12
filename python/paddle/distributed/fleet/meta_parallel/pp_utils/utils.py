@@ -21,6 +21,7 @@ FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
     paddle.float32: "float32",
     paddle.float64: "float64",
+    paddle.bfloat16: "bfloat16",
 }
 
 PADDLE_TO_NUMBER = {
@@ -29,6 +30,7 @@ PADDLE_TO_NUMBER = {
     paddle.float64: 2,
     paddle.int32: 3,
     paddle.int64: 4,
+    paddle.bfloat16: 5,
 }
 
 NUMBER_TO_DTYPE = {
@@ -37,6 +39,7 @@ NUMBER_TO_DTYPE = {
     2: "float64",
     3: "int32",
     4: "int64",
+    5: "bfloat16",
 }
 
 
@@ -76,7 +79,7 @@ def get_tensor_bytes(tensor):
     elif tensor.dtype == paddle.int8:
         elem_size = 1
     else:
-        raise ValueError("unknown data type: {}".format(tensor.dtype))
+        raise ValueError(f"unknown data type: {tensor.dtype}")
     return tensor.numel() * elem_size
 
 

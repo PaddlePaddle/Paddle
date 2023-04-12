@@ -20,8 +20,7 @@ import numpy as np
 from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
 
@@ -29,7 +28,7 @@ if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
 
-class SimpleConv(fluid.dygraph.Layer):
+class SimpleConv(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -89,8 +88,8 @@ class TestAutoCast(unittest.TestCase):
     def custom_op_list(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()
-            base_white_list = paddle.amp.WHITE_LIST
-            base_black_list = paddle.amp.BLACK_LIST
+            base_white_list = paddle.amp.FP16_WHITE_LIST
+            base_black_list = paddle.amp.FP16_BLACK_LIST
             with paddle.amp.amp_guard(
                 custom_white_list=["log"], custom_black_list=["conv2d"]
             ):

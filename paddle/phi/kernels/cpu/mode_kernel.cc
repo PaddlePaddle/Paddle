@@ -29,6 +29,12 @@ void ModeKernel(const Context& dev_ctx,
                 DenseTensor* out,
                 DenseTensor* indices) {
   const auto& in_dims = x.dims();
+  for (int i = 0; i < in_dims.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      in_dims[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
   auto out_dims = out->dims();
   // axis < 0, cacluate the real axis
   if (axis < 0) axis += in_dims.size();
@@ -126,4 +132,6 @@ void ModeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    mode, CPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {}
+    mode, CPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

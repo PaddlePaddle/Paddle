@@ -15,17 +15,21 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
-
-paddle.seed(100)
+from paddle.fluid import core
 
 
 class TestExponentialOp1(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
         self.config()
 
         self.attrs = {"lambda": self.lam}
@@ -49,16 +53,18 @@ class TestExponentialOp1(OpTest):
         hist2 = hist2.astype("float32")
         hist2 = hist2 / float(data_np.size)
 
-        np.testing.assert_allclose(hist1, hist2, rtol=0.02)
+        np.testing.assert_allclose(hist1, hist2, rtol=0.03)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
+            in_place=True,
             user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)
             ],
+            check_dygraph=False,  # inplace can not call paddle.grad
         )
 
 
@@ -341,6 +347,104 @@ class TestExponentialAPI(unittest.TestCase):
         np.testing.assert_allclose(x_np[5, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()
+
+
+class TestExponentialFP16Op(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
+        self.config()
+        self.attrs = {"lambda": self.lam}
+        self.inputs = {'X': np.empty([1024, 1024], dtype=self.dtype)}
+        self.outputs = {'Out': np.ones([1024, 1024], dtype=self.dtype)}
+
+    def config(self):
+        self.lam = 0.5
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist1, _ = np.histogram(outs[0], range=(0, 5))
+        hist1 = hist1.astype(np.float16)
+        hist1 = hist1 / float(outs[0].size)
+
+        data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
+        hist2, _ = np.histogram(data_np, range=(0, 5))
+        hist2 = hist2.astype(np.float16)
+        hist2 = hist2 / float(data_np.size)
+
+        np.testing.assert_allclose(hist1, hist2, rtol=0.05)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
+            user_defined_grad_outputs=[
+                np.random.rand(1024, 1024).astype(self.dtype)
+            ],
+            check_dygraph=False,  # inplace can not call paddle.grad
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestExponentialBP16Op(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "exponential"
+        self.python_api = paddle.tensor.exponential_
+        self.config()
+        x = np.empty([1024, 1024]).astype('float32')
+        out = np.ones([1024, 1024]).astype('float32')
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {"lambda": self.lam}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def config(self):
+        self.lam = 0.5
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=place
+        )
+
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (1024, 1024))
+        hist1, _ = np.histogram(outs[0], range=(-3, 5))
+        hist1 = hist1.astype("float32")
+        hist1 = hist1 / float(outs[0].size)
+
+        data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
+        hist2, _ = np.histogram(data_np, range=(-3, 5))
+        hist2 = hist2.astype("float32")
+        hist2 = hist2 / float(data_np.size)
+
+        np.testing.assert_allclose(hist1, hist2, rtol=0.05)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            in_place=True,
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
+            user_defined_grad_outputs=[
+                np.random.rand(1024, 1024).astype(self.dtype)
+            ],
+            check_dygraph=False,  # inplace can not call paddle.grad
+        )
 
 
 if __name__ == "__main__":

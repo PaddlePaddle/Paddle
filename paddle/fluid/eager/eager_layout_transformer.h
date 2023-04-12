@@ -19,8 +19,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 namespace egr {
-inline paddle::experimental::Tensor EagerTraceTransposeOp(
-    const phi::DataLayout layout, const paddle::experimental::Tensor& in) {
+inline paddle::Tensor EagerTraceTransposeOp(const phi::DataLayout layout,
+                                            const paddle::Tensor& in) {
   VLOG(4) << "AutoTune Transpose from " << in.layout() << " to " << layout
           << ", tensor's dim size is " << in.shape().size();
   if (in.shape().size() != 4) {
@@ -47,7 +47,7 @@ inline phi::DataLayout DefaultLayout() {
   return paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
 }
 
-inline void UpdateLayout(paddle::experimental::Tensor* out_tensor,
+inline void UpdateLayout(paddle::Tensor* out_tensor,
                          const phi::DataLayout layout) {
   if (out_tensor->layout() != layout) {
     VLOG(4) << "Update out_tensor's layout from " << out_tensor->layout()
@@ -58,7 +58,7 @@ inline void UpdateLayout(paddle::experimental::Tensor* out_tensor,
   }
 }
 
-inline void DealWithShapeOp(paddle::experimental::Tensor* out_tensor,
+inline void DealWithShapeOp(paddle::Tensor* out_tensor,
                             const phi::DataLayout layout,
                             int dim_size) {
   auto des_layout = DesiredLayout();
@@ -114,7 +114,7 @@ class EagerLayoutTransformer {
 
   explicit EagerLayoutTransformer(
       const std::string& op_name,
-      const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+      const paddle::small_vector<std::vector<paddle::Tensor>,
                                  kSlotSmallVectorSize>& tensors_vector,
       const Layout final_layout = Layout::UNDEFINED)
       : op_name_(op_name), final_layout_(final_layout), dim_size_(1) {
@@ -123,8 +123,8 @@ class EagerLayoutTransformer {
 
   virtual ~EagerLayoutTransformer() {}
 
-  virtual paddle::experimental::Tensor TransInTensor(
-      const std::string& in_name, const paddle::experimental::Tensor& in) {
+  virtual paddle::Tensor TransInTensor(const std::string& in_name,
+                                       const paddle::Tensor& in) {
     // update in shape size
     dim_size_ = in.shape().size();
     bool need_trans =
@@ -140,27 +140,23 @@ class EagerLayoutTransformer {
     return in;
   }
 
-  virtual paddle::optional<paddle::experimental::Tensor> TransInTensor(
-      const std::string& in_name,
-      const paddle::optional<paddle::experimental::Tensor>& in) {
+  virtual paddle::optional<paddle::Tensor> TransInTensor(
+      const std::string& in_name, const paddle::optional<paddle::Tensor>& in) {
     return in ? TransInTensor(in_name, *in) : in;
   }
 
-  virtual std::vector<paddle::experimental::Tensor> TransInTensors(
-      const std::string& in_name,
-      const std::vector<paddle::experimental::Tensor>& in) {
+  virtual std::vector<paddle::Tensor> TransInTensors(
+      const std::string& in_name, const std::vector<paddle::Tensor>& in) {
     return in;
   }
 
-  virtual paddle::optional<std::vector<paddle::experimental::Tensor>>
-  TransInTensors(
+  virtual paddle::optional<std::vector<paddle::Tensor>> TransInTensors(
       const std::string& in_name,
-      const paddle::optional<std::vector<paddle::experimental::Tensor>>& in) {
+      const paddle::optional<std::vector<paddle::Tensor>>& in) {
     return (in ? TransInTensors(in_name, *in) : in);
   }
 
-  virtual void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor>* out_tensor) {
+  virtual void SetOutTensorLayout(std::vector<paddle::Tensor>* out_tensor) {
     bool update_layout = !(final_layout_ == Layout::UNDEFINED);
     if (update_layout) {
       for (size_t i = 0; i < out_tensor->size(); i++) {
@@ -172,16 +168,16 @@ class EagerLayoutTransformer {
   }
 
   virtual void SetOutTensorLayout(
-      paddle::optional<paddle::experimental::Tensor>* out_tensor) {
+      paddle::optional<paddle::Tensor>* out_tensor) {
     VLOG(4) << "AutoTune out tensor is optional";
   }
 
   virtual void SetOutTensorLayout(
-      paddle::optional<std::vector<paddle::experimental::Tensor>>* out_tensor) {
+      paddle::optional<std::vector<paddle::Tensor>>* out_tensor) {
     VLOG(4) << "AutoTune out tensor is optional";
   }
 
-  virtual void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  virtual void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     if (op_name_ == "shape") {
       return DealWithShapeOp(out_tensor, final_layout_, dim_size_);
     }
@@ -206,8 +202,8 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     *layout = phi::DataLayoutToString(DesiredLayout());
   }
 
-  paddle::experimental::Tensor TransInTensor(
-      const std::string& in_name, const paddle::experimental::Tensor& in) {
+  paddle::Tensor TransInTensor(const std::string& in_name,
+                               const paddle::Tensor& in) {
     if (heavily_input_.count(in_name) != 0 && in.layout() != desired_layout_) {
       auto out_tensor = EagerTraceTransposeOp(desired_layout_, in);
       return out_tensor;
@@ -215,19 +211,17 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     return in;
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, desired_layout_);
   }
 
-  void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor*>* out_tensor) {
+  void SetOutTensorLayout(std::vector<paddle::Tensor*>* out_tensor) {
     for (size_t i = 0; i < out_tensor->size(); i++) {
       SetOutTensorLayout((*out_tensor)[i]);
     }
   }
 
-  void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor>* out_tensor) {
+  void SetOutTensorLayout(std::vector<paddle::Tensor>* out_tensor) {
     for (size_t i = 0; i < out_tensor->size(); i++) {
       if ((*out_tensor)[i].layout() != desired_layout_) {
         VLOG(4) << "Update out_tensor's layout from "
@@ -256,8 +250,8 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
   }
 
   // transpose from desired to default
-  paddle::experimental::Tensor TransInTensor(
-      const std::string& in_name, const paddle::experimental::Tensor& in) {
+  paddle::Tensor TransInTensor(const std::string& in_name,
+                               const paddle::Tensor& in) {
     std::string input_layout = phi::DataLayoutToString(in.layout());
     auto default_layout = DefaultLayout();
     if (final_layout_ == input_layout && in.shape().size() == 4) {
@@ -270,10 +264,9 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     return in;
   }
 
-  virtual std::vector<paddle::experimental::Tensor> TransInTensors(
-      const std::string& in_name,
-      const std::vector<paddle::experimental::Tensor>& in) {
-    std::vector<paddle::experimental::Tensor> result;
+  virtual std::vector<paddle::Tensor> TransInTensors(
+      const std::string& in_name, const std::vector<paddle::Tensor>& in) {
+    std::vector<paddle::Tensor> result;
     auto desired_layout = DesiredLayout();
     auto default_layout = DefaultLayout();
     for (size_t i = 0; i < in.size(); i++) {
@@ -292,19 +285,17 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     return result;
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, DefaultLayout());
   }
 
-  void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor*>* out_tensor) {
+  void SetOutTensorLayout(std::vector<paddle::Tensor*>* out_tensor) {
     for (size_t i = 0; i < out_tensor->size(); i++) {
       SetOutTensorLayout((*out_tensor)[i]);
     }
   }
 
-  void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor>* out_tensor) {
+  void SetOutTensorLayout(std::vector<paddle::Tensor>* out_tensor) {
     auto default_layout = DefaultLayout();
     for (size_t i = 0; i < out_tensor->size(); i++) {
       phi::DenseTensorUtils::GetMutableMeta(
@@ -336,12 +327,12 @@ class EagerTransposeOpTransformer
     (*axis)[3] = perm[(*axis)[3]];
   }
 
-  paddle::experimental::Tensor TransInTensor(
-      const std::string& in_name, const paddle::experimental::Tensor& in) {
+  paddle::Tensor TransInTensor(const std::string& in_name,
+                               const paddle::Tensor& in) {
     return in;
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, DefaultLayout());
   }
 };
@@ -362,7 +353,7 @@ class EagerArgmaxOpTransformer
     (*axis) = static_cast<paddle::experimental::Scalar>(perm[axes]);
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, DesiredLayout());
   }
 };
@@ -376,12 +367,12 @@ class EagerFlattenOpTransformer
   }
 
   // transpose from NHWC to NCHW
-  paddle::experimental::Tensor TransInTensor(
-      const std::string& in_name, const paddle::experimental::Tensor& in) {
+  paddle::Tensor TransInTensor(const std::string& in_name,
+                               const paddle::Tensor& in) {
     return in;
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, DefaultLayout());
   }
 };
@@ -403,13 +394,12 @@ class EagerConcatOpTransformer
     (*axis) = static_cast<paddle::experimental::Scalar>(perm[axes]);
   }
 
-  virtual std::vector<paddle::experimental::Tensor> TransInTensors(
-      const std::string& in_name,
-      const std::vector<paddle::experimental::Tensor>& in) {
+  virtual std::vector<paddle::Tensor> TransInTensors(
+      const std::string& in_name, const std::vector<paddle::Tensor>& in) {
     return in;
   }
 
-  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+  void SetOutTensorLayout(paddle::Tensor* out_tensor) {
     UpdateLayout(out_tensor, DesiredLayout());
   }
 };

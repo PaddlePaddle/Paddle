@@ -27,6 +27,10 @@ def with_mateclass(meta, *bases):
 
 
 class PyLayerContext:
+    """
+    ``PyLayerContext`` can assist the :ref:`api_paddle_autograd_PyLayer` in implementing certain functionalities.
+    """
+
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
@@ -242,10 +246,32 @@ class PyLayerMeta(type):
 
 
 class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
+    """
+    Paddle implements Python custom operators on the PaddlePaddle framework by creating a subclass of
+    ``PyLayer``, which must comply with the following rules:
+
+    1. The subclass must contain static ``forward`` and ``backward`` functions, with the first argument being
+    :ref:`api_paddle_autograd_PyLayerContext`. If a returned value in ``backward`` corresponds to a ``Tensor`` that
+    requires gradients in ``forward``, the returned value must be a ``Tensor``.
+
+    2. Except for the first argument, other arguments of ``backward`` are gradients of the output ``Tensors``
+    of ``forward``. Therefore, the number of input ``Tensor`` in ``backward`` must be the same as the number
+    of output ``Tensor`` in ``forward``. If you need to use input ``Tensor`` from ``forward`` in ``backward``,
+    you can save these ``Tensors`` by inputting them into :ref:`api_paddle_autograd_PyLayerContext`'s
+    ``save_for_backward`` method and use them in ``backward`` later.
+
+    3. The output of ``backward`` can be ``Tensor`` or ``list/tuple(Tensor)``, which are gradients of the
+    output ``Tensor`` of ``forward``. Therefore, the number of output ``Tensor`` in ``backward`` is the same
+    as the number of input ``Tensor`` in ``forward``.
+
+    After building the custom operator, apply it by running the ``apply`` method.
+
+    """
+
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
-        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as
+        It is to be overloaded by subclasses. It must accept a object of :ref:`api_paddle_autograd_PyLayerContext` as
         the first argument, followed by any number of arguments (tensors or other types).
         `None` can not be included in the returned result.
 
@@ -285,9 +311,9 @@ class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
     def backward(ctx, *args):
         """
         This is a function to calculate the gradient. It is to be overloaded by subclasses.
-        It must accept a object of `PyLayerContext` as the first argument, and the rest
-        arguments are the gradient of forward's output tensors. Output tensors of backward
-        are the gradient of forward's input tensors.
+        It must accept a object of :ref:`api_paddle_autograd_PyLayerContext` as the first
+        argument, and the rest arguments are the gradient of forward's output tensors.
+        Output tensors of backward are the gradient of forward's input tensors.
 
         Args:
             *args(tuple): The gradient of forward's output tensor(s).

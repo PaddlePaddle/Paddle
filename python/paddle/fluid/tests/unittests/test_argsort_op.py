@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, grad_var_name
@@ -392,7 +392,7 @@ class TestArgsort(unittest.TestCase):
 
     def test_api(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
 
@@ -497,6 +497,19 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         out = paddle.argsort(var_x, axis=self.axis, descending=True)
         self.assertEqual((out.numpy() == np.array([1, 2, 3, 0])).all(), True)
         paddle.enable_static()
+
+
+class TestArgsortOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((2, 8)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
+            out = paddle.argsort(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == "__main__":

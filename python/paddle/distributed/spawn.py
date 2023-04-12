@@ -76,7 +76,6 @@ def _options_valid_check(options):
         'ips',
         'gpus',
         'xpus',
-        'mlus',
         'print_config',
         'backend',
     ]
@@ -110,7 +109,7 @@ def _get_default_nprocs():
     elif 'xpu' in device:
         return core.get_xpu_device_count()
     elif 'mlu' in device:
-        return core.get_mlu_device_count()
+        return core.get_custom_device_count('mlu')
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
     else:
@@ -267,7 +266,7 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
-                str(x) for x in range(core.get_mlu_device_count())
+                str(x) for x in range(core.get_custom_device_count('mlu'))
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -331,7 +330,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     # get cluster and pod config
     if options['backend'] == 'gloo':
-        devices_per_proc = [x for x in range(0, nprocs)]
+        devices_per_proc = list(range(0, nprocs))
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )

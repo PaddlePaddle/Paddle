@@ -18,9 +18,9 @@ import numpy as np
 from scipy.special import erf
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 def gelu(x, approximate):

@@ -337,7 +337,7 @@ class PlanSpace:
         vars = program.global_block().vars
 
         processes = reduce(lambda x, y: x * y, process_mesh_topology)
-        global_group = [i for i in range(processes)]
+        global_group = list(range(processes))
         global_process_mesh = None
         pipeline_process_meshes = None
 
@@ -420,7 +420,7 @@ class PlanSpace:
 
             assert (
                 op_valid_dist_attrs is not None
-            ), "Enumerate {} valid distributed attribute failed.".format(op)
+            ), f"Enumerate {op} valid distributed attribute failed."
             valid_dist_attr_dict[op.desc.id()] = [
                 op_valid_dist_attrs,
                 pipeline_stage,

@@ -34,7 +34,6 @@
 #include "paddle/fluid/platform/device_event.h"
 
 DECLARE_bool(new_executor_use_local_scope);
-DECLARE_bool(control_flow_use_new_executor);
 
 namespace paddle {
 namespace framework {
@@ -133,6 +132,7 @@ class InterpreterCore {
 
  private:
   bool is_build_{false};
+  bool static_build_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned

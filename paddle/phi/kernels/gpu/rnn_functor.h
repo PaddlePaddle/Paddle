@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -287,12 +287,12 @@ void WeightToTensor(const Place &place,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    paddle::memory::Copy(weight->place(),
-                         weight_data + weight_offset,
-                         weight_list[i]->place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight->place(),
+                       weight_data + weight_offset,
+                       weight_list[i]->place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }
@@ -310,12 +310,12 @@ void WeightListToTensor(const Place &place,
   for (size_t i = 0; i < tensor_list.size(); ++i) {
     const T *in_data = tensor_list[i].data<T>();
     auto in_size = tensor_list[i].numel();
-    paddle::memory::Copy(weight_whole->place(),
-                         weight_data + weight_offset,
-                         tensor_list[i].place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight_whole->place(),
+                       weight_data + weight_offset,
+                       tensor_list[i].place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }

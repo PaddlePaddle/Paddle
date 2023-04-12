@@ -28,7 +28,6 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -390,6 +389,10 @@ void GraphReindexKernel(const Context& dev_ctx,
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
   const int bs = x.dims()[0];
+  PADDLE_ENFORCE_NE(
+      0,
+      bs,
+      errors::InvalidArgument("The first of dims should not be equal to 0."));
   const int num_edges = neighbors.dims()[0];
   reindex_src->Resize({num_edges});
 

@@ -525,6 +525,13 @@ template void HashTable<uint64_t, float*>::update<
                   SparseAdagradOptimizer<CommonFeatureValueAccessor> sgd,
                   cudaStream_t stream);
 template void HashTable<uint64_t, float*>::update<
+    StdAdagradOptimizer<CommonFeatureValueAccessor>,
+    cudaStream_t>(const uint64_t* d_keys,
+                  const char* d_grads,
+                  size_t len,
+                  StdAdagradOptimizer<CommonFeatureValueAccessor> sgd,
+                  cudaStream_t stream);
+template void HashTable<uint64_t, float*>::update<
     SparseAdamOptimizer<CommonFeatureValueAccessor>,
     cudaStream_t>(const uint64_t* d_keys,
                   const char* d_grads,

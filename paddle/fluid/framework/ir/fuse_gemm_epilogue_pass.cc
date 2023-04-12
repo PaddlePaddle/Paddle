@@ -81,8 +81,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_op_desc = matmul_op->Op();
-    if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
-      return;
+    if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape)) return;
 
     bool trans_x, trans_y;
     GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
@@ -165,8 +164,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_op_desc = matmul_op->Op();
-    if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
-      return;
+    if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape)) return;
 
     auto activation = act_op->Op()->Type();
 
@@ -291,9 +289,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_grad_op_desc = matmul_grad_op->Op();
-    if (!IsGemmFromLinear_(
-            matmul_grad_x_shape, matmul_grad_w_shape, matmul_grad_op_desc))
-      return;
+    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape)) return;
 
     bool trans_x, trans_y;
     GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
@@ -430,9 +426,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     // currently. The conditions below are used to verify wether matmul_v2
     // is created by paddle.nn.Linear
     auto matmul_grad_op_desc = matmul_grad_op->Op();
-    if (!IsGemmFromLinear_(
-            matmul_grad_x_shape, matmul_grad_w_shape, matmul_grad_op_desc))
-      return;
+    if (!IsGemmFromLinear_(matmul_grad_x_shape, matmul_grad_w_shape)) return;
 
     auto activation_grad = act_grad_op->Op()->Type();
 
@@ -509,22 +503,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
 bool FuseGemmEpiloguePass::IsGemmFromLinear_(
     const std::vector<int64_t> &x_shape,
-    const std::vector<int64_t> &w_shape,
-    OpDesc *matmul_v2_op) const {
-  if (w_shape.size() != 2 || x_shape.size() < 2) return false;
-  for (auto attr_name : {"fused_reshape_Out",
-                         "fused_reshape_X",
-                         "fused_reshape_Y",
-                         "fused_transpose_Out",
-                         "fused_transpose_X",
-                         "fused_transpose_Y"}) {
-    if (matmul_v2_op->HasAttr(attr_name)) {
-      std::vector<int> tmp_vec =
-          PADDLE_GET_CONST(std::vector<int>, matmul_v2_op->GetAttr(attr_name));
-      if (tmp_vec.size() > 0) return false;
-    }
-  }
-  return true;
+    const std::vector<int64_t> &w_shape) const {
+  return (w_shape.size() == 2 && x_shape.size() >= 2);
 }
 
 }  // namespace ir

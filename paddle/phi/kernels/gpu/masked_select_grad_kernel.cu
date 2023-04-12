@@ -19,6 +19,7 @@
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
@@ -66,4 +67,6 @@ PD_REGISTER_KERNEL(masked_select_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

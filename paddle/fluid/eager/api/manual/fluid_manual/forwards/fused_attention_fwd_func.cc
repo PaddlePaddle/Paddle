@@ -20,38 +20,38 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
 fused_attention_dygraph_function(
-    const paddle::experimental::Tensor& X,
-    const paddle::experimental::Tensor& LnScale,
-    const paddle::experimental::Tensor& LnBias,
-    const paddle::experimental::Tensor& QKVW,
-    const paddle::experimental::Tensor& QKVBias,
-    const paddle::experimental::Tensor& CacheKV,
-    const paddle::experimental::Tensor& SrcMask,
-    const paddle::experimental::Tensor& OutLinearW,
-    const paddle::experimental::Tensor& OutLinearBias,
-    const paddle::experimental::Tensor& Ln2Scale,
-    const paddle::experimental::Tensor& Ln2Bias,
+    const paddle::Tensor& X,
+    const paddle::Tensor& LnScale,
+    const paddle::Tensor& LnBias,
+    const paddle::Tensor& QKVW,
+    const paddle::Tensor& QKVBias,
+    const paddle::Tensor& CacheKV,
+    const paddle::Tensor& SrcMask,
+    const paddle::Tensor& OutLinearW,
+    const paddle::Tensor& OutLinearBias,
+    const paddle::Tensor& Ln2Scale,
+    const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_attention dygraph",
@@ -64,8 +64,7 @@ fused_attention_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {QKVW}, {OutLinearW}};
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
     if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
@@ -280,47 +279,47 @@ fused_attention_dygraph_function(
       true,
       {});
 
-  paddle::experimental::Tensor LnMean;
+  paddle::Tensor LnMean;
   egr::EagerUtils::GetOutput(outs["LnMean"][0], &LnMean);
-  paddle::experimental::Tensor LnVariance;
+  paddle::Tensor LnVariance;
   egr::EagerUtils::GetOutput(outs["LnVariance"][0], &LnVariance);
-  paddle::experimental::Tensor LnOut;
+  paddle::Tensor LnOut;
   egr::EagerUtils::GetOutput(outs["LnOut"][0], &LnOut);
-  paddle::experimental::Tensor QKVOut;
+  paddle::Tensor QKVOut;
   egr::EagerUtils::GetOutput(outs["QKVOut"][0], &QKVOut);
-  paddle::experimental::Tensor QKVBiasOut;
+  paddle::Tensor QKVBiasOut;
   egr::EagerUtils::GetOutput(outs["QKVBiasOut"][0], &QKVBiasOut);
-  paddle::experimental::Tensor TransposeOut2;
+  paddle::Tensor TransposeOut2;
   egr::EagerUtils::GetOutput(outs["TransposeOut2"][0], &TransposeOut2);
-  paddle::experimental::Tensor QKOut;
+  paddle::Tensor QKOut;
   egr::EagerUtils::GetOutput(outs["QKOut"][0], &QKOut);
-  paddle::experimental::Tensor QKTVOut;
+  paddle::Tensor QKTVOut;
   egr::EagerUtils::GetOutput(outs["QKTVOut"][0], &QKTVOut);
-  paddle::experimental::Tensor SoftmaxOut;
+  paddle::Tensor SoftmaxOut;
   egr::EagerUtils::GetOutput(outs["SoftmaxOut"][0], &SoftmaxOut);
-  paddle::experimental::Tensor AttnDropoutMaskOut;
+  paddle::Tensor AttnDropoutMaskOut;
   egr::EagerUtils::GetOutput(outs["AttnDropoutMaskOut"][0],
                              &AttnDropoutMaskOut);
-  paddle::experimental::Tensor AttnDropoutOut;
+  paddle::Tensor AttnDropoutOut;
   egr::EagerUtils::GetOutput(outs["AttnDropoutOut"][0], &AttnDropoutOut);
-  paddle::experimental::Tensor SrcMaskOut;
+  paddle::Tensor SrcMaskOut;
   egr::EagerUtils::GetOutput(outs["SrcMaskOut"][0], &SrcMaskOut);
-  paddle::experimental::Tensor FMHAOut;
+  paddle::Tensor FMHAOut;
   egr::EagerUtils::GetOutput(outs["FMHAOut"][0], &FMHAOut);
-  paddle::experimental::Tensor OutLinearOut;
+  paddle::Tensor OutLinearOut;
   egr::EagerUtils::GetOutput(outs["OutLinearOut"][0], &OutLinearOut);
-  paddle::experimental::Tensor DropoutMaskOut;
+  paddle::Tensor DropoutMaskOut;
   egr::EagerUtils::GetOutput(outs["DropoutMaskOut"][0], &DropoutMaskOut);
-  paddle::experimental::Tensor Ln2Mean;
+  paddle::Tensor Ln2Mean;
   egr::EagerUtils::GetOutput(outs["Ln2Mean"][0], &Ln2Mean);
-  paddle::experimental::Tensor Ln2Variance;
+  paddle::Tensor Ln2Variance;
   egr::EagerUtils::GetOutput(outs["Ln2Variance"][0], &Ln2Variance);
-  paddle::experimental::Tensor BiasDropoutResidualOut;
+  paddle::Tensor BiasDropoutResidualOut;
   egr::EagerUtils::GetOutput(outs["BiasDropoutResidualOut"][0],
                              &BiasDropoutResidualOut);
-  paddle::experimental::Tensor CacheKVOut;
+  paddle::Tensor CacheKVOut;
   egr::EagerUtils::GetOutput(outs["CacheKVOut"][0], &CacheKVOut);
-  paddle::experimental::Tensor Y;
+  paddle::Tensor Y;
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {

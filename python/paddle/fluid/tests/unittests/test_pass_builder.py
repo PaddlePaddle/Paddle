@@ -21,9 +21,8 @@ import unittest
 import numpy as np
 from simple_nets import simple_fc_net
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 
 class TestPassBuilder(unittest.TestCase):

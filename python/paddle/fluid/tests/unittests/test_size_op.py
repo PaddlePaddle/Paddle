@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def size_wrapper(input):
@@ -33,7 +33,7 @@ class TestSizeOp(OpTest):
         self.config()
         input = np.zeros(self.shape, dtype='bool')
         self.inputs = {'Input': input}
-        self.outputs = {'Out': np.array([np.size(input)], dtype='int64')}
+        self.outputs = {'Out': np.array(np.size(input), dtype='int64')}
 
     def config(self):
         pass
@@ -69,8 +69,8 @@ class TestSizeAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
-            x_1 = paddle.fluid.data(shape=shape1, dtype='int32', name='x_1')
-            x_2 = paddle.fluid.data(shape=shape2, dtype='int32', name='x_2')
+            x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
+            x_2 = paddle.static.data(shape=shape2, dtype='int32', name='x_2')
             input_1 = np.random.random(shape1).astype("int32")
             input_2 = np.random.random(shape2).astype("int32")
             out_1 = paddle.numel(x_1)
@@ -85,10 +85,10 @@ class TestSizeAPI(unittest.TestCase):
             )
             # TODO(zhouwei): will change shape [1] to [] to support zero-dim
             assert np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")
+                res_1, np.array(np.size(input_1)).astype("int64")
             )
             assert np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")
+                res_2, np.array(np.size(input_2)).astype("int64")
             )
 
     def test_size_imperative(self):

@@ -21,7 +21,7 @@ class RpcController(Controller):
     @classmethod
     def enable(cls, ctx):
         if ctx.args.run_mode == ControleMode.RPC:
-            ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.logger.debug(f"{cls.__name__} enabled")
             return True
         else:
             return False
@@ -43,7 +43,7 @@ class RpcController(Controller):
 
         # compatible
         endpoints = [
-            "{}:{}".format(self.ctx.node.ip, p)
+            f"{self.ctx.node.ip}:{p}"
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
@@ -53,12 +53,12 @@ class RpcController(Controller):
                 "rank": self.pod.rank,
                 "replicas": self.pod.replicas,
                 "dtype": self.ctx.node.device.dtype,
-                "candidate": "{}:{}".format(self.ctx.node.ip, port),
+                "candidate": f"{self.ctx.node.ip}:{port}",
                 "endpoints": ",".join(endpoints),
             }
         )
         peer_list, rank = self.master.sync_peers(
-            "/{}/info".format(self.job.id),
+            f"/{self.job.id}/info",
             self.pod.name,
             data,
             self.job.replicas,
@@ -71,7 +71,7 @@ class RpcController(Controller):
 
         peer_list = [json.loads(i) for i in peer_list]
 
-        self.ctx.logger.debug("sync peers done {}".format(peer_list))
+        self.ctx.logger.debug(f"sync peers done {peer_list}")
         self.save_pod_log(peer_list)
 
         global_size = sum([i["replicas"] for i in peer_list])
@@ -83,8 +83,8 @@ class RpcController(Controller):
             e = {
                 "PADDLE_MASTER_ENDPOINT": rpc_master,
                 "PADDLE_WORKER_ENDPOINT": endpoints[i],
-                "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
-                "PADDLE_TRAINERS_NUM": "{}".format(global_size),
+                "PADDLE_TRAINER_ID": f"{i + rank_offset}",
+                "PADDLE_TRAINERS_NUM": f"{global_size}",
             }
             log_file = f"workerlog.{i + rank_offset}"
             self.add_container(envs=e, log_file=log_file)

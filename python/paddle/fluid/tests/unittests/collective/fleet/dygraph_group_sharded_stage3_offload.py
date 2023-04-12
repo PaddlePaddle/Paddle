@@ -14,18 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
 
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -36,7 +35,7 @@ momentum_rate = 0.9
 l2_decay = 1e-4
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
 
@@ -217,11 +216,7 @@ def test_stage3_offload():
     # bfp16 offload
     # NOTE: this is a hack to get int format nccl version, like 2134
     # if current platform is not linux, version number will be 0
-    nccl_version_str = subprocess.check_output(
-        r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-        stderr=subprocess.DEVNULL,
-        shell=True,
-    ).decode('utf-8')
+    nccl_version_str = get_nccl_version_str()
     nccl_version = (
         int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
     )

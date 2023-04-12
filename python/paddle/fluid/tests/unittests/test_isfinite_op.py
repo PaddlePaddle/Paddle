@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestInf(OpTest):
@@ -48,6 +48,28 @@ class TestFP16Inf(TestInf):
         self.dtype = np.float16
 
 
+# BFP16 isinf Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestInfBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isinf"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.inf
+
+        out = np.array(True)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+
 class TestNAN(OpTest):
     def setUp(self):
         self.op_type = "isnan"
@@ -74,6 +96,28 @@ class TestNAN(OpTest):
 class TestFP16NAN(TestNAN):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isnan Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNANBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isnan"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.nan
+        x[-1] = np.nan
+
+        out = np.array(True)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestIsfinite(OpTest):
@@ -103,6 +147,28 @@ class TestIsfinite(OpTest):
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isfinite Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestIsfiniteBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isfinite"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.nan
+
+        out = np.array(False)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 if __name__ == '__main__':

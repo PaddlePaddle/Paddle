@@ -86,7 +86,8 @@ template <typename IndexType = int>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE IndexType
 FlatTensorIndex(const Index3& index, const Dim3& dims) {
   IndexType flat_index = index[0];
-  for (int i = 1; i < 3; i++) {
+#pragma unroll
+  for (int i = 1; i < 3; ++i) {
     flat_index = flat_index * dims[i] + index[i];
   }
   return flat_index;
@@ -97,7 +98,8 @@ template <typename IndexType = int>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
 ConvertTensorIndex(IndexType index, const Dim3& dims) {
   Index3 tensor_index;
-  for (int i = 2; i >= 0; i--) {
+#pragma unroll
+  for (int i = 2; i >= 0; --i) {
     IndexType new_index = index / dims[i];
     tensor_index[i] = static_cast<int>(index - dims[i] * new_index);
     index = new_index;

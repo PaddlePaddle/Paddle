@@ -15,7 +15,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def add_position_encoding(input, alpha=1.0, beta=1.0):

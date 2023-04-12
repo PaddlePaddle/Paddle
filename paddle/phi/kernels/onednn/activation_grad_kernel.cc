@@ -238,9 +238,6 @@ template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
                          DenseTensor* dx) {
   HardSwishOneDNNGradFunctor<T> functor;
   functor(dev_ctx, x, dout, 0, 0, dx);

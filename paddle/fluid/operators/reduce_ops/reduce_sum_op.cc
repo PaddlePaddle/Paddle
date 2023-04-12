@@ -69,18 +69,18 @@ class ReduceSumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
 
     // get attr
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
     bool keep_dim = this->Attr<bool>("keep_dim");
     bool reduce_all = this->Attr<bool>("reduce_all");
     // get output
-    paddle::experimental::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
 
     // get output ptr
-    paddle::experimental::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
 
     // get output orginal name
     std::string x_grad_name = this->GetOutputName(x_grad_t);
@@ -128,7 +128,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-class ReduceSumOpMaker : public ops::ReduceOpMaker {
+class ReduceSumOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_sum"; }
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
@@ -139,7 +139,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum,
                             PD_INFER_META(phi::SumRawInferMeta));
 
 REGISTER_OPERATOR(reduce_sum,
-                  ops::ReduceOp,
+                  ops::ReduceBaseOp,
                   ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
