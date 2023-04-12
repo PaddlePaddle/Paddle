@@ -795,7 +795,7 @@ set -x
                 exit 8;
             fi
         fi
-
+set +x
         EXIT_CODE=0;
 
         tmpfile_rand=`date +%s%N`
@@ -811,17 +811,62 @@ set -x
         fi
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
-        
+        #get all unittests which depend on protobuf3
+        python ${PADDLE_ROOT}/tools/test_run_by_protobuf_3.py > all_ut_depend_on_protobuf3
+        #get all unittets need to be run in py3 ci
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ut_run_in_py3
+        protobuf_version=`pip list | grep "protobuf" | awk '{print $2}'`
         if [[ "$on_precision" == "0" ]];then
-            echo "----::$disable_ut_quickly"
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            if [[ "$protobuf_version" == 3.* ]]; then
+                echo "Your current protobuf version is $protobuf_version"
+                ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            else
+                echo "Your current protobuf version is $protobuf_version"
+                #get the intersection of ut_run_by_protobuf3 and ut_py3
+                grep -F  -f all_ut_depend_on_protobuf3 ut_run_in_py3 > ut_run_by_protobuf3_in_py3
+                ut_run_by_protobuf3=''
+                for ut_case in $(cat all_ut_depend_on_protobuf3);do
+                if [[ "$ut_run_by_protobuf3" == "" ]]; then
+                    ut_run_by_protobuf3="^$ut_case$"
+                else
+                    ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
+                fi
+                done
+                #run tests which do not depend on prootbuf3
+                ctest -E "$disable_ut_quickly|${ut_run_by_protobuf3}" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                pip install protobuf==3.20.2
+                #run tests which depend on prootbuf3
+                ctest -R "${ut_run_by_protobuf3_in_py3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            fi
         else
-            echo "----1::$UT_list_prec"
-            echo "----2:$UT_list_prec_1"
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
-            tmpfile_rand=`date +%s%N`
-            tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            if [[ "$protobuf_version" == 3.* ]]; then
+                echo "Your current protobuf version is $protobuf_version"
+                ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                tmpfile_rand=`date +%s%N`
+                tmpfile=$tmp_dir/$tmpfile_rand
+                ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            else
+                echo "Your current protobuf version is $protobuf_version"
+                #run tests which do not depend on prootbuf3
+                ctest -R "$UT_list_prec" -E "$disable_ut_quickly | ${ut_run_by_protobuf3}" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                tmpfile_rand=`date +%s%N`
+                tmpfile=$tmp_dir/$tmpfile_rand
+                ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly | ${ut_run_by_protobuf3}" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                pip install protobuf==3.20.2
+                #get the intersection of ut_run_by_protobuf3 and ut_py3
+                grep -F  -f  all_ut_depend_on_protobuf3 ut_list_prec_list > ut_run_by_protobuf3_in_py3
+                ut_run_by_protobuf3=''
+                for ut_case in $(cat ut_run_by_protobuf3_in_py3);do
+                if [[ "$ut_run_by_protobuf3" == "" ]]; then
+                    ut_run_by_protobuf3="^$ut_case$"
+                else
+                    ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
+                fi
+                done
+                #run tests which depend on prootbuf3
+                ctest -R "${ut_run_by_protobuf3_in_py3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            fi
+            
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -931,6 +976,7 @@ function get_precision_ut_mac() {
         for ut_case in $UT_list; do
             flag=$(echo $ut_case|grep -oE $re)
             if [ -n "$flag" ];then
+                echo $ut_case >> ut_list_prec_list
                 if [ -z "$UT_list_prec" ];then
                     UT_list_prec="^$ut_case$"
                 elif [[ "${#UT_list_prec}" -gt 10000 ]];then
@@ -942,6 +988,7 @@ function get_precision_ut_mac() {
                 echo ${ut_case} "won't run in PRECISION_TEST mode."
             fi
         done
+        echo "ut_list_prec_list:${ut_list_prec_list}"
     fi
 }
 
