@@ -1075,16 +1075,6 @@
     func : matrix_power
   backward : matrix_power_grad
 
-- op : matrix_rank
-  args : (Tensor x, Tensor TolTensor , float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
-  output : Tensor(out)
-  optional : TolTensor
-  infer_meta :
-    func : MatrixRankInferMeta
-    param : [x, hermitian, use_default_tol]
-  kernel :
-    func : matrix_rank
-
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)

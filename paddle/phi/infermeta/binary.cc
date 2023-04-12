@@ -18,18 +18,30 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 namespace detail {
+
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool hermitian,
+                               bool use_default_tol,
+                               MetaTensor* out) {
+  if (atol_tensor) {
+    MatrixRankTolInferMeta(x, atol_tensor, hermitian, use_default_tol, out);
+  } else {
+    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
+  }
+}
 
 static void BinarySameInputDimsCheck(const MetaTensor& x,
                                      const MetaTensor& y,
