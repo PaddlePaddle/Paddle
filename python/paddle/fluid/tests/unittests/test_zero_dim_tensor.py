@@ -4296,7 +4296,7 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
-        x2 = paddle.static.data(name="x2", shape=())
+        x2 = paddle.static.data(name="x2", shape=[])
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
