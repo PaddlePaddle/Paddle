@@ -1421,6 +1421,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mean_all (mean)
+  backward : mean_all_grad (mean_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : merge_selected_rows
   inputs :
     x : X
