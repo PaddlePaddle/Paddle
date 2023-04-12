@@ -322,6 +322,17 @@
     param : [row, col, offset, dtype]
     data_type : dtype
 
+- op : truncated_gaussian_random
+  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype=DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+
 - op : uniform
   args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
   output : Tensor(out)

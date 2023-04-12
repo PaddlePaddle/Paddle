@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -49,31 +50,33 @@ void AffineGridInferMeta(const MetaTensor& input,
                          bool align_corners,
                          MetaTensor* output) {
   auto theta_dims = input.dims();
-  PADDLE_ENFORCE_EQ(
-      theta_dims.size(),
-      3,
-      phi::errors::InvalidArgument(
-          "The input Theta's dimensions size should be 3. But received "
-          "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
-          theta_dims.size(),
-          theta_dims));
+  bool is_from_tensor = outputShape.FromTensor();
+  if (!is_from_tensor) {
+    PADDLE_ENFORCE_EQ(
+        theta_dims.size(),
+        3,
+        phi::errors::InvalidArgument(
+            "The input Theta's dimensions size should be 3. But received "
+            "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+            theta_dims.size(),
+            theta_dims));
 
-  PADDLE_ENFORCE_GE(
-      outputShape.GetData().size(),
-      4,
-      phi::errors::InvalidArgument(
-          "The size of attribute 'output_shape' in AffineGridOp should be >= "
-          "4. But received output_shape's size=[%d].",
-          outputShape.GetData().size()));
+    PADDLE_ENFORCE_GE(
+        outputShape.GetData().size(),
+        4,
+        phi::errors::InvalidArgument(
+            "The size of attribute 'output_shape' in AffineGridOp should be >= "
+            "4. But received output_shape's size=[%d].",
+            outputShape.GetData().size()));
 
-  PADDLE_ENFORCE_LE(
-      outputShape.GetData().size(),
-      5,
-      phi::errors::InvalidArgument(
-          "The size of attribute 'output_shape' in AffineGridOp should be <= "
-          "5. But received output_shape's size=[%d].",
-          outputShape.GetData().size()));
-
+    PADDLE_ENFORCE_LE(
+        outputShape.GetData().size(),
+        5,
+        phi::errors::InvalidArgument(
+            "The size of attribute 'output_shape' in AffineGridOp should be <= "
+            "5. But received output_shape's size=[%d].",
+            outputShape.GetData().size()));
+  }
   PADDLE_ENFORCE_GE(theta_dims[1],
                     2,
                     phi::errors::InvalidArgument(
@@ -109,7 +112,7 @@ void AffineGridInferMeta(const MetaTensor& input,
           "But received third dimesion=[%d], dimesions=[%s]",
           theta_dims[2],
           theta_dims));
-  if (outputShape.GetData().size() == 4) {
+  if (outputShape.GetData().size() == 4 && !is_from_tensor) {
     // N * H * W * 2
     output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
   } else {

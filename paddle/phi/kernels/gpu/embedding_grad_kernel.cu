@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/data_type.h"

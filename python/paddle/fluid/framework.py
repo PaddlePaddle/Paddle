@@ -117,12 +117,6 @@ _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
-_dy2st_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1
-)
-_cuda_graph_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
-)
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
