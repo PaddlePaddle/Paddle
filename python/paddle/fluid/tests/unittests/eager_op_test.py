@@ -1113,6 +1113,12 @@ class OpTest(unittest.TestCase):
             enable_cinn_test = check_cinn and self._enable_check_cinn_test(
                 place, feed_map, outputs
             )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
             if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
                 if enable_inplace is not None:
@@ -1656,7 +1662,7 @@ class OpTest(unittest.TestCase):
                     np.testing.assert_allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
@@ -1675,7 +1681,7 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
@@ -2761,6 +2767,12 @@ class OpTest(unittest.TestCase):
             enable_cinn_test = check_cinn and self._enable_check_cinn_test(
                 place, feed_dict, outputs
             )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
             if parallel or enable_cinn_test:
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
