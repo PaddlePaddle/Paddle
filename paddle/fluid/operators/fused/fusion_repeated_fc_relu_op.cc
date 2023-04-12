@@ -141,7 +141,7 @@ static void fc_relu(const T* x,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -201,6 +201,9 @@ REGISTER_OPERATOR(fusion_repeated_fc_relu,
                   ops::FusionRepeatedFCReluOp,
                   ops::FusionRepeatedFCReluOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_repeated_fc_relu,
-                       ops::FusionRepeatedFCReluKernel<float>,
-                       ops::FusionRepeatedFCReluKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_repeated_fc_relu,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionRepeatedFCReluKernel,
+                          float,
+                          double) {}

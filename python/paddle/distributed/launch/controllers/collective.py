@@ -23,7 +23,7 @@ class CollectiveController(Controller):
     def enable(cls, ctx):
         # collective is the default mode
         if ctx:
-            ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.logger.debug(f"{cls.__name__} enabled")
             ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
@@ -49,7 +49,7 @@ class CollectiveController(Controller):
             f"{h}:{p+start_port}" for h in ips for p in range(self.pod.replicas)
         ]
 
-        self.ctx.logger.debug("job endpoints: {}".format(job_endpoints))
+        self.ctx.logger.debug(f"job endpoints: {job_endpoints}")
 
         rank_offset = (
             ips.index(self.ctx.node.ip) * self.pod.replicas
@@ -66,16 +66,16 @@ class CollectiveController(Controller):
 
         for i in range(self.pod.replicas):
             e = {
-                "PADDLE_GLOBAL_SIZE": "{}".format(len(job_endpoints)),
-                "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
-                "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
-                "PADDLE_LOCAL_RANK": "{}".format(i),
-                "PADDLE_NNODES": "{}".format(len(ips)),
+                "PADDLE_GLOBAL_SIZE": f"{len(job_endpoints)}",
+                "PADDLE_LOCAL_SIZE": f"{self.pod.replicas}",
+                "PADDLE_GLOBAL_RANK": f"{i + rank_offset}",
+                "PADDLE_LOCAL_RANK": f"{i}",
+                "PADDLE_NNODES": f"{len(ips)}",
                 # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
-                "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
-                "PADDLE_TRAINERS_NUM": "{}".format(len(job_endpoints)),
+                "PADDLE_TRAINER_ID": f"{i + rank_offset}",
+                "PADDLE_TRAINERS_NUM": f"{len(job_endpoints)}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if len(selected_dev_list) > 0:
@@ -103,7 +103,7 @@ class CollectiveController(Controller):
 
         # compatible
         endpoints = [
-            "{}:{}".format(self.ctx.node.ip, p)
+            f"{self.ctx.node.ip}:{p}"
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
@@ -113,13 +113,13 @@ class CollectiveController(Controller):
                 'rank': self.pod.rank,
                 'replicas': self.pod.replicas,
                 'dtype': self.ctx.node.device.dtype,
-                'candidate': '{}:{}'.format(self.ctx.node.ip, port),
+                'candidate': f'{self.ctx.node.ip}:{port}',
                 'endpoints': ",".join(endpoints),
             }
         )
 
         peer_list, rank = self.master.sync_peers(
-            '/{}/info'.format(self.job.id),
+            f'/{self.job.id}/info',
             self.pod.name,
             data,
             self.job.replicas,
@@ -132,7 +132,7 @@ class CollectiveController(Controller):
 
         peer_list = [json.loads(i) for i in peer_list]
 
-        self.ctx.logger.debug("sync peers done {}".format(peer_list))
+        self.ctx.logger.debug(f"sync peers done {peer_list}")
         self.save_pod_log(peer_list)
 
         global_size = sum([i['replicas'] for i in peer_list])
@@ -152,16 +152,16 @@ class CollectiveController(Controller):
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
-                "PADDLE_GLOBAL_SIZE": "{}".format(global_size),
-                "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
-                "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
-                "PADDLE_LOCAL_RANK": "{}".format(i),
-                "PADDLE_NNODES": "{}".format(self.job.replicas),
+                "PADDLE_GLOBAL_SIZE": f"{global_size}",
+                "PADDLE_LOCAL_SIZE": f"{self.pod.replicas}",
+                "PADDLE_GLOBAL_RANK": f"{i + rank_offset}",
+                "PADDLE_LOCAL_RANK": f"{i}",
+                "PADDLE_NNODES": f"{self.job.replicas}",
                 # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
-                "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
-                "PADDLE_TRAINERS_NUM": "{}".format(global_size),
+                "PADDLE_TRAINER_ID": f"{i + rank_offset}",
+                "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if len(selected_dev_list) > 0:
@@ -185,7 +185,7 @@ class CollectiveElasticController(CollectiveController):
     @classmethod
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
-            ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.logger.debug(f"{cls.__name__} enabled")
             ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
@@ -217,10 +217,10 @@ class CollectiveElasticController(CollectiveController):
             if ok:
                 self.job.replicas = replicas
             else:
-                self.ctx.logger.warning("peer not ready {}".format(self.job))
+                self.ctx.logger.warning(f"peer not ready {self.job}")
                 break
 
-            self.ctx.logger.debug("Run {}".format(self.job))
+            self.ctx.logger.debug(f"Run {self.job}")
 
             if not self.build_pod():
                 continue
@@ -232,4 +232,4 @@ class CollectiveElasticController(CollectiveController):
             if self.watch():
                 break
 
-        self.ctx.logger.debug("Job done {}".format(self.job))
+        self.ctx.logger.debug(f"Job done {self.job}")

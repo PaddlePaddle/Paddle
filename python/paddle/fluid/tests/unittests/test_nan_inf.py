@@ -68,6 +68,15 @@ class TestNanInfEnv(TestNanInf):
         self.env["PADDLE_INF_NAN_SKIP_VAR"] = "elementwise_add:fc_0.tmp_1"
 
 
+class TestCheckSkipEnv(TestNanInf):
+    def setUp(self):
+        super().setUp()
+        # windows python have some bug with env, so need use str to pass ci
+        # otherwise, "TypeError: environment can only contain strings"
+        self.env["Paddle_check_nan_inf_op_list"] = "mean"
+        self.env["Paddle_skip_nan_inf_op_list"] = "elementwise_add"
+
+
 class TestNanInfCheckResult(unittest.TestCase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
@@ -82,7 +91,7 @@ class TestNanInfCheckResult(unittest.TestCase):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
         num_inf = np.sum(np.isinf(out))
-        print("[reference] num_nan={}, num_inf={}".format(num_nan, num_inf))
+        print(f"[reference] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def get_num_nan_inf(self, x_np, use_cuda=True, add_assert=False):
@@ -112,7 +121,7 @@ class TestNanInfCheckResult(unittest.TestCase):
                     num_nan = int(err_str.split("=")[1])
                 elif "num_inf" in err_str:
                     num_inf = int(err_str.split("=")[1])
-            print("[paddle] num_nan={}, num_inf={}".format(num_nan, num_inf))
+            print(f"[paddle] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def test_num_nan_inf(self):
@@ -158,6 +167,20 @@ class TestNanInfCheckResult(unittest.TestCase):
         )
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
+    def test_check_numerics(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+
+        shape = [8, 8]
+        x_np, y_np = self.generate_inputs(shape, "float16")
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        paddle.fluid.core.check_numerics("check_numerics", x)
+        paddle.fluid.core.check_numerics("check_numerics", y)
 
 
 if __name__ == '__main__':

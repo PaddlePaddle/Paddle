@@ -22,6 +22,7 @@ PD_REGISTER_KERNEL(lerp,
                    GPU,
                    ALL_LAYOUT,
                    phi::LerpKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
-                   double,
-                   phi::dtype::bfloat16) {}
+                   double) {}

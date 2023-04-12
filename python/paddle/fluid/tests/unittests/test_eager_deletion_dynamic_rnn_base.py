@@ -79,9 +79,7 @@ class TestBase(unittest.TestCase):
             return
 
         for use_cuda in [True, False]:
-            print(
-                'network: {}, use_cuda: {}'.format(self.net.__name__, use_cuda)
-            )
+            print(f'network: {self.net.__name__}, use_cuda: {use_cuda}')
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 with fluid.scope_guard(core.Scope()):
                     train(self.net, use_cuda)

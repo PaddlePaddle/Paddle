@@ -63,7 +63,7 @@ def main():
             paddle.disable_static()
 
     if some_test_failed:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

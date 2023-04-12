@@ -61,9 +61,7 @@ def create_activation_layer(act):
     elif act is None:
         return None
     else:
-        raise RuntimeError(
-            "The activation function is not supported: {}".format(act)
-        )
+        raise RuntimeError(f"The activation function is not supported: {act}")
 
 
 def channel_shuffle(x, groups):
@@ -577,5 +575,5 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
         scale=1.0,
         act="swish",
         pretrained=pretrained,
-        **kwargs
+        **kwargs,
     )

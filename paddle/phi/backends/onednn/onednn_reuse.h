@@ -936,8 +936,13 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                   : vectorize(out->dims());
+    auto dst_tz =
+        (out == nullptr)
+            ? (rankdiff > 0 ? src_x_tz
+                            : (y->dims().size() == 0 ? std::vector<int64_t>{1}
+                                                     : src_x_tz))
+            : (out->dims().size() == 0 ? std::vector<int64_t>{1}
+                                       : vectorize(out->dims()));
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -1074,7 +1079,8 @@ class BroadcastDataOneDNNHandler
                              float scale_y,
                              const std::vector<int64_t>& extended_x_dims)
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    const auto src0_tz = vectorize(out->dims());
+    const auto src0_tz = out->dims().size() == 0 ? std::vector<int64_t>{1}
+                                                 : vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
     const auto src1_md = x->mem_desc().reshape(extended_x_dims);

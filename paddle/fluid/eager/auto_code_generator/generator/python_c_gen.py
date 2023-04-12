@@ -26,7 +26,7 @@ from codegen_utils import (
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set([])
+skipped_forward_api_names = set()
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -92,6 +92,8 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try {{
     VLOG(6) << "Running Eager Final State API: {}";
+
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed

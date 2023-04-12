@@ -99,7 +99,7 @@ class RecomputeState(ProgramStats):
             segments.append([segment_idx[0], segment_idx[-1] + 1])
             self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
 
-        for i in reversed(sorted(no_recompute_segments)):
+        for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
             ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
@@ -136,7 +136,9 @@ class RecomputeState(ProgramStats):
 
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
             # insert seed op to guarantee that two dropout op have the same outputs
-            op_unique_name = unique_name.generate("seed")
+            # NOTE Hack for adopt recompute for random control, for more info see dist_dropout.py
+            # new seed added by recompute should have a prefix to distinguish with seed added by user or other moudule.
+            op_unique_name = unique_name.generate("rc_seed")
             var_unique_name = unique_name.generate_with_ignorable_key(
                 ".".join([op_unique_name, 'tmp'])
             )
@@ -293,9 +295,7 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(
-                "recompute segment[{}/{}]".format(i + 1, len(segments))
-            )
+            logging.info(f"recompute segment[{i + 1}/{len(segments)}]")
             logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,

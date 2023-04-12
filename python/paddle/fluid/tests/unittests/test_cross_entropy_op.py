@@ -387,7 +387,7 @@ def create_test_class(parent, cls_name):
                     place, ['X'], 'Y', max_relative_error=0.9
                 )
 
-    cls_name = "{0}".format(cls_name)
+    cls_name = f"{cls_name}"
     TestCrossEntropyFP16Op.__name__ = cls_name
     globals()[cls_name] = TestCrossEntropyFP16Op
 

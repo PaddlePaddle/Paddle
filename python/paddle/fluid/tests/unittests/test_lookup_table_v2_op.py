@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):

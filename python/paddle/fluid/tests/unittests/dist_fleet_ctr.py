@@ -208,7 +208,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             self.test_reader.reset()
 
         pass_time = time.time() - pass_start
-        message = "Distributed Test Succeed, Using Time {}\n".format(pass_time)
+        message = f"Distributed Test Succeed, Using Time {pass_time}\n"
         fleet.util.print_on_rank(message, 0)
 
     def do_pyreader_training(self, fleet):

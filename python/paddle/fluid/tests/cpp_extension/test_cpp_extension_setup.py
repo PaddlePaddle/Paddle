@@ -225,7 +225,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
 
     def _test_optional_tensor(self):
@@ -240,7 +240,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
 
     def _test_static(self):
@@ -318,5 +318,5 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):
         # only support Linux now
-        exit()
+        sys.exit()
     unittest.main()

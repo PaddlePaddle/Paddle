@@ -100,6 +100,7 @@ from .layer.loss import HSigmoidLoss  # noqa: F401
 from .layer.loss import MSELoss  # noqa: F401
 from .layer.loss import L1Loss  # noqa: F401
 from .layer.loss import NLLLoss  # noqa: F401
+from .layer.loss import PoissonNLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
@@ -268,6 +269,7 @@ __all__ = [  # noqa
     'AdaptiveAvgPool3D',
     'AdaptiveMaxPool3D',
     'NLLLoss',
+    'PoissonNLLLoss',
     'Conv1D',
     'Sequential',
     'Hardswish',
