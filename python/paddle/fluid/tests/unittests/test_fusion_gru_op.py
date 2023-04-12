@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+
 from paddle.fluid.tests.unittests.test_gru_op import gru
 
 sys.path.append("../../../../../test/legacy_test")
