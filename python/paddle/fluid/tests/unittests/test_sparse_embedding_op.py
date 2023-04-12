@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.incubate.layers.nn import sparse_embedding
 
 
 class TestSparseEmbeddingAPIError(unittest.TestCase):
@@ -23,7 +24,7 @@ class TestSparseEmbeddingAPIError(unittest.TestCase):
             # The size of input in sparse_embedding should not be 0.
             def test_0_size():
                 input = paddle.to_tensor([], dtype='int64')
-                paddle.static.nn.sparse_embedding(
+                sparse_embedding(
                     input,
                     [2097152, 2097152, 2097152, 2097152],
                     padding_idx=2097152,

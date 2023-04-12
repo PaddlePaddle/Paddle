@@ -24,6 +24,7 @@ from paddle.distributed import (
     ProbabilityEntry,
     ShowClickEntry,
 )
+from paddle.incubate.layers.nn import sparse_embedding
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -71,7 +72,7 @@ class EntryAttrChecks(unittest.TestCase):
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
                 prob = ProbabilityEntry(0.5)
-                emb = paddle.static.nn.sparse_embedding(
+                emb = sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,

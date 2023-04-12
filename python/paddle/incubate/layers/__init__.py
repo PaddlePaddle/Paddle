@@ -12,12 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from . import nn
-# from .nn import *
+from . import nn
+from .nn import (
+    fused_embedding_seq_pool,
+    fused_seqpool_cvm,
+    multiclass_nms2,
+    search_pyramid_hash,
+    shuffle_batch,
+    partial_concat,
+    partial_sum,
+    sparse_embedding,
+    tdm_child,
+    tdm_sampler,
+    rank_attention,
+    batch_fc,
+    _pull_box_extended_sparse,
+    bilateral_slice,
+    correlation,
+    fused_bn_add_act,
+    pow2_decay_with_linear_warmup,
+)
 
 from . import metric_op
 from .metric_op import ctr_metric_bundle
 
-__all__ = []
-# __all__ += nn.__all__
-__all__ += metric_op.__all__
+__all__ = [
+    'ctr_metric_bundle',
+    'fused_embedding_seq_pool',
+    'multiclass_nms2',
+    'search_pyramid_hash',
+    'shuffle_batch',
+    'partial_concat',
+    'sparse_embedding',
+    'partial_sum',
+    'tdm_child',
+    'rank_attention',
+    'tdm_sampler',
+    'batch_fc',
+    '_pull_box_extended_sparse',
+    'bilateral_slice',
+    'correlation',
+    'fused_bn_add_act',
+    'fused_seqpool_cvm',
+    'pow2_decay_with_linear_warmup',
+]

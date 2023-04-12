@@ -17,6 +17,7 @@ import unittest
 
 import paddle
 from paddle import fluid
+from paddle.incubate.layers.nn import sparse_embedding
 
 paddle.enable_static()
 
@@ -71,7 +72,7 @@ class TestSPMT(unittest.TestCase):
             name="1", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.contrib.layers.sparse_embedding(
+        q_emb = sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -103,7 +104,7 @@ class TestSPMT(unittest.TestCase):
             name="2", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.contrib.layers.sparse_embedding(
+        pt_emb = sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -134,7 +135,7 @@ class TestSPMT(unittest.TestCase):
             name="3", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.contrib.layers.sparse_embedding(
+        nt_emb = sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(

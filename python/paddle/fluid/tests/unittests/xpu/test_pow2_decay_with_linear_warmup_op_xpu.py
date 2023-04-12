@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import paddle
-from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
+from paddle.incubate.layers.nn import pow2_decay_with_linear_warmup
 from paddle.optimizer.lr import LinearWarmup, PolynomialDecay
 
 sys.path.append("..")

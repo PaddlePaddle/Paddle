@@ -25,6 +25,7 @@ from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
 from paddle import fluid
+from paddle.incubate.layers.nn import sparse_embedding
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
@@ -214,7 +215,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             init = paddle.nn.initializer.Uniform()
 
             dnn_layer_dims = [128, 64, 32]
-            dnn_embedding = fluid.contrib.layers.sparse_embedding(
+            dnn_embedding = sparse_embedding(
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 is_test=inference,
@@ -239,7 +240,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 dnn_out = fc
 
             # build lr model
-            lr_embbding = fluid.contrib.layers.sparse_embedding(
+            lr_embbding = sparse_embedding(
                 input=lr_data,
                 size=[lr_input_dim, 1],
                 is_test=inference,

@@ -22,6 +22,7 @@ import paddle
 from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
+from paddle.incubate.layers.nn import sparse_embedding
 
 paddle.enable_static()
 
@@ -77,7 +78,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.contrib.layers.sparse_embedding(
+        q_emb = sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -109,7 +110,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.contrib.layers.sparse_embedding(
+        pt_emb = sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -140,7 +141,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.contrib.layers.sparse_embedding(
+        nt_emb = sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(

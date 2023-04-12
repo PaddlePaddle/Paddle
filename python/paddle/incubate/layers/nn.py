@@ -15,28 +15,21 @@
 Contrib layers just related to the neural network.
 """
 
-import os
 import warnings
-import inspect
 
 import numpy as np
+
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
-from ... import unique_name
+from paddle import _legacy_C_ops
+from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
     check_dtype,
-    convert_dtype,
+    check_type,
+    check_variable_and_dtype,
 )
-
-from paddle.fluid import core
-from paddle.fluid.param_attr import ParamAttr
-
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-import paddle
-import warnings
-from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.param_attr import ParamAttr
 
 __all__ = [
     'fused_embedding_seq_pool',
@@ -438,7 +431,7 @@ def search_pyramid_hash(
         for param in distribute_update_vars:
             if param not in special_name_list:
                 raise ValueError(
-                    "Pyramid Hash layer didn't have parameter {}".format(param)
+                    f"Pyramid Hash layer didn't have parameter {param}"
                 )
         distribute_update_vars_str = ",".join(distribute_update_vars)
 
@@ -1398,7 +1391,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     if paddle.fluid._non_static_mode():
         attrs = ('has_offset', has_offset)
-        return getattr(_legacy_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
+        return _legacy_C_ops.bilateral_slice(x, grid, guide, *attrs)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
     check_variable_and_dtype(
@@ -1489,7 +1482,7 @@ def correlation(
             "corr_type_multiply",
             corr_type_multiply,
         )
-        output = getattr(_legacy_C_ops, "correlation")(x, y, *attrs)
+        output = _legacy_C_ops.correlation(x, y, *attrs)
     else:
         helper = LayerHelper("correlation", **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
