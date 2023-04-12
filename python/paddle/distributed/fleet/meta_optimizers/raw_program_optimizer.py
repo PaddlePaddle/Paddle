@@ -370,20 +370,27 @@ class RawProgramOptimizer(MetaOptimizerBase):
         # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
         # each entry of the list is a tuple stores the grads segment list and
         # the corresponding params segment list
-        grad_param_segments = []
-        last_dtype = None
+
+        # its type is: dict[dtype, list[tuple[list[grad], list[param]]]]
+        grad_param_segments_by_dtype = {}
         # split the grad based on dtype and fused size
         for param, grad in param_grads:
-            if (
-                len(grad_param_segments) == 0
-                or len(grad_param_segments[-1][0]) == self.fuse_grad_size_in_num
-                or grad.dtype != last_dtype
-            ):
-                grad_param_segments.append(([grad], [param]))
-                last_dtype = grad.dtype
-            else:
-                grad_param_segments[-1][0].append(grad)
-                grad_param_segments[-1][1].append(param)
+            if grad.dtype not in grad_param_segments_by_dtype:
+                grad_param_segments_by_dtype[grad.dtype] = [([], [])]
+            grad_segment, param_segment = grad_param_segments_by_dtype[
+                grad.dtype
+            ][-1]
+            if len(param_segment) == self.fuse_grad_size_in_num:
+                grad_param_segments_by_dtype[grad.dtype].append(([], []))
+                grad_segment, param_segment = grad_param_segments_by_dtype[
+                    grad.dtype
+                ][-1]
+            param_segment.append(param)
+            grad_segment.append(grad)
+
+        grad_param_segments = []
+        for _, group in grad_param_segments_by_dtype.items():
+            grad_param_segments.extend(group)
 
         if len(grad_param_segments) == 0:
             return
