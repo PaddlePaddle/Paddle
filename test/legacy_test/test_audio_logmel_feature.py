@@ -116,6 +116,7 @@ class TestFeatures(unittest.TestCase):
                 0
             )  # 1D input for librosa.feature.melspectrogram
         if len(self.waveform.shape) == 0:
+            print("the wave can be scalar")
             self.waveform = np.array([self.waveform])
         # librosa:
         np_dtype = getattr(np, dtype)
