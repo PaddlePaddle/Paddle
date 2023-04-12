@@ -47,7 +47,7 @@ from .creation import _real_to_complex_dtype
 __all__ = []
 
 
-def cast(x, dtype):
+def cast(x, dtype, name=None):
     """
 
     This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
@@ -117,9 +117,17 @@ def cast(x, dtype):
     )
 
     helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=x.stop_gradient
-    )
+    if name is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=x.stop_gradient
+        )
+    else:
+        out = helper.create_variable(
+            name=name,
+            dtype=dtype,
+            persistable=False,
+            stop_gradient=x.stop_gradient,
+        )
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
