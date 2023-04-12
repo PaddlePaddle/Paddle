@@ -3973,6 +3973,9 @@ function main() {
       cmake_gen_in_current_dir)
         cmake_gen_in_current_dir ${PYTHON_ABI:-""}
         ;;
+      cmake_gen_by_setup_in_current_dir)
+        run_setup ${PYTHON_ABI:-""} "cmake-only bdist_wheel"
+        ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}
         ;;
