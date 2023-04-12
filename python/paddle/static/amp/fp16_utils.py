@@ -99,6 +99,8 @@ def _keep_fp32_input(op, in_name):
         return in_name != 'X'
     if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return in_name != 'X'
+    if op_type == 'instance_norm':
+        return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
     if op_type == 'resnet_unit':
