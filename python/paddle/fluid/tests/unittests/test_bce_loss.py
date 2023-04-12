@@ -291,7 +291,7 @@ class TestBceLossOpFloat16(TestBceLossOp):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(1e-3)
+        self.check_output(atol=1e-3)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', max_relative_error=1e-3)
