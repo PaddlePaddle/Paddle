@@ -67,6 +67,9 @@ class TensorWrapper {
             std::move(std::make_shared<phi::DenseTensor>(
                 std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
                 std::move(dense_tensor->meta()))));
+      } else if (phi::DistTensor::classof(tensor.impl().get())) {
+        // TODO(liuzhnehai): no need save data?
+        intermidiate_tensor_.set_impl(tensor.impl());
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));

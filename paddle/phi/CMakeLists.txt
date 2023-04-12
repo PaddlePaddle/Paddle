@@ -27,6 +27,7 @@ endif()
 # make an unity target for compile deps
 set(PHI_DEPS
     convert_utils
+    dist_tensor
     dense_tensor
     phi_backends
     kernel_factory

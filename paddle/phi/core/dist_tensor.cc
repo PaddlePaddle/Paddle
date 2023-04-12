@@ -31,6 +31,9 @@ DistTensor::DistTensor(const std::shared_ptr<phi::Allocation>& holder,
   local_tensor_ = std::make_shared<DenseTensor>(holder, meta);
 }
 
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor)
+    : local_tensor_(dense_tensor) {}
+
 int64_t DistTensor::numel() const { return local_tensor_->numel(); }
 
 const DDim& DistTensor::dims() const { return local_tensor_->dims(); }
@@ -80,7 +83,7 @@ const DenseTensorMeta& DistTensor::meta() const noexcept {
 
 const DistAttr& DistTensor::get_dist_attr() { return dist_attr_; }
 
-std::shared_ptr<DenseTensor> DistTensor::local_tensor() const {
+const std::shared_ptr<DenseTensor>& DistTensor::local_tensor() const {
   return local_tensor_;
 }
 }  // namespace phi

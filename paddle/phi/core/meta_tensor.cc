@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -106,6 +107,10 @@ void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
+        ->layout = layout;
+
+  } else if (phi::DistTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<DistTensor*>(tensor_))
         ->layout = layout;
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout

@@ -68,6 +68,11 @@ cc_library(
   SRCS dense_tensor.cc dense_tensor_impl.cc
   DEPS convert_utils tensor_meta tensor_base ddim)
 
+cc_library(
+  dist_tensor
+  SRCS dist_tensor.cc
+  DEPS dense_tensor tensor_base)
+
 target_link_libraries(dense_tensor memory_utils)
 
 cc_library(
@@ -96,7 +101,7 @@ cc_library(
 cc_library(
   meta_tensor
   SRCS meta_tensor.cc
-  DEPS tensor_base tensor_meta dense_tensor)
+  DEPS tensor_base tensor_meta dense_tensor dist_tensor)
 cc_library(
   infermeta_utils
   SRCS infermeta_utils.cc

@@ -24,6 +24,8 @@ namespace phi {
 
 class DistAttr {};
 
+class DenseTensor;
+
 class DistTensor : public TensorBase,
                    public TypeInfoTraits<TensorBase, DistTensor> {
  public:
@@ -36,6 +38,11 @@ class DistTensor : public TensorBase,
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
   DistTensor(Allocator* a, const DenseTensorMeta& meta);
+
+  DistTensor(const std::shared_ptr<phi::Allocation>& holder,
+             const DenseTensorMeta& meta);
+
+  explicit DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor);
 
   ~DistTensor() = default;
 
@@ -77,7 +84,7 @@ class DistTensor : public TensorBase,
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
 
-  const DenseTensorMeta& meta() const noexcept { return local_tensor_->meta(); }
+  const DenseTensorMeta& meta() const noexcept;
 
   /// \brief Sets the meta information of the tensor. Only when the original
   /// attribute of Tensor is incomplete, can it be reset.
@@ -87,6 +94,8 @@ class DistTensor : public TensorBase,
   void set_meta(const DenseTensorMeta& meta);
 
   const DistAttr& get_dist_attr();
+
+  const std::shared_ptr<DenseTensor>& local_tensor() const;
 
  private:
   // dist attribute

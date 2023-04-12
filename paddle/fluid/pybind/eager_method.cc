@@ -46,6 +46,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
@@ -205,6 +206,9 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           place,
           dense_tensor->data(),
           sizeof_dtype * numel);
+    } else if (self->tensor.is_dist_tensor()) {
+      // TODO(liuzhenhai) :add logic
+      RETURN_PY_NONE
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -1932,6 +1936,26 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+// TODO(liuzhenhai): simple implementation for test, remove it later
+static PyObject* tensor__local_tensor(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  // only dist tensor can get local tensor
+  if (!self->tensor.is_dist_tensor()) {
+    RETURN_PY_NONE
+  }
+  Tensor t;
+  auto impl = std::dynamic_pointer_cast<phi::DistTensor>(self->tensor.impl());
+  if (!impl) {
+    RETURN_PY_NONE
+  }
+  t.set_impl(impl->local_tensor());
+  t.set_name("local tensor for " + self->tensor.name());
+  return ToPyObject(t);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -2165,6 +2189,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"local_tensor",
+     (PyCFunction)(void (*)(void))tensor__local_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_share_memory",

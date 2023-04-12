@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -27,6 +28,10 @@ class DenseTensorUtils {
  public:
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
     return &(tensor->meta_);
+  }
+
+  static DenseTensorMeta* GetMutableMeta(DistTensor* tensor) {
+    return &(tensor->local_tensor()->meta_);
   }
 
   static SparseTensorMeta* GetMutableMeta(SparseCooTensor* tensor) {
