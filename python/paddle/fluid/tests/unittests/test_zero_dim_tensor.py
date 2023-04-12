@@ -991,6 +991,66 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(x1.grad.shape, [5])
 
+    def test_is_empty(self):
+        # 1) x is 0D
+        x = paddle.rand([])
+        out = paddle.is_empty(x)
+        self.assertFalse(out)
+        self.assertEqual(out.shape, [])
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        out = paddle.is_empty(x)
+        self.assertFalse(out)
+        self.assertEqual(out.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        out = paddle.is_empty(x)
+        self.assertFalse(out)
+        self.assertEqual(out.shape, [])
+        
+        x = paddle.rand([3, 0, 5])
+        out = paddle.is_empty(x)
+        self.assertTrue(out)
+        self.assertEqual(out.shape, [])
+
+    def test_squeeze_(self):
+        # 1) x is 0D
+        x = paddle.rand([]) 
+        x.squeeze_(0)
+        self.assertEqual(x.shape, [])
+
+    
+        # 2) x is 1D
+        x = paddle.rand([1])
+        x.squeeze_(0)
+        self.assertEqual(x.shape, [])
+
+
+        # 3）x is ND 
+        x = paddle.rand([2,1])
+        x.squeeze_(1)
+        self.assertEqual(x.shape, [2])
+
+    def test_as_complex(self):
+        # 1) x is 
+        x = paddle.rand([2])
+        x.stop_gradient = False
+        x.retain_grads()
+        out = paddle.as_complex(x)
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(x.shape, [2])
+        self.assertEqual(out.shape, [])
+        if x.grad is not None:
+            self.assertEqual(x.grad.shape, [2])
+            self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    
     def test_std(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2434,6 +2494,43 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (5,))
+
+    @prog_scope()
+    def test_is_empty(self):
+        # 1) x is 0D
+        x = paddle.rand([])
+        out1 = paddle.is_empty(x)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        out2 = paddle.is_empty(x)
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        out3 = paddle.is_empty(x)
+        
+        x = paddle.rand([3, 0, 5])
+        out4 = paddle.is_empty(x)
+        
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+                out4
+            ],
+        )
+
+        self.assertFalse(out1)
+        self.assertEqual(out1.shape, [])
+        self.assertFalse(out2)
+        self.assertEqual(out2.shape, [])
+        self.assertFalse(out3)
+        self.assertEqual(out3.shape, [])
+        self.assertTrue(out4)
+        self.assertEqual(out4.shape, [])
 
     @prog_scope()
     def test_std(self):
