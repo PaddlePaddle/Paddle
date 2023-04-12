@@ -47,7 +47,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     strings_empty_like,
     CPU,
     ALL_LAYOUT,
-    phi::strings::EmptyLikeKernel<phi::CPUContext>, ) {}
+    phi::strings::EmptyLikeKernel<phi::CPUContext>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
