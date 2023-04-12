@@ -56,5 +56,4 @@ void Copy(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::strings::Copy<phi::CPUContext>,
-                                 pstring) {}
+                                 phi::strings::Copy<phi::CPUContext>) {}

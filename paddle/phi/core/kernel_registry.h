@@ -1332,22 +1332,22 @@ struct KernelRegistrar {
  * with one template argument.
  */
 
-#define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(           \
-    kernel_name, backend, layout, kernel_fn, dtype) \
-  _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                \
-      ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn, dtype)
+#define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(    \
+    kernel_name, backend, layout, kernel_fn) \
+  _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(         \
+      ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn)
 
 #define _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                   \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)                \
+    reg_type, kernel_name, backend, layout, kernel_fn)                       \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
       PD_REGISTER_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
       "PD_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
   __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                        \
-      reg_type, kernel_name, backend, layout, kernel_fn, dtype)
+      reg_type, kernel_name, backend, layout, kernel_fn)
 
 #ifndef _WIN32
 #define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)               \
+    reg_type, kernel_name, backend, layout, kernel_fn)                      \
   template decltype(kernel_fn) kernel_fn;                                   \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
@@ -1368,7 +1368,7 @@ struct KernelRegistrar {
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #else
 #define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)               \
+    reg_type, kernel_name, backend, layout, kernel_fn)                      \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   static const ::phi::KernelRegistrar                                       \

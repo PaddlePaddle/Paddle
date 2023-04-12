@@ -121,5 +121,4 @@ void Copy(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,
                                  GPU,
                                  ALL_LAYOUT,
-                                 phi::strings::Copy<phi::GPUContext>,
-                                 pstring) {}
+                                 phi::strings::Copy<phi::GPUContext>) {}

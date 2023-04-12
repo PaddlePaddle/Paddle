@@ -37,8 +37,7 @@ void AssignKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::sr::AssignKernel<phi::CPUContext>,
-                                 ALL_DTYPE) {
+                                 phi::sr::AssignKernel<phi::CPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -46,8 +45,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  GPU,
                                  ALL_LAYOUT,
-                                 phi::sr::AssignKernel<phi::GPUContext>,
-                                 ALL_DTYPE) {
+                                 phi::sr::AssignKernel<phi::GPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif
@@ -56,8 +54,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  XPU,
                                  ALL_LAYOUT,
-                                 phi::sr::AssignKernel<phi::XPUContext>,
-                                 ALL_DTYPE) {
+                                 phi::sr::AssignKernel<phi::XPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

@@ -171,12 +171,10 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     strings_lower,
     GPU,
     ALL_LAYOUT,
-    phi::strings::StringLowerKernel<phi::GPUContext>,
-    pstring) {}
+    phi::strings::StringLowerKernel<phi::GPUContext>) {}
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     strings_upper,
     GPU,
     ALL_LAYOUT,
-    phi::strings::StringUpperKernel<phi::GPUContext>,
-    pstring) {}
+    phi::strings::StringUpperKernel<phi::GPUContext>) {}
