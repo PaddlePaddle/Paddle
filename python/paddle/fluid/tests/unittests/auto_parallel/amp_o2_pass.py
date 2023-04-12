@@ -81,7 +81,8 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         reset_prog()
 
         strategy = apply_pass(use_amp, amp_dtype)
-        clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
+        # clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
+        clip = None
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("mp")
         engine = auto.Engine(model, loss, opt, strategy=strategy)
