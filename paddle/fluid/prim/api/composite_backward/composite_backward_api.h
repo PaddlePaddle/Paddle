@@ -1588,7 +1588,6 @@ void tile_grad(const Tensor& x,
                const IntArray& repeat_times,
                Tensor* x_grad) {
   if (x_grad) {
-    auto out_dims = phi::make_ddim(repeat_times.GetData());
     auto _repeat_times = repeat_times.GetData();
     auto result = out_grad;
     for (int i = 0; i < static_cast<int>(repeat_times.size()); i++) {
