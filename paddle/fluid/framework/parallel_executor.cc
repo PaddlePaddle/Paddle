@@ -672,10 +672,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(places.size() > 0 && !platform::is_npu_place(places[0]),
-                    true,
-                    platform::errors::Unavailable(
-                        "NPU is not supported in ParallelExecutor."));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());

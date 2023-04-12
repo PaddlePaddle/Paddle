@@ -36,11 +36,6 @@ static void AllReduce(const phi::DenseTensor &src,
                       const aclrtStream stream,
                       const platform::HCCLComm *comm) {
   const auto &place = src.place();
-  PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(place),
-      true,
-      platform::errors::Unimplemented(
-          "Imperative mode does not support multi-CPU training yet."));
 
   void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
@@ -144,11 +139,6 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
                                             int ring_id,
                                             bool use_calc_stream) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(place_),
-      true,
-      platform::errors::Unimplemented(
-          "Dynamic graph mode does not support multi-CPU training yet."));
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place_));
   platform::HCCLComm *comm =

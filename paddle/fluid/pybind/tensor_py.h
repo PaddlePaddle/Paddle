@@ -960,8 +960,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_npu_tensor = platform::is_npu_place(tensor.place());
-  bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());

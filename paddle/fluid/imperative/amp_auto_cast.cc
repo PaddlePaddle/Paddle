@@ -51,8 +51,6 @@ OpSupportedInfos(const std::string& place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
-      {"NPU", &platform::is_npu_place},
-      {"MLU", &platform::is_mlu_place},
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
@@ -245,10 +243,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_mlu_place(place) ||
-      paddle::platform::is_custom_place(place) ||
-      paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
+      paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||

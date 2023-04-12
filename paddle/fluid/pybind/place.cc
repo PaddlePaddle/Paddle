@@ -648,16 +648,12 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](platform::Place &self) { return platform::is_cpu_place(self); })
       .def("is_xpu_place",
            [](platform::Place &self) { return platform::is_xpu_place(self); })
-      .def("is_npu_place",
-           [](platform::Place &self) { return platform::is_npu_place(self); })
       .def("is_ipu_place",
            [](platform::Place &self) { return platform::is_ipu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
            })
-      .def("is_mlu_place",
-           [](platform::Place &self) { return platform::is_mlu_place(self); })
       .def(
           "is_custom_place",
           [](platform::Place &self) { return platform::is_custom_place(self); })

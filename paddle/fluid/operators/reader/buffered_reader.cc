@@ -385,10 +385,6 @@ void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
 
   if (platform::is_gpu_place(place_)) {
     *out = std::move(cuda_buffer_[i]);
-  } else if (platform::is_npu_place(place_)) {
-    *out = std::move(npu_buffer_[i]);
-  } else if (platform::is_mlu_place(place_)) {
-    *out = std::move(mlu_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);
   } else if (platform::is_custom_place(place_)) {
