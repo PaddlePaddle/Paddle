@@ -35,9 +35,6 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   auto dims_data = dims.GetData();
   reduce_all = recompute_reduce_all(x, dims_data, reduce_all);
 
-  // get reduce_dim
-  int dim_size = x.dims().size();
-
   // make equal_out
   phi::DenseTensor* equal_out = new phi::DenseTensor();
   equal_out->Resize(x.dims());
