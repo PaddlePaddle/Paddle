@@ -40,6 +40,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
 
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");
 
+#if defined _WIN32
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
 bool phi::ProfilerHelper::g_enable_nvprof_hook = false;
 thread_local uint64_t phi::ProfilerHelper::g_thread_id;
@@ -54,7 +55,7 @@ std::list<std::shared_ptr<phi::EventList<phi::MemEvent>>>
 thread_local std::shared_ptr<phi::EventList<phi::MemEvent>>
     phi::ProfilerHelper::g_mem_event_list;
 std::mutex phi::ProfilerHelper::g_all_mem_event_lists_mutex;
-
+#endif
 namespace paddle {
 namespace platform {
 
