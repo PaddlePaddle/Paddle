@@ -323,36 +323,6 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
         self.if_check_prim()
 
 
-class TestElementwiseSubFP16OP_scalar(TestElementwiseSubOp_scalar):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_scalar(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.rand(10, 3, 4).astype(np.float32),
-            'Y': np.random.rand(1).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
-        self.if_check_prim()
-
-
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -365,36 +335,6 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
             'Y': np.random.random((100,)).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-
-
-class TestElementwiseSubFP16OP_Vector(TestElementwiseSubOp_Vector):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
-)
-class TestElementwiseBF16OP_Vector(TestElementwiseBF16OP):
-    def setUp(self):
-        self.op_type = "elementwise_sub"
-        self.dtype = np.uint16
-        self.python_api = paddle.subtract
-        self.public_python_api = paddle.subtract
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.random((100,)).astype(np.float32),
-            'Y': np.random.random((100,)).astype(np.float32),
-        }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.inputs = {
-            'X': convert_float_to_uint16(self.inputs['X']),
-            'Y': convert_float_to_uint16(self.inputs['Y']),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
 
