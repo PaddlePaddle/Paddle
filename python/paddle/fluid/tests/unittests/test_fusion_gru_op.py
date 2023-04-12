@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION, fc
 from paddle.fluid.tests.unittests.test_gru_op import gru
+
+sys.path.append("../../../../../test/legacy_test")
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION, fc
 
 
 def fusion_gru(
