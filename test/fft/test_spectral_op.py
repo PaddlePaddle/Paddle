@@ -29,7 +29,7 @@ import paddle
 from paddle import _C_ops
 
 sys.path.append("../")
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
+from test.legacy_test.eager_op_test import OpTest
 
 paddle.enable_static()
 
