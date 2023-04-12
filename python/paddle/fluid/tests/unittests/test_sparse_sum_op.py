@@ -18,6 +18,8 @@ import numpy as np
 
 import paddle
 
+paddle.device.set_device("cpu")
+
 
 class TestSparseSum(unittest.TestCase):
     """
@@ -25,13 +27,18 @@ class TestSparseSum(unittest.TestCase):
     x: sparse tensor, out: sparse tensor
     """
 
-    def to_sparse(self, x, format):
+    def to_sparse(self, x, format, sparse_dim=None):
         if format == 'coo':
-            return x.detach().to_sparse_coo(sparse_dim=x.ndim)
+            if sparse_dim:
+                return x.detach().to_sparse_coo(sparse_dim=sparse_dim)
+            else:
+                return x.detach().to_sparse_coo(sparse_dim=x.ndim)
         elif format == 'csr':
             return x.detach().to_sparse_csr()
 
-    def check_result(self, x_shape, dims, keepdim, format, dtype=None):
+    def check_result(
+        self, x_shape, dims, keepdim, format, sparse_dim=None, dtype=None
+    ):
         mask = paddle.randint(0, 2, x_shape)
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
         # or the backward checks may fail.
@@ -39,7 +46,7 @@ class TestSparseSum(unittest.TestCase):
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
         dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
-        sp_x = self.to_sparse(origin_x, format)
+        sp_x = self.to_sparse(origin_x, format, sparse_dim)
         sp_x.stop_gradient = False
         sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
         np.testing.assert_allclose(
@@ -56,8 +63,8 @@ class TestSparseSum(unittest.TestCase):
     def test_sum_1d(self):
         self.check_result([5], None, False, 'coo')
         self.check_result([5], None, True, 'coo')
-        self.check_result([5], 0, True, 'coo')
         self.check_result([5], 0, False, 'coo')
+        self.check_result([5], 0, True, 'coo')
 
     def test_sum_2d(self):
         self.check_result([2, 5], None, False, 'coo', dtype="float32")

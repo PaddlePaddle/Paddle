@@ -56,7 +56,7 @@ void SumCooKernel(const Context& dev_ctx,
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
     const auto* x_indices_data = x_indices.data<int64_t>();
     const auto* x_values_data = x_values.data<T>();
-    //
+    // indices_map is a mapping from output's position to values to be summed.
     std::map<std::vector<int64_t>, std::vector<int64_t>> indices_map;
     for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
       std::vector<int64_t> pos;
@@ -79,11 +79,25 @@ void SumCooKernel(const Context& dev_ctx,
       }
     }
     out_dims = make_ddim(dims);
+    auto sparse_dim = x_indices.dims().size();
+    if (keep_dim) {
+      sparse_dim -= 1;
+    }
 
+    std::vector<int> out_values_dims;
+    out_values_dims.push_back(static_cast<int>(indices_map.size()));
+    for (auto i = 1; i < x.values().dims().size(); ++i) {
+      out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
+    }
     out_indices = Empty<int64_t, Context>(
-        dev_ctx, {out_dims.size(), static_cast<int>(indices_map.size())});
-    out_values =
-        Empty<T, Context>(dev_ctx, {static_cast<int>(indices_map.size())});
+        dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
+    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
+
+    int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
+                                        out_values_dims.end(),
+                                        1,
+                                        std::multiplies<int64_t>());
+
     auto* out_indices_data = out_indices.data<int64_t>();
     auto* out_values_data = out_values.data<T>();
 
@@ -92,14 +106,17 @@ void SumCooKernel(const Context& dev_ctx,
       std::vector<int64_t> pos = iter_indices_map->first;
       std::vector<int64_t> values_index = iter_indices_map->second;
       iter_indices_map++;
-      T out_value = 0;
-      for (auto index : values_index) {
-        out_value += x_values_data[index];
-      }
-      for (auto i = 0; i < out_indices.dims()[0]; ++i) {
+      for (auto i = 0; i < sparse_dim; ++i) {
         out_indices_data[j + i * indices_map.size()] = pos[i];
       }
-      out_values_data[j] = out_value;
+      for (auto i = 0; i < dense_dim; ++i) {
+        T out_value = 0;
+        for (auto index : values_index) {
+          out_value += x_values_data[i + index * dense_dim];
+        }
+        LOG(INFO) << out_value;
+        out_values_data[i + j * dense_dim] = out_value;
+      }
     }
     if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
       out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);

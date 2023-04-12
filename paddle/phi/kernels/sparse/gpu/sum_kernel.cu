@@ -30,6 +30,7 @@ template <typename T>
 __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
                                  const T* x_values_data,
                                  const int64_t x_nnz,
+                                 const int64_t dense_dim,
                                  const int64_t n_dim,
                                  const int64_t axis,
                                  const int64_t keep_dim,
@@ -48,7 +49,10 @@ __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
         }
       }
       if (same) {
-        out_values_data[index] += x_values_data[i];
+        for (int j = 0; j < dense_dim; ++j) {
+          out_values_data[j + index * dense_dim] +=
+              x_values_data[j + i * dense_dim];  // j + index * dense_dim
+        }
       }
       i++;
     }
@@ -140,6 +144,7 @@ void SumCooKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCooTensor* out) {
   size_t axis_dim = axis.size();
+  auto dense_dim = x.values().dims()[1];
   // create out sparse tensor
   const auto& x_dims = x.dims();
   const auto& x_indices = x.indices();
@@ -159,8 +164,8 @@ void SumCooKernel(const Context& dev_ctx,
       out_dims = make_ddim({1});
       out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {1, 1});
     }
-    phi::funcs::SetConstant<Context, T> set_out_indices;
-    set_out_indices(dev_ctx, &out_indices, static_cast<T>(0));
+    phi::funcs::SetConstant<Context, x_indices_dtype> set_out_indices;
+    set_out_indices(dev_ctx, &out_indices, static_cast<x_indices_dtype>(0));
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
@@ -176,10 +181,14 @@ void SumCooKernel(const Context& dev_ctx,
       }
     }
     out_dims = make_ddim(dims);
+    auto sparse_dim = x_indices.dims().size();
+    if (keep_dim) {
+      sparse_dim -= 1;
+    }
 
     out_indices =
-        Empty<x_indices_dtype, Context>(dev_ctx, {out_dims.size(), x.nnz()});
-    out_values = Empty<T, Context>(dev_ctx, {x.nnz()});
+        Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, x.nnz()});
+    out_values = Empty<T, Context>(dev_ctx, {x.nnz(), dense_dim});
 
     const auto* x_indices_data = x_indices.data<x_indices_dtype>();
     const auto* x_values_data = x_values.data<T>();
@@ -193,6 +202,7 @@ void SumCooKernel(const Context& dev_ctx,
                           dev_ctx.stream()>>>(x_indices_data,
                                               x_values_data,
                                               x.nnz(),
+                                              dense_dim,
                                               n_dim,
                                               dim,
                                               keep_dim,
