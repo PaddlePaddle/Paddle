@@ -74,7 +74,7 @@ class DistributedTensor:
                 )
             )
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
 
         # # NOTE: Only support even sharding now
         # if shard_sizes is not None:
@@ -177,7 +177,7 @@ class DistributedTensor:
             # TODO: Do we really need to write dist_attr back to serial_tensor？
             self._serial_tensor.dist_attr = dist_attr
         else:
-            assert dist_attr is None, "{}".format(dist_attr)
+            assert dist_attr is None, f"{dist_attr}"
             # Use the dist attr of serial_tensor to do the initialization
             self._dist_attr = self._serial_tensor.dist_attr
 
@@ -342,11 +342,9 @@ class DistributedTensor:
             return kwargs
 
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
         if block is not None and not isinstance(block, Block):
-            raise TypeError(
-                "The block must be Block, but got {}.".format(type(block))
-            )
+            raise TypeError(f"The block must be Block, but got {type(block)}.")
         rank = paddle.distributed.get_rank() if rank is None else rank
 
         if block is None:
@@ -373,7 +371,7 @@ class DistributedTensor:
         rank = paddle.distributed.get_rank() if rank is None else rank
         assert (
             rank in self._local_tensor_map
-        ), "The rank {} local tensor has not been created.".format(rank)
+        ), f"The rank {rank} local tensor has not been created."
         return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):
@@ -405,7 +403,7 @@ class DistributedTensor:
             annotated_str, self.dist_attr.process_mesh
         )
 
-        str += ", is_parameter: {}".format(self.serial_tensor.is_parameter)
+        str += f", is_parameter: {self.serial_tensor.is_parameter}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"

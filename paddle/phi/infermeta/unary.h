@@ -401,6 +401,10 @@ void Pool2DInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void PSendInferMeta(const MetaTensor& x, int peer);
+
+void PSendArrayInferMeta(const MetaTensor& x, int peer);
+
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,
                  MetaTensor* q,
@@ -431,6 +435,8 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
                                  bool keep_dim,
                                  MetaTensor* out,
                                  MetaConfig config = MetaConfig());
+
+void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,

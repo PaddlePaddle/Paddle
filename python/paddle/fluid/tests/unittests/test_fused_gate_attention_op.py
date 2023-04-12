@@ -311,7 +311,7 @@ class TestFusedGateAttentionOp(OpTest):
         if check_equal:
             self.assertTrue(
                 np.equal(_convert(ref), _convert(out)).all(),
-                "Checking < {} > failed!".format(name),
+                f"Checking < {name} > failed!",
             )
         else:
             np.testing.assert_allclose(
@@ -319,7 +319,7 @@ class TestFusedGateAttentionOp(OpTest):
                 _convert(out),
                 atol=atol,
                 rtol=rtol,
-                err_msg="Checking < {} > failed!".format(name),
+                err_msg=f"Checking < {name} > failed!",
             )
 
     def check_output_and_grad(self, atol, rtol):

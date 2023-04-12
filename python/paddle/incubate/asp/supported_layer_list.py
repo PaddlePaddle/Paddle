@@ -72,7 +72,7 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     weight_pruned_nparray = np.multiply(weight_nparray, weight_sparse_mask)
     assert asp.check_sparsity(
         weight_pruned_nparray.T, n=n, m=m, func_name=checked_func_name
-    ), 'Pruning {} weight matrix failure!!!'.format(param_name)
+    ), f'Pruning {param_name} weight matrix failure!!!'
     return weight_pruned_nparray, weight_sparse_mask
 
 

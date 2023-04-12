@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 #include <cstddef>
 #include <cstring>
 
@@ -40,6 +40,8 @@ typedef enum {
   FLOAT32,
   FLOAT64,
   BFLOAT16,
+  COMPLEX64,
+  COMPLEX128,
 } C_DataType;
 
 typedef enum {

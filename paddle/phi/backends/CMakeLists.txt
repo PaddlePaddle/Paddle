@@ -74,15 +74,3 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
-
-set(COMM_UTILS_DEPS process_group)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
-endif()
-cc_library(
-  processgroup_comm_utils
-  SRCS processgroup_comm_utils.cc
-  DEPS ${COMM_UTILS_DEPS})

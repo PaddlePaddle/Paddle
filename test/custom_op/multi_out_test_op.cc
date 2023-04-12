@@ -34,7 +34,7 @@ void fill_constant_cpu_kernel(data_t* out_data, int64_t x_numel, data_t value) {
 }
 
 std::vector<paddle::Tensor> MultiOutCPU(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto out = paddle::empty_like(x);
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -43,13 +43,13 @@ std::vector<paddle::Tensor> MultiOutCPU(const paddle::Tensor& x) {
       }));
 
   // fake multi output: Fake_float64 with float64 dtype
-  auto fake_float64 = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto fake_float64 = paddle::empty_like(x);
 
   fill_constant_cpu_kernel<double>(
       fake_float64.mutable_data<double>(x.place()), x.size(), 0.);
 
   // fake multi output: ZFake_int32 with int32 dtype
-  auto zfake_int32 = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto zfake_int32 = paddle::empty_like(x);
 
   fill_constant_cpu_kernel<int32_t>(
       zfake_int32.mutable_data<int32_t>(x.place()), x.size(), 1);
@@ -65,9 +65,58 @@ std::vector<paddle::DataType> InferDtype(paddle::DataType x_dtype) {
   return {x_dtype, paddle::DataType::FLOAT64, paddle::DataType::INT32};
 }
 
+// out = w * 1 + x * 2 + y * 3 + z * 4
+std::vector<paddle::Tensor> DiscreteOutForward(const paddle::Tensor& w,
+                                               const paddle::Tensor& x,
+                                               const paddle::Tensor& y,
+                                               const paddle::Tensor& z) {
+  paddle::Tensor out = w * 1 + x * 2 + y * 3 + z * 4;
+  return {out};
+}
+
+std::vector<std::vector<int64_t>> DiscreteOutInferShape(
+    const std::vector<int64_t>& w_shape,
+    const std::vector<int64_t>& x_shape,
+    const std::vector<int64_t>& y_shape,
+    const std::vector<int64_t>& z_shape) {
+  return {w_shape};
+}
+
+std::vector<paddle::DataType> DiscreteOutInferDtype(
+    const paddle::DataType& w_dtype,
+    const paddle::DataType& x_dtype,
+    const paddle::DataType& y_dtype,
+    const paddle::DataType& z_dtype) {
+  return {w_dtype};
+}
+
+// w_grad = out_grad
+// y_grad = out_grad * 3
+std::vector<paddle::Tensor> DiscreteOutBackward(
+    const paddle::Tensor& w,
+    const paddle::Tensor& x,
+    const paddle::Tensor& y,
+    const paddle::Tensor& z,
+    const paddle::Tensor& out_grad) {
+  return {out_grad, out_grad * 3};
+}
+
 PD_BUILD_OP(multi_out)
     .Inputs({"X"})
     .Outputs({"Out", "Fake_float64", "ZFake_int32"})
     .SetKernelFn(PD_KERNEL(MultiOutCPU))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDtype));
+
+PD_BUILD_OP(discrete_out)
+    .Inputs({"w", "x", "y", "z"})
+    .Outputs({"output"})
+    .SetKernelFn(PD_KERNEL(DiscreteOutForward))
+    .SetInferShapeFn(PD_INFER_SHAPE(DiscreteOutInferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(DiscreteOutInferDtype));
+
+// Test gradient operator whose output order is discrete.
+PD_BUILD_GRAD_OP(discrete_out)
+    .Inputs({"w", "x", "y", "z", paddle::Grad("output")})
+    .Outputs({paddle::Grad("w"), paddle::Grad("y")})
+    .SetKernelFn(PD_KERNEL(DiscreteOutBackward));

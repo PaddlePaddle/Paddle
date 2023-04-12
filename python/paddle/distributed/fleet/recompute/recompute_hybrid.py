@@ -85,7 +85,7 @@ class _HPRecomputeFunction(PyLayer):
         offload,
         partition,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         # store for recomputing
@@ -125,9 +125,7 @@ class _HPRecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
         ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 

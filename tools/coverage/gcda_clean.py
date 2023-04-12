@@ -80,7 +80,7 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
-        changed.append('/paddle/build/{}.gcda'.format(file))
+        changed.append(f'/paddle/build/{file}.gcda')
 
     for parent, dirs, files in os.walk('/paddle/build/'):
         for gcda in files:

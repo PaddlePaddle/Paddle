@@ -196,7 +196,6 @@ class TestSplitOp_unk_section(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -248,7 +247,7 @@ def create_test_fp16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestSplitFp16.__name__ = cls_name
     globals()[cls_name] = TestSplitFp16
 
@@ -273,7 +272,7 @@ def create_test_bf16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestSplitBf16.__name__ = cls_name
     globals()[cls_name] = TestSplitBf16
 

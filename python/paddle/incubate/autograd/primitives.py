@@ -50,6 +50,7 @@ from paddle.tensor import ones  # noqa: F401
 from paddle.tensor import pow  # noqa: F401
 from paddle.tensor import prod  # noqa: F401
 from paddle.tensor import reshape  # noqa: F401
+from paddle.tensor import rsqrt  # noqa: F401
 from paddle.tensor import sign  # noqa: F401
 from paddle.tensor import sin  # noqa: F401
 from paddle.tensor import sinh  # noqa: F401
@@ -117,6 +118,7 @@ sub_prim = [
     'ones',
     'zeros',
     'sqrt',
+    'rsqrt',
 ]
 
 others = [
