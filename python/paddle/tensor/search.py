@@ -681,10 +681,10 @@ def where(condition, x=None, y=None, name=None):
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'where'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'], 'where'
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'where'
+            y, 'y', ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'], 'where'
         )
         helper = LayerHelper("where", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -782,7 +782,7 @@ def index_sample(x, index):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_sample',
         )
         check_variable_and_dtype(

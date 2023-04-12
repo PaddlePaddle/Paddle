@@ -3716,7 +3716,7 @@ def tanh(x, name=None):
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tanh'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'tanh'
         )
         check_type(x, 'x', (Variable), 'tanh')
         helper = LayerHelper('tanh', **locals())

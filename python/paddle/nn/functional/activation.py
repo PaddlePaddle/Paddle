@@ -1110,7 +1110,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['uint16', 'float16', 'bfloat16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(

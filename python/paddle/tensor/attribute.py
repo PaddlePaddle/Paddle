@@ -113,6 +113,7 @@ def shape(input):
             'input',
             [
                 'bool',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
