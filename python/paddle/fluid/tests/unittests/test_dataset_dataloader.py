@@ -20,7 +20,7 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -127,9 +127,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
             random_delta_batch_size = np.zeros(shape=[file_num])
 
         for i in range(file_num):
-            filename = os.path.join(
-                self.temp_dir.name, 'dataset_test_{}.txt'.format(i)
-            )
+            filename = os.path.join(self.temp_dir.name, f'dataset_test_{i}.txt')
             filelist.append(filename)
             write_reader_data_to_file(
                 filename,

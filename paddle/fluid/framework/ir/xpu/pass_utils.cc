@@ -105,8 +105,7 @@ size_t HashTensor(const phi::DenseTensor& in) {
 template size_t HashTensor<int16_t>(const phi::DenseTensor& in);
 template size_t HashTensor<float>(const phi::DenseTensor& in);
 
-std::string GetPrefixWithoutHash(const std::string& name,
-                                 const phi::DenseTensor& tensor) {
+std::string GetPrefixWithoutHash(const std::string& name) {
   std::size_t found = name.find("_#");
   return found == std::string::npos ? name : name.substr(0, found);
 }
@@ -128,7 +127,7 @@ void PrepareWeight(Graph* graph,
 
   size_t dst_hash = HashTensor<T>(dst_tensor);
   size_t dst_max_hash = HashTensor<float>(dst_max_tensor);
-  std::string pre_name = GetPrefixWithoutHash(src_name, *src_tensor);
+  std::string pre_name = GetPrefixWithoutHash(src_name);
   std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
   std::string dst_max_name = pre_name + "_max_#" + std::to_string(dst_max_hash);
   *dst = FindNodeWithName(graph, dst_name);
@@ -206,7 +205,7 @@ void PrepareBias(
   phi::DenseTensor dst_tensor;
   CastToFp32(src_tensor, &dst_tensor);
   size_t dst_hash = HashTensor<float>(dst_tensor);
-  std::string pre_name = GetPrefixWithoutHash(src_name, *src_tensor);
+  std::string pre_name = GetPrefixWithoutHash(src_name);
   std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
   *dst = FindNodeWithName(graph, dst_name);
   if (*dst == nullptr) {

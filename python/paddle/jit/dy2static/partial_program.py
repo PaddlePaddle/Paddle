@@ -18,14 +18,21 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
+from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    _out_grad_names,
+    _param_grad_names,
+    backend_guard,
+)
 
 __all__ = []
 
@@ -58,9 +65,7 @@ class NestSequence:
     def _get_var_ids(self):
         var_ids = []
         for idx, var in enumerate(self.__input_list):
-            if isinstance(
-                var, (framework.Variable, core.VarBase, core.eager.Tensor)
-            ):
+            if isinstance(var, (framework.Variable, core.eager.Tensor)):
                 var_ids.append(idx)
 
         return var_ids
@@ -72,9 +77,7 @@ class NestSequence:
         if need_check:
             warning_types = set()
             for var in self.__input_list:
-                if not isinstance(
-                    var, (framework.Variable, core.VarBase, core.eager.Tensor)
-                ):
+                if not isinstance(var, (framework.Variable, core.eager.Tensor)):
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
@@ -105,15 +108,6 @@ class LazyInitialized:
         val = self.function(instance)
         setattr(instance, self.function.__name__, val)
         return val
-
-
-def _change_is_test_status(program, is_test):
-    # change all `is_test` attributes
-    for block in program.blocks:
-        for op in block.ops:
-            if op.has_attr('is_test'):
-                op._set_attr('is_test', is_test)
-    return program
 
 
 class ProgramInfo:
@@ -169,7 +163,7 @@ class PartialProgramLayer:
         main_program(Program): The main program that contains ops need to be executed.
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
-        parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
+        parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
 
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
@@ -208,6 +202,7 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
+        self._backend = kwargs.get('backend', None)
 
     def __call__(self, inputs):
         """
@@ -216,6 +211,8 @@ class PartialProgramLayer:
         in_vars, out_vars = self._prepare(inputs)
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
+
+        self._sync_lr_value_with_scheduler()
 
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
@@ -230,6 +227,21 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def _sync_lr_value_with_scheduler(self):
+        """Update lr_var value with calculated by lr_scheduler."""
+        main_program = self._origin_main_program
+        if hasattr(main_program, 'lr_scheduler') and hasattr(
+            main_program, 'lr_var'
+        ):
+            lr_scheduler = main_program.lr_scheduler
+            lr_var = main_program.lr_var
+
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_scheduler = self._origin_main_program.lr_scheduler
+            lr_value = lr_scheduler()
+            data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
+            lr_var.set_value(data)
 
     def set_hooker(self, hooker):
         self._hooker = hooker
@@ -252,7 +264,8 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _double_grads(self):
-        return self._get_double_grads(self._origin_main_program)
+        # TODO: check the affects.
+        return None
 
     # whole
     @switch_to_static_graph
@@ -280,6 +293,8 @@ class PartialProgramLayer:
                 amp_program, self._amp_list
             )
         if is_infer_mode:
+            if self._hooker:
+                amp_program = self._hooker.after_infer(amp_program)
             return amp_program
         else:
             train_amp_program = self._append_backward_desc(amp_program)
@@ -455,8 +470,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -474,8 +487,6 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._train_amp_program
         elif _in_pure_fp16_guard():
@@ -485,8 +496,6 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if _in_amp_guard():
             return self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -496,8 +505,6 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -511,8 +518,6 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -627,8 +632,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        # make sure all status of is_test are False in train mode.
-        program = _change_is_test_status(main_program.clone(), is_test=False)
+        program = main_program.clone(for_test=False)
         if self._hooker:
             program = self._hooker.before_append_backward(program)
         targets = []
@@ -638,10 +642,9 @@ class PartialProgramLayer:
 
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
-            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
-            core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            backward.gradients(targets=targets, inputs=[])
+            with backend_guard(self._backend):
+                backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
@@ -681,35 +684,7 @@ class PartialProgramLayer:
 
         self._params = required_params
 
-    def _get_double_grads(self, program):
-        double_grads = []
-        for block in program.blocks:
-            for name in block.vars:
-                if "@GRAD" in name:
-                    var_desc = block.vars[name].desc
-                    var_base = None
-                    if not framework.global_var._in_eager_mode_:
-                        var_base = core.VarBase(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
-                    else:
-                        var_base = core.eager.Tensor(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
-                    double_grads.append(var_base)
-        return self._valid_vars(double_grads)
-
     def _cast_fp16_if_pure_fp16(self, in_vars):
-        from paddle.amp.auto_cast import _in_pure_fp16_guard
-
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name
@@ -887,29 +862,20 @@ class PartialProgramLayer:
         assert isinstance(inputs, (tuple, list))
         # Flatten inputs with nested structure into single list.
         flatten_inputs = paddle.utils.flatten(inputs)
-        # Convert variable into VarBase and feed in training data.
+        # Convert variable into Tensor and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework.global_var._in_eager_mode_:
-                    var = core.VarBase(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True,
-                    )
-                else:
-                    var = core.eager.Tensor(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True,
-                    )
-            elif isinstance(value, (core.VarBase, core.eager.Tensor)):
+                var = core.eager.Tensor(
+                    value=value,
+                    name=self._inputs[i].desc.name(),
+                    persistable=False,
+                    place=expected_place,
+                    zero_copy=True,
+                )
+            elif isinstance(value, core.eager.Tensor):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance
                 # to avoid this problem.
@@ -925,7 +891,7 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
-        # mapping from name(string) -> VarBase
+        # mapping from name(string) -> Tensor
         out_varbase_map = {}
 
         def create_out(var_id):
@@ -937,27 +903,18 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework.global_var._in_eager_mode_:
-                var_base = core.VarBase(
-                    var_desc.dtype(),
-                    var_desc.shape(),
-                    var_desc.name(),
-                    var_desc.type(),
-                    False,
-                )
-            else:
-                var_base = core.eager.Tensor(
-                    var_desc.dtype(),
-                    var_desc.shape(),
-                    var_desc.name(),
-                    var_desc.type(),
-                    False,
-                )
+            var_base = core.eager.Tensor(
+                var_desc.dtype(),
+                var_desc.shape(),
+                var_desc.name(),
+                var_desc.type(),
+                False,
+            )
             var_base.stop_gradient = var.stop_gradient
             out_varbase_map[var_desc.name()] = var_base
             return var_base
 
-        # Create VarBase to receive output data.
+        # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
 
         return input_vars, out_vars
@@ -968,21 +925,11 @@ class PartialProgramLayer:
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        if not framework.global_var._in_eager_mode_:
-            tmp_scope_vec = core.VarBase(
-                core.VarDesc.VarType.FP32,
-                [],
-                "program_out_scope",
-                core.VarDesc.VarType.STEP_SCOPES,
-                True,
-            )
-            tmp_scope_vec.value().set_scope(inner_scope)
-        else:
-            tmp_scope_vec = [inner_scope]
+        tmp_scope_vec = [inner_scope]
         return tmp_scope_vec
 
     def _create_cuda_graph_vec(self):
-        var = core.VarBase(
+        var = core.eager.Tensor(
             core.VarDesc.VarType.FP32,
             [],
             "cuda_graph",
@@ -994,7 +941,7 @@ class PartialProgramLayer:
 
     def _restore_out(self, out_vars):
         """
-        Restores same nested outputs by only replacing the Variable with VarBase.
+        Restores same nested outputs by only replacing the Variable with Tensor.
         """
 
         flatten_outputs = self._outputs.tolist()
@@ -1011,9 +958,7 @@ class PartialProgramLayer:
         return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
-        if isinstance(var, (core.VarBase, core.eager.Tensor)) and var.shape == [
-            1
-        ]:
+        if isinstance(var, core.eager.Tensor) and var.shape == [1]:
             # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
             if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
                 return True
@@ -1023,7 +968,7 @@ class PartialProgramLayer:
         """
         Removes invalid value for various-length return statement
         """
-        if isinstance(out_vars, (core.VarBase, core.eager.Tensor)):
+        if isinstance(out_vars, core.eager.Tensor):
             if self._is_no_value(out_vars):
                 return None
             return out_vars
@@ -1050,7 +995,7 @@ class PartialProgramLayer:
     def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
+        # set param grad Tensor by forward Tensor(LoDTensor)
         # If we don't change grad_var type here, RunProgramOp need
         # transform SelectedRows to LoDTensor forcibly, it may not
         # be user wanted result.
@@ -1078,9 +1023,9 @@ class PartialProgramLayer:
     def _check_params_all_inited(self, main_program):
         """
         Check all params from main program are already initialized, see details as follows:
-            1. all parameters in self._params should be type `framework.ParamBase` which are created in dygraph.
+            1. all parameters in self._params should be type `framework.EagerParamBase` which are created in dygraph.
             2. all parameters from transformed program can be found in self._params.
-               Because they share same data with ParamBase of original dygraph.
+               Because they share same data with EagerParamBase of original dygraph.
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
@@ -1091,7 +1036,7 @@ class PartialProgramLayer:
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
             # self._params constains parameters and buffers with persistable=True.
-            if not isinstance(var, (core.VarBase, core.eager.Tensor)):
+            if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
                         i, type(var)
@@ -1117,9 +1062,11 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def partial_program_from(concrete_program):
+def partial_program_from(concrete_program, from_method=False):
     inputs = concrete_program.inputs
-    if inputs and isinstance(inputs[0], layers.Layer):
+
+    # NOTE(SigureMo): Remove the first arg `self` from method args.
+    if inputs and from_method:
         inputs = inputs[1:]
 
     return PartialProgramLayer(
@@ -1148,8 +1095,10 @@ def add_build_strategy_for(
         )
         ir_graph = framework.IrGraph(compiled_program._graph)
         builded_program = ir_graph.to_program()
-        if hasattr(compiled_program._program, 'lr_sheduler'):
-            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+        if hasattr(compiled_program._program, 'lr_scheduler'):
+            builded_program.lr_scheduler = (
+                compiled_program._program.lr_scheduler
+            )
     else:
         # can't just create a new program, we need copy the vardesc.
         builded_program = paddle.static.Program()

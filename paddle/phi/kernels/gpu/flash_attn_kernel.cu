@@ -43,11 +43,14 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
                              float dropout,
                              bool causal,
                              bool return_softmax,
+                             bool is_test,
                              DenseTensor* out,
                              DenseTensor* softmax,
                              DenseTensor* softmax_lse,
                              DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
+  if (is_test) dropout = 0.0f;
+
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
@@ -75,11 +78,14 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
   auto gen = ctx.GetGenerator();
   uint64_t inc = batch_size * num_heads * 32;
   auto seed_offset_pair = gen->IncrementOffset(inc);
+
   uint64_t seed = seed_offset_pair.first;
   uint64_t offset = seed_offset_pair.second;
 
-  std::vector<int64_t> seed_offset_vec{int64_t(seed), int64_t(offset)};
-  phi::TensorFromVector<int64_t>(seed_offset_vec, ctx, seed_offset);
+  seed_offset->Resize({2});
+  auto* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
+  seed_offset_data[0] = static_cast<int64_t>(seed);
+  seed_offset_data[1] = static_cast<int64_t>(offset);
 
   int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
 
@@ -184,6 +190,7 @@ void FlashAttnKernel(const Context& ctx,
                      float dropout,
                      bool causal,
                      bool return_softmax,
+                     bool is_test,
                      DenseTensor* out,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
@@ -210,12 +217,10 @@ void FlashAttnKernel(const Context& ctx,
 
   float scale = 1.0f / std::sqrt(head_size);
 
-  DenseTensor q_t_s =
-      Reshape<T, Context>(ctx, q, {total_q, num_heads, head_size});
-  DenseTensor k_t_s =
-      Reshape<T, Context>(ctx, k, {total_k, num_heads, head_size});
-  DenseTensor v_t_s =
-      Reshape<T, Context>(ctx, v, {total_k, num_heads, head_size});
+  DenseTensor q_t_s, k_t_s, v_t_s;
+  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
+  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
 
   DenseTensor cu_seqlens_q;
   DenseTensor cu_seqlens_k;
@@ -236,6 +241,7 @@ void FlashAttnKernel(const Context& ctx,
                                       dropout,
                                       causal,
                                       return_softmax,
+                                      is_test,
                                       out,
                                       softmax,
                                       softmax_lse,

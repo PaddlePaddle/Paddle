@@ -144,7 +144,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                        T* y) {
   impl_->BlasAXPBY(dev_id_,
                    stream,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
                    reinterpret_cast<void*>(const_cast<T*>(x)),
@@ -655,7 +655,11 @@ void DeviceManager::Clear() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
+#if defined(__APPLE__)
+  std::regex express(".*\\.dylib");
+#else
   std::regex express(".*\\.so");
+#endif
   std::match_results<std::string::iterator> results;
 
 #if !defined(_WIN32)

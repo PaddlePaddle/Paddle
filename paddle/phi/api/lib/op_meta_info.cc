@@ -25,6 +25,11 @@ limitations under the License. */
 namespace paddle {
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+  if (!src.initialized() || !dst->defined()) {
+    VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
+               "happens when handling inplace optional inputs & outputs.";
+    return;
+  }
   PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
                     true,
                     phi::errors::Unavailable(
@@ -98,6 +103,29 @@ Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
   return inputs_.at(idx);
 }
 
+std::vector<Tensor>* CustomOpKernelContext::AllMutableInput() {
+  return &inputs_;
+}
+
+paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
+  if (!inputs_.at(idx).is_initialized()) {
+    return paddle::none;
+  }
+  return paddle::make_optional<paddle::Tensor>(inputs_.at(idx));
+}
+
+paddle::optional<std::vector<Tensor>>
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    if (!inputs_.at(i).is_initialized()) {
+      return paddle::none;
+    }
+    rlt.emplace_back(inputs_.at(i));
+  }
+  return paddle::make_optional<std::vector<Tensor>>(rlt);
+}
+
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }
@@ -132,12 +160,15 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
   return output_range_.at(idx);
 }
 
-// handle inplace mechanism
-// Find out non-inplace output tensors.
-void CustomOpKernelContext::MapPlainOutputs(
+void CustomOpKernelContext::ConstructInplaceIndex(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
     const std::unordered_map<std::string, std::string>& inplace_map) {
+  // Cache inplace indices.
+  if (inplace_map.empty() || !inplace_idx_map_.empty()) {
+    VLOG(4) << "Custom opertor ConstructInplaceIndex no need to recompute.";
+    return;
+  }
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
     auto& input = inputs[in_idx];
     if (inplace_map.find(input) == inplace_map.end()) {
@@ -150,15 +181,26 @@ void CustomOpKernelContext::MapPlainOutputs(
                               "the input of `Inplace` again and make "
                               "sure you registered your op accurately. ",
                               input));
-    inplace_tensor_map_[in_idx] = distance(outputs.begin(), out_iter);
+    size_t out_idx = distance(outputs.begin(), out_iter);
+    inplace_idx_map_[in_idx] = out_idx;
+    inplace_reverse_idx_map_[out_idx] = in_idx;
   }
+  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+}
+
+// Find out non-inplace output tensors.
+void CustomOpKernelContext::UpdatePlainOutputs(
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
+  // Cache plain outputs vector.
+  if (!plain_outputs_.empty()) {
+    VLOG(4) << "Custom opertor UpdatePlainOutputs no need to recompute.";
+    return;
+  }
+  ConstructInplaceIndex(inputs, outputs, inplace_map);
   for (size_t i = 0; i < outputs.size(); ++i) {
-    if (std::any_of(
-            inplace_tensor_map_.begin(),
-            inplace_tensor_map_.end(),
-            [i](std::unordered_map<size_t, size_t>::const_reference pair) {
-              return pair.second == i;
-            })) {
+    if (inplace_reverse_idx_map_.find(i) != inplace_reverse_idx_map_.end()) {
       continue;
     }
     size_t output_start_idx = output_range_[i].first;
@@ -167,11 +209,12 @@ void CustomOpKernelContext::MapPlainOutputs(
       plain_outputs_.push_back(&outputs_[idx]);
     }
   }
-  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+  VLOG(4) << "Custom opertor update plain outputs map successfully.";
 }
+
 // Assign input tensor to inplace output tensors.
 void CustomOpKernelContext::AssignInplaceOutputs() {
-  for (auto pair : inplace_tensor_map_) {
+  for (auto pair : inplace_idx_map_) {
     size_t in_start_idx = input_range_[pair.first].first;
     size_t in_end_idx = input_range_[pair.first].second;
     size_t out_start_idx = output_range_[pair.second].first;
@@ -186,16 +229,23 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
-    VLOG(4)
-        << "Custom opertor update inplace input-output tensor successfully.";
+    VLOG(4) << "Custom opertor update inplace input-output tensor "
+               "successfully. Update map size = "
+            << inplace_idx_map_.size();
   }
 }
+
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
   return &plain_outputs_;
 }
+
+std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap() {
+  return inplace_idx_map_;
+}
+
 std::unordered_map<size_t, size_t>
-CustomOpKernelContext::GetInplaceTensorMap() {
-  return inplace_tensor_map_;
+CustomOpKernelContext::GetInplaceReverseIndexMap() {
+  return inplace_reverse_idx_map_;
 }
 ////////////////////// Op Meta Info //////////////////////
 
@@ -211,10 +261,13 @@ OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
   attrs_ = std::forward<std::vector<std::string>>(attrs);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::Inplace(
+OpMetaInfo& OpMetaInfo::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
   inplace_map_ =
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map);
+  for (const auto& pair : inplace_map_) {
+    inplace_reverse_map_[pair.second] = pair.first;
+  }
   return *this;
 }
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
@@ -297,9 +350,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::Inplace(
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     std::unordered_map<std::string, std::string>&& inplace_map) {
-  info_ptr_->Inplace(
+  const std::vector<std::string>& inputs =
+      OpMetaInfoHelper::GetInputs(*info_ptr_);
+  const std::vector<std::string>& outputs =
+      OpMetaInfoHelper::GetOutputs(*info_ptr_);
+  for (const auto& pair : inplace_map) {
+    PADDLE_ENFORCE(
+        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` before "
+            "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
+            name_));
+    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
+                       outputs.cend(),
+                   phi::errors::PreconditionNotMet(
+                       "The register of operator %s's `SetInplaceMap` failed. "
+                       "Please make sure: 1. Call `Inputs` and `Outputs` "
+                       "before `SetInplaceMap`; 2. The values of inplace_map "
+                       "are inside `Outputs`",
+                       name_));
+  }
+  info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));
   return *this;
 }

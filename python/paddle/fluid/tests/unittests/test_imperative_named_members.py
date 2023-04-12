@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, num_channel, dim, num_filter=5):
         super().__init__()
         self.fc = paddle.nn.Linear(dim, dim)
@@ -71,7 +71,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
             model = paddle.nn.Sequential(fc1, fc2, custom)
 
             named_parameters = list(model.named_parameters())
-            expected_named_parameters = list()
+            expected_named_parameters = []
             for prefix, layer in model.named_sublayers():
                 for name, param in layer.named_parameters(
                     include_sublayers=False
@@ -84,7 +84,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
     def test_dir_layer(self):
         with fluid.dygraph.guard():
 
-            class Mymodel(fluid.dygraph.Layer):
+            class Mymodel(paddle.nn.Layer):
                 def __init__(self):
                     super().__init__()
                     self.linear1 = paddle.nn.Linear(10, 10)

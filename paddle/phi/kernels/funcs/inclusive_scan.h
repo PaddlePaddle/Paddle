@@ -34,26 +34,6 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-class CumTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class CumTypeTrait<phi::dtype::float16> {
- public:
-  using Type = __half;
-};
-
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-template <>
-class CumTypeTrait<phi::dtype::bfloat16> {
- public:
-  using Type = __nv_bfloat16;
-};
-#endif
-
-template <typename T>
 struct IsComplex : public std::false_type {};
 
 template <>

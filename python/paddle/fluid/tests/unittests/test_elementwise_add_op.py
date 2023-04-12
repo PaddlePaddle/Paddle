@@ -20,8 +20,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -32,6 +32,7 @@ class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_input_output()
@@ -142,15 +143,29 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place,
-                    atol=1e-3,
-                    check_dygraph=self.check_dygraph(),
-                    check_prim=self.check_prim,
-                )
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place,
+            atol=1e-3,
+            check_dygraph=self.check_dygraph(),
+            check_prim=self.check_prim,
+        )
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_prim=True)
+
+    def test_check_grad_ingore_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', no_grad_set=set("X"), check_prim=True
+        )
+
+    def test_check_grad_ingore_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=set('Y'), check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -163,6 +178,7 @@ class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
+        self.public_python_api = paddle.add
         self.prim_op_type = "prim"
         self.dtype = np.uint16
 
@@ -481,15 +497,15 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
         self.y = np.random.rand(100, 1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 100, 1)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
-
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1)
+        self.out = self.x + self.y
 
 
 class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
@@ -568,8 +584,8 @@ class TestAddApi(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = self._executed_api(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
@@ -583,8 +599,8 @@ class TestAddApi(unittest.TestCase):
                     "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[3], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
             place = fluid.CPUPlace()

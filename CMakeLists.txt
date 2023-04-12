@@ -53,15 +53,9 @@ option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
-option(WITH_MLU "Compile PaddlePaddle with CAMBRICON MLU" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
-option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
-# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
-# to develop some acl related functionality on x86
-option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
-option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
@@ -79,14 +73,8 @@ endif()
 if(WITH_GPU AND WITH_XPU_XFT)
   message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
-if(WITH_GPU AND WITH_ASCEND)
-  message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
-endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
-endif()
-if(WITH_GPU AND WITH_MLU)
-  message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -111,14 +99,6 @@ endif()
 if(APPLE AND WITH_ARM)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
   set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
-endif()
-
-if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-  if(WITH_ARM_BRPC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-  endif()
 endif()
 
 if(WIN32)
@@ -277,7 +257,7 @@ option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
 option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF})
+option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
@@ -289,7 +269,6 @@ option(
   OFF)
 option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
-option(WITH_INFRT "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
@@ -298,6 +277,7 @@ option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
+option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
 option(WITH_MUSL "Compile with musl libc instead of gblic" OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode" OFF)
 option(WITH_STRIP "Strip so files of Whl packages" OFF)
@@ -308,7 +288,6 @@ option(NEW_RELEASE_ALL
        OFF)
 option(NEW_RELEASE_JIT
        "PaddlePaddle next-level release strategy for backup jit package" OFF)
-option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU" OFF)
 option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
@@ -441,14 +420,6 @@ if(NOT WITH_XPU AND WITH_XPU_BKCL)
       CACHE STRING "Disable BKCL when compiling without XPU" FORCE)
 endif()
 
-if(NOT WITH_MLU AND WITH_CNCL)
-  message(
-    WARNING "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
-  set(WITH_MLU
-      OFF
-      CACHE STRING "Disable CNCL when compiling without MLU" FORCE)
-endif()
-
 if(WITH_NCCL)
   add_definitions("-DPADDLE_WITH_NCCL")
   include(nccl)
@@ -478,10 +449,6 @@ if(WITH_GPU)
   if(NOT WIN32)
     include(cupti)
   endif()
-endif()
-
-if(WITH_MLU)
-  include(neuware)
 endif()
 
 if(WITH_ROCM)
@@ -524,15 +491,6 @@ if(WITH_DISTRIBUTE)
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
   endif()
-  if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
-    # disable WITH_PSCORE for NPU before include third_party
-    message(
-      WARNING
-        "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
-    set(WITH_PSCORE
-        OFF
-        CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
-  endif()
   if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
     # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
     message(
@@ -565,13 +523,6 @@ if(WITH_RPC)
     set(WITH_RPC
         OFF
         CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
-  endif()
-  if(WITH_ASCEND_CL AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
   endif()
   if(WITH_ROCM AND WITH_RPC)
     message(
@@ -659,6 +610,16 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_LOONGARCH)
+  set(WITH_XBYAK
+      OFF
+      CACHE STRING "Disable XBYAK when compiling WITH_LOONGARCH=ON" FORCE)
+  set(WITH_MKL
+      OFF
+      CACHE STRING "Disable MKL when compiling WITH_LOONGARCH=ON." FORCE)
+  add_definitions(-DPADDLE_WITH_LOONGARCH)
+endif()
+
 if(WITH_ONEMKL)
   add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
@@ -703,6 +664,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
+add_subdirectory(test)
 
 get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
 list(JOIN all_inc_dirs "\r\n" all_inc_dirs)

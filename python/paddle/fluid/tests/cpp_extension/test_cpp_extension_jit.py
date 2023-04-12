@@ -24,7 +24,7 @@ from paddle.utils.cpp_extension import load
 
 if os.name == 'nt' or sys.platform.startswith('darwin'):
     # only support Linux now
-    exit()
+    sys.exit()
 
 # Compile and load cpp extension Just-In-Time.
 sources = ["custom_extension.cc", "custom_sub.cc"]
@@ -114,7 +114,7 @@ class TestCppExtensionJITInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
 
     def _test_optional_tensor(self):
@@ -127,7 +127,7 @@ class TestCppExtensionJITInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
 
 

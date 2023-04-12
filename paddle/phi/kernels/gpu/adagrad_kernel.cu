@@ -37,7 +37,7 @@ __global__ void AdagradGPUKernel(const T* param,
                                  MT* master_param_out,
                                  int num) {
   auto idx = blockDim.x * blockIdx.x + threadIdx.x;
-  MT lr_data = static_cast<T>(lr[0]);
+  MT lr_data = static_cast<MT>(lr[0]);
 
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
     MT grad_data = static_cast<MT>(grad[i]);
@@ -47,7 +47,7 @@ __global__ void AdagradGPUKernel(const T* param,
     MT param_out_data =
         in - (lr_data * grad_data) / (sqrt(moment_out_data) + epsilon);
 
-    param_out[i] = static_cast<MT>(param_out_data);
+    param_out[i] = static_cast<T>(param_out_data);
 
     if (master_param_out) {
       master_param_out[i] = param_out_data;

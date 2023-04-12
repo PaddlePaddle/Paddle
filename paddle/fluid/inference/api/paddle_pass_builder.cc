@@ -108,6 +108,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
+      "trt_qk_multihead_matmul_fuse_pass",            //
       "layernorm_shift_partition_fuse_pass",          //
       "merge_layernorm_fuse_pass",                    //
 #if !defined _WIN32
@@ -275,6 +276,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "transpose_flatten_concat_fuse_pass",  //
         "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
+        "delete_cast_op_pass",                 //
         "inplace_op_var_pass",                 // should be the last pass.
   });
 
@@ -363,7 +365,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_transpose_eltwiseadd_bn_fuse_pass",  //
              "conv_bias_mkldnn_fuse_pass",              //
              "conv_transpose_bias_mkldnn_fuse_pass",
-             "interpolate_mkldnn_pass",
              // TODO(baoachun): Need to support 5-dimensional input.
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
@@ -430,7 +431,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("constant_folding_pass");
     passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
@@ -485,6 +485,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
+    passes_.push_back("constant_folding_pass");
   }
   use_mkldnn_int8_ = true;
 #else
@@ -519,16 +520,23 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
+      "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
+      "delete_op_device_pass",
       "constant_folding_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
+      "one_beam_size_fuse_pass",
+      "delete_cast_op_pass",
+      "stack_fuse_pass",
+      "fused_multi_transformer_xpu_quant_pass",
       "fc_xpu_fuse_pass",
+      "conv2d_xpu_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_op_device_pass",
+      "inplace_op_var_pass",
       "delete_isolated_node_pass",
   });
   use_xpu_ = true;

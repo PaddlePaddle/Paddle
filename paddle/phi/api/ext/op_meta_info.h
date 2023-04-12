@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/none.h"
+#include "paddle/utils/optional.h"
 
 /**
  * Op Meta Info Related Define.
@@ -33,10 +35,8 @@ limitations under the License. */
  */
 
 namespace paddle {
-namespace framework {
-class PADDLE_API OpMetaInfoHelper;
-}  // namespace framework
 
+class PADDLE_API OpMetaInfoHelper;
 using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
@@ -59,6 +59,7 @@ using Tensor = paddle::Tensor;
 constexpr char kGradTensorSuffix[] = "@GRAD";
 constexpr char kTensorVectorSuffix[] = "@VECTOR";
 constexpr char kDoubleGradNewOutSuffix[] = "@NEW";
+constexpr char kOptionalSuffix[] = "@OPTIONAL";
 
 // Used for Construct Grad Tensor name
 inline std::string Grad(const std::string& t_name) {
@@ -87,6 +88,15 @@ inline std::string New(const std::string& t_name) {
   return result;
 }
 
+// Used for Construct paddle::optional name
+inline std::string Optional(const std::string& t_name) {
+  std::string result;
+  result.reserve(t_name.size() + 9U);
+  result += t_name;
+  result += kOptionalSuffix;
+  return result;
+}
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
@@ -109,6 +119,10 @@ class PADDLE_API CustomOpKernelContext {
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
   Tensor& MutableInputAt(size_t idx);
+  std::vector<Tensor>* AllMutableInput();
+  paddle::optional<Tensor> OptionalInputAt(size_t idx);
+  paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
+                                                              size_t end);
   const std::vector<paddle::any>& Attrs() const { return attrs_; }
   const std::vector<std::pair<size_t, size_t>>& InputRange() {
     return input_range_;
@@ -130,23 +144,31 @@ class PADDLE_API CustomOpKernelContext {
     }
   }
 
-  // handle inplace case
-  void MapPlainOutputs(
+  // handle inplace map
+  void ConstructInplaceIndex(
+      const std::vector<std::string>& inputs,
+      const std::vector<std::string>& outputs,
+      const std::unordered_map<std::string, std::string>& inplace_map);
+  void UpdatePlainOutputs(
       const std::vector<std::string>& inputs,
       const std::vector<std::string>& outputs,
       const std::unordered_map<std::string, std::string>& inplace_map);
   void AssignInplaceOutputs();
   std::vector<Tensor*>* AllMutablePlainOutput();
-  std::unordered_map<size_t, size_t> GetInplaceTensorMap();
+  std::unordered_map<size_t, size_t> GetInplaceIndexMap();
+  std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap();
 
  private:
   // TODO(chenweihang): replaced be SmallVector
   std::vector<Tensor> inputs_;
   std::vector<Tensor> outputs_;
   std::vector<paddle::any> attrs_;
-  // handle inplace case
+  // handle inplace map
   std::vector<Tensor*> plain_outputs_;
-  std::unordered_map<size_t, size_t> inplace_tensor_map_;
+  // {input: output}
+  std::unordered_map<size_t, size_t> inplace_idx_map_;
+  // {output: input}
+  std::unordered_map<size_t, size_t> inplace_reverse_idx_map_;
 
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
@@ -186,6 +208,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... RemainingArgs>
   struct ComputeCallHelper;
 
+  // Handle args for general Tensor input case
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -199,12 +222,110 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // Handle args for optional Tensor input case
+  template <typename... Tail>
+  struct ComputeCallHelper<const paddle::optional<paddle::Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto& arg = ctx->InputAt(range.first);
+      if (!arg.is_initialized()) {
+        ComputeCallHelper<Tail...>::
+            template Compute<in_idx + 1, attr_idx, out_idx>(
+                ctx, pargs..., paddle::none);
+      } else {
+        ComputeCallHelper<
+            Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                      pargs...,
+                                                                      arg);
+      }
+    }
+  };
+
+  // Handle args for inplace Tensor case
+  template <typename... Tail>
+  struct ComputeCallHelper<Tensor&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto& arg = ctx->MutableInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for optional inplace Tensor input case
+  template <typename... Tail>
+  struct ComputeCallHelper<paddle::optional<paddle::Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->OptionalInputAt(range.first);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for general vector<Tensor> input case
   template <typename... Tail>
   struct ComputeCallHelper<const std::vector<Tensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for optional vector<Tensor> input case
+  template <typename... Tail>
+  struct ComputeCallHelper<const paddle::optional<std::vector<paddle::Tensor>>&,
+                           Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->InputsBetween(range.first, range.second);
+      if (arg.empty() || !arg[0].is_initialized()) {
+        ComputeCallHelper<Tail...>::
+            template Compute<in_idx + 1, attr_idx, out_idx>(
+                ctx, pargs..., paddle::none);
+      } else {
+        ComputeCallHelper<
+            Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                      pargs...,
+                                                                      arg);
+      }
+    }
+  };
+
+  // Handle args for inplace vector<Tensor> case
+  template <typename... Tail>
+  struct ComputeCallHelper<std::vector<Tensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->InputsBetween(range.first, range.second);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle args for optional inplace vector<Tensor> case
+  template <typename... Tail>
+  struct ComputeCallHelper<paddle::optional<std::vector<Tensor>>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->InputRangeAt(in_idx);
+      auto arg = ctx->OptionalInputsBetween(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
@@ -244,6 +365,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
 
   // Used to be compatible with 2.3 released internal inplace interface, not
   // recommended
+  // Handle args for compatible inplace case
   template <typename... Tail>
   struct ComputeCallHelper<Tensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -261,6 +383,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   // recommended
   // TODO(chenweihang): What is the appropriate output form?
   // std::vector<Tensor>*? or std::vector<Tensor*>? or std::vector<Tensor*>*
+  // Handle args for compatible inplace case
   template <typename... Tail>
   struct ComputeCallHelper<std::vector<Tensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -269,20 +392,6 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
       auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
-                                                                    pargs...,
-                                                                    arg);
-    }
-  };
-
-  // Handle Tensor& for inplace case
-  template <typename... Tail>
-  struct ComputeCallHelper<Tensor&, Tail...> {
-    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
-      auto& range = ctx->InputRangeAt(in_idx);
-      auto& arg = ctx->MutableInputAt(range.first);
-      ComputeCallHelper<
-          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
                                                                     arg);
     }
@@ -432,6 +541,58 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPES(
       const std::vector<std::vector<int64_t>>&);
 
+  template <typename... Tail>
+  struct InferShapeCallHelper<const paddle::optional<std::vector<int64_t>>&,
+                              Tail...> {
+    template <int in_idx,
+              int vec_in_idx,
+              int attr_idx,
+              typename... PreviousArgs>
+    static Return InferShape(
+        const std::vector<std::vector<int64_t>>& input_shapes,
+        const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
+        const std::vector<paddle::any>& attrs,
+        const PreviousArgs&... pargs) {
+      const std::vector<int64_t>& arg = input_shapes[in_idx];
+      if (arg.empty()) {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx + 1, vec_in_idx, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., paddle::none);
+      } else {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx + 1, vec_in_idx, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., arg);
+      }
+    }
+  };
+
+  template <typename... Tail>
+  struct InferShapeCallHelper<
+      const paddle::optional<std::vector<std::vector<int64_t>>>&,
+      Tail...> {
+    template <int in_idx,
+              int vec_in_idx,
+              int attr_idx,
+              typename... PreviousArgs>
+    static Return InferShape(
+        const std::vector<std::vector<int64_t>>& input_shapes,
+        const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
+        const std::vector<paddle::any>& attrs,
+        const PreviousArgs&... pargs) {
+      const std::vector<std::vector<int64_t>>& arg =
+          vec_input_shapes[vec_in_idx];
+      if (arg.empty()) {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx, vec_in_idx + 1, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., paddle::none);
+      } else {
+        return InferShapeCallHelper<Tail...>::
+            template InferShape<in_idx, vec_in_idx + 1, attr_idx>(
+                input_shapes, vec_input_shapes, attrs, pargs..., arg);
+      }
+    }
+  };
+
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
   PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(std::vector<int64_t>);
@@ -538,6 +699,47 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferDtypeCallHelper_TO_DTYPE(const DataType&);
   PD_SPECIALIZE_InferDtypeCallHelper_FOR_DTYPES(const std::vector<DataType>&);
 
+  template <typename... Tail>
+  struct InferDtypeCallHelper<const paddle::optional<DataType>&, Tail...> {
+    template <int in_idx, int vec_in_idx, typename... PreviousArgs>
+    static Return InferDtype(
+        const std::vector<DataType>& input_dtypes,
+        const std::vector<std::vector<DataType>>& vec_input_dtypes,
+        const PreviousArgs&... pargs) {
+      const DataType& arg = input_dtypes[in_idx];
+      if (arg == DataType::UNDEFINED) {
+        return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1,
+                                                                  vec_in_idx>(
+            input_dtypes, vec_input_dtypes, pargs..., paddle::none);
+      } else {
+        return InferDtypeCallHelper<Tail...>::template InferDtype<in_idx + 1,
+                                                                  vec_in_idx>(
+            input_dtypes, vec_input_dtypes, pargs..., arg);
+      }
+    }
+  };
+
+  template <typename... Tail>
+  struct InferDtypeCallHelper<const paddle::optional<std::vector<DataType>>&,
+                              Tail...> {
+    template <int in_idx, int vec_in_idx, typename... PreviousArgs>
+    static Return InferDtype(
+        const std::vector<DataType>& input_dtypes,
+        const std::vector<std::vector<DataType>>& vec_input_dtypes,
+        const PreviousArgs&... pargs) {
+      const std::vector<DataType>& arg = vec_input_dtypes[vec_in_idx];
+      if (arg.empty()) {
+        return InferDtypeCallHelper<Tail...>::
+            template InferDtype<in_idx, vec_in_idx + 1>(
+                input_dtypes, vec_input_dtypes, pargs..., paddle::none);
+      } else {
+        return InferDtypeCallHelper<Tail...>::
+            template InferDtype<in_idx, vec_in_idx + 1>(
+                input_dtypes, vec_input_dtypes, pargs..., arg);
+      }
+    }
+  };
+
   // NOTE(chenweihang): Used to be compatible with the 2.0.1 released
   // interface, and will be deprecated in the future
   PD_SPECIALIZE_InferDtypeCallHelper_TO_DTYPE(DataType);
@@ -576,7 +778,7 @@ class PADDLE_API OpMetaInfo {
 
   // format: {"<input_name1>:<output_name1>",
   // "<input_name2>:<output_name2>",...}
-  OpMetaInfo& Inplace(
+  OpMetaInfo& SetInplaceMap(
       std::unordered_map<std::string, std::string>&& inplace_map);
 
   // format: PD_KERNEL(...)
@@ -589,7 +791,7 @@ class PADDLE_API OpMetaInfo {
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
-  friend class framework::OpMetaInfoHelper;
+  friend class OpMetaInfoHelper;
 
   // 1. desc info
   std::string name_;
@@ -597,10 +799,48 @@ class PADDLE_API OpMetaInfo {
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
   std::unordered_map<std::string, std::string> inplace_map_;
+  std::unordered_map<std::string, std::string> inplace_reverse_map_;
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
+};
+
+//////////////// Op Meta Info Helper /////////////////
+class OpMetaInfoHelper {
+ public:
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
+    return info.name_;
+  }
+  static const std::vector<std::string>& GetInputs(
+      const paddle::OpMetaInfo& info) {
+    return info.inputs_;
+  }
+  static const std::vector<std::string>& GetOutputs(
+      const paddle::OpMetaInfo& info) {
+    return info.outputs_;
+  }
+  static const std::vector<std::string>& GetAttrs(
+      const paddle::OpMetaInfo& info) {
+    return info.attrs_;
+  }
+  static const std::unordered_map<std::string, std::string>& GetInplaceMap(
+      const paddle::OpMetaInfo& info) {
+    return info.inplace_map_;
+  }
+  static const std::unordered_map<std::string, std::string>&
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
+    return info.inplace_reverse_map_;
+  }
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
+    return info.kernel_fn_;
+  }
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_shape_fn_;
+  }
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
+    return info.infer_dtype_fn_;
+  }
 };
 
 //////////////// Op Meta Info Map /////////////////
@@ -635,7 +875,7 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
   OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);
-  OpMetaInfoBuilder& Inplace(
+  OpMetaInfoBuilder& SetInplaceMap(
       std::unordered_map<std::string, std::string>&& inplace_map);
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);

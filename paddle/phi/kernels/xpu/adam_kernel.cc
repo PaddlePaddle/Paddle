@@ -23,8 +23,6 @@
 
 namespace phi {
 
-using float16 = dtype::float16;
-
 template <typename T, typename Context>
 void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& param,

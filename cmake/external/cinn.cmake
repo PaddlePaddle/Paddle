@@ -58,7 +58,6 @@ ExternalProject_Add(
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND ""
   CMAKE_ARGS ${CINN_OPTIONAL_ARGS}
-  CMAKE_GENERATOR "Unix Makefiles"
   BUILD_BYPRODUCTS ${CINN_LIB})
 
 ExternalProject_Get_Property(external_cinn BINARY_DIR)

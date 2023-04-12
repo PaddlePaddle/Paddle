@@ -1,10 +1,3 @@
-if(WITH_ASCEND_CL)
-  cc_library(
-    beam_search_npu
-    SRCS beam_search_npu.cc
-    DEPS npu_op_runner)
-endif()
-
 if(WITH_XPU)
   cc_library(
     beam_search_xpu
@@ -13,13 +6,7 @@ if(WITH_XPU)
 endif()
 
 # please add new math_library in alphabetical order
-if(WITH_ASCEND_CL)
-  math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
-elseif(WITH_MLU)
-  math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
-else()
-  math_library(concat_and_split DEPS concat_and_split_functor)
-endif()
+math_library(concat_and_split DEPS concat_and_split_functor)
 math_library(context_project DEPS im2col math_function)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
@@ -29,9 +16,7 @@ math_library(sampler DEPS generator)
 # math_library(math_function DEPS blas dense_tensor tensor)
 
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
-if(WITH_ASCEND_CL)
-  math_library(beam_search DEPS math_function beam_search_npu)
-elseif(WITH_XPU)
+if(WITH_XPU)
   math_library(beam_search DEPS math_function beam_search_xpu)
 else()
   math_library(beam_search DEPS math_function)
@@ -54,10 +39,6 @@ cc_test(
   vol2col_test
   SRCS vol2col_test.cc
   DEPS vol2col)
-cc_test(
-  sequence_pooling_test
-  SRCS sequence_pooling_test.cc
-  DEPS sequence_pooling)
 cc_test(
   beam_search_test
   SRCS beam_search_test.cc

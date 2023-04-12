@@ -44,7 +44,7 @@ extern __global__ void SetVariance(T* out,
                                    const int num);
 #endif
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

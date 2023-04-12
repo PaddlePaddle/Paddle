@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor_utils.h"
 
-#include <set>
-
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -72,8 +70,6 @@ PADDLE_API Tensor from_blob(void* data,
                     phi::errors::InvalidArgument(
                         "shape cannot be constructed from a Tensor."));
 
-  // TODO(huangjiyi): We need copy data to specified place when
-  // the input place is different with place of data.
   phi::Place data_place;
   if (place.GetType() == phi::AllocationType::UNDEFINED ||
       place.GetType() == phi::AllocationType::CPU ||

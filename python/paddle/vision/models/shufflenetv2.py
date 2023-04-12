@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
 
@@ -61,9 +61,7 @@ def create_activation_layer(act):
     elif act is None:
         return None
     else:
-        raise RuntimeError(
-            "The activation function is not supported: {}".format(act)
-        )
+        raise RuntimeError(f"The activation function is not supported: {act}")
 
 
 def channel_shuffle(x, groups):
@@ -577,5 +575,5 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
         scale=1.0,
         act="swish",
         pretrained=pretrained,
-        **kwargs
+        **kwargs,
     )

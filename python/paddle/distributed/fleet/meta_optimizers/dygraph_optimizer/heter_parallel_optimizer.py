@@ -27,7 +27,7 @@ def _obtain_optimizer_parameters_list(optimizer):
             for param in group['params']:
                 parameters_list.append(param)
     else:
-        parameters_list = [param for param in optimizer._parameter_list]
+        parameters_list = list(optimizer._parameter_list)
 
     return parameters_list
 

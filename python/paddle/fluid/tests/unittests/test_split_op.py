@@ -18,13 +18,14 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
 class TestSplitOp(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -67,6 +68,7 @@ class TestSplitOp(OpTest):
 class TestSplitOp_2(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
@@ -152,7 +154,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         sections_tensor = []
         for index, ele in enumerate(self.sections):
             sections_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs['SectionsTensorList'] = sections_tensor
@@ -190,10 +192,10 @@ class TestSplitOp_SectionsTensor(OpTest):
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -245,7 +247,7 @@ def create_test_fp16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestSplitFp16.__name__ = cls_name
     globals()[cls_name] = TestSplitFp16
 
@@ -270,7 +272,7 @@ def create_test_bf16(parent):
         def test_check_grad(self):
             pass
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestSplitBf16.__name__ = cls_name
     globals()[cls_name] = TestSplitBf16
 
@@ -281,11 +283,11 @@ create_test_bf16(TestSplitOp)
 class TestSplitAPI(unittest.TestCase):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
-        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
-        x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
-        x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
+        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
+        x_1 = paddle.static.data(shape=[4, 5, 6], dtype='int32', name='x_1')
+        x_2 = paddle.static.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = paddle.split(
             x=x_1,

@@ -47,7 +47,7 @@ struct ChannelDequantizeFunctorV2 {
                   phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -130,7 +130,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DeQuantizeLinearKernel : public framework::OpKernel<T> {
  public:
   template <typename D>
@@ -142,7 +142,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in,
-        experimental::CppTypeToDataType<D>::Type());
+        phi::CppTypeToDataType<D>::Type());
 
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     auto* out = context.Output<phi::DenseTensor>("Y");
@@ -180,13 +180,13 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     switch (scale->dtype()) {
-      case experimental::DataType::FLOAT64:
+      case phi::DataType::FLOAT64:
         ComputeImpl<double>(context);
         break;
-      case experimental::DataType::FLOAT32:
+      case phi::DataType::FLOAT32:
         ComputeImpl<float>(context);
         break;
-      case experimental::DataType::FLOAT16:
+      case phi::DataType::FLOAT16:
         ComputeImpl<paddle::platform::float16>(context);
         break;
       default:

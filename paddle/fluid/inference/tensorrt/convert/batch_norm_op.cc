@@ -17,15 +17,6 @@ limitations under the License. */
 namespace nvinfer1 {
 class IScaleLayer;
 }  // namespace nvinfer1
-namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -36,7 +27,7 @@ class BatchNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid batch norm op to tensorrt batch_norm";
+    VLOG(3) << "convert a batch norm op to tensorrt batch_norm";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X").front());

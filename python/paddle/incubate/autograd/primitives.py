@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
 from paddle.tensor import abs  # noqa: F401
 from paddle.tensor import acos  # noqa: F401
 from paddle.tensor import acosh  # noqa: F401
@@ -33,6 +32,7 @@ from paddle.tensor import erf  # noqa: F401
 from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
+from paddle.tensor import fill_constant  # noqa: F401
 from paddle.tensor import full  # noqa: F401
 from paddle.tensor import gather  # noqa: F401
 from paddle.tensor import greater_equal  # noqa: F401
@@ -50,6 +50,7 @@ from paddle.tensor import ones  # noqa: F401
 from paddle.tensor import pow  # noqa: F401
 from paddle.tensor import prod  # noqa: F401
 from paddle.tensor import reshape  # noqa: F401
+from paddle.tensor import rsqrt  # noqa: F401
 from paddle.tensor import sign  # noqa: F401
 from paddle.tensor import sin  # noqa: F401
 from paddle.tensor import sinh  # noqa: F401
@@ -117,6 +118,7 @@ sub_prim = [
     'ones',
     'zeros',
     'sqrt',
+    'rsqrt',
 ]
 
 others = [
@@ -132,5 +134,6 @@ others = [
     'uniform',
     'greater_equal',
     'zeros_like',
+    'transpose',
 ]
 """

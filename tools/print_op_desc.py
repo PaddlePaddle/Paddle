@@ -44,8 +44,7 @@ Usage:
 
 import json
 
-import paddle.fluid.framework as framework
-from paddle.fluid import core
+from paddle.fluid import core, framework
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"

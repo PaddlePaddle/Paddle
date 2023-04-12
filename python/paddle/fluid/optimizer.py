@@ -236,7 +236,7 @@ class Optimizer:
                     None, name='global_step', dtype='int32'
                 )
 
-                tensor.fill_constant(
+                paddle.tensor.fill_constant(
                     [1], "int32", self._learning_rate.step_num, out=var_temp
                 )
 
@@ -309,7 +309,7 @@ class Optimizer:
                     self._learning_rate.step_num = global_step[0]
                 else:
                     raise RuntimeError(
-                        "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                        "Type not supprt, value in state dict must be [Tensor, Variable, numpy], the type is ",
                         type(global_step),
                     )
 
@@ -320,7 +320,7 @@ class Optimizer:
             load_para = state_dict[param.name]
             if isinstance(load_para, Variable):
                 load_para_np = load_para.numpy()
-            elif isinstance(load_para, core.VarBase):
+            elif isinstance(load_para, core.eager.Tensor):
                 load_para_np = load_para.numpy()
             elif isinstance(load_para, np.ndarray):
                 load_para_np = load_para
@@ -389,7 +389,7 @@ class Optimizer:
                     dtype='float32' if self._dtype is None else self._dtype,
                 )
                 main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_scheduler = self._learning_rate
                 main_prog.lr_var = lr_var
                 self._learning_rate_map[
                     framework.default_main_program()
@@ -1115,8 +1115,8 @@ class Optimizer:
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
-            assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-                "The loss.shape should be (1L,), but the current loss.shape is {}. "
+            assert np.prod(loss.shape) == 1, (
+                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
                 "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape
                 )
@@ -2036,7 +2036,7 @@ class AdagradOptimizer(Optimizer):
 
             paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = fluid.data(name="inp", shape=[2, 2])
+            inp = paddle.static.data(name="inp", shape=[2, 2], dtype="float32")
             out = paddle.static.nn.fc(inp, size=3)
             out = paddle.sum(out)
             optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
@@ -2081,7 +2081,11 @@ class AdagradOptimizer(Optimizer):
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
-                self._add_accumulator(self._moment_acc_str, master_p)
+                self._add_accumulator(
+                    self._moment_acc_str,
+                    master_p,
+                    fill_value=self.initial_accumulator_value,
+                )
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -2228,8 +2232,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -2257,8 +2261,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -2292,8 +2296,8 @@ class AdamOptimizer(Optimizer):
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
                     decayed_beta2 = beta2_init * (decay_rate**div_res)
-                    fluid.layers.assign(decayed_beta1, beta1)
-                    fluid.layers.assign(decayed_beta2, beta2)
+                    paddle.assign(decayed_beta1, beta1)
+                    paddle.assign(decayed_beta2, beta2)
 
                     return beta1, beta2, epsilon
 
@@ -2432,12 +2436,12 @@ class AdamOptimizer(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
             master_weight = None
             _, _, _, _, _, _ = _legacy_C_ops.adam(
@@ -2651,7 +2655,7 @@ class AdamaxOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+              data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
               hidden = paddle.static.nn.fc(x=data, size=10)
               loss = paddle.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
@@ -2809,7 +2813,7 @@ class AdamaxOptimizer(Optimizer):
             with param.block.program._optimized_guard(
                 [param, grad]
             ), name_scope('adamx'):
-                beta1_pow_acc = self._get_accumulator(
+                beta1_pow_acc = self._get_accumulator_master(
                     self._beta1_pow_acc_str, param
                 )
                 if in_dygraph_mode():
@@ -2994,7 +2998,7 @@ class DecayedAdagradOptimizer(Optimizer):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
             trans = paddle.static.nn.fc(x, 100)
             cost = paddle.mean(trans)
             optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
@@ -3118,7 +3122,7 @@ class AdadeltaOptimizer(Optimizer):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            image = fluid.data(name='image', shape=[None, 28], dtype='float32')
+            image = paddle.static.data(name='image', shape=[None, 28], dtype='float32')
             fc = paddle.static.nn.fc(image, size=10)
             cost = paddle.mean(fc)
             optimizer = fluid.optimizer.Adadelta(
@@ -3211,6 +3215,7 @@ class AdadeltaOptimizer(Optimizer):
                 param_and_grad[1],
                 avg_squared_grad_acc,
                 avg_squared_update_acc,
+                self._create_param_lr(param_and_grad),
                 master_weight,
                 self._rho,
                 self._epsilon,
@@ -3223,6 +3228,7 @@ class AdadeltaOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],
@@ -3747,7 +3753,7 @@ class LambOptimizer(AdamOptimizer):
             import paddle.fluid as fluid
             paddle.enable_static()
 
-            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
+            data = paddle.static.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             cost = paddle.mean(hidden)
 
@@ -3964,7 +3970,7 @@ class ModelAverage(Optimizer):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             # build net
-            data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+            data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -4143,7 +4149,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -4199,7 +4205,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -4549,7 +4555,7 @@ class PipelineOptimizer:
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
@@ -5766,7 +5772,7 @@ class PipelineOptimizer:
                     # If there are some not initialized sections in the fused var,
                     # and the value in those sections are nan/inf, it will trigger the nan/inf check.
                     # To avoid these problematic triggers, set constant is needed for npu
-                    "set_constant": core.is_compiled_with_npu(),
+                    "set_constant": core.is_compiled_with_custom_device('npu'),
                     "constant": float(0.0),
                 },
             )
@@ -6383,8 +6389,8 @@ class PipelineOptimizer:
             dev_index = int(dev.split(":")[1])
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
-            elif core.is_compiled_with_npu():
-                place_list.append(core.NPUPlace(dev_index % 1))
+            elif paddle.is_compiled_with_custom_device('npu'):
+                place_list.append(paddle.CustomPlace('npu', dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(
@@ -6407,7 +6413,7 @@ class PipelineOptimizer:
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        elif core.is_compiled_with_npu():
+        elif core.is_compiled_with_custom_device('npu'):
             place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # A pass to move the recv op to the beginning of
         # the forward/backward phase
@@ -7393,11 +7399,11 @@ class LookaheadOptimizer:
             paddle.increment(x=step, value=1.0)
 
             # lookahead
-            zero_var = layers.fill_constant(
+            zero_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0
             )
 
-            one_var = layers.fill_constant(
+            one_var = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.0
             )
 
@@ -7747,7 +7753,7 @@ class GradientMergeOptimizer:
 
             # clear gradient_merge_vars
             for param, new_grad in new_params_grads:
-                layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=new_grad.shape,
                     dtype=new_grad.dtype,
                     value=0.0,
