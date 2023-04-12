@@ -15,11 +15,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-1
 
-    // we have to return every specific KernelSignature for infrt now
-    KernelSignature
-    MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
+// we have to return every specific KernelSignature for infrt now
+KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsForInferShape()) {
     return KernelSignature("matrix_rank",
                            {"X", "TolTensor"},
