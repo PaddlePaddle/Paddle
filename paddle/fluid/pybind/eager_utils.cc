@@ -770,11 +770,15 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
 
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
-  // NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
-  // https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+// NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
+// https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+#ifdef _WIN32
   PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
   PyObject* result = PyList_New((Py_ssize_t)value.size());
+#ifdef _WIN32
   PyGILState_Release(gstate);
+#endif
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {
