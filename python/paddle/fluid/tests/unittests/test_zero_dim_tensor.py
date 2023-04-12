@@ -2385,6 +2385,38 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(len(a_cond_fro.shape), 1)
         self.assertTrue(a.grad.shape, [2, 4, 4])
 
+    def test_cov(self):
+        xt = paddle.randn((3, 4))
+        xt.stop_gradient = False
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.cov(xt)
+        xt_out.backward()
+        self.assertTrue(xt_out.shape, [3, 3])
+        self.assertTrue(xt.grad.shape, [3, 4])
+
+        xt_1_out = paddle.linalg.cov(xt_1)
+        xt_1_out.backward()
+        self.assertTrue(xt_1_out.shape, [])
+        self.assertTrue(xt_1_out.grad.shape, [12])
+
+    def test_det(self):
+        xt = paddle.randn([3, 3, 3])
+        xt.stop_gradient = False
+        xt_1 = paddle.randn([3, 3])
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.det(xt)
+        xt_out.backward()
+        self.assertTrue(xt_out.shape, [3])
+        self.assertTrue(xt.grad.shape, [3, 3, 3])
+
+        xt_1_out = paddle.linalg.det(xt_1)
+        xt_1_out.backward()
+        self.assertTrue(xt_1_out.shape, [])
+        self.assertTrue(xt_1_out.grad.shape, [3, 3])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -4251,6 +4283,26 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertTrue(res[0].shape, ())
         np.testing.assert_allclose(out, np.array(1.41421342))
+
+    def test_cov(self):
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.cov(xt_1)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+
+    def test_det(self):
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.det(xt_1)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
