@@ -400,7 +400,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(
+        self.check_grad(
             ['Y'],
             'Out',
             max_relative_error=0.005,
