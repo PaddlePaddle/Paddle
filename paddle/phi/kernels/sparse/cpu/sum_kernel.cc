@@ -79,8 +79,8 @@ void SumCooKernel(const Context& dev_ctx,
       }
     }
     out_dims = make_ddim(dims);
-    auto sparse_dim = x_indices.dims().size();
-    if (keep_dim) {
+    auto sparse_dim = x.sparse_dim();
+    if (!keep_dim) {
       sparse_dim -= 1;
     }
 
@@ -89,14 +89,14 @@ void SumCooKernel(const Context& dev_ctx,
     for (auto i = 1; i < x.values().dims().size(); ++i) {
       out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
     }
-    out_indices = Empty<int64_t, Context>(
-        dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
-    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
-
     int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
                                         out_values_dims.end(),
                                         1,
                                         std::multiplies<int64_t>());
+
+    out_indices = Empty<int64_t, Context>(
+        dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
+    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
 
     auto* out_indices_data = out_indices.data<int64_t>();
     auto* out_values_data = out_values.data<T>();
@@ -114,7 +114,6 @@ void SumCooKernel(const Context& dev_ctx,
         for (auto index : values_index) {
           out_value += x_values_data[i + index * dense_dim];
         }
-        LOG(INFO) << out_value;
         out_values_data[i + j * dense_dim] = out_value;
       }
     }

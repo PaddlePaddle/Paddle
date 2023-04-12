@@ -144,7 +144,6 @@ void SumCooKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCooTensor* out) {
   size_t axis_dim = axis.size();
-  auto dense_dim = x.values().dims()[1];
   // create out sparse tensor
   const auto& x_dims = x.dims();
   const auto& x_indices = x.indices();
@@ -181,14 +180,24 @@ void SumCooKernel(const Context& dev_ctx,
       }
     }
     out_dims = make_ddim(dims);
-    auto sparse_dim = x_indices.dims().size();
-    if (keep_dim) {
+    auto sparse_dim = x.sparse_dim();
+    if (!keep_dim) {
       sparse_dim -= 1;
     }
 
+    std::vector<int> out_values_dims;
+    out_values_dims.push_back(x.nnz());
+    for (auto i = 1; i < x.values().dims().size(); ++i) {
+      out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
+    }
+    int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
+                                        out_values_dims.end(),
+                                        1,
+                                        std::multiplies<int64_t>());
+
     out_indices =
         Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, x.nnz()});
-    out_values = Empty<T, Context>(dev_ctx, {x.nnz(), dense_dim});
+    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
 
     const auto* x_indices_data = x_indices.data<x_indices_dtype>();
     const auto* x_values_data = x_values.data<T>();
