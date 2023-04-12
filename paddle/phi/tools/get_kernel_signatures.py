@@ -25,7 +25,7 @@ def preprocess_macro(file_content, processed_file_path):
     if file_content is None:
         return file_content
     # comment out external macro
-    file_content = re.sub(r'#(include|pragma)', '// ', file_content)
+    file_content = re.sub(r'#(include|pragma)', r'// \g<0>', file_content)
     with open(processed_file_path, "w") as f:
         f.write(file_content)
     # expand macro and correct format
@@ -119,13 +119,13 @@ class KernelSignatureSearcher:
         for match_result in match_results:
             kernel_name = match_result[1]
             if (
-                kernel_name not in self.filter["kenel_name"]
+                kernel_name not in self.filter["kernel_name"]
                 and kernel_name not in self.kernel_func_map
             ):
                 kernel_func = match_result[-1].split("<")[0].split("::")[-1]
                 self.kernel_func_map[kernel_name] = kernel_func
                 if kernel_func not in self.func_signature_map:
-                    kernel_signature = self.search_kernel_signature_again(
+                    kernel_signature = self.search_target_kernel_signature(
                         kernel_func, file, file_content
                     )
                     self.func_signature_map[kernel_func] = kernel_signature
@@ -138,13 +138,13 @@ class KernelSignatureSearcher:
                             + "."
                         )
 
-    def search_kernel_signature_again(self, kernel_func, file, file_content):
-        target_signature_pattern = self.kernel_sig_pattern.replace(
+    def search_target_kernel_signature(self, kernel_func, file, file_content):
+        target_kernel_signature_pattern = self.kernel_sig_pattern.replace(
             r'(\w+Kernel)', kernel_func
         )
         # search kernel signature in current kernel registration file
         kernel_signature = search_pattern(
-            target_signature_pattern, file_content
+            target_kernel_signature_pattern, file_content
         )
         if kernel_signature is not None:
             return kernel_signature
@@ -154,7 +154,7 @@ class KernelSignatureSearcher:
                 file_content, self.processed_file_path
             )
             kernel_signature = search_pattern(
-                target_signature_pattern, file_content
+                target_kernel_signature_pattern, file_content
             )
             if kernel_signature is not None:
                 return kernel_signature
@@ -168,7 +168,7 @@ class KernelSignatureSearcher:
                 self.header_context, self.processed_file_path
             )
             kernel_signature = search_pattern(
-                target_signature_pattern, self.header_context
+                target_kernel_signature_pattern, self.header_context
             )
             if kernel_signature is not None:
                 return kernel_signature
@@ -192,7 +192,9 @@ if __name__ == "__main__":
     for subdir in indenpendent_subdir:
         sub_path = osp.join(base_path, subdir)
         sub_df = KernelSignatureSearcher.search(sub_path, build_path)
-        kernel_signature_df = pd.concat([kernel_signature_df, sub_df])
+        kernel_signature_df = pd.concat(
+            [kernel_signature_df, sub_df], ignore_index=True
+        )
     output_csv_path = osp.join(build_path, 'kernel_signatures.csv')
     kernel_signature_df.to_csv(output_csv_path, index=False)
     print(kernel_signature_df)
