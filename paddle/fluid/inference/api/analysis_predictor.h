@@ -31,15 +31,14 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #endif
 
 namespace paddle_infer {
-using float16 = paddle::platform::float16;
 namespace experimental {
 class InternalUtils;
 };
@@ -149,6 +148,16 @@ class AnalysisPredictor : public PaddlePredictor {
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
+
+  ///
+  /// \brief Run the prediction engine (Recommended).
+  ///
+  /// \param[in] inputs input tensors
+  /// \param[out] outputs output tensors
+  /// \return Whether the function executed successfully
+  ///
+  bool Run(const std::vector<paddle::Tensor> &inputs,
+           std::vector<paddle::Tensor> *outputs) override;
 
   ///
   /// \brief Get the input names
@@ -378,6 +387,17 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
+
+  ///
+  /// \brief Prepare input data, only used in Run()
+  ///
+  /// \param[in] inputs inpute tensors
+  /// \param[in] scope the scope used by predictor
+  /// \return Whether the function executed successfully
+  ///
+  bool SetFeed(const std::vector<paddle::Tensor> &inputs,
+               framework::Scope *scope);
+
   ///
   /// \brief Get the output data, only used in Run()
   ///
@@ -387,6 +407,16 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
+
+  ///
+  /// \brief Get the output data, only used in Run()
+  ///
+  /// \param[out] outputs output tensors
+  /// \param[in] scope the scope used by predictor
+  /// \return Whether the function executed successfully
+  ///
+  bool GetFetch(std::vector<paddle::Tensor> *outputs, framework::Scope *scope);
+
   ///
   /// \brief Get the output data, only used in GetFetch()
   ///
@@ -404,6 +434,14 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] inputs tensors
   ///
   void MkldnnPreSet(const std::vector<PaddleTensor> &inputs);
+  ///
+  /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
+  ///
+  /// Used in AnalysisPredictor::Run().
+  ///
+  /// \param[in] inputs tensors
+  ///
+  void MkldnnPreSet(const std::vector<paddle::Tensor> &inputs);
 
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.

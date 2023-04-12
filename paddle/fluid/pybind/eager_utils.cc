@@ -56,7 +56,6 @@ extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
-extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
 extern PyTypeObject* g_jit_function_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
@@ -432,6 +431,54 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   return result;
 }
 
+std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
+  std::vector<float> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
+        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of float, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
+        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of float, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
+    return {static_cast<float>(PyFloat_AsDouble(obj))};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list of float, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos) {
   std::vector<std::vector<size_t>> result;
@@ -602,19 +649,6 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
   }
 }
 
-paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
-                                                              ssize_t arg_pos) {
-  if (PyObject_IsInstance(
-          obj, reinterpret_cast<PyObject*>(g_custom_op_kernel_ctx_pytype))) {
-    return ::pybind11::handle(obj).cast<paddle::CustomOpKernelContext>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be CustomOpKernelContext, "
-        "but got %s",
-        arg_pos + 1,
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
-}
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);
@@ -736,7 +770,11 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
 
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
+  // NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
+  // https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+  PyGILState_STATE gstate = PyGILState_Ensure();
   PyObject* result = PyList_New((Py_ssize_t)value.size());
+  PyGILState_Release(gstate);
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {

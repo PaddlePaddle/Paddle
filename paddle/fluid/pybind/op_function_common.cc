@@ -464,7 +464,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -481,7 +481,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -498,7 +498,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -512,7 +512,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+    return {(int64_t)PyLong_AsLongLong(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
