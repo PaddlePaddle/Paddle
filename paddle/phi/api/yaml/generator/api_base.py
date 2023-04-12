@@ -137,6 +137,18 @@ class BaseAPI:
         )
 
     def parse_input_and_attr(self, api_name, args_config, optional_vars=[]):
+        def parse_args_plain_list(s: str, sep=","):
+            """
+            There are some operators with  default value "{1, 1}, such as deformable_conv"
+            """
+            items = [item.strip() for item in s.strip().split(sep)]
+            new_items = []
+            for item in items:
+                if len(item) > 3:
+                    new_items.append(item)
+                else:
+                    new_items[-1] = new_items[-1] + "," + item
+            return new_items
         inputs = {'names': [], 'input_info': {}}
         attrs = {'names': [], 'attr_info': {}}
         args_str = args_config.strip()
@@ -144,7 +156,7 @@ class BaseAPI:
             ')'
         ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
-        args_list = args_str.split(',')
+        args_list = parse_args_plain_list(args_str)
         input_types_map = {
             'Tensor': 'const Tensor&',
             'Tensor[]': 'const std::vector<Tensor>&',

@@ -83,7 +83,7 @@ def parse_input_and_attr(
         f"please check the args of {op_name} in yaml."
     )
     args_str = args_str[1:-1]
-    args = parse_plain_list(args_str)
+    args = parse_args_plain_list(args_str)
 
     inputs = []
     attrs = []
@@ -170,6 +170,18 @@ def parse_plain_list(s: str, sep=",") -> List[str]:
     items = [item.strip() for item in s.strip().split(sep)]
     return items
 
+def parse_args_plain_list(s: str, sep=",") -> List[str]:
+    """
+    There are some operators with  default value "{1, 1}, such as deformable_conv"
+    """
+    items = [item.strip() for item in s.strip().split(sep)]
+    new_items = []
+    for item in items:
+        if len(item) > 3:
+            new_items.append(item)
+        else:
+            new_items[-1] = new_items[-1] + "," + item
+    return new_items
 
 def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
     # kernel :

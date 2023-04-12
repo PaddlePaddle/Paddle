@@ -292,7 +292,20 @@ def ParseYamlArgs(string):
     # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
     attrs_list = []
 
-    args = [x.strip() for x in string.strip().split(",")]
+    def parse_args_plain_list(s: str, sep=","):
+        """
+        There are some operators with  default value "{1, 1}, such as deformable_conv"
+        """
+        items = [item.strip() for item in s.strip().split(sep)]
+        new_items = []
+        for item in items:
+            if len(item) > 3:
+                new_items.append(item)
+            else:
+                new_items[-1] = new_items[-1] + "," + item
+        return new_items
+    
+    args = parse_args_plain_list(string)
     atype = r'((const )?\S+) '
     aname = r'(.*)'
     pattern = f'{atype}{aname}'
