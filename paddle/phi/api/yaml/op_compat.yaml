@@ -1983,6 +1983,11 @@
   outputs :
     out : Out
 
+- op : split
+  int_array:
+      sections :
+          data_type : int
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
