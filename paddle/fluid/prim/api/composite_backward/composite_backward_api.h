@@ -899,7 +899,7 @@ void slice_grad(const Tensor& input,
   if (input_grad) {
     size_t rank = input.dims().size();
     auto out_dims = out_grad.dims();
-    std::vector<int64_t> origin_out_shape;
+    std::vector<int> origin_out_shape;
     auto in_dims = input.dims();
 
     auto decrease_size = decrease_axis.size();
@@ -912,7 +912,6 @@ void slice_grad(const Tensor& input,
         for (size_t i = 0; i < decrease_size; ++i) {
           origin_out_shape[decrease_axis[i]] = 1;
         }
-
         int index = 0;
         for (size_t i = 0; i < origin_out_shape.size(); ++i) {
           if (origin_out_shape[i] == -1) {
@@ -1591,25 +1590,22 @@ void tile_grad(const Tensor& x,
   if (x_grad) {
     auto out_dims = phi::make_ddim(repeat_times.GetData());
     auto _repeat_times = repeat_times.GetData();
-    if (out_dims != x.dims()) {
-      auto result = out_grad;
-      for (int i = 0; i < repeat_times.size(); i++) {
-        int size = out_grad.shape()[i] / repeat_times[i];
-        std::vector<int> sections(repeat_times[i], size);
-        auto split_arr = split<T>(result, IntArray(sections), i);
-        auto zero_tensor =
-            full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
-        for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
-          zero_tensor = split_arr[j] + zero_tensor;
-        }
-        result = zero_tensor;
+    auto result = out_grad;
+    for (int i = 0; i < static_cast<int>(repeat_times.size()); i++) {
+      int size = out_grad.shape()[i] / repeat_times[i];
+      std::vector<int> sections(repeat_times[i], size);
+      auto split_arr = split<T>(result, IntArray(sections), i);
+      auto zero_tensor =
+          full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
+      for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
+        zero_tensor = split_arr[j] + zero_tensor;
       }
-      result = reshape<T>(result, x.shape());
-      set_output<T>(result, x_grad);
-    } else {
-      by_pass<T>(out_grad, x_grad);
+      result = zero_tensor;
     }
+    result = reshape<T>(result, x.shape());
+    set_output<T>(result, x_grad);
   }
 }
+
 }  // namespace prim
 }  // namespace paddle

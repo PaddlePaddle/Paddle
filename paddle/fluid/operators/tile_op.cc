@@ -174,7 +174,7 @@ class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
-    auto repeat_times = this->Attr<std::vector<int64_t>>("repeat_times");
+    auto repeat_times = this->Attr<std::vector<int>>("repeat_times");
     VLOG(6) << "Runing tile_grad composite func";
     prim::tile_grad<prim::DescTensor>(
         x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);

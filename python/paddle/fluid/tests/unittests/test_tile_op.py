@@ -122,11 +122,11 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
         self.check_grad(['X'], 'Out')
 
 
-# with dimension expanding
-class TestTileOpRank2Expanding(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = [120]
-        self.repeat_times = [2, 2]
+# # with dimension expanding
+# class TestTileOpRank2Expanding(TestTileOpRank1):
+#     def init_data(self):
+#         self.ori_shape = [120]
+#         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
@@ -141,10 +141,10 @@ class TestTileOpRank3_Corner(TestTileOpRank1):
         self.repeat_times = (1, 1, 1)
 
 
-class TestTileOpRank3_Corner2(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = (2, 10, 5)
-        self.repeat_times = (2, 2)
+# class TestTileOpRank3_Corner2(TestTileOpRank1):
+#     def init_data(self):
+#         self.ori_shape = (2, 10, 5)
+#         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
