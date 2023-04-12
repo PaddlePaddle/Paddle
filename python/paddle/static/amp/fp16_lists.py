@@ -13,8 +13,14 @@
 # limitations under the License.
 
 import copy
+import logging
 
 from paddle.fluid import core
+from paddle.fluid.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
 _extra_unsupported_list = {
@@ -84,19 +90,20 @@ def _get_sys_unsupported_list(dtype):
     var_type = get_low_precision_vartype(dtype)
 
     # The set of ops that don't support fp16 calculation
-    _sys_unsupported_list = []
+    device = None
     if core.is_compiled_with_xpu():
-        _, _, _sys_unsupported_list = core.op_supported_infos('XPU', var_type)
+        device = 'XPU'
     elif core.is_compiled_with_custom_device('npu'):
-        _, _, _sys_unsupported_list = core.op_supported_infos('NPU', var_type)
+        device = 'NPU'
     else:
-        _, _, _sys_unsupported_list = core.op_supported_infos('GPU', var_type)
-    return _sys_unsupported_list
+        device = 'GPU'
+    _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
+    return device, sys_unsupported_list
 
 
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
-    _sys_unsupported_list = _get_sys_unsupported_list(dtype)
+    _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
     unsupported_list = _extra_unsupported_list | _sys_unsupported_list
     return unsupported_list
 
@@ -132,7 +139,7 @@ class AutoMixedPrecisionLists:
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
-    def _update_list(self, dtype="float16"):
+    def _update_list(self):
         """
         Update black and white list according to users' custom list.
         """
@@ -159,11 +166,15 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
-        # Remove the unsupported op_name in white_list.
-        sys_unsupported_list = _get_sys_unsupported_list(dtype)
+        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
+        actual_unsupported_list = []
         for op_name in sys_unsupported_list:
             if op_name in self.white_list:
-                self.white_list.remove(op_name)
+                actual_unsupported_list.append(op_name)
+        if len(actual_unsupported_list) > 0:
+            _logger.warning(
+                f"On current {device}, {self.amp_dtype} is not supported for operators < {actual_unsupported_list} > in white_list!"
+            )
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
