@@ -777,7 +777,7 @@ class FP16Pass(AMPPass):
             )
         global __target_dtype__
         __target_dtype__ = __target_dtype
-        amp_list = amp_utils.AutoMixedPrecisionLists(
+        amp_list = AutoMixedPrecisionLists(
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
             dtype=self.target_dtype,
