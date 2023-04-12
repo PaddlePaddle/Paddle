@@ -240,7 +240,7 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 class SplitInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("Out", "X");
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 

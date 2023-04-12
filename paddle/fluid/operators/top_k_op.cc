@@ -149,8 +149,8 @@ class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
 class TopkInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SyncTypeAndDataType("Out", "X");
-    ctx->SyncTypeAndDataType("Indices", "K");
+    ctx->SyncTypeAndDataType("X", "Out");
+    ctx->SyncTypeAndDataType("K", "Indices");
   }
 };
 
