@@ -2322,3 +2322,10 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: squared_l2_norm
+  backward: squared_l2_norm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
