@@ -2322,3 +2322,21 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: max_pool2d_with_index
+  backward: max_pool2d_with_index_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op: max_pool3d_with_index
+  backward: max_pool3d_with_index_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
