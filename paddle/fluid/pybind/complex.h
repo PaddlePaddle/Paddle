@@ -36,9 +36,9 @@
 #undef I
 #endif
 
-PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
+namespace pybind11 {
 
-PYBIND11_NAMESPACE_BEGIN(detail)
+namespace detail {
 
 // The specialization is added to make phi::dtype::complex<T> values
 // casted as python complex values automatically when return from a function
@@ -70,5 +70,5 @@ class type_caster<phi::dtype::complex<T>> {
 
   PYBIND11_TYPE_CASTER(phi::dtype::complex<T>, _("complex"));
 };
-PYBIND11_NAMESPACE_END(detail)
-PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
+}  // namespace detail
+}  // namespace pybind11

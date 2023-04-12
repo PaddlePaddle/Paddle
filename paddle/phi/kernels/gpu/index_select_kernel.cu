@@ -31,6 +31,11 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  output->can_not_uses = xx.can_not_uses;
+  output->can_not_uses->insert(output->canNotUse);
+  output->can_not_uses->insert(xx.canNotUse);
+
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();

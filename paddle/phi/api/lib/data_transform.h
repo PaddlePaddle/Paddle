@@ -76,32 +76,44 @@ static inline phi::TensorArgDef GetKernelInputArgDef(
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 paddle::optional<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 // Only support transfering place for SelectedRows
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);

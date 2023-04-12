@@ -52,6 +52,11 @@ void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
+
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
 

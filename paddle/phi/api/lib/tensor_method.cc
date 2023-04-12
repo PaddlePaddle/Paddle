@@ -145,7 +145,7 @@ void Tensor::copy_(const Tensor &src,
   }
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
-    SetKernelOutput(this);
+    SetKernelOutput("tensor method copy_", "lala", this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
@@ -157,7 +157,7 @@ void Tensor::copy_(const Tensor &src,
               blocking,
               static_cast<phi::DenseTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
-    SetSelectedRowsKernelOutput(this);
+    SetSelectedRowsKernelOutput("tensor method copy_2", "lala", this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(

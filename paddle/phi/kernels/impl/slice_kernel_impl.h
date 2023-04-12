@@ -108,6 +108,10 @@ void SliceRawKernel(const Context& ctx,
                     const std::vector<int64_t>& infer_flags,
                     const std::vector<int64_t>& decrease_axis,
                     DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(input);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

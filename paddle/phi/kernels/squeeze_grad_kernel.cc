@@ -25,6 +25,10 @@ void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        const IntArray& axes,
                        DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  dx->can_not_uses = xx.can_not_uses;
+  dx->can_not_uses->insert(dx->canNotUse);
+  dx->can_not_uses->insert(xx.canNotUse);
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 

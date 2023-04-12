@@ -27,6 +27,11 @@ void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
+
   auto expand_shape = shape.GetData();
   auto diff = expand_shape.size() - x.dims().size();
   auto out_shape = phi::vectorize<int64_t>(x.dims());

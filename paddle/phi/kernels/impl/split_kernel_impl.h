@@ -28,6 +28,14 @@ void SplitKernel(const Context& dev_ctx,
                  const IntArray& sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  // inplace_version += 1
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->can_not_uses = xx.can_not_uses;
+    outs[i]->can_not_uses->insert(outs[i]->canNotUse);
+    outs[i]->can_not_uses->insert(xx.canNotUse);
+  }
+
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);

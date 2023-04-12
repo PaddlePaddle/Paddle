@@ -31,6 +31,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         int axis1,
                         int axis2,
                         DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
+
   const auto* dout = &out_grad;
   const auto* dout_data = dout->data<T>();
   auto dout_dim = dout->dims().Get();

@@ -25,6 +25,10 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& axes,
                         DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
   if (x.Holder() == out->Holder()) {

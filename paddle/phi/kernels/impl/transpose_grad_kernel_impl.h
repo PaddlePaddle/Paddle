@@ -25,6 +25,11 @@ void TransposeGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  x_grad->can_not_uses = xx.can_not_uses;
+  x_grad->can_not_uses->insert(x_grad->canNotUse);
+  x_grad->can_not_uses->insert(xx.canNotUse);
+
   size_t axis_size = axis.size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {

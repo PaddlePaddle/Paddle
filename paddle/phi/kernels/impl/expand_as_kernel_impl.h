@@ -100,6 +100,11 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
+
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,

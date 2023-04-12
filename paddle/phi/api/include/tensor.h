@@ -662,6 +662,7 @@ class PADDLE_API Tensor final {
   std::string name_{""};
 
  public:
+  bool can_not_use();
   // Tensor C++ APIs
   // Example: Tensor add(const Tensor& other) const;
   Tensor add(const Tensor& y) const;

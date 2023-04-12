@@ -45,10 +45,10 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
-    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+    def gene_input(self, kernel_name, kernel_tensor_type=None, code_indent=''):
         kernel_param = self.kernel['param']
         input_name_tensor_map, input_tensor_code = super().gene_input(
-            kernel_tensor_type, code_indent
+            kernel_name, kernel_tensor_type, code_indent
         )
 
         # generate the input that is in view list
@@ -66,7 +66,7 @@ class ForwardAPI(BaseAPI):
                     input_tensor_code = (
                         input_tensor_code
                         + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData('{kernel_name}', '{input_name}', {input_name}, kernel.InputAt(0), {trans_flag});"""
                     )
                 else:
                     # do nothing
@@ -167,6 +167,7 @@ class ForwardAPI(BaseAPI):
 
     def gene_output(
         self,
+        kernel_name,
         out_dtype_list,
         out_tensor_type_list=None,
         code_indent='',
@@ -200,14 +201,14 @@ class ForwardAPI(BaseAPI):
                 output_create = (
                     output_create
                     + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}('{kernel_name}', '&api_output', {self.outputs['out_size_expr'][0]}, &api_output);"""
                 )
 
             else:
                 output_create = (
                     output_create
                     + f"""
-{code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}('{kernel_name}', '&api_output', &api_output);"""
                 )
 
             if (
@@ -274,14 +275,14 @@ class ForwardAPI(BaseAPI):
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}('{kernel_name}', '{get_out_code}', {self.outputs['out_size_expr'][i]}, {get_out_code});"""
                     )
 
                 else:
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}('{kernel_name}', '{get_out_code}', {get_out_code});"""
                     )
 
                 if (

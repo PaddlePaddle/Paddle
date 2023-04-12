@@ -404,6 +404,74 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
+
+  for (auto& output : ins) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 1: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 2: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 3: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 4: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
   TraceOpImpl<egr::EagerVariable>(type,
                                   ins,
                                   outs,
@@ -420,6 +488,74 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap attrs) {
   VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
+
+  for (auto& output : ins) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 5: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 6: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 7: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 8: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
   TraceOpImpl<egr::EagerVariable>(
       type, ins, outs, attrs, expected_place_, false, {}, nullptr, true);
 }
@@ -430,6 +566,74 @@ void Tracer::TraceOp(const std::string& type,
                      paddle::framework::AttributeMap& attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
+
+  for (auto& output : ins) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 9: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 10: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 11: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->canNotUse) {
+          LOG(WARNING) << "Stride Test Log 12: op_name = " << type
+                       << ", var name = " << output.first;
+        }
+      }
+    }
+  }
+
+  for (auto& output : outs) {
+    for (size_t i = 0; i < output.second.size(); i++) {
+      auto var = output.second[i]->MutableVar();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        if (tensor_tmp->can_not_uses->size() > 0) {
+          for (auto it = tensor_tmp->can_not_uses->begin();
+               it != tensor_tmp->can_not_uses->end();
+               it++) {
+            if (*it != tensor_tmp->canNotUse) {
+              **it = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
   TraceOpImpl<egr::EagerVariable>(type,
                                   ins,
                                   outs,

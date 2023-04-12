@@ -82,6 +82,10 @@ void ReshapeKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DenseTensor* out,
                    DenseTensor* xshape) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 

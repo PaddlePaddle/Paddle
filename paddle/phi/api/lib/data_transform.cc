@@ -230,6 +230,8 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -256,16 +258,21 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
 }
 
 paddle::optional<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return {*PrepareData(*input, target_args_def, transform_flag)};
+    return {*PrepareData(
+        op_name, tensor_name, *input, target_args_def, transform_flag)};
   }
   return paddle::none;
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -297,16 +304,21 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 }
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (inputs) {
-    return {*PrepareData(*inputs, target_args_def, transform_flag)};
+    return {*PrepareData(
+        op_name, tensor_name, *inputs, target_args_def, transform_flag)};
   }
   return paddle::none;
 }
 
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -338,11 +350,14 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
 }
 
 paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return *PrepareDataForSelectedRows(*input, target_args_def, transform_flag);
+    return *PrepareDataForSelectedRows(
+        op_name, tensor_name, *input, target_args_def, transform_flag);
   }
   return paddle::none;
 }

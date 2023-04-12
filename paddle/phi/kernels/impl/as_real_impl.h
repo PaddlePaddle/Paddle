@@ -33,6 +33,11 @@ namespace phi {
  */
 template <typename T, typename Context>
 void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
+
   ctx.template Alloc<typename T::value_type>(out);
   auto out_dims_original = out->dims();
   Copy(ctx, x, ctx.GetPlace(), false, out);

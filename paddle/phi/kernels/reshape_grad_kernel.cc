@@ -27,6 +27,11 @@ template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  x_grad->can_not_uses = xx.can_not_uses;
+  x_grad->can_not_uses->insert(x_grad->canNotUse);
+  x_grad->can_not_uses->insert(xx.canNotUse);
+
   auto x_dims = x_grad->dims();
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);

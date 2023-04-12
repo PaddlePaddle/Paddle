@@ -24,6 +24,14 @@ void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+
+  for (size_t j = 0; j < outs.size(); ++j) {
+    outs[j]->can_not_uses = xx.can_not_uses;
+    outs[j]->can_not_uses->insert(outs[j]->canNotUse);
+    outs[j]->can_not_uses->insert(xx.canNotUse);
+  }
+
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;
 

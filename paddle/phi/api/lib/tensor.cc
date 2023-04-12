@@ -441,4 +441,17 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
+bool Tensor::can_not_use() {
+  if (phi::DenseTensor::classof(impl_.get())) {
+    auto densor_ptr = static_cast<phi::DenseTensor *>(impl_.get());
+    if (densor_ptr != nullptr) {
+      return *densor_ptr->canNotUse;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+}
+
 }  // namespace paddle

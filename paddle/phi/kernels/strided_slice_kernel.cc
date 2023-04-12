@@ -26,6 +26,10 @@ void StridedSliceKernel(const Context& dev_ctx,
                         const IntArray& ends,
                         const IntArray& strides,
                         DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawKernel<T, Context>(
