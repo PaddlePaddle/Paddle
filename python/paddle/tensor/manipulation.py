@@ -3418,7 +3418,15 @@ def expand(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'expand',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'expand')

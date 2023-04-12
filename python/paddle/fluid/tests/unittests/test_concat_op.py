@@ -30,9 +30,9 @@ class TestConcatOp(OpTest):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
+        self.if_enable_cinn()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
@@ -81,6 +81,9 @@ class TestConcatOp(OpTest):
             self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
             self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
         self.axis = 1
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestConcatOp2(TestConcatOp):
@@ -290,6 +293,9 @@ def create_test_bf16(parent):
     class TestConcatBf16(parent):
         def get_dtype(self):
             return np.uint16
+
+        def if_enable_cinn(self):
+            self.enable_cinn = False
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestConcatBf16.__name__ = cls_name
