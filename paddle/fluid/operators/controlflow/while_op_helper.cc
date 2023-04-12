@@ -235,7 +235,7 @@ bool GetCondData(const phi::DenseTensor &cond) {
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/NPU/XPU but got "
       "GPU/NPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
-      "WITH_ASCEND_CL or WITH_XPU option."));
+      "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
 }
