@@ -16,12 +16,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include <cuda.h>
-#include <cuda_occupancy.h>
 #include <cupti.h>
 
 #include <mutex>  // NOLINT
 
-#include "paddle/phi/backends/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h":
 
 namespace paddle {
 namespace platform {
