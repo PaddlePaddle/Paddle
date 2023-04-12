@@ -45,12 +45,10 @@ fi
 git checkout -b prec_added_ut upstream/${BRANCH}
 git branch
 mkdir prec_build
-export BUILD_DIR=prec_build
+cd prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
-    bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_by_setup_in_current_dir >prec_build/prebuild.log 2>&1
-    cd prec_build
+    bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
-    cd prec_build
     bash $PADDLE_ROOT/win_cmake.sh >prec_build.log 2>&1
 fi
 # remove line ended with .exe to get correct deleted_ut list
