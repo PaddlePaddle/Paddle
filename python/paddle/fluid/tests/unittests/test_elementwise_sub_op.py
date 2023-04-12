@@ -71,7 +71,7 @@ class TestElementwiseOp(OpTest):
         self.check_prim = True
 
     def if_enable_cinn(self):
-        self.enable_cii = False
+        self.enable_cinn = False
 
 
 class TestElementwiseFP16OP(TestElementwiseOp):
