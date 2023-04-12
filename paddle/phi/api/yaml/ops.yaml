@@ -595,6 +595,7 @@
     func : ExpandAsInferMeta
   kernel :
     func : expand_as
+    data_type : x
   optional : y
   backward : expand_as_grad
 
