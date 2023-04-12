@@ -35,7 +35,6 @@ namespace kps = phi::kps;
 
 namespace phi {
 
-// FIXME: delete this enum
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
