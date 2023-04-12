@@ -261,6 +261,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
+  VLOG(4) << "asdf Check nan 450 line";
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
 
@@ -285,18 +286,23 @@ bool IsSkipOp(const framework::OperatorBase& op) {
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
                         const platform::Place& place) {
+  VLOG(4) << "asdf Check nan 450 line";
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
 
   if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+    VLOG(4) << "asdf Check nan 465 line " << op.Type();
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
+      VLOG(4) << "asdf Check nan 467 line " << vname;
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       CheckVarHasNanOrInf(op.Type(), exec_scope, vname, place);
+      VLOG(4) << "asdf Check nan 472 line";
     }
   } else {
+    VLOG(4) << "asdf Check nan 450 line";
     for (auto& vname : op.OutputVars(true)) {
       bool need_check = true;
       for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
