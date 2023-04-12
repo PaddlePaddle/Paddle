@@ -120,6 +120,7 @@ def shape(input):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'shape',
         )
