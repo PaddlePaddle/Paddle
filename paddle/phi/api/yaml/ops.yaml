@@ -1125,12 +1125,14 @@
   backward : logsigmoid_grad
 
 - op : lu
-  args : (Tensor x, bool pivot)
+  args : (Tensor x, bool pivot = true)
   output : Tensor(out), Tensor(pivots), Tensor(infos)
   infer_meta :
     func : LUInferMeta
   kernel :
     func : lu
+    data_type : x
+  inplace : (x -> out)
   backward : lu_grad
 
 - op : lu_unpack

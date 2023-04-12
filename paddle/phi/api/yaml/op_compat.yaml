@@ -2321,7 +2321,7 @@
   inputs:
     x: X
   outputs:
-    out: Out
+    {out: Out, pivots : Pivots, infos : Infos}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
