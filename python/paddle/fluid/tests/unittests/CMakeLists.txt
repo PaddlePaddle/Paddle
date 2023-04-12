@@ -772,10 +772,6 @@ add_subdirectory(sequence)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
 
-if(WITH_XPU)
-  add_subdirectory(xpu)
-endif()
-
 # dist xpu tests:
 if(WITH_XPU_BKCL)
   py_test(test_collective_allreduce_api_xpu

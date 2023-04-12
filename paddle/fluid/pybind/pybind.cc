@@ -1960,17 +1960,6 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetGPUComputeCapability(place.device) >= 53;
-  });
-  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
-    return platform::GetGPUComputeCapability(place.device) >= 80;
-  });
-#endif
-
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,

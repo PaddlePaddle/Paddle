@@ -16,7 +16,13 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import (
+    check_output,
+    check_output_allclose,
+    extra_cc_args,
+    extra_nvcc_args,
+    paddle_includes,
+)
 
 import paddle
 from paddle import static
@@ -342,26 +348,6 @@ class TestCustomInplaceJit(unittest.TestCase):
             np.random.random((3, 2)).astype("float32"),
         ]
 
-    def check_output(self, out, pd_out, name):
-        np.testing.assert_array_equal(
-            out,
-            pd_out,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
-    def check_output_allclose(self, out, pd_out, name):
-        np.testing.assert_allclose(
-            out,
-            pd_out,
-            rtol=5e-5,
-            atol=1e-2,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
     def test_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -391,15 +377,15 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_x,
                     self.np_y,
                 )
-                self.check_output(custom_x, custom_out, "inplace_custom_x")
-                self.check_output(
+                check_output(custom_x, custom_out, "inplace_custom_x")
+                check_output(
                     custom_x_grad, custom_out_grad, "inplace_custom_x_grad"
                 )
 
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
-                self.check_output(custom_out_grad, pd_out_grad, "out_grad")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_out_grad, pd_out_grad, "out_grad")
 
     def test_dynamic_add(self):
         for device in self.devices:
@@ -431,14 +417,14 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_y,
                 )
 
-                self.check_output(custom_x, custom_out, "inplace_custom_x")
-                self.check_output(pd_x, pd_out, "inplace_pd_x")
+                check_output(custom_x, custom_out, "inplace_custom_x")
+                check_output(pd_x, pd_out, "inplace_pd_x")
 
-                self.check_output(custom_x, pd_x, "x")
-                self.check_output(custom_y, pd_y, "y")
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_x, pd_x, "x")
+                check_output(custom_y, pd_y, "y")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
 
     def test_static_add_vector(self):
         for device in self.devices:
@@ -468,10 +454,10 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_y,
                 )
 
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
-                self.check_output(custom_out_grad, pd_out_grad, "out_grad")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_out_grad, pd_out_grad, "out_grad")
 
     def test_dynamic_add_vector(self):
         for device in self.devices:
@@ -503,14 +489,14 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_y,
                 )
 
-                self.check_output(custom_x, custom_out, "inplace_custom_x")
-                self.check_output(pd_x, pd_out, "inplace_pd_x")
+                check_output(custom_x, custom_out, "inplace_custom_x")
+                check_output(pd_x, pd_out, "inplace_pd_x")
 
-                self.check_output(custom_x, pd_x, "x")
-                self.check_output(custom_y, pd_y, "y")
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_x, pd_x, "x")
+                check_output(custom_y, pd_y, "y")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
 
     def test_static_relu_net(self):
         for device in self.devices:
@@ -543,11 +529,11 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                self.check_output_allclose(custom_x, pd_x, "x")
-                self.check_output_allclose(custom_y, pd_y, "y")
-                self.check_output_allclose(custom_out, pd_out, "out")
-                self.check_output_allclose(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output_allclose(custom_y_grad, pd_y_grad, "y_grad")
+                check_output_allclose(custom_x, pd_x, "x")
+                check_output_allclose(custom_y, pd_y, "y")
+                check_output_allclose(custom_out, pd_out, "out")
+                check_output_allclose(custom_x_grad, pd_x_grad, "x_grad")
+                check_output_allclose(custom_y_grad, pd_y_grad, "y_grad")
 
     def test_dynamic_relu_net(self):
         for device in self.devices:
@@ -581,11 +567,11 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_z,
                 )
 
-                self.check_output(custom_x, pd_x, "x")
-                self.check_output(custom_y, pd_y, "y")
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_x, pd_x, "x")
+                check_output(custom_y, pd_y, "y")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
 
     def test_static_multi_inplace(self):
         for device in self.devices:
@@ -630,27 +616,23 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_a,
                     self.np_b,
                 )
-                self.check_output(custom_x, pd_out_xy, "inplace_custom_x")
-                self.check_output(
+                check_output(custom_x, pd_out_xy, "inplace_custom_x")
+                check_output(
                     custom_x_grad, custom_out_xy_grad, "inplace_custom_x_grad"
                 )
-                self.check_output(custom_a, pd_out_ab, "inplace_custom_a")
-                self.check_output(
+                check_output(custom_a, pd_out_ab, "inplace_custom_a")
+                check_output(
                     custom_a_grad, custom_out_ab_grad, "inplace_custom_a_grad"
                 )
 
-                self.check_output(custom_out_xy, pd_out_xy, "outxy")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
-                self.check_output(
-                    custom_out_xy_grad, pd_out_xy_grad, "outxy_grad"
-                )
-                self.check_output(custom_out_ab, pd_out_ab, "outab")
-                self.check_output(custom_a_grad, pd_a_grad, "a_grad")
-                self.check_output(custom_b_grad, pd_b_grad, "b_grad")
-                self.check_output(
-                    custom_out_ab_grad, pd_out_ab_grad, "outab_grad"
-                )
+                check_output(custom_out_xy, pd_out_xy, "outxy")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_out_xy_grad, pd_out_xy_grad, "outxy_grad")
+                check_output(custom_out_ab, pd_out_ab, "outab")
+                check_output(custom_a_grad, pd_a_grad, "a_grad")
+                check_output(custom_b_grad, pd_b_grad, "b_grad")
+                check_output(custom_out_ab_grad, pd_out_ab_grad, "outab_grad")
 
     def test_dynamic_multi_inplace(self):
         for device in self.devices:
@@ -696,21 +678,21 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_b,
                 )
 
-                self.check_output(custom_x, custom_out_xy, "inplace_custom_x")
-                self.check_output(pd_x, pd_out_xy, "inplace_pd_x")
-                self.check_output(custom_a, custom_out_ab, "inplace_custom_a")
-                self.check_output(pd_a, pd_out_ab, "inplace_pd_a")
+                check_output(custom_x, custom_out_xy, "inplace_custom_x")
+                check_output(pd_x, pd_out_xy, "inplace_pd_x")
+                check_output(custom_a, custom_out_ab, "inplace_custom_a")
+                check_output(pd_a, pd_out_ab, "inplace_pd_a")
 
-                self.check_output(custom_x, pd_x, "x")
-                self.check_output(custom_y, pd_y, "y")
-                self.check_output(custom_out_xy, pd_out_xy, "outxy")
-                self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
-                self.check_output(custom_a, pd_a, "a")
-                self.check_output(custom_b, pd_b, "b")
-                self.check_output(custom_out_ab, pd_out_ab, "outab")
-                self.check_output(custom_a_grad, pd_a_grad, "a_grad")
-                self.check_output(custom_b_grad, pd_b_grad, "b_grad")
+                check_output(custom_x, pd_x, "x")
+                check_output(custom_y, pd_y, "y")
+                check_output(custom_out_xy, pd_out_xy, "outxy")
+                check_output(custom_x_grad, pd_x_grad, "x_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_a, pd_a, "a")
+                check_output(custom_b, pd_b, "b")
+                check_output(custom_out_ab, pd_out_ab, "outab")
+                check_output(custom_a_grad, pd_a_grad, "a_grad")
+                check_output(custom_b_grad, pd_b_grad, "b_grad")
 
 
 if __name__ == "__main__":
