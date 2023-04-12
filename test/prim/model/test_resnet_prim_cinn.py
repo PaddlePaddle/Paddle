@@ -131,6 +131,67 @@ def optimizer_setting(parameter_list=None):
     return optimizer
 
 
+def run(model, data_loader, optimizer, mode):
+    if mode == 'train':
+        model.train()
+        end_step = 9
+    elif mode == 'eval':
+        model.eval()
+        end_step = 1
+
+    for epoch in range(epoch_num):
+        total_acc1 = 0.0
+        total_acc5 = 0.0
+        total_sample = 0
+        losses = []
+
+        for batch_id, data in enumerate(data_loader()):
+            start_time = time.time()
+            img, label = data
+
+            pred = model(img)
+            avg_loss = paddle.nn.functional.cross_entropy(
+                input=pred,
+                label=label,
+                soft_label=False,
+                reduction='mean',
+                use_softmax=True,
+            )
+
+            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
+
+            if mode == 'train':
+                avg_loss.backward()
+                optimizer.minimize(avg_loss)
+                model.clear_gradients()
+
+            total_acc1 += acc_top1
+            total_acc5 += acc_top5
+            total_sample += 1
+            losses.append(avg_loss.numpy().item())
+
+            end_time = time.time()
+            print(
+                "[%s]epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
+                % (
+                    mode,
+                    epoch,
+                    batch_id,
+                    avg_loss,
+                    total_acc1.numpy() / total_sample,
+                    total_acc5.numpy() / total_sample,
+                    end_time - start_time,
+                )
+            )
+            if batch_id >= end_step:
+                # avoid dataloader throw abort signaal
+                data_loader._reset()
+                break
+    print(losses)
+    return losses
+
+
 def train(to_static, enable_prim, enable_cinn):
     if core.is_compiled_with_cuda():
         paddle.set_device('gpu')
@@ -157,55 +218,10 @@ def train(to_static, enable_prim, enable_cinn):
         resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
-    for epoch in range(epoch_num):
-        total_acc1 = 0.0
-        total_acc5 = 0.0
-        total_sample = 0
-        losses = []
-
-        for batch_id, data in enumerate(data_loader()):
-            start_time = time.time()
-            img, label = data
-
-            pred = resnet(img)
-            avg_loss = paddle.nn.functional.cross_entropy(
-                input=pred,
-                label=label,
-                soft_label=False,
-                reduction='mean',
-                use_softmax=True,
-            )
-
-            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
-            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
-
-            avg_loss.backward()
-            optimizer.minimize(avg_loss)
-            resnet.clear_gradients()
-
-            total_acc1 += acc_top1
-            total_acc5 += acc_top5
-            total_sample += 1
-            losses.append(avg_loss.numpy().item())
-
-            end_time = time.time()
-            print(
-                "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
-                % (
-                    epoch,
-                    batch_id,
-                    avg_loss,
-                    total_acc1.numpy() / total_sample,
-                    total_acc5.numpy() / total_sample,
-                    end_time - start_time,
-                )
-            )
-            if batch_id >= 9:
-                # avoid dataloader throw abort signaal
-                data_loader._reset()
-                break
-    print(losses)
-    return losses
+    train_losses = run(resnet, data_loader, optimizer, 'train')
+    if to_static and enable_prim and enable_cinn:
+        eval_losses = run(resnet, data_loader, optimizer, 'eval')
+    return train_losses
 
 
 class TestResnet(unittest.TestCase):
