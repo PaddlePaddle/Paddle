@@ -169,7 +169,7 @@ def fused_seqpool_cvm(
             show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
             show_clk.stop_gradient = True
 
-            cvms = fluid.contrib.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
+            cvms = paddle.incubate.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
 
 
     """
@@ -306,7 +306,7 @@ def multiclass_nms2(
                                       dtype='float32', lod_level=1)
             scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.contrib.layers.multiclass_nms2(bboxes=boxes,
+            out, index = paddle.incubate.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -501,7 +501,7 @@ def shuffle_batch(x, seed=None):
             import paddle
             paddle.enable_static()
             x = paddle.static.data(name="x", shape=[-1, 4])
-            out = fluid.contrib.layers.shuffle_batch(x)
+            out = paddle.incubate.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
 
@@ -565,7 +565,7 @@ def partial_concat(input, start_index=0, length=-1):
             import paddle
             x = paddle.randn(name="x", shape=[1,3], dtype="float32")
             y = paddle.randn(name="y", shape=[1,3], dtype="float32")
-            concat = fluid.contrib.layers.partial_concat(
+            concat = paddle.incubate.layers.partial_concat(
                 [x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
@@ -630,7 +630,7 @@ def partial_sum(input, start_index=0, length=-1):
 
         x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
         y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
-        sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
+        sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
@@ -780,7 +780,7 @@ def sparse_embedding(
     helper = LayerHelper('sparse_embedding', **locals())
 
     check_variable_and_dtype(
-        input, 'input', ['int64'], 'fluid.contrib.layers.sparse_embedding'
+        input, 'input', ['int64'], 'paddle.incubate.layers.sparse_embedding'
     )
 
     check_dtype(
@@ -905,7 +905,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         tree_info_np = np.reshape(tree_info_np, (7,5))
         node_nums = 7
         child_nums = 2
-        child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
+        child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
                                     initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
@@ -917,7 +917,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     """
     helper = LayerHelper("tdm_child", **locals())
     check_dtype(
-        dtype, 'dtype', ['int32', 'int64'], 'fluid.contrib.layers.tdm_child'
+        dtype, 'dtype', ['int32', 'int64'], 'paddle.incubate.layers.tdm_child'
     )
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     tree_info = helper.create_parameter(
@@ -1017,7 +1017,7 @@ def tdm_sampler(
         travel_array = np.array(travel_list)
         layer_array = np.array(layer_list_flat)
 
-        sample, label, mask = fluid.contrib.layers.tdm_sampler(
+        sample, label, mask = paddle.incubate.layers.tdm_sampler(
             x,
             neg_samples_num_list,
             layer_node_num_list,
@@ -1046,10 +1046,10 @@ def tdm_sampler(
         tree_dtype,
         'tree_dtype',
         ['int32', 'int64'],
-        'fluid.contrib.layers.tdm_sampler',
+        'paddle.incubate.layers.tdm_sampler',
     )
     check_dtype(
-        dtype, 'dtype', ['int32', 'int64'], 'fluid.contrib.layers.tdm_sampler'
+        dtype, 'dtype', ['int32', 'int64'], 'paddle.incubate.layers.tdm_sampler'
     )
     c_dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1201,7 +1201,7 @@ def rank_attention(
 
            input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
            rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
-           out = fluid.contrib.layers.rank_attention(input=input,
+           out = paddle.incubate.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
                                                      rank_param_attr=
@@ -1262,7 +1262,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
            paddle.enable_static()
 
            input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
-           out = fluid.contrib.layers.batch_fc(input=input,
+           out = paddle.incubate.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
                                                paddle.ParamAttr(learning_rate=1.0,
@@ -1322,7 +1322,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
         .. code-block:: python
           import paddle.fluid as fluid
           data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
-          emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
+          emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
     helper.input_dtype()
@@ -1588,7 +1588,7 @@ def fused_bn_add_act(
                         input=conv1_1,
                         act=None,
                         data_layout='NHWC')
-                    fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
+                    fused_bn_add_act = paddle.incubate.layers.fused_bn_add_act(conv1_2, bn)
                     prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
                     loss = paddle.nn.functional.cross_entropy(
                         input=prediction, label=y,
