@@ -41,7 +41,7 @@ limitations under the License. */
 #include <unistd.h>
 #define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
-#define RW_ACCESS(path) access(path, R_OK | W_OK);
+#define RW_ACCESS(path) access(path, R_OK | W_OK)
 #endif
 #define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
 
