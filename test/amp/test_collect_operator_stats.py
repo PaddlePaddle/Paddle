@@ -15,9 +15,10 @@
 import unittest
 
 import paddle
+from paddle import nn
 
 
-class TestAMPList(unittest.TestCase):
+class TestOpStatsEager(unittest.TestCase):
     def _check_result(self, dtype):
         # Returned the dict.
         op_list = paddle.fluid.core.get_low_precision_op_list()
@@ -63,6 +64,31 @@ class TestAMPList(unittest.TestCase):
                 out = conv(x)
 
         self._check_result(dtype=out.dtype)
+
+
+class WhileNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self):
+        while_input_x = paddle.ones(shape=[64, 32], dtype="float32")
+        while_input_y = paddle.zeros(shape=[32, 32], dtype="float32")
+        while paddle.shape(while_input_x)[1] >= paddle.shape(while_input_y)[1]:
+            while_input_y = paddle.matmul(
+                while_input_x,
+                while_input_x.T,
+            )
+        return while_input_y.mean()
+
+
+class TestOpStatsStatic(unittest.TestCase):
+    def test_while_op(self):
+        paddle.enable_static()
+        model = WhileNet()
+        paddle.static.amp.debugging.collect_operator_stats(
+            program=None, print_subblocks=True
+        )
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

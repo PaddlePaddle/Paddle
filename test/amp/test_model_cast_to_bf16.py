@@ -207,14 +207,19 @@ class TestModelCastBF16(unittest.TestCase):
 class SimpleNet(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-        self.linear = nn.Linear(in_features=6, out_features=10)
+        self.vocab_size = 128
+        self.hidden_size = 16
+        self.vocab_size = 128
+        self.hidden_size = 16
+        self.embedding = nn.Embedding(self.vocab_size, self.hidden_size)
+        self.linear = nn.Linear(in_features=16, out_features=10)
 
     def forward(self, x):
-        out = self.conv(x)
-        out = nn.functional.relu(out)
+        out = self.embedding(x)
+        scale = paddle.full(shape=[1], fill_value=2, dtype="int64")
+        out = paddle.multiply(out, scale.astype("float32"))
         out = self.linear(out)
-        out = nn.functional.softmax(out)
+        out = nn.functional.dropout(out, p=0.2)
         return out
 
 
@@ -224,9 +229,7 @@ def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
     with paddle.utils.unique_name.guard():
         with paddle.static.program_guard(main_program, startup_program):
             model = SimpleNet()
-            x = paddle.static.data(
-                name='input', shape=[None, 1, 28, 28], dtype='float32'
-            )
+            x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
             out = model(x)
             loss = paddle.mean(out)
             optimizer = paddle.optimizer.AdamW(
@@ -253,50 +256,50 @@ def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
 class TestProgramBF16(unittest.TestCase):
     def test_amp_bf16_o1(self):
         main_program, startup_program = _build_model(True, "bfloat16", "O1")
+        print(main_program)
         self.assertEqual(main_program.num_blocks, 1)
 
         amp.debugging.collect_operator_stats(main_program)
-        # op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
 
-        # op_stats_dict = op_stats_list[0]
-        # expected_bf16_calls = {
-        #     "conv2d": 1,
-        #     "matmul_v2": 1,
-        #     "elementwise_add": 2,
-        #     "relu": 1,
-        #     "softmax": 0,
-        #     "reduce_mean": 0,
-        #     "squared_l2_norm": 0,
-        #     "elementwise_mul": 0,
-        #     "sum": 0,
-        #     "adamw": 0,
-        # }
-        # for op_type, value in expected_bf16_calls.items():
-        #     self.assertEqual(op_stats_dict[op_type].bf16_calls, value)
+        op_stats_dict = op_stats_list[0]
+        expected_bf16_calls = {
+            "matmul_v2": 1,
+            "elementwise_add": 1,
+            "dropout": 1,
+            "lookup_table_v2": 0,
+            "squared_l2_norm": 0,
+            "adamw": 0,
+        }
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].bf16_calls,
+                value,
+                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+            )
 
     def test_amp_bf16_o2(self):
         main_program, startup_program = _build_model(True, "bfloat16", "O2")
         self.assertEqual(main_program.num_blocks, 1)
 
         amp.debugging.collect_operator_stats(main_program)
-        # op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
 
-        # op_stats_dict = op_stats_list[0]
-        # num_bf16_grads = 4 if paddle.device.get_cudnn_version() > 8100 else 3
-        # expected_bf16_calls = {
-        #     "conv2d": 1 if paddle.device.get_cudnn_version() > 8100 else 0,
-        #     "matmul_v2": 1,
-        #     "elementwise_add": 2,
-        #     "relu": 1,
-        #     "softmax": 1,
-        #     "reduce_mean": 1,
-        #     "squared_l2_norm": num_bf16_grads,
-        #     "elementwise_mul": num_bf16_grads,
-        #     "sum": 1,
-        #     "adamw": num_bf16_grads,
-        # }
-        # for op_type, value in expected_bf16_calls.items():
-        #     self.assertEqual(op_stats_dict[op_type].bf16_calls, value)
+        op_stats_dict = op_stats_list[0]
+        expected_bf16_calls = {
+            "matmul_v2": 1,
+            "elementwise_add": 1,
+            "dropout": 1,
+            "lookup_table_v2": 0,
+            "squared_l2_norm": 2,
+            "adamw": 2,
+        }
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].bf16_calls,
+                value,
+                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+            )
 
 
 if __name__ == '__main__':
