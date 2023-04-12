@@ -2328,6 +2328,63 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(b.grad.shape, [4, 5])
         self.assertEqual(c.grad.shape, [5])
 
+    def test_dist(self):
+        x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
+        y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.dist(x, y, 0)
+        out.backward()
+
+        self.assertTrue(out.shape, [])
+        np.testing.assert_allclose(out, np.array(1))
+        self.assertTrue(x.grad.shape, [2, 2])
+        self.assertTrue(y.grad.shape, [2, 2])
+
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        out.backward()
+
+        self.assertTrue(out.shape, [])
+        np.testing.assert_allclose(out, np.array(12))
+        self.assertTrue(x.grad.shape, [2, 2])
+
+    def test_cond(self):
+        def assert_shape(out):
+            self.assertTrue(out.shape, [])
+
+        x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        x.stop_gradient = False
+        out = paddle.linalg.cond(x)
+        assert_shape(out)
+        out_fro = paddle.linalg.cond(x, p='fro')
+        assert_shape(out_fro)
+        out_nuc = paddle.linalg.cond(x, p='nuc')
+        assert_shape(out_nuc)
+        out_1 = paddle.linalg.cond(x, p=1)
+        assert_shape(out_1)
+        out_minus_1 = paddle.linalg.cond(x, p=-1)
+        assert_shape(out_minus_1)
+        out_2 = paddle.linalg.cond(x, p=2)
+        assert_shape(out_2)
+        out_minus_2 = paddle.linalg.cond(x, p=-2)
+        assert_shape(out_minus_2)
+        out_inf = paddle.linalg.cond(x, p=float("inf"))
+        assert_shape(out_inf)
+        out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
+        assert_shape(out_minus_inf)
+        out_minus_inf.backward()
+        self.assertTrue(x.grad.shape, [3, 3])
+
+        a = paddle.randn([2, 4, 4])
+        a.stop_gradient = False
+        a_cond_fro = paddle.linalg.cond(a, p='fro')
+        a_cond_fro.backward()
+        self.assertTrue(len(a_cond_fro.shape), 1)
+        self.assertTrue(a.grad.shape, [2, 4, 4])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -4158,6 +4215,42 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (4,))
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
+
+    @prog_scope()
+    def test_dist(self):
+        x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
+        y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.dist(x, y)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_array_equal(res[0], np.array(1))
+
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        self.assertTrue(res[0].shape, ())
+        np.testing.assert_allclose(out, np.array(12))
+
+    def test_cond(self):
+        x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        x.stop_gradient = False
+        out = paddle.linalg.cond(x)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+
+        self.assertTrue(res[0].shape, ())
+        np.testing.assert_allclose(out, np.array(1.41421342))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

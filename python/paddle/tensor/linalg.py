@@ -1044,17 +1044,29 @@ def cond(x, p=None, name=None):
                 return empty_tensor(x, x_shape[:-2])
             x_inv = x.inverse()
             if p == "fro":
-                return fro_norm(x) * fro_norm(x_inv)
+                ret = fro_norm(x) * fro_norm(x_inv)
+                if len(x_shape) == 2:
+                    ret.reshape([])
+                return ret
             if p == "nuc":
-                return svd_norm(x, p) * svd_norm(x_inv, p)
+                ret = svd_norm(x, p) * svd_norm(x_inv, p)
+                if len(x_shape) == 2:
+                    ret.reshape([])
+                return ret
             if p in (1, -1):
-                return mat_norm(x, porder=p, axis=[-2]) * mat_norm(
+                ret = mat_norm(x, porder=p, axis=[-2]) * mat_norm(
                     x_inv, porder=p, axis=[-2]
                 )
+                if len(x_shape) == 2:
+                    ret.reshape([])
+                return ret
             if p in (np.inf, -np.inf):
-                return mat_norm(x, porder=p, axis=[-1]) * mat_norm(
+                ret = mat_norm(x, porder=p, axis=[-1]) * mat_norm(
                     x_inv, porder=p, axis=[-1]
                 )
+                if len(x_shape) == 2:
+                    ret.reshape([])
+                return ret
         else:
             raise ValueError(
                 f"only support p is {p} when input is a "
@@ -1063,7 +1075,10 @@ def cond(x, p=None, name=None):
     elif p in (2, -2):
         if x_size == 0:
             return empty_tensor(x, x_shape[:-2])
-        return svd_norm(x, porder=p)
+        ret = svd_norm(x, porder=p)
+        if x_shape == 2:
+            ret.reshape([])
+        return ret
     else:
         raise ValueError(
             f"unsupported {p} for p, only supporting ('fro', 'nuc', "
