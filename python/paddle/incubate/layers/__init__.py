@@ -31,6 +31,8 @@ from .nn import (
     correlation,
     fused_bn_add_act,
     pow2_decay_with_linear_warmup,
+    _pull_gpups_sparse,
+    _pull_box_sparse,
 )
 
 from . import metric_op
@@ -55,4 +57,6 @@ __all__ = [
     'fused_bn_add_act',
     'fused_seqpool_cvm',
     'pow2_decay_with_linear_warmup',
+    '_pull_gpups_sparse',
+    '_pull_box_sparse',
 ]
