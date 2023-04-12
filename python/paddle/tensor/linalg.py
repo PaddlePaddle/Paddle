@@ -838,7 +838,10 @@ def cond(x, p=None, name=None):
         else:
             reduce_all = True if axis is None or axis == [] else False
             axis = axis if axis is not None and axis != [] else [0]
-            block = LayerHelper('norm', **locals())
+            block = LayerHelper(
+                'x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])',
+                **locals(),
+            )
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
             )
@@ -1044,29 +1047,17 @@ def cond(x, p=None, name=None):
                 return empty_tensor(x, x_shape[:-2])
             x_inv = x.inverse()
             if p == "fro":
-                ret = fro_norm(x) * fro_norm(x_inv)
-                if len(x_shape) == 2:
-                    ret.reshape([])
-                return ret
+                return fro_norm(x) * fro_norm(x_inv)
             if p == "nuc":
-                ret = svd_norm(x, p) * svd_norm(x_inv, p)
-                if len(x_shape) == 2:
-                    ret.reshape([])
-                return ret
+                return svd_norm(x, p) * svd_norm(x_inv, p)
             if p in (1, -1):
-                ret = mat_norm(x, porder=p, axis=[-2]) * mat_norm(
+                return mat_norm(x, porder=p, axis=[-2]) * mat_norm(
                     x_inv, porder=p, axis=[-2]
                 )
-                if len(x_shape) == 2:
-                    ret.reshape([])
-                return ret
             if p in (np.inf, -np.inf):
-                ret = mat_norm(x, porder=p, axis=[-1]) * mat_norm(
+                return mat_norm(x, porder=p, axis=[-1]) * mat_norm(
                     x_inv, porder=p, axis=[-1]
                 )
-                if len(x_shape) == 2:
-                    ret.reshape([])
-                return ret
         else:
             raise ValueError(
                 f"only support p is {p} when input is a "
@@ -1075,10 +1066,7 @@ def cond(x, p=None, name=None):
     elif p in (2, -2):
         if x_size == 0:
             return empty_tensor(x, x_shape[:-2])
-        ret = svd_norm(x, porder=p)
-        if x_shape == 2:
-            ret.reshape([])
-        return ret
+        return svd_norm(x, porder=p)
     else:
         raise ValueError(
             f"unsupported {p} for p, only supporting ('fro', 'nuc', "
