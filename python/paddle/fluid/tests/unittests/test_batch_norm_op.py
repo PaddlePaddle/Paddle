@@ -16,7 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, _set_use_system_allocator
+from eager_op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 from op import Operator
 
 import paddle
@@ -239,7 +244,10 @@ class TestBatchNormOpInference(unittest.TestCase):
                 raise ValueError("Unknown data layout.")
         scale_shape = [c]
 
-        x_val = np.random.random_sample(x_shape).astype(dtype)
+        if dtype == np.uint16:
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+        else:
+            x_val = np.random.random_sample(x_shape).astype(dtype)
         # generate some negative values to test case with relu fused
         x_val = x_val - 0.5
         scale_val = np.random.random_sample(scale_shape).astype(np.float32)
@@ -248,12 +256,20 @@ class TestBatchNormOpInference(unittest.TestCase):
         mean = np.zeros(scale_shape).astype(np.float32)
         variance = np.ones(scale_shape).astype(np.float32)
 
-        y_out = _reference_testing(
-            x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
-        ).astype(dtype)
+        if dtype == np.uint16:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(np.float32)
+            y_out = convert_float_to_uint16(y_out)
+        else:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(dtype)
         if self.fuse_with_relu:
             y_out = np.maximum(y_out, 0)
 
+        if dtype == np.uint16:
+            x_val = convert_float_to_uint16(x_val)
         scope = core.Scope()
 
         # create input
@@ -324,6 +340,11 @@ class TestBatchNormOpInference(unittest.TestCase):
             y_tensor._set_dims(dims)
 
         # check inference result
+        atol = 1e-3
+        if dtype == np.uint16:
+            y_tensor = convert_uint16_to_float(y_tensor)
+            y_out = convert_uint16_to_float(y_out)
+            atol = 1e-2
         self.__assert_close(
             y_tensor,
             y_out,
@@ -335,7 +356,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             + str(np.dtype(dtype))
             + str(np.array(y_tensor))
             + str(y_out),
-            atol=1e-3,
+            atol=atol,
         )
 
     def test_check_output(self):
@@ -367,6 +388,29 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 places.append(place)
+        for place in places:
+            # for data_format in ["NCHW", "NHWC"]:
+            for data_format in ["NCHW"]:
+                self.check_with_place(
+                    place, data_format, self.dtype, [2, 3, 4, 5]
+                )
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBF16BatchNormOpInference(TestBatchNormOpInference):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.use_mkldnn = False
+        self.fuse_with_relu = False
+        self.init_kernel_type()
+
+    def test_check_output(self):
+        places = [core.CUDAPlace(0)]
         for place in places:
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
