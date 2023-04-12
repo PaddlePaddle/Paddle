@@ -116,15 +116,7 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_USE_STANDALONE_EXECUTOR', None
-)
-_dy2st_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1
-)
-_cuda_graph_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
-)
+
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -268,17 +260,6 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
-
-
-@signature_safe_contextmanager
-def _enable_standalone_executor(enable=True):
-    global _enable_standalone_executor_
-    original_ = _enable_standalone_executor_
-    _enable_standalone_executor_ = enable
-    try:
-        yield
-    finally:
-        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager
@@ -2777,8 +2758,6 @@ class Operator:
         'heter_listen_and_serv',
         'c_wait_comm',
         'c_wait_compute',
-        'c_gen_hccl_id',
-        'c_comm_init_hccl',
         'copy_cross_scope',
         'c_gen_cncl_id',
     }
@@ -2935,14 +2914,35 @@ class Operator:
                 for m in proto.outputs:
                     if (m.name not in outputs) and m.dispensable:
                         continue
-                    if not ((m.name in outputs) or m.dispensable):
-                        raise ValueError(
-                            (
-                                "Incorrect setting for output(s) of "
-                                "operator \"%s\", should set: [%s]."
+
+                    # FIXME: The outputs of primitive operator currently
+                    # doesn't include intermediate output as it will be dropped
+                    # in operator codegen, such as xshape output of reshape2.
+                    # It will fixed when the operator codegen support
+                    # intermediate output.
+                    if core._is_bwd_prim_enabled():
+                        if not (
+                            (m.name in outputs)
+                            or m.dispensable
+                            or m.intermediate
+                        ):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
                             )
-                            % (type, m.name)
-                        )
+                    else:
+                        if not ((m.name in outputs) or m.dispensable):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
+                            )
+
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue

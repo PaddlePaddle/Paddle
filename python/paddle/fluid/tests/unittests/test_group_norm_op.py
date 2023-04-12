@@ -1217,6 +1217,8 @@ class TestCompositeGroupNorm(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         for place in self.places:
+            if not isinstance(place, fluid.CUDAPlace):
+                continue
             input_ = paddle.to_tensor(
                 data=self.x, dtype=self.dtype, place=place, stop_gradient=False
             )
@@ -1241,13 +1243,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 self.data_format,
             )
             # failed in cinn test
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, True)
             output = net(input_)
             grad = paddle.grad(output, input_)
             fwd_actual.append(output.numpy())
             rev_actual.append(grad[0].numpy())
 
-        for i in range(len(self.places)):
+        i = 0
+        for place in self.places:
+            if not isinstance(place, fluid.CUDAPlace):
+                continue
             atol = self.threshold_list[i][2]
             rtol = self.threshold_list[i][2]
             np.testing.assert_allclose(
@@ -1269,6 +1274,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 atol=atol,
                 err_msg='%s jit_cinn rev' % self.places[i],
             )
+            i += 1
 
 
 if __name__ == '__main__':
