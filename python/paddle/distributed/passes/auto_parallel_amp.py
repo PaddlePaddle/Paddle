@@ -954,3 +954,13 @@ class AMPPass(PassBase):
         self.dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
         main_block._sync_with_cpp()
+
+    def get_loss(self):
+        # the amp might change the effective loss variable for network and
+        # therefore would affect the subsequent passes that rely on the loss.
+        # return the effective loss after amp pass.
+
+        if self._loss:
+            return self._loss
+        else:
+            return self.get_attr("loss")
