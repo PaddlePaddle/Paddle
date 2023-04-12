@@ -17,7 +17,9 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 
+#ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/rocsparse.h"
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
