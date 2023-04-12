@@ -165,8 +165,7 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::optional<paddle::Tensor> tensor_axis =
         this->GetOptionalSingleForwardInput("AxisTensor");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    std::vector<paddle::Tensor> input_grad =
-        this->GetMultiInputGrad("X", false);
+    std::vector<paddle::Tensor> input_grad = this->GetMultiInputGrad("X");
 
     std::vector<paddle::Tensor *> input_grad_ptr;
     for (auto sub_tensor : input_grad) {
