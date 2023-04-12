@@ -126,12 +126,11 @@ size_t XPUAvailableMemToAlloc() {
 
 size_t XPUMaxAllocSize() {
   const char* maxsize = std::getenv("XPUMaxAllocSize");
-  size_t max_all_size = static_cast<size_t>((maxsize && atoi(maxsize) > 0) ? atoi(maxsize) : 4);
-  //size_t max_all_size = 2;
+  size_t max_all_size = static_cast<size_t>((maxsize && atoi(maxsize) > 0) ? atoi(maxsize) : 1);
   for (uint32_t i = 0; i < 3; i++) {
     max_all_size *= 1024;
   }
-  // XPU max malloc size is 4GB once.
+  // XPU max malloc size is 1GB once.
   return std::min(std::max(XPUInitAllocSize(), XPUReallocSize()), max_all_size);
 }
 
@@ -156,6 +155,7 @@ static size_t XPUAllocSize(bool realloc) {
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
   //return alloc_bytes;
+  // Max Alloc is 1G 
   size_t max_all_size = 1;
   for (uint32_t i = 0; i < 3; i++) {
     max_all_size *= 1024;
@@ -168,7 +168,7 @@ size_t XPUInitAllocSize() { return XPUAllocSize(/* realloc = */ false); }
 size_t XPUReallocSize() { return XPUAllocSize(/* realloc = */ true); }
 
 size_t XPUMinChunkSize() {
-  return 1 << 8;
+  return 1 << 6;
 }
 
 size_t XPUMaxChunkSize() {
@@ -224,9 +224,9 @@ class RecordedXPUMallocHelper {
    */
   int Malloc(void **ptr, size_t size) {
     LockGuardPtr<std::mutex> lock(mtx_);
-    // if (UNLIKELY(NeedRecord() && cur_size_ + size > limit_size_)) {
-    //   return XPUERR_NOMEM;
-    // }
+    if (UNLIKELY(NeedRecord() && cur_size_ + size > limit_size_)) {
+      return XPUERR_NOMEM;
+    }
 
     XPUDeviceGuard guard(dev_id_);
     auto result = xpu_malloc(ptr, size);
@@ -265,8 +265,6 @@ class RecordedXPUMallocHelper {
                   size_t *actual_total) {
     {
       XPUDeviceGuard guard(dev_id_);
-      // xpumlMemory_t mem_info;
-      // auto result = xpumlDeviceGetMemoryInfo(dev_id_&mem_info);
       FILE *fp = NULL;
       char buf[10000]={0};
       std::string cmd = std::string("xpu_smi -d ") + std::to_string(dev_id_) + std::string(" -m");
@@ -284,17 +282,14 @@ class RecordedXPUMallocHelper {
             }
             *actual_avail = (std::atoi(words[18].c_str()) - std::atoi(words[17].c_str())) * 1024;
             *actual_total = std::atoi(words[18].c_str()) * 1024;
-            // std::cout << "actual_avail: " << *actual_avail << std::endl;
-            // std::cout << "actual_total: " << *actual_total << std::endl;
           }
           pclose(fp);
       }
-      // RaiseNonOutOfMemoryError(result);
     }
     *actual_avail *= 1024;
     *actual_total *= 1024;
-    // std::cout << "actual_avail: " << *actual_avail << std::endl;
-    // std::cout << "actual_total: " << *actual_total << std::endl;
+    VLOG(10) << "actual_avail: " << *actual_avail;
+    VLOG(10) << "actual_total: " << *actual_total;
     if (NeedRecord()) {
       std::lock_guard<std::mutex> guard(*mtx_);
       *avail = std::min(*actual_avail, limit_size_ - cur_size_);

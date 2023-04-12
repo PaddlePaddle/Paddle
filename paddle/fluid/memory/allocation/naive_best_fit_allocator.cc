@@ -243,11 +243,8 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
         string::HumanReadableSize(Used<platform::XPUPlace>(place))));
   } else {
-    // if (FLAGS_init_allocated_mem) {
-    //   platform::XPUMemsetSync(ptr, 0xEF, size, size);
-    // }
-    // PADDLE_THROW(platform::errors::Unimplemented(
-    //     "xpu memory FLAGS_init_allocated_mem is not implemented."));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   return ptr;
@@ -279,75 +276,6 @@ uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
       "'XPUPlace' is not supported in CPU only device."));
 #endif
 }
-
-// template <>
-// void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size)
-// { #ifdef PADDLE_WITH_XPU
-//   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-//   void *p = nullptr;
-
-//   platform::XPUDeviceGuard gurad(place.device);
-//   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
-//   if (ret != XPU_SUCCESS) {
-//     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
-//     xpu_wait();
-//     ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
-//   }
-//   PADDLE_ENFORCE_EQ(
-//       ret,
-//       XPU_SUCCESS,
-//       platform::errors::External(
-//           "XPU API return wrong value[%d], no enough memory", ret));
-//   if (FLAGS_init_allocated_mem) {
-//     PADDLE_THROW(platform::errors::Unimplemented(
-//         "xpu memory FLAGS_init_allocated_mem is not implemented."));
-//   }
-//   VLOG(10) << "  pointer=" << p;
-//   return p;
-// #else
-//   PADDLE_THROW(
-//       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
-//   return nullptr;
-// #endif
-// }
-
-// template <>
-// void Free<platform::XPUPlace>(const platform::XPUPlace &place,
-//                               void *p,
-//                               size_t size) {
-// #ifdef PADDLE_WITH_XPU
-//   VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
-//   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-
-//   platform::XPUDeviceGuard gurad(place.device);
-//   xpu_free(p);
-// #else
-//   PADDLE_THROW(
-//       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
-// #endif
-// }
-
-// template <>
-// uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
-// #ifdef PADDLE_WITH_XPU
-//   LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
-// #else
-//   PADDLE_THROW(
-//       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
-// #endif
-//   return -1;
-// }
-
-// template <>
-// size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
-// #ifdef PADDLE_WITH_XPU
-//   printf("Used func return 0 for XPUPlace\n");
-//   return 0;
-// #else
-//   PADDLE_THROW(
-//       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
-// #endif
-// }
 
 // For CUDA
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

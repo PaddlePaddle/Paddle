@@ -48,7 +48,7 @@ std::vector<int> GetXPUSelectedDevices();
 //! Get the minimum chunk size for XPU buddy allocator.
 inline size_t XPUMinChunkSize() {
   // Allow to allocate the minimum chunk size is 64 bytes.
-  return 64;
+  return 1 << 6;
 }
 
 //! Copy memory from address src to dst synchronously.
