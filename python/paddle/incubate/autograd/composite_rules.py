@@ -160,8 +160,8 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = sqrt(var_tmp3)
-    out = difference / sqrt_var
+    rsqrt_var = rsqrt(var_tmp3)
+    out = difference * rsqrt_var
 
     if scale is not None:
         scale = reshape(scale, x.shape[begin_norm_axis:])
