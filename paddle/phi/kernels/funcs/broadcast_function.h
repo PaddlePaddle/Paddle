@@ -122,7 +122,11 @@ struct BroadcastDataLoader {
           configs[Index],
           numel,
           VecSize);
-    } else {
+    }
+    // NOTE: If use if...else... with condition `use_broadcast[Index]` here,
+    // there will be some errs with clang12 while compiling in ROCm.
+    // When the compiler is upgraded, if...else... may be used.
+    if (!use_broadcast[Index]) {
       kps::ReadData<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
           args,
           reinterpret_cast<const _ptr_ Type *>(ins[Index]) + block_offset,
