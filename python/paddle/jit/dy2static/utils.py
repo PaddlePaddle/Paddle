@@ -1472,10 +1472,9 @@ def _param_grad_names(program_desc, params):
             suf_count = var_name.count(GRAD_SUFFIX)
             if suf_count > 0:
                 suffix = param.name + GRAD_SUFFIX * suf_count
-                if var_name.endswith(suffix):
-                    pre_count = var_name.count(GRAD_PREFIX)
-                    if GRAD_PREFIX * pre_count + suffix == var_name:
-                        candidate.append(var_name)
+                pre_count = var_name.count(GRAD_PREFIX)
+                if GRAD_PREFIX * pre_count + suffix == var_name:
+                    candidate.append(var_name)
 
         if candidate:
             names.append(
