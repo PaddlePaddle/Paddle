@@ -71,7 +71,7 @@ class TestElementwiseOp(OpTest):
         self.check_prim = True
 
     def if_enable_cinn(self):
-        pass
+        self.enable_cii = False
 
 
 class TestElementwiseFP16OP(TestElementwiseOp):
@@ -131,12 +131,6 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         self.if_check_prim()
         self.if_enable_cinn()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
     def init_dtype(self):
@@ -168,21 +162,6 @@ class TestElementwiseSubBF16OP_ZeroDim1(TestElementwiseBF16OP):
         self.if_check_prim()
         self.if_enable_cinn()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
@@ -198,12 +177,6 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
         self.if_enable_cinn()
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
@@ -236,21 +209,6 @@ class TestElementwiseSubBF16OP_ZeroDim2(TestElementwiseBF16OP):
         self.if_check_prim()
         self.if_enable_cinn()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
     def setUp(self):
@@ -266,12 +224,6 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
         self.if_enable_cinn()
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
@@ -304,21 +256,6 @@ class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
         self.if_check_prim()
         self.if_enable_cinn()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -346,25 +283,6 @@ class TestBF16ElementwiseOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', no_grad_set=set("X"), check_prim=self.check_prim
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Y'), check_prim=self.check_prim
-        )
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @skip_check_grad_ci(
@@ -414,18 +332,6 @@ class TestElementwiseBF16OP_scalar(TestElementwiseBF16OP):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
@@ -442,7 +348,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
         self.if_check_prim()
 
 
-class TestElementwiseSubFP16OP_Vectorr(TestElementwiseSubOp_Vector):
+class TestElementwiseSubFP16OP_Vector(TestElementwiseSubOp_Vector):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -471,18 +377,6 @@ class TestElementwiseBF16OP_Vector(TestElementwiseBF16OP):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
@@ -506,7 +400,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
+        self.check_grad_with_place(
             ['Y'],
             'Out',
             max_relative_error=0.005,
@@ -554,16 +448,26 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         self.attrs = {'axis': 0}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', check_dygraph=False
+        )
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False
+        )
 
 
 class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp_broadcast_0):
@@ -611,18 +515,6 @@ class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.attrs = {'axis': 1}
 
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
-
 
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
@@ -640,9 +532,6 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
         }
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseSubOp_broadcast_2):
@@ -673,21 +562,6 @@ class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
-
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_dygraph=False)
 
 
 @unittest.skipIf(
@@ -750,9 +624,6 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -776,9 +647,6 @@ class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
 
 class TestElementwiseSubFP16OP_broadcast_4(TestElementwiseSubOp_broadcast_4):
     def init_dtype(self):
@@ -798,9 +666,6 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseSubOp_commonuse_1):
@@ -832,9 +697,6 @@ class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
@@ -849,9 +711,6 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseSubOp_commonuse_2):
@@ -883,9 +742,6 @@ class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
 
-    def if_check_prim(self):
-        self.check_prim = True
-
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
@@ -904,9 +760,6 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
@@ -940,9 +793,6 @@ class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
-
-    def if_check_prim(self):
-        self.check_prim = True
 
 
 class TestComplexElementwiseSubOp(OpTest):
