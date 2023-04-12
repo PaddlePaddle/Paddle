@@ -100,6 +100,8 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             'Y': convert_float_to_uint16(self.inputs['Y']),
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
+        self.if_check_prim()
+        self.if_enable_cinn()
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
