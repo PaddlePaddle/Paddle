@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/phi/backends/dynload/cupti.h":
+#include "paddle/phi/backends/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {
