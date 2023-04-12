@@ -4296,14 +4296,14 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_static_data(self):
         x1 = paddle.static.data(name="x1", shape=[])
-        x2 = paddle.static.data(name="x2", shape=(), dtype="bool")
+        x2 = paddle.static.data(name="x2", shape=())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
             feed={
                 "x1": np.array(1.0, dtype='float32'),
-                "x2": np.array(True, dtype='bool'),
+                "x2": np.array(100.5, dtype='float32'),
             },
             fetch_list=[
                 x1.grad_name,
@@ -4313,7 +4313,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, [])
         self.assertEqual(res[0], np.array(1.0))
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[1], np.array(True))
+        self.assertEqual(res[1], np.array(100.5))
 
     @prog_scope()
     def test_prelu(self):
