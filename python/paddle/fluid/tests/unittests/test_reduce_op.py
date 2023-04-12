@@ -280,7 +280,7 @@ class TestMaxOp_ZeroDim(OpTest):
         )
 
 
-class TestMaxOp_FP32(OpTest):
+class TestMaxFP32Op(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -318,7 +318,7 @@ class TestMaxOp_FP32(OpTest):
         self.dtype = np.float32
 
 
-class TestMaxOp_FP16(TestMaxOp_FP32):
+class TestMaxFP16Op(TestMaxFP32Op):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -328,7 +328,7 @@ class TestMaxOp_FP16(TestMaxOp_FP32):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestMaxOp_BF16(OpTest):
+class TestMaxBF16Op(TestMaxFP32Op):
     def init_dtype(self):
         self.dtype = np.uint16
 
