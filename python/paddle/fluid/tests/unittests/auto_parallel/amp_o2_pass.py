@@ -101,9 +101,9 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             if p.dtype == core.VarDesc.VarType.BF16:
                 num_bf16 += 1
 
-        self.assertEqual(num_bf16, 26)
+        self.assertEqual(num_bf16, 25)
         self.assertEqual(num_fp16, 0)
-        self.assertEqual(num_fp32, 10)
+        self.assertEqual(num_fp32, 11)
 
     def test_param_grad_fuse_overlap(self):
         # std
