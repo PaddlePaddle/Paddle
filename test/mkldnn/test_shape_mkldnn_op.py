@@ -21,7 +21,6 @@ from paddle.fluid import core
 from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
 class TestShape3DFP32OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "shape"
@@ -38,6 +37,13 @@ class TestShape3DFP32OneDNNOp(OpTest):
         self.check_output_with_place(core.CPUPlace())
 
 
+class TestShape0DFP32OneDNNOp(TestShape3DFP32OneDNNOp):
+    def config(self):
+        self.shape = []
+        self.dtype = np.float32
+
+
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestShape6DBF16OneDNNOp(TestShape3DFP32OneDNNOp):
     def config(self):
         self.shape = [10, 2, 3, 4, 5, 2]
