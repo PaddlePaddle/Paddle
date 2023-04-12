@@ -332,6 +332,19 @@ class TestMaxOp_BF16(OpTest):
     def init_dtype(self):
         self.dtype = np.uint16
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad(self):
+        # only composite op support gradient check of reduce_max
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            only_check_prim=True,
+        )
+
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
