@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
@@ -45,6 +46,9 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
                           "This op only supports Ampere and later devices, "
                           "but got compute capability: %d.",
                           dev_ctx.GetComputeCapability()));
+    auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+        phi::autotune::AlgorithmType::kScaleBiasAddRelu);
+
     // attributes
     bool fuse_dual = ctx.Attr<bool>("fuse_dual");
     // required input variables
@@ -196,6 +200,22 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
                         .build();
     VLOG(6) << op_graph.describe();
 
+    cudnn_frontend::feature_vector_t feature_vector;
+    phi::autotune::BuildFeatureVector(&feature_vector, dim_x, fuse_dual);
+
+    if (plan_cache.FindPlan(feature_vector)) {
+      const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+      int64_t workspace_size = 0;
+      plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+      helper::ExecutePlan(handle,
+                          &workspace_handle,
+                          &data_ptrs,
+                          &uids,
+                          cached_plan->get_raw_desc(),
+                          workspace_size);
+      return;
+    }
+
     auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
     VLOG(6) << "Plan tag: " << plan.getTag();
 
@@ -208,6 +228,8 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
                         &uids,
                         plan.get_raw_desc(),
                         workspace_size);
+
+    plan_cache.InsertPlan(feature_vector, plan);
   }
 };
 

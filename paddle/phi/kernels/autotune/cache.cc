@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/autotune/cache.h"
 
 #include <iomanip>
+#include <map>
 
 #include "glog/logging.h"
 
@@ -29,27 +30,30 @@ size_t TransposeKey(const std::vector<int64_t>& x_dims,
 }
 
 std::string AlgorithmTypeString(int64_t algo_type) {
-  if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForward)) {
-    return "conv_forward";
-  } else if (algo_type ==
-             static_cast<int64_t>(AlgorithmType::kConvBackwardData)) {
-    return "conv_backward_data";
-  } else if (algo_type ==
-             static_cast<int64_t>(AlgorithmType::kConvBackwardFilter)) {
-    return "conv_backward_filter";
-  }
+  static const std::map<AlgorithmType, std::string> algo_map = {
+      {AlgorithmType::kConvForward, "conv_forward"},
+      {AlgorithmType::kConvBackwardData, "conv_backward_data"},
+      {AlgorithmType::kConvBackwardFilter, "conv_backward_filter"},
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForwardV8)) {
-    return "conv_forward_v8";
-  } else if (algo_type ==
-             static_cast<int64_t>(AlgorithmType::kConvBackwardDataV8)) {
-    return "conv_backward_data_v8";
-  } else if (algo_type ==
-             static_cast<int64_t>(AlgorithmType::kConvBackwardFilterV8)) {
-    return "conv_backward_filter_v8";
-  }
+      {AlgorithmType::kConvForwardV8, "conv_forward_v8"},
+      {AlgorithmType::kConvBackwardDataV8, "conv_backward_data_v8"},
+      {AlgorithmType::kConvBackwardFilterV8, "conv_backward_filter_v8"},
+      {AlgorithmType::kScaleBiasReluConvBNstats,
+       "scale_bias_relu_conv_bnstats"},
+      {AlgorithmType::kBNFinalize, "bn_finalize"},
+      {AlgorithmType::kScaleBiasAddRelu, "scale_bias_add_relu"},
+      {AlgorithmType::kDgradDreluBnBwdWeight, "dgrad_drelu_bnbwdweight"},
+      {AlgorithmType::kBnActWgrad, "bn_act_wgrad"},
+      {AlgorithmType::kDbnApply, "dbn_apply"},
 #endif
-  return std::to_string(algo_type);
+  };
+
+  auto it = algo_map.find(static_cast<AlgorithmType>(algo_type));
+  if (it != algo_map.end()) {
+    return it->second;
+  } else {
+    return std::to_string(algo_type);
+  }
 }
 
 void AutoTuneCache::UpdateStatus() {

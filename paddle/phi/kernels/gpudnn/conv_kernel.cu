@@ -262,14 +262,9 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
       beta);
 
   if (plan_cache.FindPlan(op_graph)) {
-    auto engine_config = plan_cache.GetConfig(op_graph, handle);
-    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
-                           .setHandle(handle)
-                           .setEngineConfig(engine_config, op_graph.getTag())
-                           .build();
-    auto workspace_size = cached_plan.getWorkspaceSize();
-    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
-            << "; Require workspace: " << workspace_size;
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(op_graph, &cached_plan, &workspace_size);
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {input_data, output_data, filter_data};
@@ -279,8 +274,10 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                                   .setDataPointers(3, data_ptrs)
                                   .setUids(3, uids)
                                   .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              phi::dynload::cudnnBackendExecute(handle,
+                                                cached_plan->get_raw_desc(),
+                                                variant_pack.get_raw_desc()));
         },
         workspace_size);
     return;

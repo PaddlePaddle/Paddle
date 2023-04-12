@@ -19,7 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
@@ -46,6 +48,9 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                                         Tensor* output,
                                         Tensor* sum_output,
                                         Tensor* sqsum_output) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kScaleBiasReluConvBNstats);
+
   using U = BatchNormParamType<T>;
   // transformed tensor
   Tensor transformed_input_channel(input->dtype());
@@ -242,6 +247,30 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                       .build();
   VLOG(6) << op_graph.describe();
 
+  cudnn_frontend::feature_vector_t feature_vector;
+  phi::autotune::BuildFeatureVector(&feature_vector,
+                                    dim_x,
+                                    dim_filt,
+                                    strides,
+                                    paddings,
+                                    dilations,
+                                    pre_padding,
+                                    post_padding,
+                                    fuse_prologue);
+
+  if (plan_cache.FindPlan(feature_vector)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        &data_ptrs,
+                        &uids,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    return;
+  }
+
   auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
   auto workspace_size = plan.getWorkspaceSize();
   VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
@@ -252,6 +281,8 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                       &uids,
                       plan.get_raw_desc(),
                       workspace_size);
+
+  plan_cache.InsertPlan(feature_vector, plan);
 }
 
 template <typename T>
@@ -271,6 +302,9 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
                      Tensor* saved_inv_var_tensor,
                      Tensor* eq_scale_tensor,
                      Tensor* eq_bias_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kBNFinalize);
+
   using U = BatchNormParamType<T>;
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   auto handle = dev_ctx.cudnn_handle();
@@ -417,6 +451,23 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
                       .build();
   VLOG(6) << op_graph.describe();
 
+  cudnn_frontend::feature_vector_t feature_vector;
+  phi::autotune::BuildFeatureVector(
+      &feature_vector, dim_input, accumulation_count, exp_decay, epsilon);
+
+  if (plan_cache.FindPlan(feature_vector)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        &data_ptrs,
+                        &uids,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    return;
+  }
+
   auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
   auto workspace_size = plan.getWorkspaceSize();
   VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
@@ -427,6 +478,8 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
                       &uids,
                       plan.get_raw_desc(),
                       workspace_size);
+
+  plan_cache.InsertPlan(feature_vector, plan);
 }
 
 template <typename T>

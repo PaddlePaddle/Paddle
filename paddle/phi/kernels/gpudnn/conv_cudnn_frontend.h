@@ -397,14 +397,9 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
       beta);
 
   if (plan_cache_bwd_data.FindPlan(op_graph)) {
-    auto engine_config = plan_cache_bwd_data.GetConfig(op_graph, handle);
-    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
-                           .setHandle(handle)
-                           .setEngineConfig(engine_config, op_graph.getTag())
-                           .build();
-    auto workspace_size = cached_plan.getWorkspaceSize();
-    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
-            << "; Require workspace: " << workspace_size;
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache_bwd_data.GetPlan(op_graph, &cached_plan, &workspace_size);
     workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {dx_tensor_data, dy_tensor_data, w_tensor_data};
@@ -414,8 +409,10 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
                                   .setDataPointers(3, data_ptrs)
                                   .setUids(3, uids)
                                   .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              phi::dynload::cudnnBackendExecute(handle,
+                                                cached_plan->get_raw_desc(),
+                                                variant_pack.get_raw_desc()));
         },
         workspace_size);
     return;
@@ -500,14 +497,9 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
       beta);
 
   if (plan_cache_bwd_filter.FindPlan(op_graph)) {
-    auto engine_config = plan_cache_bwd_filter.GetConfig(op_graph, handle);
-    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
-                           .setHandle(handle)
-                           .setEngineConfig(engine_config, op_graph.getTag())
-                           .build();
-    auto workspace_size = cached_plan.getWorkspaceSize();
-    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
-            << "; Require workspace: " << workspace_size;
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache_bwd_filter.GetPlan(op_graph, &cached_plan, &workspace_size);
     workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {x_tensor_data, dy_tensor_data, dw_tensor_data};
@@ -517,8 +509,10 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
                                   .setDataPointers(3, data_ptrs)
                                   .setUids(3, uids)
                                   .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              phi::dynload::cudnnBackendExecute(handle,
+                                                cached_plan->get_raw_desc(),
+                                                variant_pack.get_raw_desc()));
         },
         workspace_size);
     return;

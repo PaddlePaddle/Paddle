@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
@@ -118,6 +119,9 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                                 Tensor* bn2_eqscale_dy_tensor,
                                 Tensor* bn2_eqscale_x_tensor,
                                 Tensor* bn2_eqbias_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kDgradDreluBnBwdWeight);
+
   using U = BatchNormParamType<T>;
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   // get handles
@@ -474,6 +478,31 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                       .build();
   VLOG(6) << op_graph.describe();
 
+  cudnn_frontend::feature_vector_t feature_vector;
+  phi::autotune::BuildFeatureVector(&feature_vector,
+                                    dim_x,
+                                    dim_filt,
+                                    fuse_shortcut,
+                                    fuse_dual,
+                                    fuse_add,
+                                    strides,
+                                    dilations,
+                                    pre_padding,
+                                    post_padding);
+
+  if (plan_cache.FindPlan(feature_vector)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        &data_ptrs,
+                        &uids,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    return;
+  }
+
   auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
   VLOG(6) << "Plan tag: " << plan.getTag();
 
@@ -486,6 +515,8 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                       &uids,
                       plan.get_raw_desc(),
                       workspace_size);
+
+  plan_cache.InsertPlan(feature_vector, plan);
 }
 
 template <typename T>
@@ -502,6 +533,9 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
                    bool fuse_dual,
                    Tensor* dX_tensor,
                    Tensor* dX_dual_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kDbnApply);
+
   using U = BatchNormParamType<T>;
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   // get handles
@@ -653,6 +687,22 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
                       .build();
   VLOG(6) << op_graph.describe();
 
+  cudnn_frontend::feature_vector_t feature_vector;
+  phi::autotune::BuildFeatureVector(&feature_vector, dim_x, fuse_dual);
+
+  if (plan_cache.FindPlan(feature_vector)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        &data_ptrs,
+                        &uids,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    return;
+  }
+
   auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
   auto workspace_size = plan.getWorkspaceSize();
   VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
@@ -663,6 +713,8 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
                       &uids,
                       plan.get_raw_desc(),
                       workspace_size);
+
+  plan_cache.InsertPlan(feature_vector, plan);
 }
 
 template <typename T>
@@ -677,6 +729,9 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                      const std::vector<int64_t>& pre_padding,
                      const std::vector<int64_t>& post_padding,
                      Tensor* dw_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kBnActWgrad);
+
   using U = BatchNormParamType<T>;
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   // get handles
@@ -804,6 +859,30 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                       .build();
   VLOG(6) << op_graph.describe();
 
+  cudnn_frontend::feature_vector_t feature_vector;
+  phi::autotune::BuildFeatureVector(&feature_vector,
+                                    dim_x,
+                                    dim_filt,
+                                    fuse_bn_act,
+                                    strides,
+                                    dilations,
+                                    pre_padding,
+                                    post_padding);
+
+  if (plan_cache.FindPlan(feature_vector)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        &data_ptrs,
+                        &uids,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    TransToChannelFirst<Context, T>(ctx, &dw_tensor_transformed, dw_tensor);
+    return;
+  }
+
   auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
   auto workspace_size = plan.getWorkspaceSize();
   VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
@@ -814,6 +893,8 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                       &uids,
                       plan.get_raw_desc(),
                       workspace_size);
+
+  plan_cache.InsertPlan(feature_vector, plan);
 
   // transfer back to NCWH
   TransToChannelFirst<Context, T>(ctx, &dw_tensor_transformed, dw_tensor);

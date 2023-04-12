@@ -55,7 +55,12 @@ enum class AlgorithmType {
   kConvForwardV8 = 10,
   kConvBackwardDataV8 = 11,
   kConvBackwardFilterV8 = 12,
-  kAlgorithmCount = 13
+  kScaleBiasReluConvBNstats = 13,
+  kBNFinalize = 14,
+  kScaleBiasAddRelu = 15,
+  kDgradDreluBnBwdWeight = 16,
+  kBnActWgrad = 17,
+  kDbnApply = 18,
 #endif
 };
 

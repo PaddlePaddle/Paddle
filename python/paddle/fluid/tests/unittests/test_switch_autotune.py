@@ -141,6 +141,10 @@ class TestStaticAutoTuneStatus(TestAutoTune):
         exe.run(startup_program)
         x = np.random.random(size=data_shape).astype('float32')
 
+        # Node(tizheng): warmup run to make sure the following runs
+        # are in the same thread. Necessary for CUDNNv8 tests
+        exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
+
         self.set_flags(enable_autotune)
         if enable_autotune:
             config = {"kernel": {"enable": True, "tuning_range": [1, 2]}}
