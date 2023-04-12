@@ -906,15 +906,15 @@ class FusedDconvDreluDbnOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using U = BatchNormParamType<T>;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    PADDLE_ENFORCE_EQ(
-        dev_ctx.GetComputeCapability(),
-        80,
-        phi::errors::PreconditionNotMet("This op only supports Ampere devices, "
-                                        "but got compute capability: %d.",
-                                        dev_ctx.GetComputeCapability()));
+    PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
+                      80,
+                      phi::errors::PreconditionNotMet(
+                          "This op only supports Ampere and later devices, "
+                          "but got compute capability: %d.",
+                          dev_ctx.GetComputeCapability()));
     auto cudnn_version = platform::DnnVersion();
     PADDLE_ENFORCE_GE(cudnn_version,
-                      8800,
+                      8900,
                       phi::errors::PreconditionNotMet(
                           "This op only supports CUDNN version >= 8800, "
                           "but got %d.",
