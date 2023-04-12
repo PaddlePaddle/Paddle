@@ -249,7 +249,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   int* coo_cols_data = coo_rows_data + non_zero_num;
 #else
   DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
-  DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {batchs});
+  DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {batches});
   IntT* coo_indices = indices.data<IntT>();
   IntT* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   IntT* coo_rows_data =
