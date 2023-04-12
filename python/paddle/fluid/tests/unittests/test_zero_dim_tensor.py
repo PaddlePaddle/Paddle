@@ -4311,9 +4311,9 @@ class TestSundryAPIStatic(unittest.TestCase):
             ],
         )
         self.assertEqual(res[0].shape, [])
-        np.testing.assert_allclose(res[0], np.array(1.0))
+        self.assertEqual(res[0], np.array(1.0))
         self.assertEqual(res[1].shape, ())
-        np.testing.assert_allclose(res[1], np.array(True))
+        self.assertEqual(res[1], np.array(True))
 
     @prog_scope()
     def test_prelu(self):
