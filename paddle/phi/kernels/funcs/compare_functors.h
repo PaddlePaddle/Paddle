@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include <math.h>
+#include <cmath>
+#include <cfloat>
+#include <limits>
+
 
 namespace phi {
 namespace funcs {
@@ -36,9 +39,9 @@ template <typename InT, typename OutT = bool>
 struct EqualFunctor {
   HOSTDEVICE OutT operator()(const InT a, const InT b) const {
     if (std::is_floating_point<InT>::value) {
-      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b)))
+      if (std::isinf(static_cast<float>(a)) || std::isinf(static_cast<float>(b)))
         return static_cast<OutT>(a == b);
-      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b)))
+      if (std::isnan(static_cast<float>(a)) || std::isnan(static_cast<float>(b)))
         return static_cast<OutT>(false);
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
