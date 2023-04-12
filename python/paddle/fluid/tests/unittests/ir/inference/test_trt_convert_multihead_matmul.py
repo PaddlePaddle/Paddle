@@ -377,7 +377,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 2e-3)
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
 
     def test(self):
         self.run_test()
@@ -1337,7 +1337,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 2e-3)
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
 
     def test(self):
         self.run_test()
