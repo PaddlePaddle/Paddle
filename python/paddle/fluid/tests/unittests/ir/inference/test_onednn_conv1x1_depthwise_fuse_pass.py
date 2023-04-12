@@ -22,24 +22,15 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
 
+    # without bias for now
     def sample_program_config(self, draw):
+        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "VALID", "SAME"]))
-        padding_algorithm_depthwise = draw(st.sampled_from(["EXPLICIT"]))
         groups = 1
         filter_channel = 1
         in_channel = groups * filter_channel
-        out_channel = groups * 1
-
-        groups_depthwise = 1
-        in_channel_depthwise = groups_depthwise
-        out_channel_depthwise = groups_depthwise
-
-        data_format = draw(st.sampled_from(["NCHW"]))
-
-        batch_size = 1
+        out_channel = groups * filter_channel
         dilations = draw(
             st.lists(
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
@@ -50,26 +41,21 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
                 st.integers(min_value=0, max_value=2), min_size=2, max_size=2
             )
         )
-        paddings_depthwise = [1, 1]
-        strides = [1, 1]
-        dilations_depthwise = [1, 1]
 
-        h = draw(st.integers(min_value=4, max_value=16))
-        w = draw(st.integers(min_value=4, max_value=16))
-        x_shape = [batch_size, in_channel, h, w]
+        padding_algorithm_depthwise = "EXPLICIT"
+        batch_size = draw(st.integers(min_value=8, max_value=16)) * 4
+        h = draw(st.integers(min_value=8, max_value=16)) * 4
+        w = draw(st.integers(min_value=8, max_value=16)) * 4
+        if data_format == "NCHW":
+            x_shape = [batch_size, in_channel, h, w]
+        else:
+            x_shape = [batch_size, h, w, in_channel]
         filter1x1_shape = [out_channel, in_channel, 1, 1]
-        filter_depthwise_shape = [
-            out_channel_depthwise,
-            in_channel_depthwise,
-            3,
-            3,
-        ]
-
-        def generate_input(shape):
-            return np.ones(shape).astype(np.float32)
-
-        def generate_filter(shape):
-            return np.ones(shape).astype(np.float32)
+        strides = draw(
+            st.lists(
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=2
+            )
+        )
 
         conv2d_op = OpConfig(
             "conv2d",
@@ -89,6 +75,19 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             is_test=True,
         )
 
+        paddings_depthwise = [1, 1]
+        strides_depthwise = draw(st.sampled_from([[1, 1], [2, 2]]))
+        dilations_depthwise = [1, 1]
+        groups_depthwise = 1  # in depthwise g=ic=oc=1
+        in_channel_depthwise = groups_depthwise
+        out_channel_depthwise = groups_depthwise
+        filter_depthwise_shape = [
+            out_channel_depthwise,
+            in_channel_depthwise,
+            3,
+            3,
+        ]
+
         depthwise_conv2d_op = OpConfig(
             type="conv2d",
             inputs={
@@ -103,25 +102,28 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             padding_algorithm=padding_algorithm_depthwise,
             groups=groups_depthwise,
             paddings=paddings_depthwise,
-            strides=strides,
+            strides=strides_depthwise,
             use_mkldnn=True,
             has_bias=False,
             is_test=True,
         )
 
+        def generate_data(shape):
+            return np.random.random(shape).astype(np.float32)
+
         program_config = ProgramConfig(
             ops=[conv2d_op, depthwise_conv2d_op],
             inputs={
                 "conv2d_input": TensorConfig(
-                    data_gen=partial(generate_input, x_shape)
+                    data_gen=partial(generate_data, x_shape)
                 ),
             },
             weights={
                 "conv2d_filter_1": TensorConfig(
-                    data_gen=partial(generate_filter, filter1x1_shape)
+                    data_gen=partial(generate_data, filter1x1_shape)
                 ),
                 "conv2d_filter_2": TensorConfig(
-                    data_gen=partial(generate_filter, filter_depthwise_shape)
+                    data_gen=partial(generate_data, filter_depthwise_shape)
                 ),
             },
             outputs=["depth_conv2d_out"],
@@ -138,6 +140,7 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
+            max_examples=300,
             passes=["conv1x1_depthwise_conv_mkldnn_fuse_pass"],
         )
 

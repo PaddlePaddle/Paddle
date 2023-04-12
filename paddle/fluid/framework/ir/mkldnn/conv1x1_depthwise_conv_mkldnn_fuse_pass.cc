@@ -106,48 +106,51 @@ static bool isValidForFusing(phi::DenseTensor* conv_filter,
                              phi::DenseTensor* dw_conv_filter,
                              OpDesc* dw_conv_op) {
   auto conv_filter_dims = phi::vectorize(conv_filter->dims());
+  if (conv_filter_dims[2] != 1 || conv_filter_dims[3] != 1) {
+    VLOG(4) << "Conv filter shold be 1x1 to perform fuse.";
+    return false;
+  }
+
   auto dw_conv_filter_dims = phi::vectorize(dw_conv_filter->dims());
+  if (dw_conv_filter_dims[2] != 3 || dw_conv_filter_dims[3] != 3) {
+    VLOG(4) << "Depthwise filter should be 3x3 to perform fuse.";
+    return false;
+  }
 
   auto dw_conv_paddings =
       dw_conv_op->HasAttr("paddings")
           ? PADDLE_GET_CONST(std::vector<int>, dw_conv_op->GetAttr("paddings"))
           : std::vector<int>({0, 0});
+  if (dw_conv_paddings[0] != 1 || dw_conv_paddings[1] != 1) {
+    VLOG(4) << "Depthwise paddings should be equal to 1 to perform fuse.";
+    return false;
+  }
+
   auto dw_conv_strides =
       dw_conv_op->HasAttr("strides")
           ? PADDLE_GET_CONST(std::vector<int>, dw_conv_op->GetAttr("strides"))
-          : std::vector<int>({0, 0});
-  int dw_groups = dw_conv_op->HasAttr("groups")
-                      ? PADDLE_GET_CONST(int, dw_conv_op->GetAttr("groups"))
-                      : 0;
-
-  if (conv_filter_dims[2] != 1 || conv_filter_dims[3] != 1) {
-    VLOG(4) << "Skipping because first conv filter is not 1x1";
-    return false;
-  }
-
-  if (dw_conv_filter_dims[1] != 1) {
-    VLOG(4) << "Skippping because second conv is not depthwise";
-    return false;
-  }
-
-  if (dw_conv_filter_dims[2] != 3 || dw_conv_filter_dims[3] != 3) {
-    VLOG(4) << "Skipping because depthwise filter is not 3x3";
-    return false;
-  }
-
+          : std::vector<int>({1, 1});
   if (dw_conv_strides[0] > 2 || dw_conv_strides[1] > 2 ||
       dw_conv_strides[0] != dw_conv_strides[1]) {
-    VLOG(4) << "Skipping because depthwise strides are not equal or in [1, 2]";
+    VLOG(4) << "Strides in depthwise should be eqaul 1 or 2 to perform fuse.";
     return false;
   }
 
-  if (dw_conv_paddings[0] != 1 || dw_conv_paddings[0] != 1) {
-    VLOG(4) << "Skipping because depthwise paddings are not 1";
+  int dw_groups = dw_conv_op->HasAttr("groups")
+                      ? PADDLE_GET_CONST(int, dw_conv_op->GetAttr("groups"))
+                      : 1;
+  if (dw_groups != dw_conv_filter_dims[0] ||
+      dw_groups != dw_conv_filter_dims[1] || dw_groups != 1) {
+    VLOG(4) << "Depthwise groups should be eqaul to 1 and to ic and oc to "
+               "perform fuse.";
     return false;
   }
 
-  if (dw_groups != dw_conv_filter_dims[0]) {
-    VLOG(4) << "Skipping because depthwise groups are not equal to IC";
+  int conv_groups = dw_conv_op->HasAttr("groups")
+                        ? PADDLE_GET_CONST(int, dw_conv_op->GetAttr("groups"))
+                        : 1;
+  if (conv_groups != 1) {
+    VLOG(4) << "Conv groups should be eqaul to 1 to perform fuse.";
     return false;
   }
 

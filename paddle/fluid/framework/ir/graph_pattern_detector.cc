@@ -1086,7 +1086,7 @@ PDNode *patterns::ConvDepthwiseConv::operator()(bool with_bias) {
   auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
   auto *depthwise_conv_op =
       pattern->NewNode(depthwise_conv_repr())->assert_is_op("conv2d");
-  
+
   if (!with_bias) {
     depthwise_conv_op->assert_more([&](Node *x) {
       if (!HasInput(x, "Bias") || x->Op()->Input("Bias").size() == 0)
@@ -1112,6 +1112,7 @@ PDNode *patterns::ConvDepthwiseConv::operator()(bool with_bias) {
   auto *depthwise_conv_out = pattern->NewNode(depthwise_conv_out_repr())
                                  ->AsOutput()
                                  ->assert_is_op_output("conv2d");
+
   std::vector<PDNode *> depthwise_conv_inputs{conv_out, depthwise_conv_weights};
   if (with_bias) {
     // Depthwise conv bias
