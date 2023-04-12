@@ -627,6 +627,18 @@
     func : flash_attn_unpadded_grad
     data_type: q
 
+- backward_op : flatten_grad
+  forward : flatten(Tensor x, int start_axis = 1, int stop_axis = 1) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func :  KernelWithXShapeInferMeta
+    param : [xshape]
+  kernel :
+    func : flatten_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
@@ -1328,6 +1340,12 @@
   kernel :
     func : renorm_grad
 
+- backward_op : reverse_grad
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  invoke : reverse(out_grad, axis)
+
 - backward_op : roll_grad
   forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray shifts, int64_t[] axis)
@@ -1403,6 +1421,18 @@
   kernel :
     func : scatter_nd_add_grad
   no_need_buffer : updates
+
+- backward_op : segment_pool_grad
+  forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype="SUM") -> Tensor(out), Tensor(summed_ids)
+  args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tensor out_grad, str pooltype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : segment_pool_grad
+    data_type : out_grad
+  optional : summed_ids
 
 - backward_op : selu_grad
   forward : selu (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717) -> Tensor(out)
