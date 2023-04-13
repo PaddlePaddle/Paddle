@@ -39,6 +39,7 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
+
   if (n_dim == 0) {
     std::vector<int64_t> out_indices_shape;
     if (keep_dim) {
@@ -52,74 +53,88 @@ void SumCooKernel(const Context& dev_ctx,
     auto* out_indices_data = out_indices.data<int64_t>();
     std::fill(out_indices_data, out_indices_data + out_indices.numel(), 0);
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
-  } else {
-    auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
-    const auto* x_indices_data = x_indices.data<int64_t>();
-    const auto* x_values_data = x_values.data<T>();
-    // indices_map is a mapping from output's position to values to be summed.
-    std::map<std::vector<int64_t>, std::vector<int64_t>> indices_map;
-    for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
-      std::vector<int64_t> pos;
-      for (int64_t i = 0; i < x_indices.dims()[0]; ++i) {
-        if (dim != i) {
-          pos.emplace_back(x_indices_data[j + i * x_indices.dims()[1]]);
-        } else if (keep_dim) {
-          pos.emplace_back(0);
-        }
-      }
-      indices_map[pos].emplace_back(j);
-    }
+    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+    return;
+  }
 
-    std::vector<int64_t> dims;
-    for (int i = 0; i < x.dims().size(); ++i) {
-      if (i != dim) {
-        dims.emplace_back(x.dims()[i]);
+  auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
+  const auto* x_indices_data = x_indices.data<int64_t>();
+  const auto* x_values_data = x_values.data<T>();
+
+  std::vector<int64_t> dims;
+  for (int i = 0; i < x.dims().size(); ++i) {
+    if (i != dim) {
+      dims.emplace_back(x.dims()[i]);
+    } else if (keep_dim) {
+      dims.emplace_back(1);
+    }
+  }
+  out_dims = make_ddim(dims);
+
+  auto sparse_dim = x.sparse_dim();
+  if (dim >= sparse_dim) {
+    out_indices = x_indices;
+    dim = dim - sparse_dim + 1;
+    out_values = phi::Sum<T>(dev_ctx, x.values(), {dim}, dtype, keep_dim);
+    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+    return;
+  }
+
+  // if axis in sparse_dim and keep_dim, sparse_dim will be reduced.
+  if (!keep_dim) {
+    sparse_dim -= 1;
+  }
+
+  // indices_map is a mapping from output's position to values to be summed.
+  std::map<std::vector<int64_t>, std::vector<int64_t>> indices_map;
+  for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
+    std::vector<int64_t> pos;
+    for (int64_t i = 0; i < x_indices.dims()[0]; ++i) {
+      if (dim != i) {
+        pos.emplace_back(x_indices_data[j + i * x_indices.dims()[1]]);
       } else if (keep_dim) {
-        dims.emplace_back(1);
+        pos.emplace_back(0);
       }
     }
-    out_dims = make_ddim(dims);
-    auto sparse_dim = x.sparse_dim();
-    if (!keep_dim) {
-      sparse_dim -= 1;
+    indices_map[pos].emplace_back(j);
+  }
+
+  std::vector<int> out_values_dims;
+  out_values_dims.push_back(static_cast<int>(indices_map.size()));
+  for (auto i = 1; i < x.values().dims().size(); ++i) {
+    out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
+  }
+  int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
+                                      out_values_dims.end(),
+                                      1,
+                                      std::multiplies<int64_t>());
+
+  out_indices = Empty<int64_t, Context>(
+      dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
+  out_values = Empty<T, Context>(dev_ctx, out_values_dims);
+
+  auto* out_indices_data = out_indices.data<int64_t>();
+  auto* out_values_data = out_values.data<T>();
+
+  auto iter_indices_map = indices_map.begin();
+  for (size_t j = 0; j < indices_map.size(); ++j) {
+    std::vector<int64_t> pos = iter_indices_map->first;
+    std::vector<int64_t> values_index = iter_indices_map->second;
+    iter_indices_map++;
+    for (auto i = 0; i < sparse_dim; ++i) {
+      out_indices_data[j + i * indices_map.size()] = pos[i];
     }
-
-    std::vector<int> out_values_dims;
-    out_values_dims.push_back(static_cast<int>(indices_map.size()));
-    for (auto i = 1; i < x.values().dims().size(); ++i) {
-      out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
-    }
-    int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
-                                        out_values_dims.end(),
-                                        1,
-                                        std::multiplies<int64_t>());
-
-    out_indices = Empty<int64_t, Context>(
-        dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
-    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
-
-    auto* out_indices_data = out_indices.data<int64_t>();
-    auto* out_values_data = out_values.data<T>();
-
-    auto iter_indices_map = indices_map.begin();
-    for (size_t j = 0; j < indices_map.size(); ++j) {
-      std::vector<int64_t> pos = iter_indices_map->first;
-      std::vector<int64_t> values_index = iter_indices_map->second;
-      iter_indices_map++;
-      for (auto i = 0; i < sparse_dim; ++i) {
-        out_indices_data[j + i * indices_map.size()] = pos[i];
+    for (auto i = 0; i < dense_dim; ++i) {
+      T out_value = 0;
+      for (auto index : values_index) {
+        out_value += x_values_data[i + index * dense_dim];
       }
-      for (auto i = 0; i < dense_dim; ++i) {
-        T out_value = 0;
-        for (auto index : values_index) {
-          out_value += x_values_data[i + index * dense_dim];
-        }
-        out_values_data[i + j * dense_dim] = out_value;
-      }
+      out_values_data[i + j * dense_dim] = out_value;
     }
-    if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-      out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
-    }
+  }
+
+  if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+    out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
   }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }

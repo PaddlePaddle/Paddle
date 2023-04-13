@@ -16,7 +16,10 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
 
@@ -51,30 +54,50 @@ void SumCooGradKernel(const Context& dev_ctx,
     for (int i = 0; i < dx->nnz(); ++i) {
       dx_values->data<T>()[i] = value;
     }
-  } else {
-    std::map<std::vector<int64_t>, T> map_indices;
-    for (auto j = 0; j < dout_indices.dims()[1]; ++j) {
-      std::vector<int64_t> pos;
-      for (int i = 0; i < dout_indices.dims()[0]; ++i) {
-        pos.push_back(dout_indices_data[j + i * dout_indices.dims()[1]]);
-      }
-      map_indices[pos] = dout_values_data[j];
+    if (dx_values->dtype() != dx->dtype()) {
+      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
-    auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
-    for (auto j = 0; j < dx_indices->dims()[1]; ++j) {
-      std::vector<int64_t> pos;
-      for (int i = 0; i < dx_indices->dims()[0]; ++i) {
-        if (i != dim) {
-          pos.push_back(dx_indices_data[j + i * dx_indices->dims()[1]]);
-        } else if (keep_dim) {
-          pos.push_back(0);
-        }
-      }
-      dx_values_data[j] = map_indices[pos];
-    }
+    return;
   }
-  if (dx_values->dtype() != dx->dtype()) {
-    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+
+  auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
+  auto sparse_dim = x.sparse_dim();
+  if (dim >= sparse_dim) {
+    dim = dim - sparse_dim + 1;
+    phi::ReduceSumGradKernel<T, Context>(
+        dev_ctx, x.values(), dout.values(), {dim}, keep_dim, false, dx_values);
+    if (dx_values->dtype() != dx->dtype()) {
+      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    }
+    return;
+  }
+
+  int64_t dense_dim = 1;
+  for (auto i = 1; i < x.values().dims().size(); ++i) {
+    dense_dim *= x.values().dims()[i];
+  }
+
+  std::map<std::vector<int64_t>, int64_t> indices_map;
+  for (auto j = 0; j < dout_indices.dims()[1]; ++j) {
+    std::vector<int64_t> pos;
+    for (int i = 0; i < dout_indices.dims()[0]; ++i) {
+      pos.push_back(dout_indices_data[j + i * dout_indices.dims()[1]]);
+    }
+    indices_map[pos] = j;
+  }
+  for (auto j = 0; j < dx_indices->dims()[1]; ++j) {
+    std::vector<int64_t> pos;
+    for (int i = 0; i < dx_indices->dims()[0]; ++i) {
+      if (i != dim) {
+        pos.push_back(dx_indices_data[j + i * dx_indices->dims()[1]]);
+      } else if (keep_dim) {
+        pos.push_back(0);
+      }
+    }
+    for (int i = 0; i < dense_dim; ++i) {
+      dx_values_data[i + j * dense_dim] =
+          dout_values_data[i + indices_map[pos] * dense_dim];
+    }
   }
 }
 
