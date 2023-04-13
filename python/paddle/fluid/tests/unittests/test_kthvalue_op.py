@@ -208,12 +208,49 @@ class TestModeOpInStatic(unittest.TestCase):
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
+class TestKthvalueFP16Op(OpTest):
+    def init_args(self):
+        self.k = 5
+        self.axis = -1
+        self.keepdim = False
+        self.input_data = np.random.random((2, 1, 2, 4, 10))
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.op_type = "kthvalue"
+        self.python_api = paddle.kthvalue
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': self.keepdim}
+        output, indices = cal_kthvalue(
+            self.input_data, k=self.k, axis=self.axis
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output()
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad({'X'}, 'Out')
+
+
+class TestKthvalueWithKeepdimFP16Op(TestKthvalueFP16Op):
+    def init_args(self):
+        self.k = 2
+        self.axis = 1
+        self.keepdim = True
+        self.input_data = np.random.random((1, 3, 2, 4, 10))
+        self.dtype = np.float16
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestKthvalueBP16Op(OpTest):
+class TestKthvalueBF16Op(OpTest):
     def init_args(self):
         self.k = 2
         self.axis = 1
