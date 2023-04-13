@@ -4310,7 +4310,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 x2.name,
             ],
         )
-        self.assertEqual(res[0].shape, [])
+        self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], np.array(1.0))
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], np.array(100.5))
