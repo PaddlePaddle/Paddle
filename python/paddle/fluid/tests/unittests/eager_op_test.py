@@ -2326,9 +2326,7 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
-                atol = 1e-2 if atol < 1e-2 else atol
-            else:
-                atol = 1e-1 if atol < 1e-1 else atol
+            atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
             atol = 1e-3 if atol < 1e-3 else atol
