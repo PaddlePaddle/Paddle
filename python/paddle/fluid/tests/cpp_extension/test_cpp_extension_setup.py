@@ -18,6 +18,7 @@ import sys
 import unittest
 
 import numpy as np
+from utils import check_output
 
 import paddle
 from paddle import static
@@ -154,6 +155,8 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         self._test_static()
         self._test_dynamic()
         self._test_double_grad_dynamic()
+        if paddle.is_compiled_with_cuda():
+            self._test_cuda_relu()
 
     def _test_extension_function_plain(self):
         import custom_cpp_extension
@@ -313,6 +316,16 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
                     dx_grad, pd_dx_grad
                 ),
             )
+
+    def _test_cuda_relu(self):
+        import custom_cpp_extension
+
+        paddle.set_device('gpu')
+        x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
+        x = paddle.to_tensor(x, dtype='float32')
+        out = custom_cpp_extension.relu_cuda_forward(x)
+        pd_out = paddle.nn.functional.relu(x)
+        check_output(out, pd_out, "out")
 
 
 if __name__ == '__main__':

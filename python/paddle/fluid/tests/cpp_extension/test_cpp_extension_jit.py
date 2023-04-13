@@ -18,6 +18,7 @@ import unittest
 from site import getsitepackages
 
 import numpy as np
+from utils import check_output
 
 import paddle
 from paddle.utils.cpp_extension import load
@@ -27,7 +28,7 @@ if os.name == 'nt' or sys.platform.startswith('darwin'):
     sys.exit()
 
 # Compile and load cpp extension Just-In-Time.
-sources = ["custom_extension.cc", "custom_sub.cc"]
+sources = ["custom_extension.cc", "custom_sub.cc", "custom_relu_forward.cu"]
 paddle_includes = []
 for site_packages_path in getsitepackages():
     paddle_includes.append(
@@ -69,6 +70,8 @@ class TestCppExtensionJITInstall(unittest.TestCase):
         self._test_extension_class()
         self._test_nullable_tensor()
         self._test_optional_tensor()
+        if paddle.is_compiled_with_cuda():
+            self._test_cuda_relu()
 
     def _test_extension_function(self):
         for dtype in self.dtypes:
@@ -129,6 +132,14 @@ class TestCppExtensionJITInstall(unittest.TestCase):
             x_np,
             err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
+
+    def _test_cuda_relu(self):
+        paddle.set_device('gpu')
+        x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
+        x = paddle.to_tensor(x, dtype='float32')
+        out = custom_cpp_extension.relu_cuda_forward(x)
+        pd_out = paddle.nn.functional.relu(x)
+        check_output(out, pd_out, "out")
 
 
 if __name__ == '__main__':

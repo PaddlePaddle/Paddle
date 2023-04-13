@@ -15,7 +15,7 @@
 import os
 from site import getsitepackages
 
-from paddle.utils.cpp_extension import CppExtension, setup
+from paddle.utils.cpp_extension import CUDAExtension, setup
 
 paddle_includes = []
 for site_packages_path in getsitepackages():
@@ -30,8 +30,12 @@ paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 
 setup(
     name='custom_cpp_extension',
-    ext_modules=CppExtension(
-        sources=["custom_extension.cc", "custom_sub.cc"],
+    ext_modules=CUDAExtension(
+        sources=[
+            "custom_extension.cc",
+            "custom_sub.cc",
+            "custom_relu_forward.cu",
+        ],
         include_dirs=paddle_includes,
         extra_compile_args={'cc': ['-w', '-g']},
         verbose=True,
