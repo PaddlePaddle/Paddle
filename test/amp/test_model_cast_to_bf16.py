@@ -17,9 +17,10 @@ import struct
 import unittest
 
 import numpy as np
+from amp_base_models import build_add_model, build_embedding_model
 
 import paddle
-from paddle import fluid, nn
+from paddle import fluid
 from paddle.fluid import core
 from paddle.static import amp
 
@@ -204,65 +205,27 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
 
-class SimpleNet(nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.vocab_size = 128
-        self.hidden_size = 16
-        self.vocab_size = 128
-        self.hidden_size = 16
-        self.embedding = nn.Embedding(self.vocab_size, self.hidden_size)
-        self.linear = nn.Linear(in_features=16, out_features=10)
-
-    def forward(self, x):
-        out = self.embedding(x)
-        scale = paddle.full(shape=[1], fill_value=2, dtype="int64")
-        out = paddle.multiply(out, scale.astype("float32"))
-        out = self.linear(out)
-        out = nn.functional.dropout(out, p=0.2)
-        return out
-
-
-def _build_model(use_amp, amp_dtype="float16", amp_level="O1"):
-    main_program = paddle.static.Program()
-    startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleNet()
-            x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
-            out = model(x)
-            loss = paddle.mean(out)
-            optimizer = paddle.optimizer.AdamW(
-                learning_rate=0.01,
-                grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
-                beta1=0.78,
-                beta2=0.836,
-                epsilon=1e-4,
-                weight_decay=0.01,
-                multi_precision=True,
-            )
-            if use_amp:
-                optimizer = paddle.static.amp.amp_decorate(
-                    optimizer, level=amp_level, dtype=amp_dtype
-                )
-            optimizer.minimize(loss)
-    return main_program, startup_program
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestProgramBF16(unittest.TestCase):
+    def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].bf16_calls,
+                value,
+                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+            )
+
     def test_amp_bf16_o1(self):
-        main_program, startup_program = _build_model(True, "bfloat16", "O1")
-        print(main_program)
+        main_program, startup_program = build_embedding_model(
+            True, "bfloat16", "O1"
+        )
         self.assertEqual(main_program.num_blocks, 1)
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
-
-        op_stats_dict = op_stats_list[0]
         expected_bf16_calls = {
             "matmul_v2": 1,
             "elementwise_add": 1,
@@ -271,21 +234,16 @@ class TestProgramBF16(unittest.TestCase):
             "squared_l2_norm": 0,
             "adamw": 0,
         }
-        for op_type, value in expected_bf16_calls.items():
-            self.assertEqual(
-                op_stats_dict[op_type].bf16_calls,
-                value,
-                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
-            )
+        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
 
     def test_amp_bf16_o2(self):
-        main_program, startup_program = _build_model(True, "bfloat16", "O2")
+        main_program, startup_program = build_embedding_model(
+            True, "bfloat16", "O2"
+        )
         self.assertEqual(main_program.num_blocks, 1)
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
-
-        op_stats_dict = op_stats_list[0]
         expected_bf16_calls = {
             "matmul_v2": 1,
             "elementwise_add": 1,
@@ -294,12 +252,18 @@ class TestProgramBF16(unittest.TestCase):
             "squared_l2_norm": 2,
             "adamw": 2,
         }
-        for op_type, value in expected_bf16_calls.items():
-            self.assertEqual(
-                op_stats_dict[op_type].bf16_calls,
-                value,
-                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
-            )
+        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestStaticBF16(unittest.TestCase):
+    def test_amp_init(self):
+        main_program, startup_program = build_add_model(True, "bfloat16", "O2")
+        print(main_program)
+        print(startup_program)
 
 
 if __name__ == '__main__':

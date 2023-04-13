@@ -14,8 +14,9 @@
 
 import unittest
 
+from amp_base_models import build_while_model
+
 import paddle
-from paddle import nn
 
 
 class TestOpStatsEager(unittest.TestCase):
@@ -66,27 +67,14 @@ class TestOpStatsEager(unittest.TestCase):
         self._check_result(dtype=out.dtype)
 
 
-class WhileNet(nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self):
-        while_input_x = paddle.ones(shape=[64, 32], dtype="float32")
-        while_input_y = paddle.zeros(shape=[32, 32], dtype="float32")
-        while paddle.shape(while_input_x)[1] >= paddle.shape(while_input_y)[1]:
-            while_input_y = paddle.matmul(
-                while_input_x,
-                while_input_x.T,
-            )
-        return while_input_y.mean()
-
-
 class TestOpStatsStatic(unittest.TestCase):
     def test_while_op(self):
         paddle.enable_static()
-        model = WhileNet()
+        main_program, startup_program = build_while_model()
+        self.assertEqual(main_program.num_blocks, 2)
+
         paddle.static.amp.debugging.collect_operator_stats(
-            program=None, print_subblocks=True
+            program=main_program, print_subblocks=True
         )
         paddle.disable_static()
 

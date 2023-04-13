@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 
 import paddle
 
@@ -137,7 +138,7 @@ def _merge_op_stats(op_stats_list):
     for each_op_stats_dict in op_stats_list:
         for op_type, unit in each_op_stats_dict.items():
             if merged_op_stats_dict.get(op_type, None) is None:
-                merged_op_stats_dict[op_type] = unit
+                merged_op_stats_dict[op_type] = copy.copy(unit)
             else:
                 merged_op_stats_dict[op_type].addto(unit)
     return merged_op_stats_dict
@@ -191,7 +192,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
         program = paddle.static.default_main_program()
 
     op_stats_list = _get_op_stats_list(program)
-
+    merged_op_stats = _merge_op_stats(op_stats_list)
     if print_subblocks and len(op_stats_list) > 1:
         for i in range(len(op_stats_list)):
             print("<{:-^120}>".format(" op list of block " + str(i) + " "))
@@ -199,7 +200,6 @@ def collect_operator_stats(program=None, print_subblocks=False):
                 _convert_to_list(op_stats_list[i])
             )
     print("<{:-^120}>".format(" op list of all blocks "))
-    merged_op_stats = _merge_op_stats(op_stats_list)
     paddle.amp.debugging._print_operator_stats(
         _convert_to_list(merged_op_stats)
     )
