@@ -19,8 +19,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
-#define MAX_RANK_SUPPORTED 6
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -36,11 +34,10 @@ void ExpandAsGradKernel(const Context& context,
 
   PADDLE_ENFORCE_LE(
       out_rank,
-      MAX_RANK_SUPPORTED,
+      6,
       errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
                               "expand_as_v2_grad op must be less than or equal "
-                              "to %d, but the value received is %d.",
-                              MAX_RANK_SUPPORTED,
+                              "to 6, but the value received is %d.",
                               out_rank));
 
   context.template Alloc<T>(in_grad);
