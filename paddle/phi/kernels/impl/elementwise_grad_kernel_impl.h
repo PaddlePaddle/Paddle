@@ -552,19 +552,18 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
       }
     }
   } else {
-    if (dx && dy) {
-      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          dout,
-          dout,
-          axis,
-          dx,
-          dy,
-          MulGradDX<T>(),
-          MulGradDY<T>());
-    }
+    VLOG(3) << "Calculating here with dx: " << dx << ", dy: " << dy;
+    phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        dev_ctx,
+        ddx_safe,
+        ddy_safe,
+        dout,
+        dout,
+        axis,
+        dx,
+        dy,
+        MulGradDX<T>(),
+        MulGradDY<T>());
   }
 }
 
