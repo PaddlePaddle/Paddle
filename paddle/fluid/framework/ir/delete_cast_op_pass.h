@@ -124,6 +124,8 @@ class DeleteCastOpPass : public FusePassBase {
   */
   int ApplyCastScatterPass(ir::Graph* graph) const;
 
+  int ApplyCastLookupTablePass(ir::Graph* graph) const;
+
   // Delete cast if its "in_dtype" is the same as "out_dtype"
   int ApplyCastPass(ir::Graph* graph) const;
 
