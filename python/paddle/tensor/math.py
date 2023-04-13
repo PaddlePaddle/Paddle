@@ -3466,7 +3466,14 @@ def isfinite(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'isfinite',
         )
         out = helper.create_variable_for_type_inference('bool')
@@ -3502,7 +3509,17 @@ def isinf(x, name=None):
     else:
         helper = LayerHelper("isinf_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isinf',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3535,7 +3552,17 @@ def isnan(x, name=None):
     else:
         helper = LayerHelper("isnan_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isnan',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3650,7 +3677,7 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

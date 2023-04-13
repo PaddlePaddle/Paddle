@@ -10,13 +10,11 @@ register_unity_group(
   lars_momentum_op.cc
   proximal_adagrad_op.cc
   adam_op.cc
-  adamax_op.cc
   dgc_momentum_op.cc
   proximal_gd_op.cc
   decayed_adagrad_op.cc
   adadelta_op.cc
-  dpsgd_op.cc
-  rmsprop_op.cc)
+  dpsgd_op.cc)
 register_unity_group(
   cu
   ftrl_op.cu
@@ -26,8 +24,6 @@ register_unity_group(
   proximal_adagrad_op.cu
   adagrad_op.cu
   adam_op.cu
-  adamax_op.cu
   decayed_adagrad_op.cu
   adadelta_op.cu
-  lamb_op.cu
-  rmsprop_op.cu)
+  lamb_op.cu)

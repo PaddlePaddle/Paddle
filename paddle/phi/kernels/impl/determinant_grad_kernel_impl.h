@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <cmath>
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/kernel_registry.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"

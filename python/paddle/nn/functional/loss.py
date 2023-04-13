@@ -253,6 +253,20 @@ def fluid_softmax_with_cross_entropy(
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.15328646])
     """
+    input_dims = len(list(logits.shape))
+    if input_dims == 0:
+        raise ValueError('The dimention of input should be larger than zero!')
+
+    label_dims = len(list(label.shape))
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(
+                input_dims, label_dims
+            )
+        )
+    if input_dims - 1 == label_dims:
+        label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
         if core.is_compiled_with_custom_device("npu"):
             if not soft_label:
@@ -1016,7 +1030,6 @@ def hsigmoid_loss(
         attrs = {
             "num_classes": num_classes,
             "is_sparse": is_sparse,
-            "remote_prefetch": is_sparse,
         }
 
         inputs = {
@@ -2700,6 +2713,14 @@ def cross_entropy(
     label_dims = len(list(label.shape))
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
+
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(
+                input_dims, label_dims
+            )
+        )
 
     if in_dygraph_mode():
         if not soft_label:

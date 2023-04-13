@@ -24,29 +24,50 @@ namespace phi {
 namespace sparse {
 
 // To reduce tuning time, map shape (m,n,k) to (m/features_num_range,n,k) so
-// that shapes in this range share the same key.
+// that shapes within this range share the same key.
 constexpr int features_num_range = 10000;
 
-#define DEFINE_GATHER_GEMM_SCATTER_DRIVER(dtype, kernels)                     \
-  template <typename T, typename IntT>                                        \
-  typename std::enable_if<std::is_same<T, dtype>::value &&                    \
-                              std::is_same<IntT, int32_t>::value,             \
-                          void>::type                                         \
-  GatherGemmScatterDriver(const phi::GPUContext& ctx,                         \
-                          const T* const a,                                   \
-                          const T* const b,                                   \
-                          const T* const c,                                   \
-                          T* const d,                                         \
-                          const int& m,                                       \
-                          const int& n,                                       \
-                          const int& k,                                       \
-                          const IntT* a_indices,                              \
-                          const IntT* c_d_indices,                            \
-                          T alpha,                                            \
-                          T beta) {                                           \
-    auto* tuner = autotune::MakeGatherGemmScatterTuner(kernels[0]);           \
+template <typename T, typename IntT, bool TransposeA, bool TransposeB>
+void GatherGemmScatterDriver(
+    const phi::GPUContext& ctx,
+    const size_t key,
+    const T* const a,
+    const T* const b,
+    const T* const c,
+    T* const d,
+    const int& m,
+    const int& n,
+    const int& k,
+    const IntT* a_indices,
+    const IntT* b_indices,
+    const IntT* c_d_indices,
+    T alpha,
+    T beta,
+    cutlass::device_memory::allocation<uint8_t>* const workspace_ptr) {}
+
+#define EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(                       \
+    T, kernels, transpose_a, transpose_b)                                     \
+  template <>                                                                 \
+  inline void GatherGemmScatterDriver<T, int32_t, transpose_a, transpose_b>(  \
+      const phi::GPUContext& ctx,                                             \
+      const size_t key,                                                       \
+      const T* const a,                                                       \
+      const T* const b,                                                       \
+      const T* const c,                                                       \
+      T* const d,                                                             \
+      const int& m,                                                           \
+      const int& n,                                                           \
+      const int& k,                                                           \
+      const int32_t* a_indices,                                               \
+      const int32_t* b_indices,                                               \
+      const int32_t* c_d_indices,                                             \
+      T alpha,                                                                \
+      T beta,                                                                 \
+      cutlass::device_memory::allocation<uint8_t>* const workspace_ptr) {     \
+    auto* tuner =                                                             \
+        autotune::MakeGatherGemmScatterTuner<transpose_a, transpose_b>(       \
+            kernels[0]);                                                      \
     for (auto i = 1; i < kernels.size(); i++) tuner->AddCallBack(kernels[i]); \
-    size_t key = autotune::GenKey(m / features_num_range, n, k);              \
     tuner->Run(ctx,                                                           \
                key,                                                           \
                alpha,                                                         \
@@ -60,28 +81,27 @@ constexpr int features_num_range = 10000;
                n,                                                             \
                k,                                                             \
                a_indices,                                                     \
-               c_d_indices);                                                  \
+               b_indices,                                                     \
+               c_d_indices,                                                   \
+               workspace_ptr);                                                \
   }
 
-template <typename T, typename IntT>
-typename std::enable_if<std::is_same<T, double>::value ||
-                            !std::is_same<IntT, int32_t>::value,
-                        void>::type
-GatherGemmScatterDriver(const phi::GPUContext& ctx,
-                        const T* const a,
-                        const T* const b,
-                        const T* const c,
-                        T* const d,
-                        const int& m,
-                        const int& n,
-                        const int& k,
-                        const IntT* a_indices,
-                        const IntT* c_d_indices,
-                        T alpha,
-                        T beta) {}
-
-DEFINE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16, fp16_kernels)
-DEFINE_GATHER_GEMM_SCATTER_DRIVER(float, fp32_kernels)
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16,
+                                               fp16_nn_kernels,
+                                               false,
+                                               false)
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(float,
+                                               fp32_nn_kernels,
+                                               false,
+                                               false)
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(float,
+                                               fp32_nt_kernels,
+                                               false,
+                                               true)
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(float,
+                                               fp32_tn_kernels,
+                                               true,
+                                               false)
 
 }  // namespace sparse
 }  // namespace phi
