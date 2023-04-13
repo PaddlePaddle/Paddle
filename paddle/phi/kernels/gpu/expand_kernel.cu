@@ -32,7 +32,7 @@ void ExpandKernel(const Context& ctx,
   if (*out->canNotUse == false) {
     *out->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
 
   auto expand_shape = shape.GetData();

@@ -285,7 +285,7 @@ void SliceGradKernel(const Context& ctx,
   if (*input_grad->canNotUse == false) {
     *input_grad->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(input_grad->canNotUse);
 
   size_t rank = input.dims().size();

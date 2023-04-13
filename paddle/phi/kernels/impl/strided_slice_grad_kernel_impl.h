@@ -34,7 +34,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
   if (*x_grad->canNotUse == false) {
     *x_grad->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(x_grad->canNotUse);
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                            \

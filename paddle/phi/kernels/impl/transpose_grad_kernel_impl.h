@@ -30,7 +30,7 @@ void TransposeGradKernel(const Context& dev_ctx,
   if (*x_grad->canNotUse == false) {
     *x_grad->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(x_grad->canNotUse);
 
   size_t axis_size = axis.size();

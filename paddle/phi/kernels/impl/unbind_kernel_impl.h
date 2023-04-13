@@ -31,7 +31,7 @@ void UnbindKernel(const Context& dev_ctx,
     if (*outs[j]->canNotUse == false) {
       *outs[j]->canNotUse = *xx.canNotUse;
     }
-    xx.can_not_uses->insert(xx.can_not_uses);
+    xx.can_not_uses->insert(xx.canNotUse);
     xx.can_not_uses->insert(outs[j]->canNotUse);
   }
 

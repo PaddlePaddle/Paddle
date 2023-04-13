@@ -38,7 +38,7 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   if (*out->canNotUse == false) {
     *out->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
 
   ctx.template Alloc<typename T::value_type>(out);

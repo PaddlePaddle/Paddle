@@ -53,7 +53,7 @@ void ExpandAsGradKernel(const Context& context,
   if (*in_grad->canNotUse == false) {
     *in_grad->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(in_grad->canNotUse);
 
   auto x_dims = x.dims();

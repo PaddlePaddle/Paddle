@@ -30,7 +30,7 @@ void SqueezeGradKernel(const Context& dev_ctx,
   if (*dx->canNotUse == false) {
     *dx->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(dx->canNotUse);
 

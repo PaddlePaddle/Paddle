@@ -36,7 +36,7 @@ void IndexSelectKernel(const Context& ctx,
   if (*output->canNotUse == false) {
     *output->canNotUse = *xx.canNotUse;
   }
-  xx.can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(output->canNotUse);
 
   auto input_dim = x.dims();
