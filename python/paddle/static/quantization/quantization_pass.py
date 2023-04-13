@@ -2794,6 +2794,7 @@ class AddQuantDequantPassV2:
         quant_bits=8,
         skip_pattern=["skip_quant"],
         quantizable_op_type=["elementwise_add", "pool2d"],
+        quantizable_op_names=[],
         is_test=None,
         scale_dict=None,
     ):
@@ -2846,6 +2847,15 @@ class AddQuantDequantPassV2:
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
 
+        self._quantizable_op_names = quantizable_op_names
+        # for op_type in self._quantizable_op_type:
+        #     assert op_type in list(SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()), (
+        #         op_type + " is not supported for quantization."
+        #     )
+        self._quantizable_grad_op_names= [
+            '%s_grad' % (op) for op in self._quantizable_op_names
+        ]
+
         assert self._scope is not None, "scope must not be None."
         assert self._place is not None, "place must not be None."
         self.persistable_vars = []
@@ -2880,6 +2890,9 @@ class AddQuantDequantPassV2:
         ) as t:
             for op_node in all_op_nodes:
                 if op_node.name() in self._quantizable_op_type:
+                    var_names = utils._get_op_input_var_names(op_node)
+                    # print(var_names )
+                    # print(op_node.output("Out")[0])
                     is_skip = False
                     if isinstance(self._skip_pattern, list):
                         is_skip = op_node.op().has_attr("op_namescope") and any(
@@ -2948,16 +2961,11 @@ class AddQuantDequantPassV2:
                                 quant_var_node,
                                 scale_var_node,
                             ) = insert_quant_pass.insert_quant_op(
-                                graph,
-                                in_node,
-                                op_role=op_node.op().attr("op_role"),
+                                graph, in_node
                             )
                             dequant_var_node = (
                                 insert_quant_pass.insert_dequant_op(
-                                    graph,
-                                    quant_var_node,
-                                    scale_var_node,
-                                    op_node.op().attr("op_role"),
+                                    graph, quant_var_node, scale_var_node
                                 )
                             )
                             dequantized_vars_map[arg_name] = dequant_var_node
@@ -2966,10 +2974,88 @@ class AddQuantDequantPassV2:
                         )
                 t.update()
 
+            for op_node in all_op_nodes:
+                var_names = utils._get_op_input_var_names(op_node)
+                for arg_name in var_names:
+                    if arg_name  in self._quantizable_op_names:
+                        skip_quant = False
+                    # If already quanted, skip it.
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                if skip_quant:
+                    continue
+
+                for arg_name in var_names:
+                    if arg_name  in self._quantizable_op_names:
+                        in_node = graph._find_node_by_name(
+                            op_node.inputs, arg_name
+                        )
+                        if in_node.persistable():
+                                continue
+
+                        if in_node.dtype() not in [
+                            paddle.float64,
+                            paddle.float32,
+                            paddle.float16,
+                        ]:
+                            _logger.warning(
+                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
+                                    op_node.name()
+                                )
+                            )
+                            break
+
+                        if arg_name in dequantized_vars_map:
+                            dequant_var_node = dequantized_vars_map[arg_name]
+                        else:
+                            insert_quant_pass = InsertQuantizeLinear(
+                                self._place,
+                                self._scope,
+                                quant_bits=self._quant_bits,
+                                quant_axis=-1,
+                                channel_wise=False,
+                                moving_rate=self._moving_rate,
+                                is_test=self._is_test,
+                                scale_dict=self._scale_dict,
+                            )
+                            (
+                                quant_var_node,
+                                scale_var_node,
+                            ) = insert_quant_pass.insert_quant_op(
+                                graph, in_node
+                            )
+                            dequant_var_node = (
+                                insert_quant_pass.insert_dequant_op(
+                                    graph, quant_var_node, scale_var_node
+                                )
+                            )
+                            dequantized_vars_map[arg_name] = dequant_var_node
+                        graph.update_input_link(
+                            in_node, dequant_var_node, op_node
+                        )
+                t.update()
+
+                    
+
         # Backward stage, update input link
         for op_node in all_op_nodes:
             if op_node.name() in self._quantizable_grad_op_type:
                 for input_name in op_node.input_arg_names():
+                    if input_name in dequantized_vars_map:
+                        in_node = graph._find_node_by_name(
+                            op_node.inputs, input_name
+                        )
+                        dequant_var_node = dequantized_vars_map[input_name]
+                        graph.update_input_link(
+                            in_node, dequant_var_node, op_node
+                        )
+            t.update()
+        
+        for op_node in all_op_nodes:
+            var_names = utils._get_op_output_var_names(op_node)
+            for input_name in var_names:
+                if input_name in self._quantizable_grad_op_names:
                     if input_name in dequantized_vars_map:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, input_name
@@ -3035,18 +3121,14 @@ class ReplaceFakeQuantDequantPass:
                 or op.name() == "moving_average_abs_max_scale"
             ):
                 var_name = op.input("X")[0]
-                if var_name in observer_out_node_names:
+                if var_name+'.tmp' in observer_out_node_names:
                     remove_fake_quant_ops.append(op)
                 else:
                     fake_quant_dequant_ops.append(op)
 
         for _op in remove_fake_quant_ops:
-            x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
-            out_node = graph._find_node_by_name(
-                _op.outputs, _op.output("Out")[0]
-            )
-            for next_op_node in out_node.outputs:
-                graph.update_input_link(out_node, x_node, next_op_node)
+            self._replace_op_only_observer(graph, _op)
+            graph.safe_remove_nodes(_op)
 
         for _op in fake_quant_dequant_ops:
             self._replace_op(graph, _op)
@@ -3123,6 +3205,76 @@ class ReplaceFakeQuantDequantPass:
         if zero_point_node is not None:
             graph.link_to(zero_point_node, dequant_op_node)
         graph.link_to(dequant_op_node, out_node)
+
+    def _replace_op_only_observer(self, graph, op):
+        x_node = graph._find_node_by_name(op.inputs, op.input("X")[0])
+        out_node = graph._find_node_by_name(op.outputs, op.output("Out")[0])
+        scale_node = graph._find_node_by_name(
+            op.outputs, op.output("OutScale")[0]
+        )
+
+        quant_axis = (
+            op.op().attr("quant_axis") if op.op().has_attr("quant_axis") else -1
+        )
+        bit_length = (
+            op.op().attr("bit_length")
+            if op.op().has_attr("bit_length")
+            else self._quant_bits
+        )
+
+        zero_point_node = None
+        quanted_node = x_node
+        if zero_point_node is None:
+            zero_point_node = graph.create_persistable_node(
+                name=self._zero_point_name(quanted_node.name()),
+                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                shape=scale_node.shape(),
+                var_dtype=core.VarDesc.VarType.INT32,
+            )
+            _init_var_node(
+                zero_point_node,
+                np.zeros(scale_node.shape(), dtype="int32"),
+                self._scope,
+                self._place,
+            )
+
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(x_node.name()),
+            var_type=x_node.type(),
+            shape=x_node.shape(),
+            var_dtype=x_node.dtype(),
+        )
+        quant_op_node = graph.create_op_node(
+            op_type="quantize_linear",
+            attrs={"quant_axis": quant_axis, "bit_length": bit_length, "only_observer": True,},
+            inputs={
+                "X": x_node,
+                "Scale": scale_node,
+                "ZeroPoint": zero_point_node,
+            },
+            outputs={"Y": quant_var_node},
+        )
+        graph.link_to(x_node, quant_op_node)
+        graph.link_to(scale_node, quant_op_node)
+        if zero_point_node is not None:
+            graph.link_to(zero_point_node, quant_op_node)
+        graph.link_to(quant_op_node, quant_var_node)
+        dequant_op_node = graph.create_op_node(
+            op_type="dequantize_linear",
+            attrs={"quant_axis": quant_axis, "bit_length": bit_length,"only_observer": True,},
+            inputs={
+                "X": quant_var_node,
+                "Scale": scale_node,
+                "ZeroPoint": zero_point_node,
+            },
+            outputs={"Y": out_node},
+        )
+        graph.link_to(quant_var_node, dequant_op_node)
+        graph.link_to(scale_node, dequant_op_node)
+        if zero_point_node is not None:
+            graph.link_to(zero_point_node, dequant_op_node)
+        graph.link_to(dequant_op_node, out_node)
+
 
     def _quantized_var_name(self, var_name):
         """
