@@ -2348,7 +2348,10 @@ def max(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('max', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'max',
         )
         if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
@@ -3680,7 +3683,7 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

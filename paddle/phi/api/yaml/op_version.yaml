@@ -66,6 +66,13 @@
           comment : In order to force fill output variable to gpu memory.
           default : "false"
 
+- op : expand_as_v2
+  version :
+    - checkpoint : fix expand_as_v2 and add new input [Y].
+      action :
+        - add_input : Y
+          comment : Expand X according to the shape of Y.
+
 - op : flip
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -250,3 +257,14 @@
         - add_attr : axis
           comment : The axis to apply unique. If None, the input will be flattened.
           default : std::vector<int>{}
+
+- op : yolo_box
+  version :
+    - checkpoint : Upgrade yolo box to add new attribute [iou_aware, iou_aware_factor].
+      action :
+        - add_attr : iou_aware
+          comment : Whether use iou aware.
+          default : "false"
+        - add_attr : iou_aware_factor
+          comment : iou aware factor.
+          default : 0.5f
