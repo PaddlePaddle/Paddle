@@ -33,6 +33,7 @@ void SumCooKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCooTensor* out) {
   size_t n_dim = axis.size();
+  auto sparse_dim = x.sparse_dim();
   // create out sparse tensor
   const auto& x_dims = x.dims();
   const auto& x_indices = x.indices();
@@ -45,7 +46,7 @@ void SumCooKernel(const Context& dev_ctx,
     std::vector<int64_t> out_indices_shape;
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
-      out_indices_shape = {x_dims.size(), 1};
+      out_indices_shape = {sparse_dim, 1};
     } else {
       out_dims = make_ddim({1});
       out_indices_shape = {1};
@@ -62,11 +63,16 @@ void SumCooKernel(const Context& dev_ctx,
   const auto* x_indices_data = x_indices.data<int64_t>();
   const auto* x_values_data = x_values.data<T>();
 
-  auto sparse_dim = x.sparse_dim();
-  // Ensure the sparse_dim is not less than 1.
-  if (sparse_dim == 1) {
-    keep_dim = true;
+  std::vector<int64_t> dims;
+  for (int i = 0; i < x.dims().size(); ++i) {
+    if (i != dim) {
+      dims.emplace_back(x.dims()[i]);
+    } else if (keep_dim || (dim < sparse_dim && sparse_dim == 1)) {
+      dims.emplace_back(1);
+    }
   }
+  out_dims = make_ddim(dims);
+
   if (dim >= sparse_dim) {
     out_indices = x_indices;
     dim = dim - sparse_dim + 1;
@@ -75,16 +81,10 @@ void SumCooKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int64_t> dims;
-  for (int i = 0; i < x.dims().size(); ++i) {
-    if (i != dim) {
-      dims.emplace_back(x.dims()[i]);
-    } else if (keep_dim) {
-      dims.emplace_back(1);
-    }
+  // Ensure the sparse_dim is not less than 1.
+  if (sparse_dim == 1) {
+    keep_dim = true;
   }
-  out_dims = make_ddim(dims);
-
   // if axis in sparse_dim and keep_dim, sparse_dim will be reduced.
   if (!keep_dim) {
     sparse_dim -= 1;

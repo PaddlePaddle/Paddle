@@ -49,11 +49,10 @@ void SumCooGradKernel(const Context& dev_ctx,
   const auto* dx_indices_data = dx_indices->data<int64_t>();
   auto* dx_values_data = dx_values->data<T>();
 
+  phi::funcs::SetConstant<Context, T> set_constant;
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
-    for (int i = 0; i < dx->nnz(); ++i) {
-      dx_values->data<T>()[i] = value;
-    }
+    set_constant(dev_ctx, dx_values, value);
     if (dx_values->dtype() != dx->dtype()) {
       *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
@@ -62,10 +61,6 @@ void SumCooGradKernel(const Context& dev_ctx,
 
   auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
   auto sparse_dim = x.sparse_dim();
-  // Ensure the sparse_dim is not less than 1.
-  if (sparse_dim == 1) {
-    keep_dim = true;
-  }
   if (dim >= sparse_dim) {
     dim = dim - sparse_dim + 1;
     phi::ReduceSumGradKernel<T, Context>(
@@ -74,6 +69,10 @@ void SumCooGradKernel(const Context& dev_ctx,
       *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
+  }
+  // Ensure the sparse_dim is not less than 1.
+  if (sparse_dim == 1) {
+    keep_dim = true;
   }
 
   int64_t dense_dim = 1;
