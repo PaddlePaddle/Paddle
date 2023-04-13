@@ -524,4 +524,9 @@ if(WITH_CUDNN_FRONTEND)
   list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
+if(WITH_ARM_DNN_LIBRARY)
+  include(external/arm_dnn_library)
+  add_definitions(-DPADDLE_WITH_ARM_DNN_LIBRARY)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

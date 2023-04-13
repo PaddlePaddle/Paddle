@@ -20,6 +20,7 @@ limitations under the License. */
 // Note: Limit the entry of DeviceContext to backends to avoid multiple include
 // path replacement after implementing phi DeviceContext
 
+#include "paddle/phi/backends/armdnn/armdnn_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

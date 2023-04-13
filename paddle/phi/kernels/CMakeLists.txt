@@ -248,6 +248,15 @@ else()
   set(ADD_PHI_KERNELS phi_cpu)
 endif()
 
+if(WITH_ARM_DNN_LIBRARY)
+  file(GLOB kernel_arm_dnn_library "armdnn/*.cc" "selected_rows/armdnn/*.cc"
+       "fusion/armdnn/*.cc")
+  add_library(phi_arm_dnn_library ${kernel_arm_dnn_library} ${kernel_cc})
+  kernel_declare("${kernel_arm_dnn_library}")
+  target_link_libraries(phi_arm_dnn_library ${COMMON_KERNEL_DEPS})
+  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_arm_dnn_library)
+endif()
+
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
 
 if(NOT "${KERNEL_LIST}" STREQUAL "")

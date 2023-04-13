@@ -259,6 +259,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_MKLDNN
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(OneDNNContext);
 #endif
+#ifdef PADDLE_WITH_ARM_DNN_LIBRARY
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(ArmDNNContext);
+#endif
   /* Input Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);

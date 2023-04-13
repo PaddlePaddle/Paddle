@@ -44,6 +44,12 @@ if(WITH_MKLDNN)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
+if(WITH_ARM_DNN_LIBRARY)
+  list(APPEND BACKENDS_SRCS armdnn/armdnn_device.cc)
+  list(APPEND BACKENDS_SRCS armdnn/armdnn_context.cc)
+  list(APPEND BACKENDS_DEPS arm_dnn_library)
+endif()
+
 list(
   APPEND
   BACKENDS_SRCS
@@ -62,6 +68,7 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
+add_dependencies(phi_backends ${BACKENDS_DEPS})
 
 # for inference library
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)

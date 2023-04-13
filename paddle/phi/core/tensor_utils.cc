@@ -452,6 +452,19 @@ template void Copy(const OneDNNContext& dev_ctx,
                    TensorArray* dst);
 #endif
 
+#ifdef PADDLE_WITH_ARM_DNN_LIBRARY
+template void Copy(const ArmDNNContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+template void Copy(const ArmDNNContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
+#endif
+
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const phi::DeviceContext& ctx,
