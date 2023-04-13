@@ -147,10 +147,10 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Third: dA * |A|
   DenseTensor out_grad_data;
   out_grad_data.Resize(out_grad.dims());
-  MPType out_grad_data = dev_ctx.template Alloc<MPType>(&out_grad);
+  MPType* out_grad_data = dev_ctx.template Alloc<MPType>(&out_grad);
   DenseTensor out_data;
   out_data.Resize(out.dims());
-  MPType out_data = dev_ctx.template Alloc<MPType>(&out);
+  MPType* out_data = dev_ctx.template Alloc<MPType>(&out);
   auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad_data, out_data);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
