@@ -87,6 +87,7 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS_DEBUG=${FLASHATTN_CXX_FLAGS_DEBUG}
              -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
              -DWITH_GPU=${WITH_GPU}
+             -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
              -DBUILD_SHARED=ON

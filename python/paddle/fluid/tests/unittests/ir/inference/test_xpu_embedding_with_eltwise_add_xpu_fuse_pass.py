@@ -128,7 +128,7 @@ class TestEmbeddingWithEltwiseAddXPUFusePass(PassAutoScanTest):
         def gen_lookup_table_inputs_data(*args, **kwargs):
             inputs = {}
             for i in range(lookup_table_num):
-                input_name = "lookup_table_ids_{}".format(i)
+                input_name = f"lookup_table_ids_{i}"
                 inputs[input_name] = TensorConfig(
                     data_gen=partial(generate_input)
                 )
@@ -140,7 +140,7 @@ class TestEmbeddingWithEltwiseAddXPUFusePass(PassAutoScanTest):
         def gen_lookup_table_weights_data():
             weights = {}
             for i in range(lookup_table_num):
-                w_name = "lookup_table_w_{}".format(i)
+                w_name = f"lookup_table_w_{i}"
                 weights[w_name] = TensorConfig(shape=w_shape)
             return weights
 

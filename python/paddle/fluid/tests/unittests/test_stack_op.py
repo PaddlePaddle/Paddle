@@ -37,7 +37,7 @@ class TestStackOpBase(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):
@@ -105,6 +105,47 @@ class TestStackOp_ZeroDim(TestStackOpBase):
         self.enable_cinn = False
 
 
+class TestStackFP16Op(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+
+
+class TestStackFP16Op1(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.num_inputs = 8
+
+
+class TestStackFP16Op2(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.num_inputs = 10
+
+
+class TestStackFP16Op3(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -1
+
+
+class TestStackFP16Op4(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -4
+
+
+class TestStackFP16Op5(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 1
+
+
+class TestStackFP16Op6(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 3
+
+
 class TestStackBF16Op(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -118,7 +159,7 @@ class TestStackBF16Op(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):

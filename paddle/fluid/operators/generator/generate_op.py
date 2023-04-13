@@ -479,6 +479,15 @@ def parse_get_expected_kerneltype(
     for op_comp_map in op_fluid_list:
         if 'get_expected_kernel_type' in op_comp_map:
             fw_name = op_comp_map['op'].split('(')[0].strip()
+            # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
+            new_get_expected_kernel_type_func_map = {}
+            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+                new_get_expected_kernel_type_func_map[
+                    delete_last_underline(key)
+                ] = value
+            op_comp_map[
+                'get_expected_kernel_type'
+            ] = new_get_expected_kernel_type_func_map
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
@@ -507,10 +516,15 @@ def parse_keep_signature(
     for op_comp_map in op_fluid_list:
         if 'manual_signature' in op_comp_map:
             for op_name in op_comp_map['manual_signature']:
-                if op_name in fw_op_dict:
-                    fw_op_dict[op_name]["manual_signature"] = True
-                elif op_name in bw_op_dict:
-                    bw_op_dict[op_name]["manual_signature"] = True
+                op_name_without_last_underline = delete_last_underline(op_name)
+                if op_name_without_last_underline in fw_op_dict:
+                    fw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
+                elif op_name_without_last_underline in bw_op_dict:
+                    bw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
 
 
 def split_ops_list(ops, backward_op_dict, split_num):

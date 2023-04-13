@@ -103,7 +103,7 @@ class TestSendOp(unittest.TestCase):
                 inputs={},
                 outputs={"Out": []},
                 attrs={
-                    "endpoints": ["127.0.0.1:{0}".format(port)],
+                    "endpoints": [f"127.0.0.1:{port}"],
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                 },
             )

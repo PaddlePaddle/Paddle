@@ -118,9 +118,7 @@ class FLClientBase(abc.ABC):
         self.startup_program = paddle.static.default_startup_program()
         self._client_ptr = fleet.get_fl_client()
         self._coordinators = self.role_maker._get_coordinator_endpoints()
-        logger.info(
-            "fl-ps > coordinator enpoints: {}".format(self._coordinators)
-        )
+        logger.info(f"fl-ps > coordinator enpoints: {self._coordinators}")
         self.strategy_handlers = {}
         self.exe = None
         self.use_cuda = int(self.config.get("runner.use_gpu"))
@@ -179,9 +177,7 @@ class FLClientBase(abc.ABC):
                 str(param).split(":")[0].strip().split()[-1]
                 for param in persist_vars_list
             ]
-            logger.info(
-                "fl-ps > persist_vars_list: {}".format(persist_vars_name)
-            )
+            logger.info(f"fl-ps > persist_vars_list: {persist_vars_name}")
 
             if dump_fields_path is not None:
                 self.main_program._fleet_opt[
@@ -229,7 +225,7 @@ class FLClient(FLClientBase):
 
     def train_loop(self):
         while self.epoch_idx < self.total_train_epoch:
-            logger.info("fl-ps > curr epoch idx: {}".format(self.epoch_idx))
+            logger.info(f"fl-ps > curr epoch idx: {self.epoch_idx}")
             self.strategy_handlers['train']()
             self.strategy_handlers['save_model']()
             self.barrier()
@@ -240,7 +236,7 @@ class FLClient(FLClientBase):
             }
             self.push_fl_client_info_sync(state_info)
             strategy_dict = self.pull_fl_strategy()
-            logger.info("fl-ps > recved fl strategy: {}".format(strategy_dict))
+            logger.info(f"fl-ps > recved fl strategy: {strategy_dict}")
             # ......... to implement ...... #
             if strategy_dict['next_state'] == "JOIN":
                 self.strategy_handlers['infer']()
@@ -297,7 +293,7 @@ class FLClient(FLClientBase):
         epoch_start_time = time.time()
         self.set_dump_fields()
         fetch_info = [
-            "Epoch {} Var {}".format(self.epoch_idx, var_name)
+            f"Epoch {self.epoch_idx} Var {var_name}"
             for var_name in self.metrics
         ]
         self.exe.train_from_dataset(
@@ -316,7 +312,7 @@ class FLClient(FLClientBase):
 
     def callback_infer(self):
         fetch_info = [
-            "Epoch {} Var {}".format(self.epoch_idx, var_name)
+            f"Epoch {self.epoch_idx} Var {var_name}"
             for var_name in self.metrics
         ]
         self.exe.infer_from_dataset(
@@ -329,7 +325,7 @@ class FLClient(FLClientBase):
         )
 
     def callback_save_model(self):
-        model_dir = "{}/{}".format(self.save_model_path, self.epoch_idx)
+        model_dir = f"{self.save_model_path}/{self.epoch_idx}"
         if fleet.is_first_worker() and self.save_model_path:
             if is_distributed_env():
                 fleet.save_persistables(self.exe, model_dir)  # save all params
@@ -341,11 +337,11 @@ class FLClient(FLClientBase):
 
     def print_program(self):
         with open(
-            "./{}_worker_main_program.prototxt".format(self.worker_index), 'w+'
+            f"./{self.worker_index}_worker_main_program.prototxt", 'w+'
         ) as f:
             f.write(str(self.main_program))
         with open(
-            "./{}_worker_startup_program.prototxt".format(self.worker_index),
+            f"./{self.worker_index}_worker_startup_program.prototxt",
             'w+',
         ) as f:
             f.write(str(self.startup_program))

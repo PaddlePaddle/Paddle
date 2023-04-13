@@ -28,16 +28,16 @@ def get_dataset(inputs, config, pipe_cmd, role="worker"):
     reader_thread_num = int(config.get('runner.reader_thread_num'))
     dataset.set_thread(reader_thread_num)
     train_files_path = config.get('runner.train_files_path')
-    print('train_data_files:{}'.format(train_files_path))
+    print(f'train_data_files:{train_files_path}')
     file_list = [
         os.path.join(train_files_path, x) for x in os.listdir(train_files_path)
     ]
     if role == "worker":
         file_list = fleet.util.get_file_shard(file_list)
-        print("worker file list: {}".format(file_list))
+        print(f"worker file list: {file_list}")
     elif role == "heter_worker":
         file_list = fleet.util.get_heter_file_shard(file_list)
-        print("heter worker file list: {}".format(file_list))
+        print(f"heter worker file list: {file_list}")
 
     return dataset, file_list
 

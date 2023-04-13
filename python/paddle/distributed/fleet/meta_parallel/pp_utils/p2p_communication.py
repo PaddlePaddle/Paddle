@@ -83,7 +83,7 @@ class SendRecvMeta:
         # recv stop_gradient
         stop_grad = paddle.to_tensor([0])
         paddle.distributed.recv(stop_grad, src=src_rank, group=group)
-        return shape.numpy().tolist(), dtype.item(), stop_grad.item()
+        return shape.tolist(), dtype.item(), stop_grad.item()
 
     def recv_meta(self, group):
         tensor_type = paddle.to_tensor([0])
