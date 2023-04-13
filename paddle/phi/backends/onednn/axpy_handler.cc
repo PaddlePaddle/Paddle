@@ -33,18 +33,19 @@ class AXPYHandler {
         {n}, OneDNNGetDataType<T>(), dnnl::memory::format_tag::x);
     src_mem_ = dnnl::memory(md, onednn_engine, DNNL_MEMORY_NONE);
     dst_mem_ = dnnl::memory(md, onednn_engine, DNNL_MEMORY_NONE);
+
+    dnnl::primitive_attr reorder_attr;
+
     if (alpha != 1.f) {
-      std::vector<float> scales(1, alpha);
+      reorder_attr.set_scales_mask(DNNL_ARG_FROM, 0);  // Ax + b
       auto scales_md = dnnl::memory::desc(
           {n}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
       src_scales_mem_ = dnnl::memory(scales_md, onednn_engine);
-      src_scales_mem_.set_data_handle(scales.data());
+      *reinterpret_cast<float *>(src_scales_mem_.get_data_handle()) = alpha;
     }
 
-    dnnl::primitive_attr reorder_attr;
     dnnl::post_ops post_operations;
     post_operations.append_sum(1.0f);
-    reorder_attr.set_scales_mask(DNNL_ARG_FROM, 0);  // Ax + b
     reorder_attr.set_post_ops(post_operations);
     reorder_p_ = dnnl::reorder(src_mem_, dst_mem_, reorder_attr);
   }
@@ -120,7 +121,7 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
   reorder_args.insert({DNNL_ARG_DST, reorder_dst_mem_p});
   if (static_cast<float>(this->alpha_) != 1.f) {
     reorder_args.insert(
-        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, handler_->AcquireAlphaMemory()});
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, handler_->AcquireAlphaMemory()});
   }
 
   reorder_p.execute(astream, reorder_args);
