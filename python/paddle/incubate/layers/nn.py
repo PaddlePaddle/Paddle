@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Contrib layers just related to the neural network.
+incubate layers just related to the neural network.
 """
 
 import warnings
@@ -98,7 +98,7 @@ def fused_embedding_seq_pool(
             data_t = paddle.static.data(
                 name='word', shape=[-1, 1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
-            out = fluid.contrib.fused_embedding_seq_pool(
+            out = paddle.incubate.layers.fused_embedding_seq_pool(
                 input=data_t,
                 size=[dict_size, 32],
                 param_attr='w',
@@ -532,7 +532,7 @@ def partial_concat(input, start_index=0, length=-1):
     """
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
-    OP exists in contrib, which means that it is not shown to the public.
+    OP exists in incubate layers, which means that it is not shown to the public.
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
     performed along the second dimension.
 
@@ -600,7 +600,7 @@ def partial_sum(input, start_index=0, length=-1):
     """
     **PartialSum**
     This Op can sum the vars by specifying the initial position(start_index) and length(length).
-    This Op exists in contrib, which means that it is not shown to the public.
+    This Op exists in incubate layers, which means that it is not shown to the public.
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
     performed along the second dimension.
     .. code-block:: text
@@ -767,7 +767,7 @@ def sparse_embedding(
 
             input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = paddle.static.nn.sparse_embedding(
+            emb = paddle.incubate.layers.nn.sparse_embedding(
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
@@ -1184,7 +1184,7 @@ def rank_attention(
     This Op can calculate rank attention between input and rank_param, and
     rank_param gives the organization of data. Notice: It currently supports
     GPU device.
-    This Op exists in contrib, which means that it is not shown to the public.
+    This Op exists in incubate layers, which means that it is not shown to the public.
     Args:
         input: Tensor with data type float32, float64.
         rank_offset: Tensor with data type int32.
@@ -1243,7 +1243,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     This Op can calculate BatchFC. This is similar to matmul op,
     except that the bias and relu activation layers are added.
     Notice: It currently supports GPU device.
-    This Op exists in contrib, which means that it is not shown to the public.
+    This Op exists in incubate layers, which means that it is not shown to the public.
     Args:
         input: Tensor with data type float32, float64.
         param_size: The size of w.
@@ -1385,10 +1385,10 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
 
             # without offset
-            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)
+            output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=False)
 
             # has offset
-            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
+            output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
     if paddle.fluid._non_static_mode():
