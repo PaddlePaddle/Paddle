@@ -1011,11 +1011,10 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> strides(tensor_dims.size());
+  std::vector<size_t> strides = phi::vectorize<size_t>(tensor.strides());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    strides[i] = numel;
     dims[i] = static_cast<size_t>(tensor_dims[i]);
     numel *= dims[i];
   }

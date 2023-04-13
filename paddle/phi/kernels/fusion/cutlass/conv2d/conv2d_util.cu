@@ -16,6 +16,8 @@
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {

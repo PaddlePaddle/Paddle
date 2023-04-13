@@ -337,7 +337,7 @@ def layer_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+            x, 'input', ['uint16', 'float16', 'float32', 'float64'], 'LayerNorm'
         )
 
         inputs = {}
