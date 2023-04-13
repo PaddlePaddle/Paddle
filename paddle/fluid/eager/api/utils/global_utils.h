@@ -74,11 +74,11 @@ class Controller {
 
   void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
 
-  void SetOpPythonStackStr(std::string stack_str) {
-    tracer_->SetOpPythonStackStr(stack_str);
+  void SetPythonStack(std::string stack_str) {
+    tracer_->SetPythonStack(stack_str);
   }
 
-  std::string GetOpPythonStackStr() { return tracer_->GetOpPythonStackStr(); }
+  std::string GetPythonStack() { return tracer_->GetPythonStack(); }
 
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }

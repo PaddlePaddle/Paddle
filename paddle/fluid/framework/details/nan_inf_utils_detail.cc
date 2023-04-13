@@ -34,7 +34,6 @@ struct DebugTools {
   DebugTools() {}
   std::string path = "";
 };
-
 static DebugTools debug_nan_inf;
 
 void SetNanInfDebugPath(const std::string& nan_inf_path) {

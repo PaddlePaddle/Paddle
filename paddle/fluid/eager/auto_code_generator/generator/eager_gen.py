@@ -492,17 +492,7 @@ CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
   std::string forward_trace ="";
   if (FLAGS_check_nan_inf) {{
       egr::CheckTensorHasNanOrInf("{}", {});
-      std::string filename = __FILE__;
-      std::string line = std::to_string(__LINE__);
-      std::string function_name = __FUNCTION__;
-      forward_trace = filename+" " + line+" "+function_name+"\\n";
-      forward_trace = egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
-      try{{
-       PADDLE_ENFORCE(false,
-               "{}'s backward has nan/inf, please check the data of backward op");
-      }} catch(std::exception& e) {{
-         egr::Controller::Instance().SetOpPythonStackStr(forward_trace);
-      }}
+      forward_trace = egr::Controller::Instance().GetPythonStack();
   }}
 """
 
@@ -1463,7 +1453,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         # Check Nan and Inf
         check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE_FORWARD.format(
-            function_name, "api_result", function_name
+            function_name, "api_result"
         )
 
         # Get Outputs

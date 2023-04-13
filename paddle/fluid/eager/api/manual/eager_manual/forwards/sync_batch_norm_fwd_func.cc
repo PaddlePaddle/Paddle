@@ -175,21 +175,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   std::string forward_trace = "";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
-    egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
-    std::string filename = __FILE__;
-    std::string line = std::to_string(__LINE__);
-    std::string function_name = __FUNCTION__;
-    std::string forward_trace =
-        filename + " " + line + " " + function_name + "\n";
-    forward_trace =
-        egr::Controller::Instance().GetOpPythonStackStr() + forward_trace;
-    try {
-      PADDLE_ENFORCE(
-          false,
-          "add_n's backward has nan/inf, please check the data of backward op");
-    } catch (std::exception& e) {
-      egr::Controller::Instance().SetOpPythonStackStr(forward_trace);
-    }
+    forward_trace = egr::Controller::Instance().GetPythonStack();
   }
 
   // Get Outputs
