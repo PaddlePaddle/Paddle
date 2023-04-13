@@ -753,6 +753,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
+    set -x
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
