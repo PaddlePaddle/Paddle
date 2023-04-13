@@ -186,6 +186,13 @@ class FCMKLDNNHandler
     }
     AppendActivation(ctx, post_operations, activation_scale);
 
+    // TODO(qun): how to know the order of fused scale and fused post_ops?
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
     attributes.set_post_ops(post_operations);
     return attributes;
   }
