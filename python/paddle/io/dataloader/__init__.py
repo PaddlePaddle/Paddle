@@ -23,7 +23,7 @@ from .dataset import Subset
 from .batch_sampler import BatchSampler
 from .batch_sampler import DistributedBatchSampler
 
-from .dataloader_iter import get_worker_info
+from .worker import get_worker_info
 
 from .sampler import Sampler
 from .sampler import SequenceSampler
