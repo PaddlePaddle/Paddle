@@ -90,14 +90,20 @@ def model_parallel_random_seed(seed=None):
     from paddle.distributed import fleet
 
     hcg = fleet.get_hybrid_communicate_group()
-    rank = hcg.get_model_parallel_rank()
+
+    mp_rank = hcg.get_model_parallel_rank()
+    mp_size = hcg.get_model_parallel_world_size()
+
+    pp_rank = hcg.get_stage_id()
+    pp_size = hcg.get_pipe_parallel_world_size()
 
     if seed:
         global_seed = seed
-        local_seed = seed * 1024 + rank * 100
+        # dp/sharding seed is same
+        local_seed = seed + 1 + mp_rank * pp_size + pp_rank
     else:
-        global_seed = np.random.randint(0, 655350)
-        local_seed = np.random.randint(rank * 10000, (rank + 1) * 10000 - 1)
+        global_seed = np.random.randint(0, 10000)
+        local_seed = global_seed + 1 + mp_rank * pp_size + pp_rank
 
     RNG_STATE_TRACKER.reset()
     RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)

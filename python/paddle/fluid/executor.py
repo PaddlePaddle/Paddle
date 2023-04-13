@@ -493,34 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_enable_standalone_executor():
-    return (
-        framework._enable_standalone_executor_ is None
-        or framework._enable_standalone_executor_
-        in [1, '1', True, 'True', 'true']
-    )
-
-
-def _is_dy2st_enable_standalone_executor():
-    return framework._dy2st_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
-def _is_cuda_graph_enable_standalone_executor():
-    return framework._cuda_graph_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -1004,8 +976,6 @@ class Executor:
             "__auto_checkpoint_executor__"
         )
 
-        # NOTE: Whether to use experimental executor `StandaloneExecutor`.
-        self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache()
 
         self._fleet_executor = None
@@ -1605,9 +1575,7 @@ class Executor:
 
             return True
 
-        if self._enable_interpreter_core and _can_use_interpreter_core(
-            program, self.place
-        ):
+        if _can_use_interpreter_core(program, self.place):
 
             if feed is None:
                 feed = {}
@@ -1620,6 +1588,29 @@ class Executor:
                     % (type(feed))
                 )
             feed = self._update_feed(program, feed)
+
+            stored_flag = {}
+            if isinstance(program, compiler.CompiledProgram) or isinstance(
+                program._graph, compiler.CompiledProgram
+            ):
+                compiled_program = (
+                    program
+                    if isinstance(program, compiler.CompiledProgram)
+                    else program._graph
+                )
+                build_strategy = compiled_program._build_strategy
+                if build_strategy is not None and build_strategy.sequential_run:
+                    schedule_flag = [
+                        'FLAGS_new_executor_serial_run',
+                        'FLAGS_new_executor_sequential_run',
+                    ]
+                    for flag in schedule_flag:
+                        value = os.getenv(flag, False)
+                        if isinstance(value, str):
+                            value = value.lower()
+                            value = True if value == 'true' else False
+                        stored_flag[flag] = bool(value)
+                    set_flags({f: True for f in schedule_flag})
 
             program, new_exe = self._executor_cache.get_program_and_executor(
                 program,
@@ -1656,9 +1647,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            return new_exe.run(
+            ret = new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+            set_flags(stored_flag)
+            return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1685,131 +1678,11 @@ class Executor:
 
         acp._auto_checkpoint(self, program)
 
-        # For backward compatibility, run directly.
-        if not compiled:
-
-            return self._run_program(
-                program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-            )
-
         program._compile(scope, self.place)
         assert (
             program._is_inference
         ), f"Program must have _is_inference = True, but get {program._is_inference}"
         return self._run_inference(program._executor, feed)
-
-    def _run_program(
-        self,
-        program,
-        feed,
-        fetch_list,
-        feed_var_name,
-        fetch_var_name,
-        scope,
-        return_numpy,
-        use_program_cache,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        assert program is not None, "The program should not be Empty"
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Executor requires Program as its Parameter. But you passed in %s"
-                % (type(program))
-            )
-
-        if not isinstance(fetch_var_name, str):
-            raise TypeError(
-                "The name of fetch variable requires string as its Parameter. But you passed in %s"
-                % (type(fetch_var_name))
-            )
-
-        if use_program_cache:
-            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-            cached_program = self._get_program_cache(cache_key)
-            cached_ctx = self._get_ctx_cache(cache_key)
-            cached_scope = self._get_scope_cache(cache_key)
-            if cached_program is None:
-                cached_program = _add_feed_fetch_ops(
-                    program=program,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                )
-                self._add_program_cache(cache_key, cached_program)
-                fetch_list_str = list(map(_to_name_str, fetch_list))
-                cached_ctx = self._default_executor.prepare(
-                    cached_program.desc, 0, fetch_list_str, False
-                )
-                # currently, we cache program, vars, sub_scope here
-                # we suppose that in a life cycle of training, a user
-                # will not create many programs. So, here the basic
-                # rule of caching is to cache all unseen (program, var, scope)
-                # when a user use use_program_cache.
-                cached_scope = scope.new_scope()
-                self._default_executor.create_variables(
-                    cached_program.desc, cached_scope, 0
-                )
-                self._add_ctx_cache(cache_key, cached_ctx)
-                self._add_scope_cache(cache_key, cached_scope)
-            program = cached_program
-            ctx = cached_ctx
-            scope = cached_scope
-        else:
-            program = _add_feed_fetch_ops(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-            )
-
-        self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_schedulerr'):
-            assert isinstance(
-                program.lr_scheduler, LRScheduler
-            ), "must be LRScheduler"
-            lr_scheduler = program.lr_scheduler
-            lr_value = lr_scheduler()
-            lr_var = program.global_block().vars[lr_scheduler._var_name]
-            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
-            tensor.set(data, self.place)
-
-        if not use_program_cache:
-            self._default_executor.run(
-                program.desc, scope, 0, True, True, [fetch_var_name]
-            )
-        else:
-            self._default_executor.run_prepared_ctx(
-                ctx, scope, False, False, False
-            )
-        arr = scope.find_var(fetch_var_name).get_fetch_list()
-        tensors = arr._move_to_list()
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)

@@ -113,7 +113,6 @@ std::vector<paddle::Tensor> RunBackward(
 
   std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
-  egr::Controller::Instance().ClearForceSequentialNodes();
   std::deque<GradNodeBase*> force_sequential_nodes_queue;
   std::set<GradNodeBase*> force_sequential_nodes_set;
   std::set<GradNodeBase*> ready_force_sequential_nodes;
@@ -421,6 +420,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
+  egr::Controller::Instance().ClearForceSequentialNodes();
   RunBackward(tensors, grad_tensors, retain_graph);
   phi::autotune::AutoTuneStatus::Instance().Update();
 }

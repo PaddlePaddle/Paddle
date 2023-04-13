@@ -35,8 +35,8 @@ inline int ConvOutSize(int input_size,
   return output_size;
 }
 
-void Conv2dXPUInferMeta(const MetaTensor& input,
-                        const MetaTensor& input_max,
+void Conv2dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
                         const MetaTensor& filter,
                         const MetaTensor& filter_max,
                         const MetaTensor& bias,
@@ -50,9 +50,9 @@ void Conv2dXPUInferMeta(const MetaTensor& input,
                         bool has_branch,
                         int act_type,
                         float act_param,
-                        MetaTensor* output,
-                        MetaTensor* output_max) {
-  auto in_dims = input.dims();
+                        MetaTensor* out,
+                        MetaTensor* out_max) {
+  auto in_dims = x.dims();
   auto filter_dims = filter.dims();
   // do some checks
   PADDLE_ENFORCE_EQ(
@@ -157,8 +157,8 @@ void Conv2dXPUInferMeta(const MetaTensor& input,
                                     strides[i]));
   }
   // set output and output max dims
-  output->set_dims(DDim(out_shape.data(), out_shape.size()));
-  output_max->set_dims(phi::make_ddim({4}));
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out_max->set_dims(phi::make_ddim({4}));
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
