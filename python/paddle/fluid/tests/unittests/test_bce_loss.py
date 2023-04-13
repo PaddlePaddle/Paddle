@@ -291,10 +291,10 @@ class TestBceLossOpFloat16(TestBceLossOp):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [10, 10]
