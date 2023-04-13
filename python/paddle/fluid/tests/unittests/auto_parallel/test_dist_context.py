@@ -247,6 +247,7 @@ class TestDistributedContext(unittest.TestCase):
             "_backup_serial_main_program_stack",
             "_backup_serial_startup_program_stack",
             "_pass_context",
+            "_tensor_nodes_with_same_name",
         ]
 
         for i in range(len(copy_list)):

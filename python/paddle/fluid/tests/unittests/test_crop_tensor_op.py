@@ -69,7 +69,7 @@ class TestCropTensorOp(OpTest):
         else:
             self.attrs['offsets'] = self.offsets
 
-        crop_shape = [val for val in self.crop_shape]
+        crop_shape = list(self.crop_shape)
         for i in range(len(self.crop_shape)):
             if self.crop_shape[i] == -1:
                 crop_shape[i] = self.x_shape[i] - self.offsets[i]
@@ -147,7 +147,7 @@ class TestCropTensorOpTensorAttr(OpTest):
             shape_tensor = []
             for index, ele in enumerate(self.crop_shape):
                 shape_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
@@ -159,7 +159,7 @@ class TestCropTensorOpTensorAttr(OpTest):
             offsets_tensor = []
             for index, ele in enumerate(self.offsets):
                 offsets_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
@@ -169,7 +169,7 @@ class TestCropTensorOpTensorAttr(OpTest):
 
         self.attrs['shape'] = self.crop_shape
         self.attrs['offsets'] = self.offsets
-        crop_shape = [val for val in self.crop_shape]
+        crop_shape = list(self.crop_shape)
         for i in range(len(self.crop_shape)):
             if self.crop_shape[i] == -1:
                 crop_shape[i] = self.x_shape[i] - self.offsets[i]

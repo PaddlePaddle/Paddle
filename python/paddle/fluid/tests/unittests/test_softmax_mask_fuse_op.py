@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid, incubate
@@ -42,6 +42,7 @@ def _get_softmax(x, mask, fp16=True):
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
+        self.python_api = paddle.incubate.softmax_mask_fuse
         x = np.random.random((1, 1, 8, 32))
         mask = np.random.randint(0, 2, (1, 1, 8, 32))
         mask_input = np.where(mask == 1, -10000.0, mask)
@@ -68,6 +69,7 @@ class TestSoftmaxMaskFuseOp(OpTest):
 class TestSoftmaxMaskFuseOp0(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
+        self.python_api = paddle.incubate.softmax_mask_fuse
         x = np.random.random((1, 1, 8, 32)).astype("float16")
         mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float16")
         mask_input = np.where(mask == 1, -10000.0, mask)

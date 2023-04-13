@@ -100,9 +100,7 @@ class TestRoIPool(unittest.TestCase):
         self,
     ):
         data = (
-            np.array([i for i in range(1, 17)])
-            .reshape(1, 1, 4, 4)
-            .astype(np.float32)
+            np.array(list(range(1, 17))).reshape(1, 1, 4, 4).astype(np.float32)
         )
         boxes = np.array([[1.0, 1.0, 2.0, 2.0], [1.5, 1.5, 3.0, 3.0]]).astype(
             np.float32

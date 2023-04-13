@@ -112,8 +112,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -536,7 +538,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p)
+                    f"only valid string values are 'fro', found {p}"
                 )
         elif isinstance(p, (int, float)):
             return vector_norm(
@@ -549,7 +551,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "only valid p type is string or float, found {}".format(type(p))
+                f"only valid p type is string or float, found {type(p)}"
             )
 
     if isinstance(axis, tuple):
@@ -572,7 +574,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             else:
                 raise ValueError(
-                    "only valid string values are 'fro', found {}".format(p)
+                    f"only valid string values are 'fro', found {p}"
                 )
         elif isinstance(p, (int, float)):
             return vector_norm(
@@ -1027,7 +1029,7 @@ def cond(x, p=None, name=None):
     if not len(x_shape) >= 2:
         raise ValueError(
             "input should be a matrix or batches of matrices, "
-            + "but the dimention of received input is {}".format(len(x_shape))
+            + f"but the dimention of received input is {len(x_shape)}"
         )
     if p is None:
         p = 2
@@ -1051,7 +1053,7 @@ def cond(x, p=None, name=None):
                 )
         else:
             raise ValueError(
-                "only support p is {} when input is a ".format(p)
+                f"only support p is {p} when input is a "
                 + "square matrix or batches of square matrices"
             )
     elif p in (2, -2):
@@ -1060,7 +1062,7 @@ def cond(x, p=None, name=None):
         return svd_norm(x, porder=p)
     else:
         raise ValueError(
-            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(p)
+            f"unsupported {p} for p, only supporting ('fro', 'nuc', "
             + "1, -1, 2, -2, inf, -inf) or none"
         )
 
@@ -1105,8 +1107,8 @@ def dot(x, y, name=None):
     else:
         op_type = 'dot'
 
-        assert x is not None, 'x cannot be None in {}'.format(op_type)
-        assert y is not None, 'y cannot be None in {}'.format(op_type)
+        assert x is not None, f'x cannot be None in {op_type}'
+        assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
@@ -1807,7 +1809,7 @@ def det(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )
@@ -1866,7 +1868,7 @@ def slogdet(x, name=None):
 
         assert (
             input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received %s by %s matrix.\n" % (
+        ), "Expect squared input," "but received {} by {} matrix.\n".format(
             input_shape[-2],
             input_shape[-1],
         )
@@ -2555,7 +2557,7 @@ def eigh(x, UPLO='L', name=None):
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
-                    "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
                 )
 
         __check_input(x, UPLO)
@@ -3081,7 +3083,7 @@ def eigvalsh(x, UPLO='L', name=None):
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
-                    "UPLO must be L or U. But received UPLO is: {}".format(UPLO)
+                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
                 )
 
         __check_input(x, UPLO)

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <type_traits>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/addmm_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

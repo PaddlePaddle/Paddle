@@ -495,7 +495,7 @@ def prior_box(
     """
 
     def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if not _is_list_or_tuple_(min_sizes):
         min_sizes = [min_sizes]

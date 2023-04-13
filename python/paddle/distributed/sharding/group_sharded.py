@@ -226,7 +226,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     )
     assert not os.path.isfile(
         output
-    ), "Saving directory ({}) should be a directory, not a file".format(output)
+    ), f"Saving directory ({output}) should be a directory, not a file"
     os.makedirs(output, exist_ok=True)
     output_model = os.path.join(output, "model.pdmodel")
     if isinstance(model, GroupShardedStage2):

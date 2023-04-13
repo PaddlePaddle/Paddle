@@ -23,20 +23,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
-
-import paddle
-from paddle import fluid
-from paddle.fluid import core, unique_name
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import (
-    OpProtoHolder,
-    Program,
-    _current_expected_place,
-)
-from paddle.fluid.op import Operator
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
@@ -48,7 +35,20 @@ from white_list import (
     op_threshold_white_list,
 )
 
+import paddle
+from paddle import fluid
+from paddle.fluid import core, unique_name
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import (
+    OpProtoHolder,
+    Program,
+    _current_expected_place,
+    canonicalize_attrs,
+)
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 
 @signature_safe_contextmanager
@@ -337,10 +337,7 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        if paddle.is_compiled_with_npu():
-            cls._use_system_allocator = _set_use_system_allocator(False)
-        else:
-            cls._use_system_allocator = _set_use_system_allocator(True)
+        cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -375,12 +372,6 @@ class OpTest(unittest.TestCase):
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
 
-        def is_npu_op_test():
-            return hasattr(cls, "use_npu") and cls.use_npu
-
-        def is_mlu_op_test():
-            return hasattr(cls, "use_mlu") and cls.use_mlu
-
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
@@ -413,8 +404,6 @@ class OpTest(unittest.TestCase):
                 and not is_xpu_op_test()
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
-                and not is_npu_op_test()
-                and not is_mlu_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
             ):
@@ -504,6 +493,28 @@ class OpTest(unittest.TestCase):
 
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
+
+    def _enable_check_cinn_test(self, place, inputs, outputs):
+        # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
+        if (
+            core.is_compiled_with_cinn()
+            and core.is_compiled_with_cuda()
+            and isinstance(place, fluid.CUDAPlace)
+        ):
+            return False
+        # CINN not support bfloat16 now, skip cinn test
+        if self.is_bfloat16_op():
+            return False
+        # CINN not support 0D-tensor now, skip cinn test
+        for var in inputs.values():
+            if len(var.shape()) == 0:
+                return False
+        for var in outputs.values():
+            if len(var.shape) == 0:
+                return False
+        # CINN not support dynamic shape now, skip cinn test
+        # TODO(thisjiang): cannot check dynamic shape op automatic, should do manually now
+        return True
 
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
@@ -637,7 +648,11 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        if self.is_bfloat16_op():
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
             self.dtype = np.uint16
             self.__class__.dtype = self.dtype
             self.output_dtype = np.uint16
@@ -827,7 +842,7 @@ class OpTest(unittest.TestCase):
             if (name not in np_list) and var_proto.dispensable:
                 continue
             if name not in np_list:
-                assert var_proto.intermediate, "{} not found".format(name)
+                assert var_proto.intermediate, f"{name} not found"
                 v = block.create_var(
                     dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR
                 )
@@ -838,10 +853,10 @@ class OpTest(unittest.TestCase):
             if var_proto.duplicable:
                 assert isinstance(
                     np_list[name], list
-                ), "Duplicable {} should be set as list".format(name)
+                ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[name]:
+                for (name, np_value) in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -892,7 +907,9 @@ class OpTest(unittest.TestCase):
                 np_dyg,
                 rtol=1e-05,
                 equal_nan=False,
-                err_msg='Output ('
+                err_msg='Operator ('
+                + self.op_type
+                + ') Output ('
                 + name
                 + ') has diff at '
                 + str(place)
@@ -969,7 +986,7 @@ class OpTest(unittest.TestCase):
                 self.op_type,
                 dygraph_tensor_inputs,
                 dygraph_tensor_outputs,
-                attrs_outputs,
+                canonicalize_attrs(attrs_outputs, op_proto),
             )
             if not kernel_sig or (
                 len(kernel_sig[0]) == 0
@@ -1049,6 +1066,7 @@ class OpTest(unittest.TestCase):
         loss=None,
         enable_inplace=None,
         for_inplace_test=None,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             program = Program()
@@ -1092,9 +1110,21 @@ class OpTest(unittest.TestCase):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                     fetch_list.append(str(out_name))
 
-            if enable_inplace is not None:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_map, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
-                build_strategy.enable_inplace = enable_inplace
+                if enable_inplace is not None:
+                    build_strategy.enable_inplace = enable_inplace
+                if enable_cinn_test:
+                    build_strategy.build_cinn_pass = check_cinn
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
@@ -1144,7 +1174,9 @@ class OpTest(unittest.TestCase):
                     actual_out,
                     rtol=1e-05,
                     atol=inplace_atol,
-                    err_msg='Output ('
+                    err_msg='Operator ('
+                    + self.op_type
+                    + ') Output ('
                     + name
                     + ') has diff at '
                     + str(place)
@@ -1515,16 +1547,18 @@ class OpTest(unittest.TestCase):
         self,
         place,
         atol=0,
+        rtol=0,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
@@ -1544,7 +1578,7 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                f"Found failed {dygraph_outs.keys()} {target_name}",
             )
 
         def find_imperative_expect(target_name, dygraph_outs, place):
@@ -1557,7 +1591,7 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                f"Found failed {dygraph_outs.keys()} {target_name}",
             )
 
         def find_actual(target_name, fetch_list):
@@ -1567,7 +1601,7 @@ class OpTest(unittest.TestCase):
                 if var_name == target_name
             ]
             self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name)
+                len(found) == 1, f"Found {len(found)} {target_name}"
             )
             return found[0]
 
@@ -1578,7 +1612,7 @@ class OpTest(unittest.TestCase):
                 if var_name == target_name
             ]
             self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name)
+                len(found) == 1, f"Found {len(found)} {target_name}"
             )
             return found[0]
 
@@ -1628,11 +1662,13 @@ class OpTest(unittest.TestCase):
                     np.testing.assert_allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
-                            "Output ("
+                            "Operator ("
+                            + self.op_type
+                            + ") Output ("
                             + name
                             + ") has diff at "
                             + str(place)
@@ -1645,11 +1681,13 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
-                    "Output ("
+                    "Operator ("
+                    + self.op_type
+                    + ") Output ("
                     + name
                     + ") has diff at "
                     + str(place)
@@ -1719,7 +1757,7 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
-                    place, no_check_set=no_check_set
+                    place, no_check_set=no_check_set, check_cinn=check_cinn
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
@@ -1818,10 +1856,12 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
-                                "Output ("
+                                "Operator ("
+                                + self.op_type
+                                + ") Output ("
                                 + name
                                 + ") has diff at "
                                 + str(place)
@@ -1835,10 +1875,12 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has diff at "
                         + str(place)
@@ -1888,7 +1930,9 @@ class OpTest(unittest.TestCase):
                         .get_tensor()
                         .recursive_sequence_lengths(),
                         expect[1],
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has different lod at "
                         + str(place)
@@ -1912,7 +1956,16 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
             self.dtype == np.float64
             and self.op_type
@@ -1967,11 +2020,8 @@ class OpTest(unittest.TestCase):
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
-        if (
-            not paddle.is_compiled_with_xpu()
-            and not paddle.is_compiled_with_npu()
-            and not paddle.is_compiled_with_mlu()
-            and not isinstance(place, core.CustomPlace)
+        if not paddle.is_compiled_with_xpu() and not isinstance(
+            place, core.CustomPlace
         ):
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol
@@ -1994,7 +2044,7 @@ class OpTest(unittest.TestCase):
             else:
                 self.assertTrue(
                     len(found) == 1,
-                    "Found {} {}".format(len(found), target_name),
+                    f"Found {len(found)} {target_name}",
                 )
                 return found[0]
 
@@ -2033,7 +2083,7 @@ class OpTest(unittest.TestCase):
                 )
 
     def _get_places(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == "float16":
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 self.op_type
             ):
@@ -2057,11 +2107,13 @@ class OpTest(unittest.TestCase):
     def check_output(
         self,
         atol=1e-5,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
 
         self.__class__.op_type = self.op_type
@@ -2071,7 +2123,7 @@ class OpTest(unittest.TestCase):
         if self.is_xpu_op():
             self.__class__.use_xpu = True
 
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         places = self._get_places()
@@ -2079,11 +2131,13 @@ class OpTest(unittest.TestCase):
             res = self.check_output_with_place(
                 place,
                 atol,
+                rtol,
                 no_check_set,
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
                 inplace_atol=inplace_atol,
+                check_cinn=check_cinn,
             )
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
@@ -2212,7 +2266,16 @@ class OpTest(unittest.TestCase):
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_float16_op():
+            self.dtype = np.float16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.float16
+        elif self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         self.__class__.op_type = self.op_type
         self.__class__.exist_check_grad = True
         if self.dtype == np.float64:
@@ -2232,8 +2295,9 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         atol=1e-5,
+        check_cinn=False,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         self._check_grad_helper()
@@ -2253,6 +2317,7 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
                 atol=atol,
+                check_cinn=check_cinn,
             )
 
     def check_grad_with_place(
@@ -2271,8 +2336,9 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
+        check_cinn=False,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         core._set_prim_all_enabled(False)
@@ -2402,6 +2468,7 @@ class OpTest(unittest.TestCase):
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
+            check_cinn=check_cinn,
         )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
@@ -2493,7 +2560,7 @@ class OpTest(unittest.TestCase):
         no_grad_set=None,
         check_dygraph=True,
     ):
-        if hasattr(self, "use_custom_device") and self.use_custom_device():
+        if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
         with fluid.dygraph.base.guard(place=place):
@@ -2630,6 +2697,7 @@ class OpTest(unittest.TestCase):
         no_grad_set,
         user_defined_grad_outputs=None,
         parallel=False,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             prog = Program()
@@ -2696,11 +2764,26 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = grad_inputs
 
-            if parallel:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_dict, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if parallel or enable_cinn_test:
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog)
+
+                build_strategy = None
+                if enable_cinn_test:
+                    build_strategy = fluid.BuildStrategy()
+                    build_strategy.build_cinn_pass = check_cinn
+
+                compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(

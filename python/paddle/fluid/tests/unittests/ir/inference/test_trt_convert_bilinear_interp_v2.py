@@ -30,7 +30,10 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
+        ver = paddle_infer.get_trt_compile_version()
+        # here is consistent with op_teller.cc
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7100:
+            return False
         return True
 
     def sample_program_configs(self):
