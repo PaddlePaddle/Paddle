@@ -156,4 +156,5 @@ The paper that proposed Follow The Regularized Leader (FTRL):
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ftrl, ops::FTRLOp, ops::FTRLOpMaker);
-REGISTER_OP_CPU_KERNEL(ftrl, ops::FTRLOpKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(ftrl, CPU, ALL_LAYOUT, ops::FTRLOpKernel, float) {}

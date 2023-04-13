@@ -136,7 +136,9 @@ class RecomputeState(ProgramStats):
 
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
             # insert seed op to guarantee that two dropout op have the same outputs
-            op_unique_name = unique_name.generate("seed")
+            # NOTE Hack for adopt recompute for random control, for more info see dist_dropout.py
+            # new seed added by recompute should have a prefix to distinguish with seed added by user or other moudule.
+            op_unique_name = unique_name.generate("rc_seed")
             var_unique_name = unique_name.generate_with_ignorable_key(
                 ".".join([op_unique_name, 'tmp'])
             )

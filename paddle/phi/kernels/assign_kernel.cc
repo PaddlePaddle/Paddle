@@ -186,6 +186,5 @@ PD_REGISTER_KERNEL(assign_value,
                    int,
                    float,
                    double,
-                   int64_t,
-                   phi::dtype::float16) {}
+                   int64_t) {}
 #endif

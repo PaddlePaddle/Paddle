@@ -848,7 +848,8 @@ class Remover:
                         remove_op_idx.append(idx)
 
             for idx in remove_op_idx[::-1]:
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
+            block._sync_with_cpp()
 
     @staticmethod
     def remove_no_need_vars(
@@ -1000,7 +1001,8 @@ class Remover:
             if is_no_need_op:
                 remove_op_idx.append(idx)
         for idx in remove_op_idx[::-1]:
-            startup_block._remove_op(idx)
+            startup_block._remove_op(idx, sync=False)
+        startup_block._sync_with_cpp()
 
 
 class Resharder:
@@ -1441,6 +1443,8 @@ class Resharder:
         target_process_group = target_process_mesh.process_ids
         target_process_shape = target_process_mesh.shape
 
+        op_role = dist_attr[2]
+
         if source_tensor.shape[0] < 0:
             assert source_tensor.shape[0] == -1
             new_shape = list(source_tensor.shape)
@@ -1583,6 +1587,10 @@ class Resharder:
                         Resharder.concat_partitions(
                             partition_index_list, source_partition_index
                         )
+                        if int(op_role) == int(OpRole.Forward):
+                            self.dist_context.up_down_streams.add_pair_stream(
+                                to_send_process, target_process
+                            )
 
                 # append concat op desc
                 op_desc_seq[target_process].append(
@@ -2037,13 +2045,6 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    # if (
-                                    #     old_name
-                                    #     in op_dist_attr._inputs_dist_attrs
-                                    # ):
-                                    #     op_dist_attr.del_input_dist_attr(
-                                    #         old_name
-                                    #     )
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
@@ -2067,7 +2068,6 @@ class Resharder:
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
-                                    # op_dist_attr.del_input_dist_attr(old_name)
                                     op_dist_attr.set_input_dims_mapping(
                                         new_name, dims_mapping
                                     )
@@ -2095,7 +2095,6 @@ class Resharder:
                                 op_dist_attr.set_input_dims_mapping(
                                     new_name, dims_mapping
                                 )
-                                # op_dist_attr.del_input_dist_attr(old_name)
                                 op_dist_attr.set_input_dims_mapping(
                                     new_name, dims_mapping
                                 )
@@ -2135,7 +2134,13 @@ class Resharder:
                             has_exist = True
                             break
                     if not has_exist:
-                        input_attrs.append([process_mesh, input_dims_mapping])
+                        input_attrs.append(
+                            [
+                                process_mesh,
+                                input_dims_mapping,
+                                op.attr('op_role'),
+                            ]
+                        )
         return input_attrs
 
     def _get_subblock_output_attrs(self, op, var_name):
@@ -2165,7 +2170,13 @@ class Resharder:
                             has_exist = True
                             break
                     if not has_exist:
-                        output_attrs.append([process_mesh, output_dims_mapping])
+                        output_attrs.append(
+                            [
+                                process_mesh,
+                                output_dims_mapping,
+                                op.attr('op_role'),
+                            ]
+                        )
         return output_attrs
 
     def _get_common_op_input_attrs(self, op, var_name):
@@ -2188,7 +2199,9 @@ class Resharder:
         input_dims_mapping = dist_attr.get_input_dims_mapping(var_name)
         input_attrs = []
         for process_mesh in process_meshes:
-            input_attrs.append([process_mesh, input_dims_mapping])
+            input_attrs.append(
+                [process_mesh, input_dims_mapping, op.attr('op_role')]
+            )
 
         return input_attrs
 
@@ -2207,7 +2220,7 @@ class Resharder:
 
         assert (
             op_input_attrs
-        ), "The input '{}' of op '{}' has no distibution attributes in subblock".format(
+        ), "The input '{}' of op '{}' has no distributed attributes in subblock".format(
             op.name, var_name
         )
 
@@ -2215,30 +2228,24 @@ class Resharder:
 
     def _remove_global_process_mesh(self):
         """Remove global process mesh from dist_context.process_meshes"""
-        processes = set()
+        process_ids = set()
         process_mesh_count = len(self.dist_context.process_meshes)
         if process_mesh_count > 1:
-            global_process_mesh_idx = None
+            global_process_mesh_idx = []
+            has_sub_process_mesh = False
             for process_mesh in self.dist_context.process_meshes:
-                for process in process_mesh.process_ids:
-                    processes.add(process)
+                for process_id in process_mesh.process_ids:
+                    process_ids.add(process_id)
             for idx, process_mesh in enumerate(
                 self.dist_context.process_meshes
             ):
-                if len(set(process_mesh.process_ids)) == len(processes):
-                    global_process_mesh_idx = idx
-                    break
+                if len(set(process_mesh.process_ids)) == len(process_ids):
+                    global_process_mesh_idx.append(idx)
+                elif set(process_mesh.process_ids) < process_ids:
+                    has_sub_process_mesh = True
 
-            if global_process_mesh_idx is not None:
-                is_removed = False
-                global_mesh = self.dist_context.process_meshes[idx]
-                for i, mesh in enumerate(self.dist_context.process_meshes):
-                    if i == idx:
-                        continue
-                    if set(mesh.process_ids) < set(global_mesh.process_ids):
-                        is_removed = True
-
-                if is_removed:
+            if has_sub_process_mesh:
+                for idx in reversed(global_process_mesh_idx):
                     self.dist_context.process_meshes.pop(idx)
 
     def _change_subblock_op_input_and_output(self, block_idx, block):
@@ -2278,7 +2285,6 @@ class Resharder:
                             op_dist_attr.set_input_dist_attr(
                                 new_name, op_input_dist_attr
                             )
-                            # op_dist_attr.del_input_dist_attr(old_name)
 
                 # the outputs also need to be renamed when the output name is the same with input name in inplace op
                 for var_name in op.output_arg_names:
@@ -2302,7 +2308,6 @@ class Resharder:
                         op_dist_attr.set_output_dist_attr(
                             new_name, op_output_dist_attr
                         )
-                        # op_dist_attr.del_output_dist_attr(old_name)
 
     def _reshard_input(self, block):
         idx = 0
@@ -2450,7 +2455,7 @@ class Resharder:
                     assert set_lod is True
 
                 # cast int64 to bool
-                block._insert_op(
+                cast_op = block._insert_op(
                     idx + 2,
                     type='cast',
                     inputs={
@@ -2465,6 +2470,7 @@ class Resharder:
                         'op_role': op.attr('op_role'),
                     },
                 )
+                cast_op._set_attr('op_namescope', "/auto_parallel/reshard")
             else:
                 if var.lod_level != 0:
                     recv_out = block.create_var(
@@ -2612,6 +2618,10 @@ class Resharder:
                                         ]
                                         if recv_rank == item:
                                             continue
+                                        if var.shape[0] == -1:
+                                            new_shape = list(var.shape)
+                                            new_shape[0] = self.batch_size
+                                            var.desc.set_shape(new_shape)
                                         if self.rank_id == item:
                                             # if send bool data, cast then send
                                             self._handle_send(
@@ -2640,6 +2650,10 @@ class Resharder:
                                     item = output_attr[0].process_ids[index]
                                     if recv_rank == item:
                                         continue
+                                    if var.shape[0] == -1:
+                                        new_shape = list(var.shape)
+                                        new_shape[0] = self.batch_size
+                                        var.desc.set_shape(new_shape)
                                     if self.rank_id == item:
                                         # if send bool data, cast then send
                                         self._handle_send(
@@ -2714,7 +2728,11 @@ class Resharder:
                     tensor.name
                 )
                 process_mesh = dist_op.dist_attr.process_mesh
-                dist_attr = [process_mesh, dims_mapping]
+                dist_attr = [
+                    process_mesh,
+                    dims_mapping,
+                    dist_op.serial_op.attr('op_role'),
+                ]
                 if dist_tensor is not None and self.need_reshard(
                     dist_tensor, dist_attr
                 ):

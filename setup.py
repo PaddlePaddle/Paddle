@@ -427,6 +427,57 @@ def is_taged():
         return False
 
 
+def get_cinn_version():
+    if env_dict.get("WITH_CINN") != 'ON':
+        return "False"
+
+    cinn_git_version = 'Unknown'
+    # try get cinn tag name
+    try:
+        cmd = [
+            'git',
+            'describe',
+            '--exact-match',
+            '--tags',
+            'HEAD',
+            '2>/dev/null',
+        ]
+        cinn_tag = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=env_dict.get("CINN_SOURCE_DIR"),
+            )
+            .communicate()[0]
+            .strip()
+        )
+        if len(cinn_tag) > 0:
+            cinn_git_version = cinn_tag
+    except:
+        pass
+
+    if cinn_git_version == 'Unknown':
+        # try get cinn commit id
+        try:
+            cmd = ['git', 'rev-parse', 'HEAD']
+            cinn_commit = (
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=env_dict.get("CINN_SOURCE_DIR"),
+                )
+                .communicate()[0]
+                .strip()
+            )
+            if len(cinn_commit) > 0:
+                cinn_git_version = cinn_commit
+        except:
+            pass
+
+    cinn_git_version = cinn_git_version.decode('utf-8')
+    return str(cinn_git_version)
+
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
@@ -442,6 +493,7 @@ xpu_xccl_version = '%(xpu_xccl)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
+cinn_version      = '%(cinn)s'
 
 __all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
@@ -470,6 +522,8 @@ def show():
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
+        cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
+
     Examples:
         .. code-block:: python
 
@@ -486,6 +540,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
 
             # Case 2: paddle is not tagged
             paddle.version.show()
@@ -494,6 +549,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
     """
     if istaged:
         print('full_version:', full_version)
@@ -507,6 +563,7 @@ def show():
     print('cudnn:', cudnn_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
+    print('cinn:', cinn_version)
 
 def mkl():
     return with_mkl
@@ -578,6 +635,23 @@ def xpu_xccl():
 
     """
     return xpu_xccl_version
+
+def cinn():
+    """Get CINN version of paddle package.
+
+    Returns:
+        string: Return the version information of CINN. If paddle package is not compiled with CINN, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cinn()
+            # False
+
+    """
+    return cinn_version
 '''
     commit = git_commit()
 
@@ -605,6 +679,7 @@ def xpu_xccl():
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
+                'cinn': get_cinn_version(),
             }
         )
 
@@ -685,6 +760,11 @@ def options_process(args, build_options):
 def get_cmake_generator():
     if os.getenv("GENERATOR"):
         cmake_generator = os.getenv("GENERATOR")
+        if os.system('ninja --version') == 0:
+            print("Ninja has been installed,use ninja to compile Paddle now.")
+        else:
+            print("Ninja has not been installed,install it now.")
+            os.system('python -m pip install ninja')
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -1457,10 +1537,12 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
-        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
 
     for dependency in python_dependcies_module:
-        if dependency not in installed_packages:
+        if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
