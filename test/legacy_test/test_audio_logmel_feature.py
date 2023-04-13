@@ -84,6 +84,7 @@ class TestFeatures(unittest.TestCase):
         x = paddle.to_tensor(self.waveform, dtype=np.float64).unsqueeze(
             0
         )  # Add batch dim.
+        print("x shape: ", x.shape)
         feature_extractor = paddle.audio.features.LogMelSpectrogram(
             sr=sr,
             n_fft=n_fft,
@@ -95,6 +96,7 @@ class TestFeatures(unittest.TestCase):
             top_db=None,
             dtype=x.dtype,
         )
+        print("after feature_extractor: ", x.shape)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
         np.testing.assert_array_almost_equal(
             feature_librosa, feature_layer, decimal=2
