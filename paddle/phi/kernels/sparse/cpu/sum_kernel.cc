@@ -62,6 +62,19 @@ void SumCooKernel(const Context& dev_ctx,
   const auto* x_indices_data = x_indices.data<int64_t>();
   const auto* x_values_data = x_values.data<T>();
 
+  auto sparse_dim = x.sparse_dim();
+  // Ensure the sparse_dim is not less than 1.
+  if (sparse_dim == 1) {
+    keep_dim = true;
+  }
+  if (dim >= sparse_dim) {
+    out_indices = x_indices;
+    dim = dim - sparse_dim + 1;
+    out_values = phi::Sum<T>(dev_ctx, x.values(), {dim}, dtype, keep_dim);
+    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+    return;
+  }
+
   std::vector<int64_t> dims;
   for (int i = 0; i < x.dims().size(); ++i) {
     if (i != dim) {
@@ -71,15 +84,6 @@ void SumCooKernel(const Context& dev_ctx,
     }
   }
   out_dims = make_ddim(dims);
-
-  auto sparse_dim = x.sparse_dim();
-  if (dim >= sparse_dim) {
-    out_indices = x_indices;
-    dim = dim - sparse_dim + 1;
-    out_values = phi::Sum<T>(dev_ctx, x.values(), {dim}, dtype, keep_dim);
-    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
-    return;
-  }
 
   // if axis in sparse_dim and keep_dim, sparse_dim will be reduced.
   if (!keep_dim) {

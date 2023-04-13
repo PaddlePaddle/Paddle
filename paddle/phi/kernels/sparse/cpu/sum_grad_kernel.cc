@@ -62,6 +62,10 @@ void SumCooGradKernel(const Context& dev_ctx,
 
   auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
   auto sparse_dim = x.sparse_dim();
+  // Ensure the sparse_dim is not less than 1.
+  if (sparse_dim == 1) {
+    keep_dim = true;
+  }
   if (dim >= sparse_dim) {
     dim = dim - sparse_dim + 1;
     phi::ReduceSumGradKernel<T, Context>(
