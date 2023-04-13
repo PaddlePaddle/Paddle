@@ -506,6 +506,122 @@ int DeleteCastOpPass::ApplyCastIndexSamplePass(ir::Graph* graph) const {
 }
 
 namespace patterns {
+struct CastScatterPattern : public PatternBase {
+  CastScatterPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(scatter);
+  PATTERN_DECL_NODE(cast0);
+  PATTERN_DECL_NODE(cast1);
+  PATTERN_DECL_NODE(cast2);
+  // declare variable node's name
+  PATTERN_DECL_NODE(cast0_in);
+  PATTERN_DECL_NODE(cast0_out);
+  PATTERN_DECL_NODE(cast1_in);
+  PATTERN_DECL_NODE(cast1_out);
+  PATTERN_DECL_NODE(scatter_out);
+  PATTERN_DECL_NODE(cast2_out);
+};
+
+CastScatterPattern::CastScatterPattern(PDPattern* pattern,
+                                       const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* cast0_in = pattern->NewNode(cast0_in_repr())
+                       ->assert_is_op_input("cast", "X")
+                       ->assert_has_n_outputs(1);
+  auto* cast0 =
+      pattern->NewNode(cast0_repr())
+          ->assert_is_op("cast")
+          ->assert_more([](Node* node) {
+            auto* op_desc = node->Op();
+            auto in_dtype = op_desc->GetAttrIfExists<int>("in_dtype");
+            auto out_dtype = op_desc->GetAttrIfExists<int>("out_dtype");
+            return in_dtype == static_cast<int>(proto::VarType::FP16) &&
+                   out_dtype == static_cast<int>(proto::VarType::FP32);
+          });
+  auto* cast0_out = pattern->NewNode(cast0_out_repr())
+                        ->assert_is_op_output("cast", "Out")
+                        ->assert_is_op_input("scatter", "X")
+                        ->assert_has_n_outputs(1);
+  auto* cast1_in = pattern->NewNode(cast1_in_repr())
+                       ->assert_is_op_input("cast", "X")
+                       ->assert_has_n_outputs(1);
+  auto* cast1 =
+      pattern->NewNode(cast1_repr())
+          ->assert_is_op("cast")
+          ->assert_more([](Node* node) {
+            auto* op_desc = node->Op();
+            auto in_dtype = op_desc->GetAttrIfExists<int>("in_dtype");
+            auto out_dtype = op_desc->GetAttrIfExists<int>("out_dtype");
+            return in_dtype == static_cast<int>(proto::VarType::FP16) &&
+                   out_dtype == static_cast<int>(proto::VarType::FP32);
+          });
+  auto* cast1_out = pattern->NewNode(cast1_out_repr())
+                        ->assert_is_op_output("cast", "Out")
+                        ->assert_is_op_input("scatter", "Updates")
+                        ->assert_has_n_outputs(1);
+  auto* scatter = pattern->NewNode(scatter_repr())->assert_is_op("scatter");
+  auto* scatter_out = pattern->NewNode(scatter_out_repr())
+                          ->assert_is_op_output("scatter", "Out")
+                          ->assert_is_op_input("cast", "X")
+                          ->assert_has_n_outputs(1);
+  auto* cast2 =
+      pattern->NewNode(cast2_repr())
+          ->assert_is_op("cast")
+          ->assert_more([](Node* node) {
+            auto* op_desc = node->Op();
+            auto in_dtype = op_desc->GetAttrIfExists<int>("in_dtype");
+            auto out_dtype = op_desc->GetAttrIfExists<int>("out_dtype");
+            return in_dtype == static_cast<int>(proto::VarType::FP32) &&
+                   out_dtype == static_cast<int>(proto::VarType::FP16);
+          });
+  auto* cast2_out =
+      pattern->NewNode(cast2_out_repr())->assert_is_op_output("cast", "Out");
+
+  cast0->LinksFrom({cast0_in}).LinksTo({cast0_out});
+  cast1->LinksFrom({cast1_in}).LinksTo({cast1_out});
+  scatter->LinksFrom({cast0_out, cast1_out}).LinksTo({scatter_out});
+  cast2->LinksFrom({scatter_out}).LinksTo({cast2_out});
+}
+}  // namespace patterns
+
+int DeleteCastOpPass::ApplyCastScatterPass(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::CastScatterPattern pattern(gpd.mutable_pattern(), name_scope_);
+
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle ApplyCastScatterPass fuse";
+    GET_IR_NODE_FROM_SUBGRAPH(scatter, scatter, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast0, cast0, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast1, cast1, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast2, cast2, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast0_in, cast0_in, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast0_out, cast0_out, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast1_in, cast1_in, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast1_out, cast1_out, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scatter_out, scatter_out, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast2_out, cast2_out, pattern);
+
+    scatter->Op()->RenameInput(cast0_out->Name(), cast0_in->Name());
+    scatter->Op()->RenameInput(cast1_out->Name(), cast1_in->Name());
+    scatter->Op()->RenameOutput(scatter_out->Name(), cast2_out->Name());
+    IR_NODE_LINK_TO(cast0_in, scatter);
+    IR_NODE_LINK_TO(cast1_in, scatter);
+    IR_NODE_LINK_TO(scatter, cast2_out);
+
+    std::unordered_set<const Node*> delete_nodes{
+        cast0, cast1, cast2, cast0_out, cast1_out, scatter_out};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  return found_subgraph_count;
+}
+
+namespace patterns {
 struct CastPattern : public PatternBase {
   CastPattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -589,6 +705,15 @@ void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   if (found_subgraph_count > 0) {
     LOG(INFO) << "--- delete " << found_subgraph_count
               << " cast_index_sample_cast subgraph";
+  }
+
+  found_subgraph_count = 0;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    found_subgraph_count += ApplyCastScatterPass(graph->GetSubGraph(i));
+  }
+  if (found_subgraph_count > 0) {
+    LOG(INFO) << "--- delete " << found_subgraph_count
+              << " cast_scatter_cast subgraph";
   }
 
   found_subgraph_count = 0;
