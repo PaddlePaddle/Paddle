@@ -133,7 +133,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
   phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
   mat_inv(dev_ctx, x, static_cast<T>(inverse_A_data));
 
-  VLOG(3) << "inverse(A) dims: " << inverse_A_data.dims();
+  // VLOG(3) << "inverse(A) dims: " << inverse_A_data.dims();
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A =
@@ -141,16 +141,16 @@ void DeterminantGradKernel(const Context& dev_ctx,
   transpose_inverse_A.Resize(x.dims());
   MPType* transpose_inverse_A_data =
       dev_ctx.template Alloc<MPType>(&transpose_inverse_A);
-  VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
-          << transpose_inverse_A_data.dims();
+  // VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: " <<
+  // transpose_inverse_A_data.dims();
 
   // Third: dA * |A|
-  DenseTensor out_grad_data;
-  out_grad_data.Resize(out_grad.dims());
-  MPType* out_grad_data = dev_ctx.template Alloc<MPType>(&out_grad);
-  DenseTensor out_data;
-  out_data.Resize(out.dims());
-  MPType* out_data = dev_ctx.template Alloc<MPType>(&out);
+  DenseTensor out_grad_d;
+  out_grad_d.Resize(out_grad.dims());
+  MPType* out_grad_data = dev_ctx.template Alloc<MPType>(&out_grad_d);
+  DenseTensor out_d;
+  out_d.Resize(out.dims());
+  MPType* out_data = dev_ctx.template Alloc<MPType>(&out_d);
   auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad_data, out_data);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
