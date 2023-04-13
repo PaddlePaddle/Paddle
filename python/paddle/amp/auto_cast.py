@@ -199,47 +199,53 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
+def need_keep_fp32(layer, dtype):
+    need_keep_fp32 = False
+    if isinstance(
+        layer,
+        (
+            paddle.nn.BatchNorm,
+            paddle.nn.BatchNorm1D,
+            paddle.nn.BatchNorm2D,
+            paddle.nn.BatchNorm3D,
+            paddle.nn.SyncBatchNorm,
+        ),
+    ):
+        need_keep_fp32 = True
+    elif (layer._dtype == 'float16') or isinstance(
+        layer,
+        (
+            paddle.nn.LayerNorm,
+            paddle.nn.InstanceNorm1D,
+            paddle.nn.InstanceNorm2D,
+            paddle.nn.InstanceNorm3D,
+        ),
+    ):
+        need_keep_fp32 = True
+    elif not layer._cast_to_low_precison_amp:
+        need_keep_fp32 = True
+
+    return need_keep_fp32
+
+
 @dygraph_only
-def pure_fp16_initialize(models):
+def amp_initialize(models, dtype):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
-            layer._casted_by_pure_fp16 = True
-            if (layer._dtype == 'float16') or isinstance(
-                layer,
-                (
-                    paddle.nn.BatchNorm,
-                    paddle.nn.BatchNorm1D,
-                    paddle.nn.BatchNorm2D,
-                    paddle.nn.BatchNorm3D,
-                    paddle.nn.LayerNorm,
-                    paddle.nn.SyncBatchNorm,
-                    paddle.nn.InstanceNorm1D,
-                    paddle.nn.InstanceNorm2D,
-                    paddle.nn.InstanceNorm3D,
-                ),
-            ):
+            if need_keep_fp32(layer, dtype):
                 continue
-            if isinstance(
+            if dtype == "float16" and isinstance(
                 layer,
                 (
                     paddle.incubate.nn.FusedFeedForward,
                     paddle.incubate.nn.FusedMultiHeadAttention,
                 ),
             ):
-                layer._amp_decorate(dtype='float16')
+                layer._amp_decorate(dtype=dtype)
                 continue
-            layer._to_impl(
-                dtype='float16', include_sublayers=False, floating_only=True
-            )
-    return models
 
-
-@dygraph_only
-def pure_bf16_initialize(models):
-    for idx in range(len(models)):
-        for layer in models[idx].sublayers(include_self=True):
             layer._to_impl(
-                dtype='bfloat16', include_sublayers=False, floating_only=True
+                dtype=dtype, include_sublayers=False, floating_only=True
             )
     return models
 
@@ -522,6 +528,7 @@ def amp_decorate(
     master_weight=None,
     save_dtype=None,
     master_grad=False,
+    excluded_layers=None,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -590,6 +597,8 @@ def amp_decorate(
         raise ValueError(
             "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
+    if not (dtype in ['float16', 'bfloat16']):
+        raise ValueError("dtype only support float16 or bfloat16.")
 
     if level == 'O1':
         if optimizers is None:
@@ -609,12 +618,23 @@ def amp_decorate(
         raise TypeError(
             "models must be either a single model or a list of models."
         )
-    if dtype == 'float16':
-        models = pure_fp16_initialize(models=models)
-    elif dtype == 'bfloat16':
-        models = pure_bf16_initialize(models=models)
+
+    if excluded_layers is None:
+        excluded_layers = []
+    elif isinstance(excluded_layers, paddle.nn.Layer):
+        excluded_layers = [excluded_layers]
+        check_models(excluded_layers)
+    elif isinstance(excluded_layers, list):
+        check_models(excluded_layers)
     else:
-        raise TypeError("dtype only support float16 or bfloat16.")
+        raise TypeError(
+            "excluded_layers must be either a nn.Layer instance or a list of nn.Layer instances."
+        )
+    # initialize parameters of the model
+    for idx in range(len(excluded_layers)):
+        for layer in excluded_layers[idx].sublayers(include_self=True):
+            layer._cast_to_low_precison_amp = False
+    amp_initialize(models=models, dtype=dtype)
 
     if optimizers is not None:
         # check optimizers
@@ -741,6 +761,7 @@ def decorate(
     master_weight=None,
     save_dtype=None,
     master_grad=False,
+    excluded_layers=None,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -757,8 +778,9 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
-        master_grad(bool, optional): For level='O2', whether to use FP32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If it is enabled, the weight
-             gradients will be FP32 dtype after the backpropagation. Default is False.
+        master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
+             gradients will be float32 dtype after the backpropagation. Default is False.
+        excluded_layers(Layer|list of Layer, optional): Specifies the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
     Examples:
 
@@ -808,5 +830,12 @@ def decorate(
             print(output.dtype) # FP16
     """
     return amp_decorate(
-        models, optimizers, level, dtype, master_weight, save_dtype, master_grad
+        models,
+        optimizers,
+        level,
+        dtype,
+        master_weight,
+        save_dtype,
+        master_grad,
+        excluded_layers,
     )
