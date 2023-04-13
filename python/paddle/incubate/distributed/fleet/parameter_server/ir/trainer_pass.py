@@ -1486,7 +1486,7 @@ def get_communicate_var_info(
         #         format(name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
+        input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
     # output
     # var -> reshape -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> Heter_SERVER_BLOCK_index@JOINT_VAR
@@ -1847,7 +1847,7 @@ def insert_reshape_op(
         new_var_shape = out.shape
 
     x_shape = block.create_var(
-        name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype
+        name=f"{var_name}.xshape@Heter", dtype=input_var.dtype
     )
     block._insert_op(
         index=index,
@@ -2087,7 +2087,7 @@ def find_op_input_output(program, block, op):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 

@@ -151,7 +151,7 @@ def train():
                 },
                 fetch_list=[loss],
             )
-            print("step: %s, loss: %f" % (step, loss_print[0]))
+            print(f"step: {step}, loss: {loss_print[0]:f}")
         else:
             exe.run(
                 distributed_main_program,
@@ -163,7 +163,7 @@ def train():
                     "loss_mask": loss_mask,
                 },
             )
-            print("step: %s, loss: %s" % (step, "None"))
+            print("step: {}, loss: {}".format(step, "None"))
 
 
 if __name__ == "__main__":

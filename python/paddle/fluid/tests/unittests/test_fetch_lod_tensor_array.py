@@ -19,14 +19,13 @@ from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
 import paddle
 from paddle import fluid
-from paddle.fluid import layers
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):
     def build_program(self, main_program, startup_program):
         with fluid.unique_name.guard():
             with fluid.program_guard(main_program, startup_program):
-                i = layers.zeros(shape=[1], dtype='int64')
+                i = paddle.zeros(shape=[1], dtype='int64')
                 img = paddle.static.data(
                     name='image', shape=[-1, 784], dtype='float32'
                 )

@@ -130,13 +130,13 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     case proto::AttrType::SCALAR: {
-      return make_scalar_from_proto(attr_desc.scalar());
+      return MakeScalarFromProto(attr_desc.scalar());
     }
 
     case proto::AttrType::SCALARS: {
       std::vector<paddle::experimental::Scalar> val(attr_desc.scalars_size());
       for (int i = 0; i < attr_desc.scalars_size(); ++i) {
-        val[i] = make_scalar_from_proto(attr_desc.scalars(i));
+        val[i] = MakeScalarFromProto(attr_desc.scalars(i));
       }
       return val;
     }
@@ -170,7 +170,7 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
   return paddle::blank();
 }
 
-paddle::experimental::Scalar make_scalar_from_proto(const proto::Scalar& v) {
+paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v) {
   auto data_type = v.type();
   switch (data_type) {
     case proto::Scalar_Type_BOOLEAN:
@@ -192,7 +192,7 @@ paddle::experimental::Scalar make_scalar_from_proto(const proto::Scalar& v) {
   return paddle::experimental::Scalar();
 }
 
-proto::Scalar make_scalar_proto(const paddle::experimental::Scalar& v) {
+proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v) {
   proto::Scalar s;
   auto data_type = v.dtype();
   switch (data_type) {
@@ -243,7 +243,7 @@ proto::Scalar make_scalar_proto(const paddle::experimental::Scalar& v) {
   return s;
 }
 
-paddle::experimental::Scalar make_scalar_from_attribute(const Attribute& v) {
+paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v) {
   auto attr_type = static_cast<proto::AttrType>(v.index() - 1);
   switch (attr_type) {
     case proto::AttrType::SCALAR:
@@ -266,7 +266,7 @@ paddle::experimental::Scalar make_scalar_from_attribute(const Attribute& v) {
   }
 }
 
-std::vector<paddle::experimental::Scalar> make_scalars_from_attribute(
+std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
     const Attribute& v) {
   auto attr_type = static_cast<proto::AttrType>(v.index() - 1);
   switch (attr_type) {
@@ -313,9 +313,9 @@ void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
       continue;  // VAR& VARS are not proper attribute
     }
     if (attr_type == proto::AttrType::SCALAR) {
-      it->second = Attribute(make_scalar_from_attribute(it->second));
+      it->second = Attribute(MakeScalarFromAttribute(it->second));
     } else if (attr_type == proto::AttrType::SCALARS) {
-      it->second = Attribute(make_scalars_from_attribute(it->second));
+      it->second = Attribute(MakeScalarsFromAttribute(it->second));
     }
   }
 }

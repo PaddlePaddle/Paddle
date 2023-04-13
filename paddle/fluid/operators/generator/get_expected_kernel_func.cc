@@ -141,5 +141,40 @@ phi::KernelKey GetSgdExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetUpdateLossScalingExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
+phi::KernelKey GetMatrixNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetUniqueExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+  // Return CPUPlace when Attr("is_sorted") is false. Because it means
+  // that fluid.layers.unique is called, but there is no cuda kernel.
+  if (!ctx.Attr<bool>("is_sorted")) {
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  } else {
+    // new version paddle.unique is called.
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace());
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

@@ -78,7 +78,7 @@ class TestModeOp(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 class TestModeOpLastdim(OpTest):
@@ -103,7 +103,7 @@ class TestModeOpLastdim(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 class TestModeOpKernels(unittest.TestCase):

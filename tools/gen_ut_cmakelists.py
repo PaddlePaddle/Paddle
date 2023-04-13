@@ -624,7 +624,7 @@ if __name__ == "__main__":
             os.path.dirname(file) for file in args.files
         ]
     if len(args.dirpaths) >= 1:
-        current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
+        current_work_dirs = current_work_dirs + list(args.dirpaths)
 
     cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
     cmake_generator.prepare_dist_ut_port()

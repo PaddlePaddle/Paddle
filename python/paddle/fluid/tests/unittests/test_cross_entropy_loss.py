@@ -860,7 +860,7 @@ class CrossEntropyLoss(unittest.TestCase):
         N = 100
         C = 200
         input_np = np.random.random([N, C]).astype(self.dtype)
-        label_np = -np.ones((N)).astype(np.int64)
+        label_np = -np.ones(N).astype(np.int64)
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()

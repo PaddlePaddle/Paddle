@@ -499,7 +499,7 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
         if param.name in bf16_var_names:
-            _logger.debug("---- cast {} to bf16 dtype ----".format(param.name))
+            _logger.debug(f"---- cast {param.name} to bf16 dtype ----")
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(convert_float_to_uint16(data), place)

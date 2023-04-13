@@ -27,7 +27,7 @@ class TestNumelOp(OpTest):
         self.op_type = "size"
         self.python_api = paddle.numel
         self.init()
-        x = np.random.random((self.shape)).astype(self.dtype)
+        x = np.random.random(self.shape).astype(self.dtype)
         self.inputs = {
             'Input': x,
         }
@@ -82,7 +82,7 @@ class TestNumelOpBF16(OpTest):
         self.python_api = paddle.numel
         self.dtype = np.uint16
         self.init()
-        x = np.random.random((self.shape)).astype(np.float32)
+        x = np.random.random(self.shape).astype(np.float32)
         self.inputs = {'Input': convert_float_to_uint16(x)}
         self.outputs = {'Out': np.array([np.size(x)])}
 
