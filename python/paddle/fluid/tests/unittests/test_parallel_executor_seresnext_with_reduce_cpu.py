@@ -17,7 +17,7 @@ import unittest
 import seresnext_net
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestResnetWithReduceBase(TestParallelExecutorBase):

@@ -19,15 +19,9 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
-#include "paddle/phi/api/profiler/trace_event_collector.h"
-
-namespace paddle {
-namespace platform {
-class TraceEventCollector;
-}  // namespace platform
-}  // namespace paddle
-
 namespace phi {
+
+class TraceEventCollector;
 
 class DeviceInterface {  // Driver / Runtime
  public:
@@ -237,7 +231,7 @@ class DeviceInterface {  // Driver / Runtime
   // blas
   virtual void BlasAXPBY(size_t dev_id,
                          const stream::Stream& stream,
-                         paddle::experimental::DataType dtype,
+                         phi::DataType dtype,
                          size_t numel,
                          float alpha,
                          void* x,

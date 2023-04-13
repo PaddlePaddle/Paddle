@@ -18,9 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import nn, static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
@@ -248,6 +247,7 @@ class TestDistributedContext(unittest.TestCase):
             "_backup_serial_main_program_stack",
             "_backup_serial_startup_program_stack",
             "_pass_context",
+            "_tensor_nodes_with_same_name",
         ]
 
         for i in range(len(copy_list)):

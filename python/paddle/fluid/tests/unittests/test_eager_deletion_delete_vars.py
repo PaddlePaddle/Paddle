@@ -23,7 +23,7 @@ import unittest
 from functools import reduce
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -135,7 +135,7 @@ class TestExecutor(unittest.TestCase):
         persistables, non_persistables = get_persistables_and_non_persistables(
             fluid.default_main_program(), [loss.name]
         )
-        print('Non-persistable var number {}'.format(len(non_persistables)))
+        print(f'Non-persistable var number {len(non_persistables)}')
         print(non_persistables)
 
         self.assert_gc_vars(

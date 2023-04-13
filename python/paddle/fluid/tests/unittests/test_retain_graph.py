@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.disable_static()
 SEED = 2020
@@ -25,7 +25,7 @@ np.random.seed(SEED)
 paddle.seed(SEED)
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
@@ -36,7 +36,7 @@ class Generator(fluid.dygraph.Layer):
         return x
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.convd = paddle.nn.Conv2D(6, 3, 1)
@@ -74,7 +74,7 @@ class TestRetainGraph(unittest.TestCase):
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
-                raise NotImplementedError('{} not implemented'.format(type))
+                raise NotImplementedError(f'{type} not implemented')
             interpolatesv.stop_gradient = False
             real_data.stop_gradient = True
             fake_AB = paddle.concat((real_data.detach(), interpolatesv), 1)

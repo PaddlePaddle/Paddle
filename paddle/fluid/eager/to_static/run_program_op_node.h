@@ -309,6 +309,8 @@ inline void RunProgramAPI(
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
+
   auto input_names = details::GetTensorsName(x);
   auto output_names = details::GetTensorsName(out);
   auto param_names = details::GetTensorsName(params);
@@ -479,6 +481,7 @@ inline void RunProgramGradAPI(
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
       paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
@@ -579,8 +582,7 @@ inline void RunProgramGradAPI(
                                                    *backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
-    global_inner_scope->SetCanReuesd(
-        false);  // can't reuse util call `~GradNodeRunProgram`
+    global_inner_scope->SetCanReuesd(true);
     details::GcScope(global_inner_scope);
   }
 }
@@ -591,12 +593,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
 
   ~GradNodeRunProgram() {
-    auto *out_scope_vec = &step_scope_;
-    // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
-    for (size_t i = 0; i < out_scope_vec->size(); ++i) {
-      paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
-      global_inner_scope->SetCanReuesd(true);  // set this to reuse scope.
-      details::GcScope(global_inner_scope);
+    if (!executed_) {
+      auto *out_scope_vec = &step_scope_;
+      VLOG(4) << "~GradNodeRunProgram";
+      // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
+      for (size_t i = 0; i < out_scope_vec->size(); ++i) {
+        paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
+        global_inner_scope->SetCanReuesd(true);
+        details::GcScope(global_inner_scope);
+        VLOG(4) << "global_inner_scope SetCanReuesd";
+      }
     }
   }
   // Functor: perform backward computations
@@ -658,6 +664,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       x_grad_ptr,
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+
+    executed_ = true;
     return {x_grad, params_grad};
   }
 
@@ -734,4 +742,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;
+
+  bool executed_{false};
 };

@@ -70,6 +70,13 @@ struct Sine<dtype::float16> {
   }
 };
 
+template <>
+struct Sine<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(sin(static_cast<float>(val)));
+  }
+};
+
 template <typename T>
 struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
@@ -79,6 +86,13 @@ template <>
 struct Cosine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
     return dtype::float16(cos(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Cosine<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(cos(static_cast<float>(val)));
   }
 };
 
@@ -1980,11 +1994,7 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
-#ifdef PADDLE_WITH_MLU
-    return ActBwdOpFwdDeps::kDepX;
-#else
     return ActBwdOpFwdDeps::kDepOut;
-#endif
   }
 };
 
@@ -2472,6 +2482,58 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
+template <typename T>
+struct CudaLogitFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+  float eps;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+
+  // logit(x) = ln(x/(1-x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT y = min(x, (one - static_cast<MT>(eps)));
+    y = max(y, static_cast<MT>(eps));
+
+    if (!eps) {
+      y = x < zero || x > one ? static_cast<T>(NAN) : log(y / (one - y));
+    } else {
+      y = log(y / (one - y));
+    }
+    return static_cast<T>(y);
+  }
+};
+
+template <typename T>
+struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  float eps;
+  MT zero = static_cast<MT>(0.0f);
+  MT one = static_cast<MT>(1.0f);
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"eps", &eps}};
+  }
+  // logit(x)' = 1/(x*(1-x))
+  __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
+    MT x = static_cast<MT>(arg_x);
+    MT dx = (x < static_cast<MT>(eps) || x > one - static_cast<MT>(eps))
+                ? zero
+                : (static_cast<MT>(dout) / (x * (one - x)));
+    return static_cast<T>(dx);
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
@@ -2616,10 +2678,12 @@ struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
 
-  // reciprocal(x) = 1 / x
-  __device__ __forceinline__ T operator()(const T x) const { return one / x; }
+  __device__ __forceinline__ T operator()(const T x) const {
+    return static_cast<T>(one / static_cast<MPType>(x));
+  }
 };
 
 template <typename T>

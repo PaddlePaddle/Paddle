@@ -85,14 +85,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
-
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() == 0 && y_dims.size() == 0) {
-    out->set_dims(phi::make_ddim({}));
-  } else {
-    out->set_dims(phi::make_ddim({1}));
-  }
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -403,12 +396,7 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  if (!x.dims().size() || !y.dims().size()) {
-    out->set_dims(make_ddim({}));
-  } else {
-    out->set_dims(make_ddim({1}));
-  }
-  out->set_dtype(DataType::BOOL);
+  out->set_dims(make_ddim({}));
 }
 
 void ComplexInferMeta(const MetaTensor& x,
@@ -898,7 +886,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   auto labels_dims = label.dims();
   auto logits_rank = logits_dims.size();
-  auto labels_rank = labels_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -logits_rank,
                     phi::errors::InvalidArgument(
@@ -930,12 +917,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
         phi::errors::InvalidArgument("Attr(axis) can only be -1 "
                                      "when not in numeric_stable_mode."));
   }
-
-  PADDLE_ENFORCE_EQ(
-      (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
-      false,
-      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
-                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
@@ -1297,6 +1278,22 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
                               "Output Tensor (out) should not be nullptr."));
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+}
+
+void FusedDropoutAddInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const Scalar& p,
+                              bool is_test,
+                              const std::string& mode,
+                              int seed,
+                              bool fix_seed,
+                              MetaTensor* out,
+                              MetaTensor* seed_offset) {
+  out->share_meta(x);
+  if (seed_offset) {
+    seed_offset->set_dims({2});
+    seed_offset->set_dtype(DataType::INT64);
+  }
 }
 
 // Used in FusedMatmulInferMeta

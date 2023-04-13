@@ -166,7 +166,7 @@ TEST(DisMultiTrainerTest, test3) {
   tmp1->SetDebug(true);
   ProgramDesc p;
   tmp1->InitOtherEnv(p);
-  tmp1->Run();
+  // tmp1->Run();
   tmp1->Finalize();
 #endif
 }

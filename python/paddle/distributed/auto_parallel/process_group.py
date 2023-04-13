@@ -52,9 +52,9 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
-        new_key = ''.join(map(str, sorted(ranks)))
+        new_key = ''.join(map(str, ranks))
         for pg_id, pg in _g_process_group_map.items():
-            cur_key = ''.join(map(str, sorted(pg.ranks)))
+            cur_key = ''.join(map(str, pg.ranks))
             if pg_id != 0 and new_key == cur_key:
                 return pg
     # If not matching the existing one, construct a new process group
@@ -82,7 +82,7 @@ class ProcessGroup:
                 group_id != 0
             ), "Process group id 0 is reserved for all ranks."
         self._group_id = group_id
-        self._ranks = sorted(ranks)
+        self._ranks = ranks
         # Add the current ranks into group 0
         if group_id != 0:
             global _g_process_group_map
@@ -109,14 +109,14 @@ class ProcessGroup:
                 not self.is_instantiate()
             ), "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
-        self._ranks = sorted(list(set(self.ranks)))
+        self._ranks = list(set(self.ranks))
 
     def local_rank(self, global_rank):
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
-            assert False, "Rank {} doesn't belong to this group".format(
-                global_rank
+            raise AssertionError(
+                f"Rank {global_rank} doesn't belong to this group"
             )
 
     def is_instantiate(self):
@@ -149,7 +149,7 @@ class ProcessGroup:
                     ring_id
                 )
             else:
-                assert False, "No CUDA device found"
+                raise AssertionError('No CUDA device found')
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group

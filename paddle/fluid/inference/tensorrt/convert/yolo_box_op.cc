@@ -15,15 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -32,7 +23,7 @@ class YoloBoxOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid yolo box op to tensorrt plugin";
+    VLOG(3) << "convert a yolo box op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     std::string X = op_desc.Input("X").front();

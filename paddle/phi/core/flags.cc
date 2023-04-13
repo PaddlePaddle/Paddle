@@ -120,8 +120,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDA related related FLAG
@@ -201,37 +200,6 @@ PADDLE_DEFINE_EXPORTED_int64(
     0,
     "The times of exhaustive search for cuBlasLt matmul with/without "
     " epilogue algorithms, default is 0, means disabling exhaustive search.");
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-PADDLE_DEFINE_EXPORTED_string(
-    selected_npus,
-    "",
-    "A list of device ids separated by comma, like: 0,1,2,3. "
-    "This option is useful when doing multi process training and "
-    "each process have only one device (NPU). If you want to use "
-    "all visible devices, set this to empty string.");
-PADDLE_DEFINE_EXPORTED_bool(
-    hccl_check_nan,
-    true,
-    "Check Nan in tensor before hccl_allreduce_sum otherwise it'll "
-    "core when meets Nan value");
-PADDLE_DEFINE_EXPORTED_string(
-    npu_config_path,
-    "",
-    "The absolute path of configuration json file, like: /tmp/config.json. "
-    "If proveided, it will be passed to aclInit().");
-PADDLE_DEFINE_EXPORTED_int32(min_loss_scaling,
-                             1,
-                             "set minmum loss scaling value!");
-PADDLE_DEFINE_EXPORTED_string(
-    npu_precision_mode,
-    "",
-    "NPU operator precision mode, options are 'force_fp32', 'force_fp16', "
-    "'allow_fp32_to_fp16', 'must_keep_origin_dtype' and "
-    "'allow_mix_precision'. If you want to use the default mode ("
-    "allow_fp32_to_fp16), set this to empty string. For more details, "
-    "please refer to the documents");
 #endif
 
 /*
@@ -558,8 +526,7 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
@@ -647,6 +614,23 @@ PADDLE_DEFINE_EXPORTED_uint64(
     "the process would raise out of memory error if the allocated "
     "memory exceeds the limit even though there is available "
     "memory on the gpu card. The unit is MB and default value is 0.");
+
+/**
+ * Memory related FLAG
+ * Name: FLAGS_auto_growth_chunk_size_in_mb
+ * Since Version: 2.5.0
+ * Value Range: uint64, default=0 (MB)
+ * Example:
+ * Note: The minimal chunk size of GPU memory block in auto_growth allocator.
+ *       The real chunk size is max(request_size,
+ *       FLAGS_auto_growth_chunk_size_in_mb).
+ */
+PADDLE_DEFINE_EXPORTED_uint64(
+    auto_growth_chunk_size_in_mb,
+    0ul,
+    "The minimal chunk size of GPU memory block in auto_growth allocator.  "
+    "The real chunk size is max(request_size, "
+    "FLAGS_auto_growth_chunk_size_in_mb).");
 
 #endif
 
@@ -745,6 +729,16 @@ PADDLE_DEFINE_EXPORTED_int32(
     "instead of sum. Default is 0.");
 
 /**
+ * Tensor.numpy() has a hack, and this flag can close this hack
+ * [true]: set 0D Tensor to 1D Numpy
+ * [false]: not set 0D Tensor to 1D Numpy, close the hack
+ *
+ * Now, just set true by default in 2.5 transition time
+ * which will be removed in future (2.6 or 2.7) .
+ */
+PADDLE_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+
+/**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_on
  * Since Version: 2.0.0
@@ -810,9 +804,8 @@ PADDLE_DEFINE_EXPORTED_bool(use_fast_math,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
+    defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time,
                              120,
                              "The maximum time for get host by name time");
@@ -1007,6 +1000,20 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
                             false,
                             "It controls whether to use cinn with "
                             "its auto-tune feature enabled");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_subgraph_graphviz_dir
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_cinn_subgraph_graphviz_dir="./cinn_graph/" will save the
+ * CINN sub-graph into "./cinn_graph/", and each sub-graph will save into
+ * "fusion_groups_*"" directory
+ */
+PADDLE_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
+                              "",
+                              "Specify the directory path of dot file of "
+                              "graph, which is used for debug.");
 
 #endif
 

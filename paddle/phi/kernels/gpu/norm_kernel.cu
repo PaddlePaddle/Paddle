@@ -43,7 +43,7 @@ __global__ void Normalize(const T* x,
                           const int pre,
                           const int axis_n,  // dim in axis
                           const int post,
-                          const T eps,
+                          const float eps,
                           T* y,
                           T* out_norm) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -86,7 +86,6 @@ void NormKernel(const Context& ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  T eps = static_cast<T>(epsilon);
 
   DenseTensor* out_norm;
   DenseTensor out_norm_tmp;
@@ -117,8 +116,8 @@ void NormKernel(const Context& ctx,
   int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
-  Normalize<T, block>
-      <<<grid, block, 0, ctx.stream()>>>(x_ptr, pre, n, post, eps, y, norm_ptr);
+  Normalize<T, block><<<grid, block, 0, ctx.stream()>>>(
+      x_ptr, pre, n, post, epsilon, y, norm_ptr);
 }
 
 }  // namespace phi
@@ -129,4 +128,5 @@ PD_REGISTER_KERNEL(norm,
                    phi::NormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

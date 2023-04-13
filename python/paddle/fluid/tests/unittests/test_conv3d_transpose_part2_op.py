@@ -18,8 +18,8 @@ import numpy as np
 from test_conv3d_transpose_op import TestConv3DTransposeOp
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):

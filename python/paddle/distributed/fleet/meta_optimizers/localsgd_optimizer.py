@@ -45,11 +45,14 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return (
-            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        return isinstance(
+            self.inner_opt,
+            (
+                paddle.optimizer.momentum.Momentum,
+                paddle.fluid.optimizer.Momentum,
+                paddle.optimizer.sgd.SGD,
+                paddle.fluid.optimizer.SGD,
+            ),
         )
 
     def _disable_strategy(self, dist_strategy):
@@ -228,11 +231,14 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return (
-            isinstance(self.inner_opt, paddle.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        return isinstance(
+            self.inner_opt,
+            (
+                paddle.optimizer.Momentum,
+                paddle.fluid.optimizer.Momentum,
+                paddle.optimizer.sgd.SGD,
+                paddle.fluid.optimizer.SGD,
+            ),
         )
 
     def _disable_strategy(self, dist_strategy):

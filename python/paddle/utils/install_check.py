@@ -65,22 +65,6 @@ def _is_cuda_available():
         return False
 
 
-def _is_npu_available():
-    """
-    Check whether NPU is avaiable.
-    """
-    try:
-        assert len(paddle.static.npu_places()) > 0
-        return True
-    except Exception as e:
-        logging.warning(
-            "You are using NPU version PaddlePaddle, but there is no NPU "
-            "detected on your machine. Maybe NPU devices is not set properly."
-            "\n Original Error is {}".format(e)
-        )
-        return False
-
-
 def _is_xpu_available():
     """
     Check whether XPU is avaiable.
@@ -97,22 +81,19 @@ def _is_xpu_available():
         return False
 
 
-def _run_dygraph_single(use_cuda, use_xpu, use_npu):
+def _run_dygraph_single(use_cuda, use_xpu):
     """
-    Testing the simple network in dygraph mode using one CPU/GPU/XPU/NPU.
+    Testing the simple network in dygraph mode using one CPU/GPU/XPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
     """
     paddle.disable_static()
     if use_cuda:
         paddle.set_device('gpu')
     elif use_xpu:
         paddle.set_device('xpu')
-    elif use_npu:
-        paddle.set_device('npu')
     else:
         paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
@@ -135,14 +116,13 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     opt.step()
 
 
-def _run_static_single(use_cuda, use_xpu, use_npu):
+def _run_static_single(use_cuda, use_xpu):
     """
-    Testing the simple network with executor running directly, using one CPU/GPU/XPU/NPU.
+    Testing the simple network with executor running directly, using one CPU/GPU/XPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
     """
     paddle.enable_static()
     with paddle.static.scope_guard(paddle.static.Scope()):
@@ -159,8 +139,6 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
             place = paddle.CUDAPlace(0)
         elif use_xpu:
             place = paddle.XPUPlace(0)
-        elif use_npu:
-            place = paddle.NPUPlace(0)
         else:
             place = paddle.CPUPlace()
 
@@ -186,7 +164,7 @@ def train_for_run_parallel():
         """
 
         def __init__(self):
-            super(LinearNet, self).__init__()
+            super().__init__()
             self._linear1 = paddle.nn.Linear(10, 10)
             self._linear2 = paddle.nn.Linear(10, 1)
 
@@ -223,7 +201,6 @@ def _run_parallel(device_list):
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
         device_list (int): The specified devices.
     """
     paddle.distributed.spawn(train_for_run_parallel, nprocs=len(device_list))
@@ -252,14 +229,11 @@ def run_check():
 
     use_cuda = False
     use_xpu = False
-    use_npu = False
 
     if paddle.is_compiled_with_cuda():
         use_cuda = _is_cuda_available()
     elif paddle.is_compiled_with_xpu():
         use_xpu = _is_xpu_available()
-    elif paddle.is_compiled_with_npu():
-        use_npu = _is_npu_available()
 
     if use_cuda:
         device_str = "GPU"
@@ -267,17 +241,14 @@ def run_check():
     elif use_xpu:
         device_str = "XPU"
         device_list = paddle.static.xpu_places()
-    elif use_npu:
-        device_str = "NPU"
-        device_list = paddle.static.npu_places()
     else:
         device_str = "CPU"
         device_list = paddle.static.cpu_places(device_count=1)
     device_count = len(device_list)
 
-    _run_static_single(use_cuda, use_xpu, use_npu)
-    _run_dygraph_single(use_cuda, use_xpu, use_npu)
-    print("PaddlePaddle works well on 1 {}.".format(device_str))
+    _run_static_single(use_cuda, use_xpu)
+    _run_dygraph_single(use_cuda, use_xpu)
+    print(f"PaddlePaddle works well on 1 {device_str}.")
 
     try:
         if len(device_list) > 1:
@@ -301,7 +272,7 @@ def run_check():
             )
         )
 
-        logging.warning("\n Original Error is: {}".format(e))
+        logging.warning(f"\n Original Error is: {e}")
         print(
             "PaddlePaddle is installed successfully ONLY for single {}! "
             "Let's start deep learning with PaddlePaddle now.".format(

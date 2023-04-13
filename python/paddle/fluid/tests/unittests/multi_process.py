@@ -34,9 +34,7 @@ def train(prefix):
     )
 
     print(name)
-    with open(
-        "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
-    ) as f:
+    with open(f"multi_process_{prefix}.check_{trainer_id}.log", "w") as f:
         f.write(name)
 
 
@@ -51,7 +49,7 @@ def train_abort(prefix):
     if trainer_id == 0:
         try:
             # train abort
-            exit(1)
+            sys.exit(1)
         except SystemExit:
             name = "abort>>> selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
                 selected_gpus,
@@ -62,7 +60,7 @@ def train_abort(prefix):
             )
             print(name)
             with open(
-                "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
+                f"multi_process_{prefix}.check_{trainer_id}.log", "w"
             ) as f:
                 f.write(name)
             raise
@@ -78,9 +76,7 @@ def train_abort(prefix):
         )
 
         print(name)
-        with open(
-            "multi_process_{}.check_{}.log".format(prefix, trainer_id), "w"
-        ) as f:
+        with open(f"multi_process_{prefix}.check_{trainer_id}.log", "w") as f:
             f.write(name)
 
 

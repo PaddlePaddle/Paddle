@@ -89,3 +89,24 @@ PD_REGISTER_KERNEL(shape,
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
 }
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(shape,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   bool,
+                   int,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+}
+#endif
