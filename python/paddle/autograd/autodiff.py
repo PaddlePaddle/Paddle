@@ -24,7 +24,7 @@ def as_tensors(xs):
     elif isinstance(xs, Sequence):
         return tuple(xs)
     else:
-        return xs
+        return (xs,)
 
 
 class Jacobian:
@@ -118,7 +118,7 @@ class Jacobian:
         return getattr(self._jacobian[:], __name)
 
 
-class Hessian:
+class Hessian(Jacobian):
     """
     Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
@@ -167,22 +167,8 @@ class Hessian:
         #         [0., 0., 0., 2.]])
     """
 
-    def __init__(self, ys, xs, is_batched=False):
-        _jacobian = Jacobian(ys, xs, is_batched=is_batched)
-        _jacobian = _jacobian[:, 0, :] if is_batched else _jacobian[0, :]
-
-        self._hessian = Jacobian(_jacobian, xs, is_batched=is_batched)
-
-    @property
-    def shape(self):
-        """The shape of flattened Hessian matrix."""
-        return self._hessian.shape
-
-    def __getitem__(self, indexes):
-        return self._hessian[indexes]
-
-    def __getattr__(self, __name: str):
-        return getattr(self._hessian[:], __name)
+    def __init__(self):
+        pass
 
 
 class _Jacobian:
@@ -212,10 +198,6 @@ class _Jacobian:
         self._flatten_xs = self._flatten(as_tensors(self._xs))
         self._flatten_ys = self._flatten(as_tensors(self._ys))
         self._cache = {}
-
-    @property
-    def shape(self):
-        raise NotImplementedError
 
     @property
     def _lazy_axis(self):
@@ -285,16 +267,18 @@ class _JacobianNoBatch(_Jacobian):
 
     def __init__(self, ys, xs):
         super().__init__(ys, xs)
-
-    @property
-    def shape(self):
-        return (self._flatten_ys.shape[0], self._flatten_xs.shape[0])
+        self.shape = (
+            *(self._flatten_ys.shape[0:1]),
+            *(self._flatten_xs.shape[0:1]),
+        )
 
     @property
     def _lazy_axis(self):
         return 0
 
     def _flatten(self, xs):
+        if len(xs) == 1 and xs[0].ndim == 0:
+            return xs[0]
         return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
     def _evaluate(self, row_index):
@@ -314,13 +298,10 @@ class _JacobianBatchFirst(_Jacobian):
 
     def __init__(self, ys, xs):
         super().__init__(ys, xs)
-
-    @property
-    def shape(self):
-        return (
-            self._flatten_xs.shape[0],
-            self._flatten_ys.shape[1],
-            self._flatten_xs.shape[1],
+        self.shape = (
+            *self._flatten_xs.shape[0:1],
+            *self._flatten_ys.shape[1:2],
+            *self._flatten_xs.shape[1:2],
         )
 
     @property
@@ -385,31 +366,28 @@ def _multi_index(indexes, shape):
 
 
 def jacobian(
-    ys: Tuple[paddle.Tensor, ...],
-    xs: Tuple[paddle.Tensor, ...],
+    ys: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
+    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[List[List[Jacobian]], List[Jacobian], Jacobian]:
     """Function that computes the jacobian of ys deriveted from xs.
 
     Args:
-        ys (Tuple[paddle.Tensor, ...]): Output or list of outputs derived from xs.
-        xs (Tuple[paddle.Tensor, ...]): Input or list of inputs.
+        ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or list of outputs derived from xs.
+        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
         Union[List[List[Jacobian]], List[Jacobian], Jacobian]: Jacobian(s) of ys
             deriveted from xs.
     """
-    if not isinstance(batch_axis, (int, None)):
+    if batch_axis is not None and batch_axis != 0:
         raise ValueError(
-            f"batch_axis should be None or int, but got {type(batch_axis)}."
+            f"batch_axis should be None or 0, but got {batch_axis}."
         )
+
     # TODO(HydrogenSulfate): support batch_axis > 0
-    if isinstance(batch_axis, int) and batch_axis != 0:
-        raise ValueError("Only support batch_axis=0 yet.")
-
     is_batched = batch_axis is not None
-
     if isinstance(ys, Sequence) and isinstance(xs, Sequence):
         _jacobian = [
             [Jacobian(_ys, _xs, is_batched) for _xs in xs] for _ys in ys
@@ -425,22 +403,22 @@ def jacobian(
 
 
 def hessian(
-    ys: Tuple[paddle.Tensor, ...],
-    xs: Tuple[paddle.Tensor, ...],
+    ys: paddle.Tensor,
+    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[List[List[Hessian]], List[Hessian], Hessian]:
     """Function that computes the hessians of ys deriveted from xs.
 
     Args:
-        ys (Tuple[paddle.Tensor, ...]): Output or list of outputs derived from xs.
-        xs (Tuple[paddle.Tensor, ...]): Input or list of inputs.
+        ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or list of outputs derived from xs.
+        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
         Union[List[List[Hessian]], List[Hessian], Hessian]: Hessian(s) of ys
             deriveted from xs.
     """
-    if not isinstance(batch_axis, (int, None)):
+    if batch_axis is not None and not isinstance(batch_axis, int):
         raise ValueError(
             f"batch_axis should be None or int, but got {type(batch_axis)}."
         )
@@ -448,18 +426,27 @@ def hessian(
     if isinstance(batch_axis, int) and batch_axis != 0:
         raise ValueError("Only support batch_axis=0 yet.")
 
-    is_batched = batch_axis is not None
-
-    if isinstance(ys, Sequence) and isinstance(xs, Sequence):
-        _hessian = [[Hessian(_ys, _xs, is_batched) for _xs in xs] for _ys in ys]
-    elif isinstance(ys, Sequence) and not isinstance(xs, Sequence):
-        _hessian = [Hessian(_ys, xs, is_batched) for _ys in ys]
-    elif not isinstance(ys, Sequence) and isinstance(xs, Sequence):
-        _hessian = [Hessian(ys, _xs, is_batched) for _xs in xs]
+    if batch_axis is None:
+        if ys.numel() != 1:
+            raise ValueError(
+                f"Only support ys.numel()({ys.numel()})==1 when batch_axis is None"
+            )
+        ys = ys.reshape((1,))
     else:
-        _hessian = Hessian(ys, xs, is_batched)
+        if ys[0].numel() != 1:
+            raise ValueError(
+                f"Only support ys[0].numel()({ys.numel()})==1 when batch_axis is int"
+            )
+        ys = ys.reshape((-1, 1))
 
-    return _hessian
+    _jacobian = jacobian(ys, xs, batch_axis)
+    if not isinstance(xs, Sequence):
+        hessian = jacobian(_jacobian, xs, batch_axis)
+    else:
+        hessian = []
+        for _j in _jacobian:
+            hessian.append(jacobian(_j, xs, batch_axis))
+    return hessian
 
 
 def _replace_none_with_zero_tensor(xs, refs):
