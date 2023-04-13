@@ -21,6 +21,7 @@
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type.h"
 #include "paddle/ir/type_base.h"
+#include "paddle/ir/utils.h"
 
 TEST(type_test, type_id) {
   // Define two empty classes, just for testing.
@@ -172,8 +173,8 @@ struct IntegerTypeStorage : public ir::TypeStorage {
   using ParamKey = std::pair<unsigned, unsigned>;
 
   static std::size_t HashValue(const ParamKey &key) {
-    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
-                        std::hash<unsigned>()(std::get<1>(key)));
+    return ir::hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                            std::hash<unsigned>()(std::get<1>(key)));
   }
 
   bool operator==(const ParamKey &key) const {
@@ -188,11 +189,6 @@ struct IntegerTypeStorage : public ir::TypeStorage {
 
   unsigned width_ : 30;
   unsigned signedness_ : 2;
-
- private:
-  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  }
 };
 
 // Customize a parameterized type: IntegerType, storage type is
