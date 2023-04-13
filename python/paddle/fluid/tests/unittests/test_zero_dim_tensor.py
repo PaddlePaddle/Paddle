@@ -4306,8 +4306,8 @@ class TestSundryAPIStatic(unittest.TestCase):
                 "x2": np.array(100.5, dtype='float32'),
             },
             fetch_list=[
-                x1.grad_name,
-                x2.grad_name,
+                x1.name,
+                x2.name,
             ],
         )
         self.assertEqual(res[0].shape, [])
