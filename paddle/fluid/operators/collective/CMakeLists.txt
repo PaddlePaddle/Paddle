@@ -27,8 +27,6 @@ register_operators(
   gen_bkcl_id_op
   c_gen_nccl_id_op
   gen_nccl_id_op
-  c_gen_hccl_id_op
-  gen_hccl_id_op
   DEPS
   ${COLLECTIVE_DEPS})
 

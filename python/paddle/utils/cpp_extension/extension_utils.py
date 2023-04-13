@@ -1041,7 +1041,6 @@ def _gen_output_content(
 ):
     # ' ' * tab space * tab number
     indent = ' ' * 4 * 2
-    inplace_idx = {v: k for k, v in inplace_reverse_idx.items()}
     dynamic_content = f"""
 {indent}res = []
 {indent}start_idx = 0"""
@@ -1134,7 +1133,6 @@ def _custom_api_content(op_name):
         attrs_map,
         inplace_reverse_idx,
     )
-    lower_in_list = [p.split("@")[0].lower() for p in in_names]
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
@@ -1161,11 +1159,6 @@ def _custom_api_content(op_name):
     api_content = API_TEMPLATE.format(
         op_name=op_name,
         params_list=params_list,
-        ins_map=ins_map,
-        attrs_map=attrs_map,
-        # "[x, y, z]""
-        in_names="[" + ",".join(lower_in_list) + "]",
-        attr_names="[" + ",".join(attr_names) + "]",
         outs_list=outs_list,
         dynamic_content=dynamic_content,
         static_content=static_content,

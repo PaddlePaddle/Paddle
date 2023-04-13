@@ -50,6 +50,12 @@
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
+- op : adamax_
+  inputs :
+    {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
@@ -259,6 +265,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bilinear (bilinear_tensor_product)
+  inputs :
+    {x : X, y : Y,weight: Weight, bias: Bias}
+  outputs :
+    {out : Out}
+
 - op : bilinear_interp (bilinear_interp_v2)
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
   inputs :
@@ -267,12 +279,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : bilinear_tensor_product
-  inputs :
-    {x : X, y : Y,weight: Weight, bias: Bias}
-  outputs :
-    {out : Out}
 
 - op : bitwise_and
   inputs :
@@ -355,6 +361,12 @@
       tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : clip_by_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : complex
   backward : complex_grad
@@ -1684,6 +1696,12 @@
       tensors_name : ShapeTensorList
   manual_signature : [randint]
 
+- op : randperm
+  outputs :
+    out : Out
+  extra :
+    attrs : [int seed = 0]
+
 - op : real
   backward : real_grad
   inputs :
@@ -2235,6 +2253,15 @@
         support_tensor : true
   manual_signature : [uniform]
 
+- op : unique
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, indices : Indices, inverse : Index, counts : Counts}
+  get_expected_kernel_type :
+    unique : GetUniqueExpectedKernelType
+  manual_signature : [unique]
+
 - op : unique_consecutive
   inputs :
     x : X
@@ -2305,5 +2332,12 @@
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
     {x: X, label: Label}
+  outputs :
+    out : Out
+
+- op: squared_l2_norm
+  backward: squared_l2_norm_grad
+  inputs :
+    x : X
   outputs :
     out : Out
