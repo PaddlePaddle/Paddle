@@ -796,7 +796,6 @@ set -x
                 exit 8;
             fi
         fi
-set +x
         EXIT_CODE=0;
 
         tmpfile_rand=`date +%s%N`
