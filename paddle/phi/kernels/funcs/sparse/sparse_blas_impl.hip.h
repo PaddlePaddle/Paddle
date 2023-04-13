@@ -208,7 +208,7 @@ class RocSparseDnMatDescriptor {
     PADDLE_ENFORCE_GE(
         x_ndims,
         2,
-        phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+        phi::errors::InvalidArgument("the dim size of DenseTensor must be "
                                      "greater than or eaqual to 2."));
 
     int64_t M = xdim_vec[x_ndims - 2];
@@ -230,7 +230,11 @@ class RocSparseDnMatDescriptor {
                                                  rocsparse_order_row);
     });
 
-    PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
+    PADDLE_ENFORCE_EQ(
+        x.numel(),
+        batch_size * M * N,
+        phi::errors::InvalidArgument("The number of elements in DenseTensor "
+                                     "must equals to batch_size * M * N."));
     if (batch_size > 1) {
       // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
       PADDLE_THROW(phi::errors::Unimplemented(
