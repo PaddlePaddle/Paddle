@@ -33,6 +33,7 @@
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
+#include "glog/logging.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/phi/core/enforce.h"

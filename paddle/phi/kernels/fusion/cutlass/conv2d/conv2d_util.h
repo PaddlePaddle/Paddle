@@ -17,6 +17,8 @@
 #include <vector>
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
 
+#include "glog/logging.h"
+
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
 
