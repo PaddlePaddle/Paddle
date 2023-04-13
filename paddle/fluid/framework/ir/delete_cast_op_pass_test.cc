@@ -25,7 +25,9 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  cpu_ctx->Alloc<float>(tensor);
 }
 
 VarDesc* Data(paddle::framework::BlockDesc* block,
