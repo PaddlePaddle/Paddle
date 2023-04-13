@@ -78,15 +78,15 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       load_combine,
       device_type,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, float>,
+          LoadCombineOpKernel<float, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, double>,
+          LoadCombineOpKernel<double, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int>,
+          LoadCombineOpKernel<int, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int8_t>,
+          LoadCombineOpKernel<int8_t, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
+          LoadCombineOpKernel<int64_t, paddle::platform::CustomDeviceContext>);
 #endif
 }
 

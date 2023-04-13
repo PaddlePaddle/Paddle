@@ -223,6 +223,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(lookup_table,
                   ops::LookupTableOp,
                   ops::LookupTableOpMaker,
@@ -234,16 +235,22 @@ REGISTER_OPERATOR(lookup_table_grad,
                   ops::LookupTableGradOpNoBufferVarsInferer,
                   ops::LookupTableOpGradVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(lookup_table,
-                       ops::LookupTableKernel<float>,
-                       ops::LookupTableKernel<double>,
-                       ops::LookupTableKernel<int8_t>,
-                       ops::LookupTableKernel<int16_t>,
-                       ops::LookupTableKernel<paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(lookup_table_grad,
-                       ops::LookupTableGradKernel<float>,
-                       ops::LookupTableGradKernel<double>,
-                       ops::LookupTableGradKernel<paddle::platform::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(lookup_table,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LookupTableKernel,
+                          float,
+                          double,
+                          int8_t,
+                          int16_t,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(lookup_table_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LookupTableGradKernel,
+                          float,
+                          double,
+                          plat::bfloat16) {}
 
 /* ==========================  register checkpoint ===========================*/
 

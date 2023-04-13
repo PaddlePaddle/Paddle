@@ -31,7 +31,7 @@ using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -161,7 +161,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LookupTableGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

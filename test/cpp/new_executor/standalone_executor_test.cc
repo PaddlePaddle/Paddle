@@ -24,7 +24,7 @@
 
 USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(uniform_random);
-USE_OP(lookup_table);
+USE_OP_ITSELF(lookup_table);
 USE_OP_ITSELF(transpose2);
 USE_OP_ITSELF(reshape2);
 USE_OP_ITSELF(split);
@@ -102,6 +102,7 @@ PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(lookup_table, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {
