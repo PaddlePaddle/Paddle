@@ -54,6 +54,10 @@ class TypeId {
   inline bool operator!=(const TypeId &other) const {
     return !(*this == other);
   }
+  inline bool operator<(const TypeId &other) const {
+    return std::hash<const ir::TypeId::Storage *>()(storage_) <
+           std::hash<const ir::TypeId::Storage *>()(other.storage_);
+  }
 
   ///
   /// \brief Enable hashing TypeId instances.

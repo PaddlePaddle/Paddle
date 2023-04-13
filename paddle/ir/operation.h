@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/op_info.h"
 #include "paddle/ir/type.h"
 #include "paddle/ir/value_impl.h"
 
@@ -28,7 +29,8 @@ class alignas(8) Operation final {
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
                            const std::vector<ir::Type> &output_types,
-                           ir::DictionaryAttribute attribute);
+                           ir::DictionaryAttribute attribute,
+                           ir::OpInfo op_info);
 
   void destroy();
 
@@ -38,6 +40,8 @@ class alignas(8) Operation final {
 
   ir::DictionaryAttribute attribute() { return attribute_; }
 
+  ir::OpInfo op_info() { return op_info_; }
+
   uint32_t num_results() { return num_results_; }
 
   uint32_t num_operands() { return num_operands_; }
@@ -45,9 +49,12 @@ class alignas(8) Operation final {
  private:
   Operation(uint32_t num_results,
             uint32_t num_operands,
-            ir::DictionaryAttribute attribute);
+            ir::DictionaryAttribute attribute,
+            ir::OpInfo op_info);
 
   ir::DictionaryAttribute attribute_;
+
+  ir::OpInfo op_info_;
 
   uint32_t num_results_ = 0;
 
