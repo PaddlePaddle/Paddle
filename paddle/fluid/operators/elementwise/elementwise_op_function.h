@@ -1596,7 +1596,7 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      const platform::Place &place,
                      int axis,
@@ -1605,11 +1605,11 @@ void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      phi::DenseTensor *dx,
                      phi::DenseTensor *dy,
                      Functor func) {
-  phi::GetGradXAndYOut<ET, T, Functor>(
+  phi::GetGradXAndYOut<T, Functor>(
       dev_ctx, place, axis, ins, *dout, dx, dy, func);
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const platform::Place &place,
                     int axis,
@@ -1617,8 +1617,7 @@ void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const phi::DenseTensor *dout,
                     phi::DenseTensor *dxy,
                     Functor func) {
-  phi::GetGradXOrYOut<ET, T, Functor>(
-      dev_ctx, place, axis, ins, *dout, dxy, func);
+  phi::GetGradXOrYOut<T, Functor>(dev_ctx, place, axis, ins, *dout, dxy, func);
 }
 
 #endif

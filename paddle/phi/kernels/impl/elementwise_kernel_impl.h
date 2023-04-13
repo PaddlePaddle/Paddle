@@ -62,8 +62,8 @@ namespace phi {
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
     dev_ctx.template Alloc<T>(out);                                  \
-    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          \
-        dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
+    funcs::BroadcastKernel<T>(                                       \
+        dev_ctx, inputs, &outputs, funcs::name##Functor<T>(), axis); \
   }
 
 template <typename T, typename Context>

@@ -38,22 +38,21 @@ void MaximumGradKernel(const Context& dev_ctx,
 
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::MaxGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MaxGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MaxGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MaxGradYFunctor<T>());
   }
 }
@@ -69,22 +68,21 @@ void MinimumGradKernel(const Context& dev_ctx,
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::MinGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MinGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MinGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MinGradYFunctor<T>());
   }
 }

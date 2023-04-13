@@ -472,12 +472,9 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
 
         std::vector<const phi::DenseTensor*> broadcast_ins = {&mask};
         std::vector<phi::DenseTensor*> broadcast_outs = {&broadcasted_mask};
-        phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary,
-                                    uint8_t,
-                                    uint8_t>(dev_ctx,
+        phi::funcs::BroadcastKernel<uint8_t>(dev_ctx,
                                              broadcast_ins,
                                              &broadcast_outs,
-                                             -1,
                                              kps::IdentityFunctor<uint8_t>());
 
         std::vector<const phi::DenseTensor*> ins = {&grad_y, &broadcasted_mask};

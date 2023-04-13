@@ -33,7 +33,7 @@ void ReduceWrapper(const GPUContext &dev_ctx,
       dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims);
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXAndYOut(const GPUContext &dev_ctx,
                      const Place &place,
                      int axis,
@@ -65,8 +65,7 @@ void GetGradXAndYOut(const GPUContext &dev_ctx,
     outs = {&tmp_dx, &tmp_dy};
   }
 
-  funcs::BroadcastKernel<ET, T, T, decltype(func), 2>(
-      dev_ctx, ins, &outs, axis, func);
+  funcs::BroadcastKernel<T, decltype(func), 2>(dev_ctx, ins, &outs, func, axis);
 
   if (dx->dims() != dout.dims() && dy->dims() == dout.dims()) {
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
@@ -78,7 +77,7 @@ void GetGradXAndYOut(const GPUContext &dev_ctx,
   }
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXOrYOut(const GPUContext &dev_ctx,
                     const Place &place,
                     int axis,
@@ -98,7 +97,7 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
     outs = {dxy};
   }
 
-  funcs::BroadcastKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, func, axis);
   if (dxy->dims() != dout.dims()) {
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
   }
@@ -340,22 +339,21 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &out, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &out, &y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
   }
 }
@@ -378,22 +376,21 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
 
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::MultiplyGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MultiplyGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
   } else if (dx == nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &x};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
   }
 }

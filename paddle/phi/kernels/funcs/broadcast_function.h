@@ -783,11 +783,7 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
 };
 #endif
 
-template <ElementwiseType ET,
-          typename OutT,
-          typename Functor,
-          int kArity,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
 void BroadcastKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -922,16 +918,12 @@ void BroadcastKernelForDifferentVecSize(
   }
 }
 
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void BroadcastKernel(const KPDevice &ctx,
                      const std::vector<const DenseTensor *> &ins,
                      std::vector<DenseTensor *> *outs,
-                     int axis,
-                     Functor func) {
+                     Functor func,
+                     int axis = -1) {
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
   using Traits = phi::funcs::FunctionTraits<Functor>;
@@ -968,7 +960,7 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  BroadcastKernelForDifferentVecSize<ET, OutT, Functor, kArity, NumOuts>(
+  BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
       ctx, ins, outs, axis, func);
 }
 
@@ -983,8 +975,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
   std::vector<DenseTensor *> outs = {z};
   dev_ctx.template Alloc<OutType>(z);
 
-  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
-      dev_ctx, ins, &outs, axis, func);
+  BroadcastKernel<OutType, Functor, 1>(dev_ctx, ins, &outs, func, axis);
 }
 
 template <typename DeviceContext,
