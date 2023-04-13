@@ -37,6 +37,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_random_ctrl MODULES test_random_ctrl ENVS ${dist_ENVS})
+  set_tests_properties(test_random_ctrl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                   TIMEOUT 50)
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset ENVS
                   ${dist_ENVS})
   set_tests_properties(test_iterable_dataset

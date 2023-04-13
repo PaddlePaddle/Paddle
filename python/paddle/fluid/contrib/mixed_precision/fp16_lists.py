@@ -13,14 +13,45 @@
 # limitations under the License.
 
 import copy
+
 from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_extra_unsupported_fp16_list = {
-    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+_extra_unsupported_list = {
+    'lookup_table',
+    'lookup_table_v2',
+    'scatter',
+    'scatter_grad',
 }
+
+
+def _get_unsupported_list(dtype):
+    if dtype == "float16":
+        amp_dtype = core.VarDesc.VarType.FP16
+    elif dtype == "bfloat16":
+        amp_dtype = core.VarDesc.VarType.BF16
+    else:
+        raise ValueError(
+            "If enable AMP, dtype should be 'float16' or 'bfloat16'."
+        )
+
+    # The set of ops that don't support fp16 calculation
+    # lookup_table fp16 is slower than fp32, though fp16 is supported.
+    _sys_unsupported_list = []
+    # _sys_unsupported_bf16_list = []
+    if core.is_compiled_with_xpu():
+        _, _, _sys_unsupported_list = core.op_supported_infos('XPU', amp_dtype)
+    elif core.is_compiled_with_npu():
+        _, _, _sys_unsupported_list = core.op_supported_infos('NPU', amp_dtype)
+    elif core.is_compiled_with_mlu():
+        _, _, _sys_unsupported_list = core.op_supported_infos('MLU', amp_dtype)
+    else:
+        _, _, _sys_unsupported_list = core.op_supported_infos('GPU', amp_dtype)
+
+    unsupported_list = _extra_unsupported_list | _sys_unsupported_list
+    return unsupported_list
 
 
 class AutoMixedPrecisionLists(object):
@@ -36,16 +67,20 @@ class AutoMixedPrecisionLists(object):
         custom_black_varnames (set): Users' custom black varibles' names.
     """
 
-    def __init__(self,
-                 custom_white_list=None,
-                 custom_black_list=None,
-                 custom_black_varnames=None):
+    def __init__(
+        self,
+        custom_white_list=None,
+        custom_black_list=None,
+        custom_black_varnames=None,
+        dtype="float16",
+    ):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
+        self.amp_dtype = dtype
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(unsupported_fp16_list)
+        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -56,8 +91,9 @@ class AutoMixedPrecisionLists(object):
         if self._custom_white_list and self._custom_black_list:
             for op_name in self._custom_white_list:
                 if op_name in self._custom_black_list:
-                    raise ValueError("Custom white list overlap "
-                                     "custom black list")
+                    raise ValueError(
+                        "Custom white list overlap " "custom black list"
+                    )
         if self._custom_white_list:
             for op_name in self._custom_white_list:
                 if op_name in self.black_list:
@@ -65,7 +101,7 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
-                if op_name in _extra_unsupported_fp16_list:
+                if op_name in _extra_unsupported_list:
                     self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
@@ -169,23 +205,5 @@ gray_list = {
     'fused_attention',
     'fused_multi_transformer',
 }
-
-# The set of ops that don't support fp16 calculation
-# lookup_table fp16 is slower than fp32, though fp16 is supported.
-_sys_unsupported_fp16_list = []
-if core.is_compiled_with_xpu():
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'XPU', core.VarDesc.VarType.FP16)
-elif core.is_compiled_with_npu():
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'NPU', core.VarDesc.VarType.FP16)
-elif core.is_compiled_with_mlu():
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'MLU', core.VarDesc.VarType.FP16)
-else:
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'GPU', core.VarDesc.VarType.FP16)
-
-unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

@@ -17,7 +17,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
@@ -46,14 +47,30 @@ struct TolerableValue {
 // Also. In standard implementation of cross entropy, other
 // framework not has the ValueClipping.
 template <>
-struct TolerableValue<platform::float16> {
-  HOSTDEVICE platform::float16 operator()(const platform::float16& x) const {
-    if (platform::isfinite(x))
+struct TolerableValue<phi::dtype::float16> {
+  HOSTDEVICE phi::dtype::float16 operator()(
+      const phi::dtype::float16& x) const {
+    if (phi::dtype::isfinite(x)) {
       return x;
-    else if (x > static_cast<platform::float16>(0))
-      return std::numeric_limits<platform::float16>::max();
-    else
-      return std::numeric_limits<platform::float16>::min();
+    } else if (x > static_cast<phi::dtype::float16>(0)) {
+      return std::numeric_limits<phi::dtype::float16>::max();
+    } else {
+      return std::numeric_limits<phi::dtype::float16>::min();
+    }
+  }
+};
+
+template <>
+struct TolerableValue<phi::dtype::bfloat16> {
+  HOSTDEVICE phi::dtype::bfloat16 operator()(
+      const phi::dtype::bfloat16& x) const {
+    if (phi::dtype::isfinite(x)) {
+      return x;
+    } else if (x > static_cast<phi::dtype::bfloat16>(0)) {
+      return std::numeric_limits<phi::dtype::bfloat16>::max();
+    } else {
+      return std::numeric_limits<phi::dtype::bfloat16>::min();
+    }
   }
 };
 

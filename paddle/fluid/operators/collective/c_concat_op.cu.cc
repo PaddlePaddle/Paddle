@@ -132,6 +132,9 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_concat,
                         ops::CConcatOpCUDAKernel<float>,
                         ops::CConcatOpCUDAKernel<double>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CConcatOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CConcatOpCUDAKernel<int>,
                         ops::CConcatOpCUDAKernel<int64_t>,
                         ops::CConcatOpCUDAKernel<plat::float16>);

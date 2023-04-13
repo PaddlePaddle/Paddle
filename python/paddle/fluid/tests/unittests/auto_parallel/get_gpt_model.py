@@ -77,7 +77,7 @@ def create_data_holder(batch_size):
     return [tokens, position_ids, attention_mask], [labels, loss_mask]
 
 
-def generate_model(strategy):
+def generate_model(strategy, dropout_prob=0.0):
     modeling.init_global()
     ranks = list(range(paddle.distributed.get_world_size()))
     modeling._global_process_mesh = auto.ProcessMesh(
@@ -105,8 +105,8 @@ def generate_model(strategy):
         num_attention_heads=8,
         intermediate_size=256,
         hidden_act="gelu",
-        hidden_dropout_prob=0.0,
-        attention_probs_dropout_prob=0.0,
+        hidden_dropout_prob=dropout_prob,
+        attention_probs_dropout_prob=dropout_prob,
         max_position_embeddings=1024,
         type_vocab_size=1,
         initializer_range=0.02,
@@ -114,7 +114,6 @@ def generate_model(strategy):
         eos_token_id=7,
         bos_token_id=0,
         eol_token_id=3,
-        pp_degree=2 if strategy == "pp" else None,
     )
     model = GPTForPretraining(
         gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02

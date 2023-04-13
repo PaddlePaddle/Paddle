@@ -15,6 +15,7 @@
 #pragma once
 
 #include "math.h"  // NOLINT
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 
@@ -31,6 +32,10 @@ inline HOSTDEVICE double real_exp(double x) { return ::exp(x); }
 
 inline HOSTDEVICE platform::float16 real_log(platform::float16 x) {
   return static_cast<platform::float16>(::logf(static_cast<float>(x)));
+}
+
+inline HOSTDEVICE phi::dtype::bfloat16 real_log(phi::dtype::bfloat16 x) {
+  return static_cast<phi::dtype::bfloat16>(::logf(static_cast<float>(x)));
 }
 
 inline HOSTDEVICE float real_log(float x) { return ::logf(x); }

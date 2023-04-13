@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from . import decorator
-from .decorator import *
+from .decorator import decorate, amp_decorate
 from . import fp16_lists
 from .fp16_lists import *
 from . import fp16_utils

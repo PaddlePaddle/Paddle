@@ -440,15 +440,21 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+        # lr var can't be float16 or bfloat16, for pure fp16 or fp16 training, should extra handle the dtype for lr
         _lr_dtype = (
             paddle.get_default_dtype() if self._dtype is None else self._dtype
         )
         _lr_dtype = (
             paddle.float32
             if (
-                paddle.get_default_dtype() != "float16"
-                and _lr_dtype == paddle.float16
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
             )
             else _lr_dtype
         )
