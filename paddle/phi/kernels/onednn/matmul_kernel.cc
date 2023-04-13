@@ -188,7 +188,7 @@ class MulPrimitiveFactory {
                           const std::vector<float> &scale) {
     auto mask = scale.size() > 1 ? 1 : 0;
     dnnl::primitive_attr attr;
-    attr.set_scales_mask(DNNL_ARG_DST, mask);
+    attr.set_scales_mask(DNNL_ARG_SRC, mask);
 
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = memory(dst_desc, engine_);
@@ -206,7 +206,7 @@ class MulPrimitiveFactory {
       std::unordered_map<int, dnnl::memory> reorder_args;
       reorder_args.insert({DNNL_ARG_SRC, src_mem});
       reorder_args.insert({DNNL_ARG_DST, dst_mem});
-      reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
+      reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales_mem});
       reorder.execute(astream, reorder_args);
       astream.wait();
     }
@@ -255,7 +255,11 @@ class MulPrimitiveFactory {
             scale_out_data / (scale_x_data * scale_y_data[i]);
     }
     int mul_mask = is_multi_channel ? 1 : 0;
-    mul_attr.set_scales_mask(DNNL_ARG_DST, mul_mask);
+    // TODO(qun): here we fold all scales into weights scales, just like we
+    // folded all scales to output scales when using oneDNN v2.7.3. But this is
+    // just a quick and dirty workaround and only valid when there is no
+    // post-ops. Finally, we need to correctly leverage the scales api in v3.
+    mul_attr.set_scales_mask(DNNL_ARG_WEIGHTS, mul_mask);
 
     auto scales_md = dnnl::memory::desc(
         {count}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
@@ -300,7 +304,7 @@ class MulPrimitiveFactory {
                     {{DNNL_ARG_SRC, *x_input_},
                      {DNNL_ARG_WEIGHTS, *y_input_},
                      {DNNL_ARG_DST, *output_},
-                     {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem_}});
+                     {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, scales_mem_}});
     astream.wait();
   }
 
