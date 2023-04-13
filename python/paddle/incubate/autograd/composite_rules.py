@@ -675,3 +675,12 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     if is_amp:
         out = cast(out, "float16")
     return out, ret_mean_, ret_var_
+
+
+@REGISTER_COMPOSITE('leaky_relu')
+def leaky_relu_composite(x, negative_slope=0.02):
+    """define composite rule of op leaky_relu."""
+    if negative_slope < 1.0:
+        return maximum(x, negative_slope * x)
+    else:
+        return minimum(x, negative_slope * x)
