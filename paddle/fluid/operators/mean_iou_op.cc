@@ -109,4 +109,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 PD_REGISTER_STRUCT_KERNEL(
-    mean_iou, CPU, ALL_LAYOUT, ops::MeanIoUKernel, int, int32_t, int64_t) {}
+    mean_iou, CPU, ALL_LAYOUT, ops::MeanIoUKernel, int, int64_t) {}

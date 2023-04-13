@@ -166,10 +166,5 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(mean_iou,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::MeanIoUCUDAOpKernel,
-                          int,
-                          int32_t,
-                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(
+    mean_iou, GPU, ALL_LAYOUT, ops::MeanIoUCUDAOpKernel, int, int64_t) {}
