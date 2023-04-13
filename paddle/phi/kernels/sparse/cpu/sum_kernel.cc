@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
@@ -52,7 +53,7 @@ void SumCooKernel(const Context& dev_ctx,
     out_indices = Empty<int64_t, Context>(dev_ctx, out_indices_shape);
     auto* out_indices_data = out_indices.data<int64_t>();
     std::fill(out_indices_data, out_indices_data + out_indices.numel(), 0);
-    out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
+    out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
     out->SetMember(out_indices, out_values, out_dims, x.coalesced());
     return;
   }

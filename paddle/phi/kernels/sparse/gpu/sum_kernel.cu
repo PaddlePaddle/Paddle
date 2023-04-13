@@ -165,62 +165,64 @@ void SumCooKernel(const Context& dev_ctx,
     }
     phi::funcs::SetConstant<Context, x_indices_dtype> set_out_indices;
     set_out_indices(dev_ctx, &out_indices, static_cast<x_indices_dtype>(0));
-    out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
-  } else {
-    auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
-    auto n_dim = x.dims().size();
-    std::vector<int64_t> dims;
-    for (int i = 0; i < n_dim; ++i) {
-      if (i == dim) {
-        if (keep_dim) {
-          dims.emplace_back(1);
-        }
-      } else {
-        dims.emplace_back(x.dims()[i]);
+    out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
+    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+    return;
+  }
+
+  auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
+  auto n_dim = x.dims().size();
+  std::vector<int64_t> dims;
+  for (int i = 0; i < n_dim; ++i) {
+    if (i == dim) {
+      if (keep_dim) {
+        dims.emplace_back(1);
       }
-    }
-    out_dims = make_ddim(dims);
-    auto sparse_dim = x.sparse_dim();
-    if (!keep_dim) {
-      sparse_dim -= 1;
-    }
-
-    std::vector<int> out_values_dims;
-    out_values_dims.push_back(x.nnz());
-    for (auto i = 1; i < x.values().dims().size(); ++i) {
-      out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
-    }
-    int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
-                                        out_values_dims.end(),
-                                        1,
-                                        std::multiplies<int64_t>());
-
-    out_indices =
-        Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, x.nnz()});
-    out_values = Empty<T, Context>(dev_ctx, out_values_dims);
-
-    const auto* x_indices_data = x_indices.data<x_indices_dtype>();
-    const auto* x_values_data = x_values.data<T>();
-    auto* out_indices_data = out_indices.data<x_indices_dtype>();
-    auto* out_values_data = out_values.data<T>();
-
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
-    SumCooCudaKernel<T><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(x_indices_data,
-                                              x_values_data,
-                                              x.nnz(),
-                                              dense_dim,
-                                              n_dim,
-                                              dim,
-                                              keep_dim,
-                                              out_indices_data,
-                                              out_values_data);
-    if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-      out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    } else {
+      dims.emplace_back(x.dims()[i]);
     }
   }
+  out_dims = make_ddim(dims);
+  auto sparse_dim = x.sparse_dim();
+  if (!keep_dim) {
+    sparse_dim -= 1;
+  }
+
+  std::vector<int> out_values_dims;
+  out_values_dims.push_back(x.nnz());
+  for (auto i = 1; i < x.values().dims().size(); ++i) {
+    out_values_dims.push_back(static_cast<int>(x.values().dims()[i]));
+  }
+  int64_t dense_dim = std::accumulate(out_values_dims.begin() + 1,
+                                      out_values_dims.end(),
+                                      1,
+                                      std::multiplies<int64_t>());
+
+  out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, x.nnz()});
+  out_values = Empty<T, Context>(dev_ctx, out_values_dims);
+
+  const auto* x_indices_data = x_indices.data<x_indices_dtype>();
+  const auto* x_values_data = x_values.data<T>();
+  auto* out_indices_data = out_indices.data<x_indices_dtype>();
+  auto* out_values_data = out_values.data<T>();
+
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
+  SumCooCudaKernel<T><<<config.block_per_grid.x,
+                        config.thread_per_block.x,
+                        0,
+                        dev_ctx.stream()>>>(x_indices_data,
+                                            x_values_data,
+                                            x.nnz(),
+                                            dense_dim,
+                                            n_dim,
+                                            dim,
+                                            keep_dim,
+                                            out_indices_data,
+                                            out_values_data);
+  if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+    out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+  }
+
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
 
