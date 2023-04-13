@@ -152,6 +152,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             pass_attrs = {"use_cuda": True}
             build_strategy = self.user_defined_strategy.build_strategy._copy()
             build_strategy.fuse_all_optimizer_ops = False
+            build_strategy.fuse_all_reduce_ops = False
             apply_build_strategy(
                 self.main_program,
                 self.startup_program,
@@ -395,6 +396,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if len(grad_param_segments) == 0:
             return
 
+        # because the regroup operation make the relative order invalid,
+        # we need to reorder these fuse group by after_idx
+        def get_after_idx_of_fuse_group(grad_param_segments):
+            grad_segment, param_segment = grad_param_segments
+            return max([outputs_name_to_idx[grad][1] for grad in grad_segment])
+
+        grad_param_segments.sort(key=get_after_idx_of_fuse_group)
+
         fused_vars = [None] * len(grad_param_segments)
         for i in range(len(grad_param_segments) - 1, -1, -1):
             # travers the grad_param_segments in backward
@@ -410,7 +419,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 stop_gradient=True,
             )
             fused_vars[i] = fused_var
-            after_idx = outputs_name_to_idx[grad_segment[-1]][1]
+            after_idx = max(
+                [outputs_name_to_idx[grad][1] for grad in grad_segment]
+            )
             block._insert_op_without_sync(
                 after_idx + 1,
                 type='c_allreduce_sum',
