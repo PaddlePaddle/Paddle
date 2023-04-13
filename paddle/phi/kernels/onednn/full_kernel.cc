@@ -75,7 +75,7 @@ void FullKernel(const Context& dev_ctx,
   std::vector<float> zero(1, 0);
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-  auto scales = dnnl::memory(scales_md, onednn_engine);
+  auto scales = dnnl::memory(scales_md, onednn_engine, zero.data());
 
   std::unordered_map<int, dnnl::memory> args;
   args.insert({DNNL_ARG_SRC_0, *src0_memory_p});
