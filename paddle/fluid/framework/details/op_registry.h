@@ -252,6 +252,9 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     info->use_empty_grad_op_desc_maker_ =
         std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
         std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
+    std::cout << "op_registry: " << op_type
+              << " GradOpEmpty = " << info->use_empty_grad_op_desc_maker_
+              << std::endl;
   }
 };
 
@@ -274,8 +277,10 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
           return maker();
         };
     // TODO(jiabin): Support this later or just not.
-    info->use_default_grad_op_desc_maker_ = false;
-    info->use_empty_grad_op_desc_maker_ = false;
+    std::cout << "op_registry: " << op_type << " CompositeGradOpEmpty = "
+              << info->use_empty_grad_op_desc_maker_ << std::endl;
+    // info->use_default_grad_op_desc_maker_ = false;
+    // info->use_empty_grad_op_desc_maker_ = false;
   }
 };
 

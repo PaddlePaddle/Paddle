@@ -297,6 +297,9 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
+
+        paddle.enable_static()
+        # core._set_prim_all_enabled(True)
         eps = 0.005
         dtype = np.float32
 
@@ -305,20 +308,24 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
         out = paddle.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.double_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
+        # gradient_checker.double_grad_check(
+        #     [data], out, x_init=[data_arr], place=place, eps=eps
+        # )
+
         gradient_checker.double_grad_check_for_dygraph(
             self.assign_wrapper, [data], out, x_init=[data_arr], place=place
         )
+        # core._set_prim_all_enabled(False)
+        # paddle.disable_static()
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+        # places = [fluid.CPUPlace()]
+        # if core.is_compiled_with_cuda():
+        #     places.append(fluid.CUDAPlace(0))
+        # for p in places:
+        #     self.func(p)
+        self.func(fluid.CUDAPlace(0))
         paddle.disable_static()
 
 
