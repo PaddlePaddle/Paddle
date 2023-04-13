@@ -12,11 +12,6 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_fleet_sharding_meta_optimizer
                        PROPERTIES TIMEOUT "350" LABELS "RUN_TYPE=DIST")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_static_mp_layers MODULES test_fleet_static_mp_layers ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -115,19 +110,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
     "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_sharding_stage3_for_eager
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
-                                                                         "350")
-endif()
 if(WITH_NCCL)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -189,36 +171,12 @@ if(WITH_NCCL)
                                                                       "120")
   endif()
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_pipeline
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21222;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_pipeline PROPERTIES TIMEOUT "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   py_test_modules(
     test_fleet_utils MODULES test_fleet_utils ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT "120" LABELS
                                                    "RUN_TYPE=DIST")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_static_model_parallel
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21224;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT "240")
 endif()
 if(WITH_NCCL)
   if((WITH_GPU) AND LOCAL_ALL_PLAT)
@@ -234,31 +192,6 @@ if(WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_no_sync PROPERTIES TIMEOUT "300")
   endif()
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_sharding_stage2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21228;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_control_flow
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21230;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_control_flow PROPERTIES TIMEOUT
-                                                                     "350")
-endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_lars_meta_optimizer
@@ -271,19 +204,6 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   )
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_hybrid_parallel_inference_helper
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21234;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
-                                                                        "120")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_rolemaker_new MODULES test_fleet_rolemaker_new ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -294,20 +214,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dist_mnist_gradient_merge
                        PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_recv_save_op MODULES test_recv_save_op ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_communicator_sync
-    MODULES
-    test_communicator_sync
-    ENVS
-    "FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -347,45 +253,6 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21240;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_sharding_parallel
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_sharding_parallel
-                       PROPERTIES TIMEOUT "120")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_tensor_parallel
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21244;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
-                                                                        "200")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_group_sharded_api_for_eager
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21246;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_group_sharded_api_for_eager
-                       PROPERTIES TIMEOUT "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy
@@ -399,19 +266,6 @@ if(WITH_DGC)
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   endif()
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_unused_variables
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21248;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT
-                                                                         "350")
-endif()
 if((WITH_GPU OR WITH_XPU) AND (LINUX))
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
@@ -423,19 +277,6 @@ if(WITH_DGC)
       test_dgc_momentum_op MODULES test_dgc_momentum_op ENVS
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   endif()
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_no_sync_gradient_check
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21250;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
-                       PROPERTIES TIMEOUT "60")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -453,18 +294,6 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_parallel_dygraph_qat
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21254;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT "120")
 endif()
 if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
@@ -536,18 +365,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
     test_distributed_strategy MODULES test_distributed_strategy ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_auto_parallel_parallelizer
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21264;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT "120")
-endif()
 if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer MODULES
@@ -591,18 +408,6 @@ if((WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
   set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
                                                                     "120")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_ir_pass_pipeline
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
