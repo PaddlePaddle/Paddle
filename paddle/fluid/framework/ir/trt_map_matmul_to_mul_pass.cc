@@ -368,6 +368,13 @@ void TrtMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
     size_t y_rank = y_shape.size();
     flag = flag && x_rank >= 2 && y_rank == 2;
 
+    if (matmul_v2_in_x->Name() == "linear_143.w_0") {
+      return;
+    }
+    if (matmul_v2_in_y->Name() == "linear_143.w_0") {
+      return;
+    }
+
     if (flag) {
       if (!IsCompat(subgraph, g)) {
         LOG(WARNING) << "TrtMapMatmulV2ToMulPass in op compat failed.";
@@ -445,6 +452,13 @@ void TrtMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> x_shape = matmul_v2_in_x->Var()->GetShape();
     std::vector<int64_t> y_shape = matmul_v2_in_y->Var()->GetShape();
+    if (matmul_v2_in_x->Name() == "linear_143.w_0") {
+      return;
+    }
+    if (matmul_v2_in_y->Name() == "linear_143.w_0") {
+      return;
+    }
+
     if (x_shape.size() != y_shape.size()) {
       LOG(WARNING)
           << "matmul op not support broadcast, please check inputs'shape. ";
