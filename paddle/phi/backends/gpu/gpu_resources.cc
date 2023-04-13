@@ -37,6 +37,7 @@
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #endif
 
+#include "glog/logging.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/phi/core/enforce.h"

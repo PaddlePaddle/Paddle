@@ -435,16 +435,6 @@
     func : expand
   backward : expand_grad
 
-- op : expand_as
-  args : (Tensor x, Tensor y, int[] target_shape)
-  output : Tensor(out)
-  infer_meta :
-    func : ExpandAsInferMeta
-  kernel :
-    func : expand_as
-  optional : y
-  backward : expand_as_grad
-
 - op : exponential_
   args : (Tensor x, float lam)
   output : Tensor(out)
@@ -1383,15 +1373,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : yolo_box
-  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
-  output : Tensor(boxes), Tensor(scores)
-  infer_meta :
-    func : YoloBoxInferMeta
-  kernel :
-    func : yolo_box
-    data_type : x
 
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
