@@ -39,6 +39,12 @@ from .pass_base import PassBase, PassType, register_pass
 world_process_group = get_world_process_group()
 
 
+def is_gradient_clip_op(op_desc):
+    return op_desc.has_attr("op_namescope") and op_desc.attr(
+        "op_namescope"
+    ).startswith("/gradient_clip")
+
+
 def _remove_and_get_ops(main_program, dist_context):
     # 1 create tmp block
     # 2 mv optimizer op from global program to tmp block
@@ -216,11 +222,9 @@ def _append_gradient_merge_backward_op(
         )
 
         # 2.3 grad_merge += grad
+        grad_name = grad.name
         if grad.dtype != dst_dtype:
-            grad_name = grad.name
-            prefix_name = grad_name[: grad_name.find("@")]
-            assert prefix_name == param.name
-            cast_grad_name = prefix_name + ".cast_fp32@GRAD"
+            cast_grad_name = grad_name + "@TMP"
             cast_grad_var = main_block.create_var(
                 name=cast_grad_name,
                 shape=grad.shape,
@@ -257,7 +261,7 @@ def _append_gradient_merge_backward_op(
             },
         )
         new_params_to_grads.append([param, gradient_merge_var])
-        grad_to_gradient_merge[grad.name] = gradient_merge_var.name
+        grad_to_gradient_merge[grad_name] = gradient_merge_var.name
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context
         )
@@ -285,6 +289,7 @@ def _create_cond_block_and_update_optimizer(
     allreduce_sum_desc,
     k_steps,
     avg,
+    master_grad,
 ):
     def true_apply_gradient():
         cur_block_idx = main_program.current_block_idx
@@ -321,8 +326,33 @@ def _create_cond_block_and_update_optimizer(
                 )
                 new_grad.op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
+        cast_name_dict = {}
         # append optimizer ops
         for op_desc in optimize_ops_desc:
+            if master_grad and is_gradient_clip_op(op_desc):
+                if op_desc.type() == "cast":
+                    if (
+                        op_desc.attr('in_dtype') == 5
+                        and op_desc.attr('out_dtype') == 4
+                    ):
+                        cast_name_dict[
+                            op_desc.output_arg_names()[0]
+                        ] = op_desc.input_arg_names()[0]
+                    elif (
+                        op_desc.attr('in_dtype') == 4
+                        and op_desc.attr('out_dtype') == 5
+                    ):
+                        cast_name_dict[
+                            op_desc.output_arg_names()[0]
+                        ] = op_desc.input_arg_names()[0]
+                    continue
+
+                for out_name in op_desc.output_arg_names():
+                    out_var = cur_block._var_recursive(out_name)
+                    out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
+
+                _rename_arg_names(op_desc, cast_name_dict)
+
             new_op_desc = cur_block.desc.append_op()
             new_op_desc.copy_from(op_desc)
 
@@ -396,6 +426,7 @@ def parse_program(
         allreduce_sum_desc,
         k_steps,
         avg,
+        master_grad,
     )
 
 

@@ -24,7 +24,7 @@ from paddle.distributed.auto_parallel.utils import (
     is_forward_op,
     is_backward_op,
     is_optimize_op,
-    # is_lr_sched_op,
+    is_lr_sched_op,
     is_fillconst_op_for_micro_batch,
 )
 
@@ -288,20 +288,22 @@ class PipelinePass(PassBase):
 
     def _task_1f1b(self):
         # create fwd, bwd, opt program with op_role
-        num_of_functionality = 3
-        # lr_prog = Program()
+        num_of_functionality = 4
+        lr_prog = Program()
         fwd_prog = Program()
         bwd_prog = Program()
         opt_prog = Program()
 
         for idx, src_block in enumerate(self._program.blocks):
             if idx == 0:
-                # lr_block = lr_prog.block(0)
+                lr_block = lr_prog.block(0)
                 fwd_block = fwd_prog.block(0)
                 bwd_block = bwd_prog.block(0)
                 opt_block = opt_prog.block(0)
             else:
-                # lr_block = lr_prog._create_block(parent_idx=src_block.parent_idx)
+                lr_block = lr_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
                 fwd_block = fwd_prog._create_block(
                     parent_idx=src_block.parent_idx
                 )
@@ -311,15 +313,15 @@ class PipelinePass(PassBase):
                 opt_block = opt_prog._create_block(
                     parent_idx=src_block.parent_idx
                 )
-                # lr_block._set_forward_block_idx(src_block.forward_block_idx)
+                lr_block._set_forward_block_idx(src_block.forward_block_idx)
                 fwd_block._set_forward_block_idx(src_block.forward_block_idx)
                 bwd_block._set_forward_block_idx(src_block.forward_block_idx)
                 opt_block._set_forward_block_idx(src_block.forward_block_idx)
 
             # split the program based on the op_role
             for op in src_block.ops:
-                # if is_lr_sched_op(op):
-                #     self._create_program(src_block, lr_block, op)
+                if is_lr_sched_op(op):
+                    self._create_program(src_block, lr_block, op)
                 if is_forward_op(op) or is_fillconst_op_for_micro_batch(op):
                     self._create_program(src_block, fwd_block, op)
                 elif is_backward_op(op):
@@ -333,30 +335,31 @@ class PipelinePass(PassBase):
                         + " isn't one of LRSched, Forward, Backward or Optimizer."
                     )
 
-        # lr_prog._sync_with_cpp()
+        lr_prog._sync_with_cpp()
         fwd_prog._sync_with_cpp()
         bwd_prog._sync_with_cpp()
         opt_prog._sync_with_cpp()
 
-        # lr_prog._rollback()
+        lr_prog._rollback()
         fwd_prog._rollback()
         bwd_prog._rollback()
         opt_prog._rollback()
 
         # Create task nodes.
-        # lr_task_node = TaskNode(rank=self._cur_rank,
-        #                         max_run_times=self._acc_steps,
-        #                         program=lr_prog,
-        #                         task_id=int(self._cur_rank * num_of_functionality +
-        #                                     0),
-        #                         node_type="Amplifier",
-        #                         lazy_initialize=True)
-        # lr_task_node.set_run_pre_steps(self._acc_steps)
+        lr_task_node = TaskNode(
+            rank=self._cur_rank,
+            max_run_times=self._acc_steps,
+            program=lr_prog,
+            task_id=int(self._cur_rank * num_of_functionality + 0),
+            node_type="Amplifier",
+            lazy_initialize=True,
+        )
+        lr_task_node.set_run_pre_steps(self._acc_steps)
         fwd_task_node = TaskNode(
             rank=self._cur_rank,
             max_run_times=self._acc_steps,
             program=fwd_prog,
-            task_id=int(self._cur_rank * num_of_functionality + 0),
+            task_id=int(self._cur_rank * num_of_functionality + 1),
             node_type="Compute",
             lazy_initialize=True,
         )
@@ -364,7 +367,7 @@ class PipelinePass(PassBase):
             rank=self._cur_rank,
             max_run_times=self._acc_steps,
             program=bwd_prog,
-            task_id=int(self._cur_rank * num_of_functionality + 1),
+            task_id=int(self._cur_rank * num_of_functionality + 2),
             node_type="Compute",
             lazy_initialize=True,
         )
@@ -372,14 +375,14 @@ class PipelinePass(PassBase):
             rank=self._cur_rank,
             max_run_times=self._acc_steps,
             program=opt_prog,
-            task_id=int(self._cur_rank * num_of_functionality + 2),
+            task_id=int(self._cur_rank * num_of_functionality + 3),
             node_type="Amplifier",
             lazy_initialize=True,
         )
         opt_task_node.set_run_pre_steps(self._acc_steps)
         opt_task_node.set_run_at_offset(self._acc_steps - 1)
         task_nodes = {
-            # "lr": lr_task_node,
+            "lr": lr_task_node,
             "fwd": fwd_task_node,
             "bwd": bwd_task_node,
             "opt": opt_task_node,
@@ -401,7 +404,7 @@ class PipelinePass(PassBase):
             pp_buff_size = int(self._pp_stages - self._cur_pp_stage)
             prev_id = cur_id - 1
             next_id = cur_id + 1
-            if task_role != "fwd":
+            if task_role != "lr":
                 buf_size = pp_buff_size if task_role == "bwd" else 2
                 ups.append((prev_id, buf_size))
             if task_role != "opt":

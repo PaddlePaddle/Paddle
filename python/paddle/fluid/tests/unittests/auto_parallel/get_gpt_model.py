@@ -114,6 +114,7 @@ def generate_model(strategy, dropout_prob=0.0):
         eos_token_id=7,
         bos_token_id=0,
         eol_token_id=3,
+        pp_degree=2 if strategy == "pp" else None,
     )
     model = GPTForPretraining(
         gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02
