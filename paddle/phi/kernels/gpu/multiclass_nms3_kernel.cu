@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+
 #include "paddle/phi/kernels/multiclass_nms3_kernel.h"
 
 #include <cub/cub.cuh>
@@ -1128,3 +1130,5 @@ void MultiClassNMSGPUKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     multiclass_nms3, GPU, ALL_LAYOUT, phi::MultiClassNMSGPUKernel, float) {}
+
+#endif
