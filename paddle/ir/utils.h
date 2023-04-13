@@ -17,6 +17,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <tuple>
 #include <type_traits>
 
 namespace ir {
@@ -33,77 +34,52 @@ void *aligned_malloc(size_t size, size_t alignment);
 void aligned_free(void *mem_ptr);
 
 ///
-/// \brief Type list template tools.
+/// \brief Some template methods for manipulating std::tuple.
 ///
-template <typename... Elements>
-struct TypeList {
-  static constexpr unsigned size = sizeof...(Elements);
-};
-
-// Get front element from a TypeList
-template <typename List>
-struct FrontT;
-
-template <typename Front, typename... Tail>
-struct FrontT<TypeList<Front, Tail...>> {
-  using Type = Front;
-};
-
-template <typename List>
-using Front = typename FrontT<List>::Type;
-
-// Pop front element from TypeList
-template <typename List>
+/// (1) Pop front element from Tuple
+template <typename Tuple>
 struct PopFrontT;
 
 template <typename Head, typename... Tail>
-struct PopFrontT<TypeList<Head, Tail...>> {
-  using Type = TypeList<Tail...>;
+struct PopFrontT<std::tuple<Head, Tail...>> {
+ public:
+  using Type = std::tuple<Tail...>;
 };
 
-template <typename List>
-using PopFront = typename PopFrontT<List>::Type;
+template <typename Tuple>
+using PopFront = typename PopFrontT<Tuple>::Type;
 
-// push element to TypeList front
-template <typename NewElement, typename List>
+/// (2) Push front element to Tuple
+template <typename NewElement, typename Tuple>
 struct PushFrontT;
 
 template <typename NewElement, typename... Elements>
-struct PushFrontT<NewElement, TypeList<Elements...>> {
-  using Type = TypeList<NewElement, Elements...>;
+struct PushFrontT<NewElement, std::tuple<Elements...>> {
+ public:
+  using Type = std::tuple<NewElement, Elements...>;
 };
 
 template <typename NewElement, typename... Elements>
-struct PushFrontT<TypeList<NewElement>, TypeList<Elements...>> {
-  using Type = TypeList<NewElement, Elements...>;
+struct PushFrontT<std::tuple<NewElement>, std::tuple<Elements...>> {
+ public:
+  using Type = std::tuple<NewElement, Elements...>;
 };
 
-template <typename NewElement, typename List>
-using PushFront = typename PushFrontT<NewElement, List>::Type;
+template <typename NewElement, typename Tuple>
+using PushFront = typename PushFrontT<NewElement, Tuple>::Type;
 
-// Get Nth element from TypeList
-template <typename List, unsigned N>
-struct NthElementT : public NthElementT<PopFront<List>, N - 1> {};
-// basis case:
-template <typename List>
-struct NthElementT<List, 0> : public FrontT<List> {};
-template <typename List, unsigned N>
-using NthElement = typename NthElementT<List, N>::Type;
-
-// IsEmpty
-template <typename List>
+/// (3) IsEmpty
+template <typename Tuple>
 struct IsEmpty {
   static constexpr bool value = false;
 };
 
 template <>
-struct IsEmpty<TypeList<>> {
+struct IsEmpty<std::tuple<>> {
   static constexpr bool value = true;
 };
 
-///
-/// IfThenElseT
-///
+/// (4) IfThenElseT
 template <bool COND, typename TrueT, typename FalseT>
 struct IfThenElseT {
   using Type = TrueT;
@@ -117,19 +93,18 @@ struct IfThenElseT<false, TrueT, FalseT> {
 template <bool COND, typename TrueT, typename FalseT>
 using IfThenElse = typename IfThenElseT<COND, TrueT, FalseT>::Type;
 
-///
-/// \brief Filter out all types inherited from BaseT from the type list.
-///
-template <typename BaseT, typename List, bool Empty = IsEmpty<List>::value>
+/// (5) Filter out all types inherited from BaseT from the tuple.
+template <typename BaseT, typename Tuple, bool Empty = IsEmpty<Tuple>::value>
 struct Filter;
 
-template <typename BaseT, typename List>
-struct Filter<BaseT, List, false> {
+template <typename BaseT, typename Tuple>
+struct Filter<BaseT, Tuple, false> {
  private:
-  using Matched = IfThenElse<std::is_base_of<BaseT, Front<List>>::value,
-                             TypeList<Front<List>>,
-                             TypeList<>>;
-  using Rest = typename Filter<BaseT, PopFront<List>>::Type;
+  using Matched =
+      IfThenElse<std::is_base_of<BaseT, std::tuple_element_t<0, Tuple>>::value,
+                 std::tuple<std::tuple_element_t<0, Tuple>>,
+                 std::tuple<>>;
+  using Rest = typename Filter<BaseT, PopFront<Tuple>>::Type;
 
  public:
   using Type =
@@ -137,9 +112,9 @@ struct Filter<BaseT, List, false> {
 };
 
 // basis case:
-template <typename BaseT, typename List>
-struct Filter<BaseT, List, true> {
-  using Type = TypeList<>;
+template <typename BaseT, typename Tuple>
+struct Filter<BaseT, Tuple, true> {
+  using Type = std::tuple<>;
 };
 
 }  // namespace ir
