@@ -770,8 +770,11 @@ static PyObject* tensor_method_detach(TensorObject* self,
     auto tensor = std::make_shared<phi::DenseTensor>(*self->tensor.impl().get())
 
                       tensor->can_not_uses = self->tensor.impl()->can_not_uses;
-    *tensor->canNotUse = *self->tensor.impl()->canNotUse;
+    if (*tensor->canNotUse == false) {
+      *tensor->canNotUse = *self->tensor.impl()->canNotUse;
+    }
     self->tensor.impl()->can_not_uses->insert(tensor->canNotUse);
+    self->tensor.impl()->can_not_uses->insert(self->tensor.impl()->canNotUse);
 
     v->tensor.set_impl(tensor);
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());

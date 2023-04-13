@@ -114,7 +114,10 @@ void ExpandKernel(const Context& ctx,
                   DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
-  *out->canNotUse = *xx.canNotUse;
+  if (*out->canNotUse == false) {
+    *out->canNotUse = *xx.canNotUse;
+  }
+  xx.can_not_uses->insert(xx.can_not_uses);
   xx.can_not_uses->insert(out->canNotUse);
 
   auto rank = x.dims().size();

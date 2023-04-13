@@ -32,7 +32,10 @@ void SplitKernel(const Context& dev_ctx,
   // inplace_version += 1
   for (size_t i = 0; i < outs.size(); ++i) {
     outs[i]->can_not_uses = xx.can_not_uses;
-    *outs[i]->canNotUse = *xx.canNotUse;
+    if (*outs[i]->canNotUse == false) {
+      *outs[i]->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.can_not_uses);
     xx.can_not_uses->insert(outs[i]->canNotUse);
   }
 

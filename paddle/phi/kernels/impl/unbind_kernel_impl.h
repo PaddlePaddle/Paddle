@@ -28,7 +28,10 @@ void UnbindKernel(const Context& dev_ctx,
 
   for (size_t j = 0; j < outs.size(); ++j) {
     outs[j]->can_not_uses = xx.can_not_uses;
-    *outs[j]->canNotUse = *xx.canNotUse;
+    if (*outs[j]->canNotUse == false) {
+      *outs[j]->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.can_not_uses);
     xx.can_not_uses->insert(outs[j]->canNotUse);
   }
 

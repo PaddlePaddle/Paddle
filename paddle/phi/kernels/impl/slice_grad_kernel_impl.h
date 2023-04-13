@@ -282,7 +282,10 @@ void SliceGradKernel(const Context& ctx,
                      DenseTensor* input_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   input_grad->can_not_uses = xx.can_not_uses;
-  *input_grad->canNotUse = *xx.canNotUse;
+  if (*input_grad->canNotUse == false) {
+    *input_grad->canNotUse = *xx.canNotUse;
+  }
+  xx.can_not_uses->insert(xx.can_not_uses);
   xx.can_not_uses->insert(input_grad->canNotUse);
 
   size_t rank = input.dims().size();

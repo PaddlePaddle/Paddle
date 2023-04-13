@@ -27,7 +27,10 @@ void UnsqueezeGradKernel(const Context& dev_ctx,
                          DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
   dx->can_not_uses = xx.can_not_uses;
-  *dx->canNotUse = *xx.canNotUse;
+  if (*dx->canNotUse == false) {
+    *dx->canNotUse = *xx.canNotUse;
+  }
+  xx.can_not_uses->insert(xx.can_not_uses);
   xx.can_not_uses->insert(dx->canNotUse);
 
   auto xshape_dims = x_shape.dims();

@@ -27,8 +27,11 @@ void FlattenGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   x_grad->can_not_uses = xx.can_not_uses;
-  *x_grad->canNotUse = *xx.canNotUse;
-  xx.can_not_uses->insert(x_grad->canNotUse);
+  if (*x_grad->canNotUse == false) {
+    *x_grad->canNotUse = *xx.canNotUse;
+  }
+  xx.can_not_uses->can_not_uses->insert(xx.can_not_uses);
+  xx.can_not_uses->can_not_uses->insert(x_grad->canNotUse);
 
   auto xshape_dims = xshape.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());

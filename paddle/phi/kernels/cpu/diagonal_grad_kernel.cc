@@ -30,7 +30,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   in_grad->can_not_uses = xx.can_not_uses;
-  *in_grad->canNotUse = *xx.canNotUse;
+  if (*in_grad->canNotUse == false) {
+    *in_grad->canNotUse = *xx.canNotUse;
+  }
+  xx.can_not_uses->insert(xx.can_not_uses);
   xx.can_not_uses->insert(in_grad->canNotUse);
 
   const auto* dout = &out_grad;
