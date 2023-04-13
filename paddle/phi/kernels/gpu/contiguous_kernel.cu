@@ -71,12 +71,18 @@ void ContiguousKernel(const Context& dev_ctx,
                        tmp_data,
                        sizeof(int64_t) * rank * 2,
                        dev_ctx.stream());
+#ifdef PADDLE_WITH_HIP
+  hipStreamCallback_t free_when_cb = [](cudaStream_t stream,
+                                        cudaError_t status,
+                                        void* userData) { free(userData); };
+  hipStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
 
+#else
   cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
                                          cudaError_t status,
                                          void* userData) { free(userData); };
   cudaStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
-
+#endif
   ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(input_data,
                                                        output_data,
                                                        dims_strides_data + rank,

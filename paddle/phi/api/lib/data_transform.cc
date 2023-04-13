@@ -277,7 +277,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                           tensor->place(),
                           transform_flag) &&
       tensor->dims().size() != 1) {
-    if (NeedTransform2Contiguous(is_stride_kernel,
+    if (NeedTransform2Contiguous(false,
                                  out.meta().is_contiguous(out.layout()))) {
       out = Trans2Contiguous(out);
     }
@@ -287,7 +287,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
 
   if (NeedTransformDataType(
           tensor->dtype(), target_args_def.dtype, transform_flag)) {
-    if (NeedTransform2Contiguous(is_stride_kernel,
+    if (NeedTransform2Contiguous(false,
                                  out.meta().is_contiguous(out.layout()))) {
       out = Trans2Contiguous(out);
     }

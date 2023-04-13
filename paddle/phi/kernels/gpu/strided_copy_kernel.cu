@@ -17,6 +17,8 @@ limitations under the License. */
 
 namespace phi {
 
+// TODO(wanghuancoder) delete output_rank and output_strides if they are same
+// with input's
 template <typename T>
 __global__ void StridedCopyFunc(const T* input_data,
                                 const int input_rank,

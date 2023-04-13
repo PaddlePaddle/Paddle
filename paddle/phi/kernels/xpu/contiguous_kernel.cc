@@ -22,6 +22,7 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
+  using XPUT = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
   out->set_meta(meta);
@@ -30,8 +31,8 @@ void ContiguousKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
 
   int r = xpu::as_strided<XPUT>(dev_ctx.x_context(),
-                                input_data,
-                                output_data,
+                                reinterpret_cast<const XPUT*>(input_data),
+                                reinterpret_cast<const XPUT*>(output_data),
                                 phi::vectorize<int64_t>(input.dims()),
                                 phi::vectorize<int64_t>(input.strides()),
                                 0);
