@@ -158,7 +158,8 @@ class FusedMatmulOneDNNHandler
       matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
     }
 
-    if (scale_y != 1.0f) {
+    // alpha can be folded to weight scale
+    if (scale_y != 1.0f || matmul_alpha != 1.0f) {
       matmul_attrs.set_scales_mask(DNNL_ARG_WEIGHTS, 0);
     }
 
@@ -282,13 +283,13 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
     matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *src_scales_mem});
   }
 
-  if (scale_y != 1.0f) {
+  if (scale_y != 1.0f || matmul_alpha != 1.0f) {
     dnnl::memory::desc wei_scales_md(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
     auto wei_scales_mem =
         std::make_shared<dnnl::memory>(wei_scales_md, dev_ctx.GetEngine());
     *reinterpret_cast<float *>(wei_scales_mem->get_data_handle()) =
-        1.f / scale_y;
+        matmul_alpha / scale_y;
     matmul_args.insert(
         {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, *wei_scales_mem});
   }

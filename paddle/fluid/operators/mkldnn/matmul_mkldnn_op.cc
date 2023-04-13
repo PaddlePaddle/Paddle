@@ -332,6 +332,15 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
+  float computed_scale_x = handler.ComputeOutputScale(ctx);
+  if (std::fabs(computed_scale_x - 1.f) > 1e-6f) {
+    auto scale_x_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scale_x_mem =
+        dnnl::memory(scale_x_md, onednn_engine, &computed_scale_x);
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scale_x_mem});
+  }
+
   auto &astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();

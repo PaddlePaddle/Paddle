@@ -1102,10 +1102,14 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     float scale_1 =
         op == dnnl::algorithm::binary_add ? scale_out / scale_y : 1.0 / scale_y;
     dnnl::primitive_attr attributes;
-    attributes.set_scales_mask(/* input_x_id = */ DNNL_ARG_SRC_0,
-                               /* mask = */ 0);
-    attributes.set_scales_mask(/* input_y_id = */ DNNL_ARG_SRC_1,
-                               /* mask = */ 0);
+    if (std::fabs(scale_0 - 1.0f) > 1e-6f) {
+      attributes.set_scales_mask(/* input_x_id = */ DNNL_ARG_SRC_0,
+                                 /* mask = */ 0);
+    }
+    if (std::fabs(scale_1 - 1.0f) > 1e-6f) {
+      attributes.set_scales_mask(/* input_y_id = */ DNNL_ARG_SRC_1,
+                                 /* mask = */ 0);
+    }
     if (post_ops.len() > 0) attributes.set_post_ops(post_ops);
     return std::make_tuple(attributes, scale_0, scale_1);
   }

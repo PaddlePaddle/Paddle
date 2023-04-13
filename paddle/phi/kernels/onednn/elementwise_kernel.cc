@@ -105,13 +105,17 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
 
   auto& astream = OneDNNContext::tls().get_stream();
 
-  const std::unordered_map<int, dnnl::memory> args = {
-      {DNNL_ARG_SRC_0, *src_x_memory},
-      {DNNL_ARG_SRC_1, *src_y_memory},
-      {DNNL_ARG_DST, *dst_memory},
-      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, handler.Get_SRC_0_Scale_Memory()},
-      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
-       handler.Get_SRC_1_Scale_Memory()}};
+  std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC_0, *src_x_memory},
+                                                {DNNL_ARG_SRC_1, *src_y_memory},
+                                                {DNNL_ARG_DST, *dst_memory}};
+
+  if (std::fabs(scale_x - 1.0f) > 1e-6f || std::fabs(scale_y - 1.0f) > 1e-6f ||
+      std::fabs(scale_out - 1.0f) > 1e-6f) {
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+                 handler.Get_SRC_0_Scale_Memory()});
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+                 handler.Get_SRC_1_Scale_Memory()});
+  }
 
   binary_prim->execute(astream, args);
   astream.wait();
