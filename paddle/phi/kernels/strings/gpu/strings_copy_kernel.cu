@@ -120,8 +120,7 @@ void Copy(const Context& dev_ctx,
 }  // namespace strings
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(strings_copy,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::Copy<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::Copy<phi::GPUContext>) {}

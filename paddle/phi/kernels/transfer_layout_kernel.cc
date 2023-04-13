@@ -202,15 +202,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::CPUContext>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::GPUContext>) {}
 #endif
