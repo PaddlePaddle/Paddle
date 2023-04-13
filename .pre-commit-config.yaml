@@ -37,7 +37,7 @@ repos:
         exclude: |
             (?x)^(
                 python/paddle/fluid/(?!tests).+|
-                python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
+                test/collective/fleet/test_hdfs1.py|
                 test/dygraph_to_static/test_error.py
             )$
 -   repo: local

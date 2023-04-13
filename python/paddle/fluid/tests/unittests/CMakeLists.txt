@@ -563,7 +563,6 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
-  add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
@@ -772,11 +771,6 @@ add_subdirectory(sequence)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
 
-# dist xpu tests:
-if(WITH_XPU_BKCL)
-  py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
-endif()
 
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
