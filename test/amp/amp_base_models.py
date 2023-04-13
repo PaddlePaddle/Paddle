@@ -12,14 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 from paddle import nn
 
+_fixed_add_param = np.random.random(size=[16, 16]).astype("float32")
 
-def _build_optimizer(use_amp, amp_dtype="float16", amp_level="O1"):
+
+def _build_optimizer(
+    use_amp, amp_dtype="float16", amp_level="O1", use_grad_clip=False
+):
+    if use_grad_clip:
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+    else:
+        grad_clip = None
     optimizer = paddle.optimizer.AdamW(
         learning_rate=0.01,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+        grad_clip=grad_clip,
         beta1=0.78,
         beta2=0.836,
         epsilon=1e-4,
@@ -27,17 +37,28 @@ def _build_optimizer(use_amp, amp_dtype="float16", amp_level="O1"):
         multi_precision=True,
     )
     if use_amp:
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+            custom_white_list=["elementwise_add"],
+            custom_black_list=["reduce_mean"],
+            dtype=amp_dtype,
+        )
         optimizer = paddle.static.amp.amp_decorate(
-            optimizer, level=amp_level, dtype=amp_dtype
+            optimizer, amp_lists=amp_lists, level=amp_level, dtype=amp_dtype
         )
     return optimizer
 
 
 class SimpleAddNet(nn.Layer):
-    def __init__(self):
+    def __init__(self, dtype):
         super().__init__()
+        global _fixed_add_param
         self.weight = paddle.create_parameter(
-            shape=[16, 16], dtype="float32", name="weight"
+            name="add_w",
+            shape=[16, 16],
+            dtype=dtype,
+            attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(_fixed_add_param)
+            ),
         )
 
     def forward(self, x):
@@ -49,15 +70,21 @@ def build_add_model(use_amp, amp_dtype="float16", amp_level="O1"):
     startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
         with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleAddNet()
-            x = paddle.static.data(
-                name='input', shape=[16, 16], dtype='float32'
-            )
+            x_dtype = "float32"
+            if use_amp and amp_level == "O2":
+                if amp_dtype == "bfloat16":
+                    x_dtype = "uint16"
+                elif amp_dtype == "float16":
+                    x_dtype = "float16"
+            model = SimpleAddNet(x_dtype)
+            x = paddle.static.data(name='input', shape=[16, 16], dtype=x_dtype)
             out = model(x)
             loss = paddle.mean(out)
             optimizer = _build_optimizer(use_amp, amp_dtype, amp_level)
             optimizer.minimize(loss)
-    return main_program, startup_program
+    feed_vars = [x]
+    fetch_vars = [loss]
+    return main_program, startup_program, optimizer, feed_vars, fetch_vars
 
 
 class SimpleConvNet(nn.Layer):
@@ -118,7 +145,7 @@ def build_embedding_model(use_amp, amp_dtype="float16", amp_level="O1"):
             x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
             out = model(x)
             loss = paddle.mean(out)
-            optimizer = _build_optimizer(use_amp, amp_dtype, amp_level)
+            optimizer = _build_optimizer(use_amp, amp_dtype, amp_level, True)
             optimizer.minimize(loss)
     return main_program, startup_program
 
