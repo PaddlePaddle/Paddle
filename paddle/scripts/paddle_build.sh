@@ -868,7 +868,15 @@ set -x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
+                                echo 11111
                                 read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                echo $failed_test_lists
+                                echo 22222
+                                echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//'
+                                echo 33333
+                                echo $retry_unittests
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                echo $retry_unittests
                             fi
                         fi
                         echo "========================================="
