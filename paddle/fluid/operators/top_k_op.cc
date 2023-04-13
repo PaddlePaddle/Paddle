@@ -153,7 +153,7 @@ class TopkInferVarType : public framework::VarTypeInference {
     if (ctx->HasInput("K")) {
       ctx->SyncTypeAndDataType("K", "Indices");
     } else {
-      ctx->SetOutputDataTypes("Indices", framework::proto::VarType::INT32);
+      ctx->SetOutputDataType("Indices", framework::proto::VarType::INT32);
     }
   }
 };
