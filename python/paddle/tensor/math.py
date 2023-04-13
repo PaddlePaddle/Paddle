@@ -4828,7 +4828,17 @@ def angle(x, name=None):
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'angle',
         )
         op_type = "angle"
         helper = LayerHelper(op_type, **locals())
