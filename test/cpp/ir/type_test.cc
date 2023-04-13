@@ -28,10 +28,9 @@ TEST(type_test, type_id) {
   class TypeA {};
   class TypeB {};
 
-  // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded
-  operator==
-      // method.
-      ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded operator==
+  // method.
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
   ir::TypeId a_other_id = ir::TypeId::get<TypeA>();
   ir::TypeId b_id = ir::TypeId::get<TypeB>();
   EXPECT_EQ(a_id, a_other_id);
