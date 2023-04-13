@@ -2323,10 +2323,10 @@ class TestSundryAPI(unittest.TestCase):
         out.retain_grads()
         out.backward()
 
-        self.assertTrue(out.shape, [])
-        self.assertTrue(a.grad.shape, [4])
-        self.assertTrue(b.grad.shape, [4, 5])
-        self.assertTrue(c.grad.shape, [5])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(a.grad.shape, [4])
+        self.assertEqual(b.grad.shape, [4, 5])
+        self.assertEqual(c.grad.shape, [5])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -4150,7 +4150,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         out = paddle.linalg.multi_dot([a, b, c])
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertTrue(res[0].shape, [])
+        self.assertEqual(res[0].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
@@ -4582,13 +4582,13 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.linalg.matrix_rank(x)
 
-        self.assertTrue(out.shape, [])
+        self.assertEqual(out.shape, ())
         np.testing.assert_equal(out, np.array(10))
 
         c = paddle.ones(shape=[3, 4, 5])
         c.stop_gradient = False
         out_c = paddle.linalg.matrix_rank(c)
-        self.assertTrue(out_c.shape, [3])
+        self.assertEqual(out_c.shape, (3,))
         np.testing.assert_equal(out_c, np.array([1, 1, 1]))
 
     def test_static_matrix_rank(self):
@@ -4599,7 +4599,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         self.exe.run(paddle.static.default_startup_program())
         res = self.exe.run(prog, fetch_list=[out])
-        self.assertTrue(res[0].shape, [])
+        self.assertEqual(res[0].shape, ())
 
         # 3D : OUTPUT 1D
         c = paddle.ones(shape=[3, 4, 5])
