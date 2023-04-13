@@ -2086,6 +2086,7 @@
     {x : Input, offset : Offset, mask : Mask, filter : Filter}
   outputs :
     out : Output
+  manual_signature : [deformable_conv, deformable_conv_grad]
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
