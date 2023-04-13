@@ -2764,10 +2764,6 @@ void PNormInferMeta(const MetaTensor& x,
     for (int i = 0; i < x_dim.size(); ++i) {
       if (i != axis) reduce_dims.emplace_back(x_dim[i]);
     }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-
     x_dim[axis] = 1;
   }
 

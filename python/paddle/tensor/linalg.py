@@ -536,6 +536,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         )
         return out
 
+    if axis is None and len(x.shape) <= 2:
+        axis = list(range(len(x.shape)))
+
     if axis is None and p is not None:
         if isinstance(p, str):
             if p == "fro":
