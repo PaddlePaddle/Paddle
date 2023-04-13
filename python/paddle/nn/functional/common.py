@@ -1863,7 +1863,12 @@ def linear(x, weight, bias=None, name=None):
         check_variable_and_dtype(
             x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
         )
-        check_dtype(dtype, 'dtype', ["uint16", 'float16', 'float32', 'float64'], 'linear')
+        check_dtype(
+            dtype,
+            'dtype',
+            ["uint16", 'float16', 'float32', 'float64'],
+            'linear',
+        )
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}
