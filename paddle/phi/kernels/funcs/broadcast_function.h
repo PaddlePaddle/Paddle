@@ -968,9 +968,9 @@ template <typename Functor, typename T, typename OutType = T>
 void ElementwiseCompute(const GPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
-                        int axis,
                         Functor func,
-                        DenseTensor *z) {
+                        DenseTensor *z,
+                        int axis = -1) {
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
   dev_ctx.template Alloc<OutType>(z);
@@ -990,7 +990,7 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   dev_ctx.template Alloc<T>(z);
-  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, Functor(), z, axis);
 }
 
 #else
@@ -1008,10 +1008,10 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
   auto y_dims = y.dims();
   dev_ctx.template Alloc<T>(z);
   if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+    funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, Functor(), z, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T>(
-        dev_ctx, x, y, axis, InverseFunctor(), z);
+        dev_ctx, x, y, InverseFunctor(), z, axis);
   }
 }
 #endif

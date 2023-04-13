@@ -30,7 +30,7 @@ void MaximumRawKernel(const Context& dev_ctx,
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
-      dev_ctx, x, y, axis, funcs::MaximumFunctor<T>(), out);
+      dev_ctx, x, y, funcs::MaximumFunctor<T>(), out, axis);
 }
 
 template <typename T, typename Context>
@@ -42,7 +42,7 @@ void MinimumRawKernel(const Context& dev_ctx,
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
-      dev_ctx, x, y, axis, funcs::MinimumFunctor<T>(), out);
+      dev_ctx, x, y, funcs::MinimumFunctor<T>(), out, axis);
 }
 
 template <typename T, typename Context>
@@ -57,10 +57,10 @@ void RemainderRawKernel(const Context& dev_ctx,
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
     funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::RemainderFunctor<T>(), out);
+        dev_ctx, x, y, funcs::RemainderFunctor<T>(), out, axis);
   } else {
     funcs::ElementwiseCompute<funcs::InverseRemainderFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::InverseRemainderFunctor<T>(), out);
+        dev_ctx, x, y, funcs::InverseRemainderFunctor<T>(), out, axis);
   }
 }
 
@@ -76,10 +76,10 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
     funcs::ElementwiseCompute<funcs::FloorDivideFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::FloorDivideFunctor<T>(), out);
+        dev_ctx, x, y, funcs::FloorDivideFunctor<T>(), out, axis);
   } else {
     funcs::ElementwiseCompute<funcs::InverseFloorDivideFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::InverseFloorDivideFunctor<T>(), out);
+        dev_ctx, x, y, funcs::InverseFloorDivideFunctor<T>(), out, axis);
   }
 }
 
@@ -95,10 +95,10 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
     funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::ElementwisePowFunctor<T>(), out);
+        dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
   } else {
     funcs::ElementwiseCompute<funcs::ElementwiseInversePowFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::ElementwiseInversePowFunctor<T>(), out);
+        dev_ctx, x, y, funcs::ElementwiseInversePowFunctor<T>(), out, axis);
   }
 }
 
@@ -110,7 +110,7 @@ void HeavisideKernel(const Context& dev_ctx,
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, -1, funcs::ElementwiseHeavisideFunctor<T>(), out);
+      dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
 }
 
 }  // namespace phi

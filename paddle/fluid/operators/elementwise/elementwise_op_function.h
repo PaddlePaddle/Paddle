@@ -188,7 +188,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   z->mutable_data<OutType>(ctx.GetPlace());
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
   phi::funcs::ElementwiseCompute<Functor, T, OutType>(
-      dev_ctx, *x, *y, axis, func, z);
+      dev_ctx, *x, *y, func, z, axis);
 }
 
 // FusedElemwiseAndAct

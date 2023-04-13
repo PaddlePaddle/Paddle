@@ -188,12 +188,7 @@ void SetValueImpl(const Context& dev_ctx,
   CheckIsDimsMatch(slice_dims_for_assign, value.dims());
   // ElementwiseComputeEx can do broadcasting
   funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-      dev_ctx,
-      slice_tensor,
-      value,
-      -1,
-      funcs::SubtractFunctor<T>(),
-      &slice_tensor);
+      dev_ctx, slice_tensor, value, funcs::SubtractFunctor<T>(), &slice_tensor);
 
   slice_tensor.Resize(slice_dims);
 

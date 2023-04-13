@@ -368,9 +368,9 @@ template <typename Functor, typename T, typename OutType = T>
 void ElementwiseCompute(const CPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
-                        int axis,
                         Functor func,
-                        DenseTensor *z) {
+                        DenseTensor *z,
+                        int axis = -1) {
   dev_ctx.Alloc<OutType>(z);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
