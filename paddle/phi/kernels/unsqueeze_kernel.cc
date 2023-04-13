@@ -47,8 +47,9 @@ void UnsqueezeKernel(const Context& dev_ctx,
                      DenseTensor* xshape) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
-  out->can_not_uses->insert(out->canNotUse);
-  out->can_not_uses->insert(xx.canNotUse);
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
+
   UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi

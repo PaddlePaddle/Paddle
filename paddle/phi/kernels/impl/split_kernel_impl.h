@@ -32,8 +32,8 @@ void SplitKernel(const Context& dev_ctx,
   // inplace_version += 1
   for (size_t i = 0; i < outs.size(); ++i) {
     outs[i]->can_not_uses = xx.can_not_uses;
-    outs[i]->can_not_uses->insert(outs[i]->canNotUse);
-    outs[i]->can_not_uses->insert(xx.canNotUse);
+    *outs[i]->canNotUse = *xx.canNotUse;
+    xx.can_not_uses->insert(outs[i]->canNotUse);
   }
 
   std::vector<const DenseTensor*> shape_refer;

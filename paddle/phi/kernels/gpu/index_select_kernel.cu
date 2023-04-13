@@ -33,8 +33,8 @@ void IndexSelectKernel(const Context& ctx,
                        DenseTensor* output) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   output->can_not_uses = xx.can_not_uses;
-  output->can_not_uses->insert(output->canNotUse);
-  output->can_not_uses->insert(xx.canNotUse);
+  *output->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(output->canNotUse);
 
   auto input_dim = x.dims();
   auto output_dim = output->dims();

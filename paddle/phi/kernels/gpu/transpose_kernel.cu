@@ -32,8 +32,8 @@ void TransposeKernel(const Context& ctx,
                      DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
-  out->can_not_uses->insert(out->canNotUse);
-  out->can_not_uses->insert(xx.canNotUse);
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
 
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;

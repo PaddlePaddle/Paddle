@@ -48,6 +48,11 @@ void ExpandAsGradKernel(const Context& context,
                         const DenseTensor& out_grad,
                         const std::vector<int>& target_shape,
                         DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  in_grad->can_not_uses = xx.can_not_uses;
+  *in_grad->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(in_grad->canNotUse);
+
   auto x_dims = x.dims();
 
   if (in_grad->dims() == out_grad.dims()) {

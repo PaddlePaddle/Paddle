@@ -29,8 +29,8 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   x_grad->can_not_uses = xx.can_not_uses;
-  x_grad->can_not_uses->insert(x_grad->canNotUse);
-  x_grad->can_not_uses->insert(xx.canNotUse);
+  *x_grad->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(x_grad->canNotUse);
 
   ctx.template Alloc<T>(x_grad);
   if (x_grad->dims() == out_grad.dims()) {

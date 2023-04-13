@@ -110,8 +110,9 @@ void SliceRawKernel(const Context& ctx,
                     DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(input);
   out->can_not_uses = xx.can_not_uses;
-  out->can_not_uses->insert(out->canNotUse);
-  out->can_not_uses->insert(xx.canNotUse);
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
+
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

@@ -41,8 +41,8 @@ void RealKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
-  out->can_not_uses->insert(out->canNotUse);
-  out->can_not_uses->insert(xx.canNotUse);
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
 
   auto numel = x.numel();
   auto* x_data = x.data<T>();
@@ -58,6 +58,11 @@ template <typename T, typename Context>
 void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
+
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(

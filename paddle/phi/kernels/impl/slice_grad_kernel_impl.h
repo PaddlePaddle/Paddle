@@ -280,6 +280,11 @@ void SliceGradRawKernel(const Context& ctx,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* input_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  input_grad->can_not_uses = xx.can_not_uses;
+  *input_grad->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(input_grad->canNotUse);
+
   size_t rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

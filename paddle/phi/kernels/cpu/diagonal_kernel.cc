@@ -27,6 +27,11 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
+
   auto* input = &x;
   const T* input_data = input->data<T>();
   auto input_dim = vectorize(input->dims());

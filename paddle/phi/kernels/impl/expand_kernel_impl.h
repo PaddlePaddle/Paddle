@@ -112,6 +112,11 @@ void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  *out->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(out->canNotUse);
+
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,

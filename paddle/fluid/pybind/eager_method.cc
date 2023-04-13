@@ -767,7 +767,13 @@ static PyObject* tensor_method_detach(TensorObject* self,
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::Tensor();
-    v->tensor.set_impl(self->tensor.impl());
+    auto tensor = std::make_shared<phi::DenseTensor>(*self->tensor.impl().get())
+
+                      tensor->can_not_uses = self->tensor.impl()->can_not_uses;
+    *tensor->canNotUse = *self->tensor.impl()->canNotUse;
+    self->tensor.impl()->can_not_uses->insert(tensor->canNotUse);
+
+    v->tensor.set_impl(tensor);
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
     auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
@@ -1283,6 +1289,23 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
+    if (self_tensor->canNotUse) {
+      LOG(WARNING) << "Stride Test Log 20: op_name = "
+                   << "eager_method setitem"
+                   << ", var name = "
+                   << "self_tensor";
+    }
+
+    if (self_tensor->can_not_uses->size() > 0) {
+      for (auto it = self_tensor->can_not_uses->begin();
+           it != self_tensor->can_not_uses->end();
+           it++) {
+        if (*it != self_tensor->canNotUse) {
+          **it = true;
+        }
+      }
+    }
+
     auto self_numpy = TensorToPyArray(*self_tensor);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {

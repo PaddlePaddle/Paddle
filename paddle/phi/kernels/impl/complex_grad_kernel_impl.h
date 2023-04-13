@@ -24,6 +24,11 @@ template <typename T, typename Context>
 void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  dx->can_not_uses = xx.can_not_uses;
+  *dx->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(dx->canNotUse);
+
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
@@ -38,6 +43,11 @@ template <typename T, typename Context>
 void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  dx->can_not_uses = xx.can_not_uses;
+  *dx->canNotUse = *xx.canNotUse;
+  xx.can_not_uses->insert(dx->canNotUse);
+
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
