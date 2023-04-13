@@ -864,7 +864,7 @@ set +x
                 fi
                 done
                 #run tests which depend on prootbuf3
-                ctest -R "${ut_run_by_protobuf3_in_py3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                ctest -R "${ut_run_by_protobuf3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             fi
             
         fi
@@ -946,6 +946,7 @@ set +x
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
         rerun_ut_endTime_s=`date +%s`
+        pip install protobuf==$protobuf_version
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s"
