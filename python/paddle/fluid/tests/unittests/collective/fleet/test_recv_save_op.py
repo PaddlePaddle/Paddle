@@ -31,6 +31,7 @@ from paddle.incubate.distributed.fleet.parameter_server.mode import (
 )
 
 
+# only test
 def run_pserver(pserver_id):
     remove_ps_flag(os.getpid())
     scope = fluid.core.Scope()
