@@ -2446,7 +2446,10 @@ def min(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('min', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'min',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
