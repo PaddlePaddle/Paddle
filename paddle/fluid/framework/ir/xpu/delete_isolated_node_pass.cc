@@ -115,6 +115,7 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       block = node->Op()->Block();
+      break;
     }
   }
   Scope& scope = graph->Get<framework::Scope>("__param_scope__");
