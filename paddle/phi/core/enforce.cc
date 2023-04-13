@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 
@@ -162,6 +163,10 @@ std::string GetCurrentTraceBackString(bool for_signal) {
   sout << "Not support stack backtrace yet.\n";
 #endif
   return sout.str();
+}
+
+void ThrowWarnInternal(const std::string& msg) {
+  LOG(WARNING) << "WARNING :" << msg;
 }
 
 std::string SimplifyErrorTypeFormat(const std::string& str) {
