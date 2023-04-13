@@ -239,8 +239,7 @@ class RocSparseDnMatDescriptor {
       // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
       PADDLE_THROW(phi::errors::Unimplemented(
           "Batch Sparse matmul use 'rocsparse_dnmat_set_strided_batch', which "
-          "is "
-          "supported from ROCM 5.2.0"));
+          "is supported from ROCM 5.2.0"));
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
   }
