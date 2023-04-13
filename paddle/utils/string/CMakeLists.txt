@@ -9,7 +9,7 @@ cc_library(
 cc_test(
   stringprintf_test
   SRCS printf_test.cc
-  DEPS gflags)
+  DEPS phi)
 cc_test(to_string_test SRCS to_string_test.cc)
 cc_test(split_test SRCS split_test.cc)
 cc_test(

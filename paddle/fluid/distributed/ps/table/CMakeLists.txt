@@ -91,7 +91,7 @@ cc_library(
        ps_framework_proto
        string_helper
        device_context
-       gflags
+       phi
        glog
        fs
        afs_wrapper

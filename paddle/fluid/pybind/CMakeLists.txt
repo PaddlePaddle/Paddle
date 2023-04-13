@@ -61,7 +61,7 @@ if(WITH_RPC)
       zlib
       leveldb
       snappy
-      gflags
+      phi
       glog)
 endif()
 if(WITH_GPU OR WITH_ROCM)

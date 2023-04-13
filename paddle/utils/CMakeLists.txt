@@ -3,7 +3,7 @@ add_subdirectory(string)
 cc_test(
   array_ref_test
   SRCS array_ref_test.cc
-  DEPS gtest gflags)
+  DEPS gtest phi)
 cc_test(
   small_vector_test
   SRCS small_vector_test.cc

@@ -8,12 +8,11 @@ if(WITH_HETERPS)
       ssl
       crypto
       protobuf
-      gflags
+      phi
       glog
       zlib
       leveldb
       snappy
-      gflags
       glog
       device_context
       rocksdb)
@@ -25,12 +24,11 @@ else()
       ssl
       crypto
       protobuf
-      gflags
+      phi
       glog
       zlib
       leveldb
       snappy
-      gflags
       glog
       device_context)
 

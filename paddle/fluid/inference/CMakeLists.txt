@@ -141,7 +141,7 @@ target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
   set_property(TARGET paddle_inference_shared
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(paddle_inference_shared gflags)
+  target_link_libraries(paddle_inference_shared phi)
 endif()
 
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME

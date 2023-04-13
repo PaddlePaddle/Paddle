@@ -878,7 +878,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog
       ${os_dependency_modules})
     add_dependencies(
@@ -888,7 +888,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

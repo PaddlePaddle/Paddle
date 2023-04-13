@@ -39,7 +39,7 @@ cc_library(
 cc_test(
   place_test
   SRCS place_test.cc
-  DEPS place glog gflags)
+  DEPS place glog phi)
 
 if(WITH_MKLDNN)
   set(MKLDNN_CTX_DEPS mkldnn)

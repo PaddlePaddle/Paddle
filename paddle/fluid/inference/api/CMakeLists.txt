@@ -65,7 +65,7 @@ cc_library(
   DEPS ${paddle_inference_api_deps})
 
 if(WIN32)
-  target_link_libraries(paddle_inference_api gflags)
+  target_link_libraries(paddle_inference_api phi)
 endif()
 
 set(inference_deps ${analysis_deps} paddle_inference_api analysis

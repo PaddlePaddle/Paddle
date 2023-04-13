@@ -1,7 +1,7 @@
 cc_library(
   imperative_flag
   SRCS flags.cc
-  DEPS gflags phi)
+  DEPS phi)
 cc_library(
   var_helper
   SRCS var_helper.cc

@@ -331,7 +331,7 @@ cc_library(
 cc_library(
   bind_threaded_ssa_graph_executor
   SRCS bind_threaded_ssa_graph_executor.cc
-  DEPS fetch_op_handle gflags ssa_graph_executor scope simple_threadpool
+  DEPS fetch_op_handle phi ssa_graph_executor scope simple_threadpool
        device_context)
 cc_library(
   fast_threaded_ssa_graph_executor

@@ -5,7 +5,7 @@ endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
-  set(BRPC_DEPS arm_brpc snappy gflags glog)
+  set(BRPC_DEPS arm_brpc snappy phi glog)
 elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set(BRPC_DEPS
       brpc
@@ -15,7 +15,7 @@ elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
       zlib
       leveldb
       snappy
-      gflags
+      phi
       glog)
 else()
   set(BRPC_DEPS "")
@@ -51,7 +51,7 @@ cc_library(
        collective_helper
        op_registry
        executor_gc_helper
-       gflags
+       phi
        glog
        ${BRPC_DEPS})
 

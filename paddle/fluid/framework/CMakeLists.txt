@@ -188,7 +188,7 @@ endif()
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context memory gflags glog)
+  DEPS device_context memory phi glog)
 
 cc_library(
   reader
