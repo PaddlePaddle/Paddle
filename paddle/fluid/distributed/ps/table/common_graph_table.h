@@ -42,6 +42,7 @@
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
@@ -758,12 +759,14 @@ class GraphTable : public Table {
   void build_graph_type_keys();
   void build_node_iter_type_keys();
   bool is_key_for_self_rank(const uint64_t &id);
-  void graph_partition();
-  void dbh_graph_partition();
+  void graph_partition(bool is_edge);
+  void dbh_graph_edge_partition();
+  void dbh_graph_feature_partition();
 
   std::vector<uint64_t> graph_total_keys_;
   std::vector<std::vector<uint64_t>> graph_type_keys_;
   std::unordered_map<int, int> type_to_index_;
+  robin_hood::unordered_set<uint64_t> unique_all_edge_keys_;
 
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards,
       node_shards;
