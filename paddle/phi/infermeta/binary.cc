@@ -31,18 +31,6 @@ limitations under the License. */
 namespace phi {
 namespace detail {
 
-void MatrixRankStaticInferMeta(const MetaTensor& x,
-                               const MetaTensor& atol_tensor,
-                               bool hermitian,
-                               bool use_default_tol,
-                               MetaTensor* out) {
-  if (atol_tensor) {
-    MatrixRankTolInferMeta(x, atol_tensor, hermitian, use_default_tol, out);
-  } else {
-    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
-  }
-}
-
 static void BinarySameInputDimsCheck(const MetaTensor& x,
                                      const MetaTensor& y,
                                      MetaConfig config) {
@@ -2220,6 +2208,18 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
   if (roisnum != nullptr) {
     roisnum->set_dims({-1});
     roisnum->set_dtype(phi::DataType::INT32);
+  }
+}
+
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool hermitian,
+                               bool use_default_tol,
+                               MetaTensor* out) {
+  if (atol_tensor) {
+    MatrixRankTolInferMeta(x, atol_tensor, hermitian, use_default_tol, out);
+  } else {
+    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
   }
 }
 
