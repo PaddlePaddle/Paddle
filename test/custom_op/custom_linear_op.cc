@@ -17,16 +17,17 @@ limitations under the License. */
 #include "paddle/extension.h"
 
 // The linear implemented here must be passed in bias
-std::vector<paddle::Tensor> PhiLinearForward(const paddle::Tensor& x,
-                                             const paddle::Tensor& weight,
-                                             const paddle::Tensor& bias) {
+std::vector<paddle::Tensor> CustomLinearForward(const paddle::Tensor& x,
+                                                const paddle::Tensor& weight,
+                                                const paddle::Tensor& bias) {
   return {paddle::add(paddle::matmul(x, weight), bias)};
 }
 
-std::vector<paddle::Tensor> PhiLinearBackward(const paddle::Tensor& x,
-                                              const paddle::Tensor& weight,
-                                              const paddle::Tensor& bias,
-                                              const paddle::Tensor& out_grad) {
+std::vector<paddle::Tensor> CustomLinearBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& weight,
+    const paddle::Tensor& bias,
+    const paddle::Tensor& out_grad) {
   auto x_grad = paddle::matmul(out_grad, weight, false, true);
   auto weight_grad = paddle::matmul(x, out_grad, true, false);
   auto bias_grad = paddle::experimental::sum(out_grad, {0});
@@ -96,14 +97,14 @@ std::vector<paddle::DataType> LinearInferDtype(
   return {x_dtype};
 }
 
-PD_BUILD_OP(phi_linear)
+PD_BUILD_OP(custom_linear)
     .Inputs({"X", "Weight", "Bias"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(PhiLinearForward))
+    .SetKernelFn(PD_KERNEL(CustomLinearForward))
     .SetInferShapeFn(PD_INFER_SHAPE(LinearInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(LinearInferDtype));
 
-PD_BUILD_GRAD_OP(phi_linear)
+PD_BUILD_GRAD_OP(custom_linear)
     .Inputs({"X", "Weight", "Bias", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X"), paddle::Grad("Weight"), paddle::Grad("Bias")})
-    .SetKernelFn(PD_KERNEL(PhiLinearBackward));
+    .SetKernelFn(PD_KERNEL(CustomLinearBackward));

@@ -91,7 +91,7 @@ def init_process_groups(group_map, rank):
     # TODO should instantiate global group first
     all_process_groups = get_all_process_groups()
     for process_group in all_process_groups:
-        if rank not in process_group.ranks:
+        if process_group.id == 0 or rank not in process_group.ranks:
             continue
         print(process_group)
         process_group.instantiate()

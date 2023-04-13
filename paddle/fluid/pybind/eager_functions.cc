@@ -47,6 +47,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -1246,6 +1247,37 @@ static PyObject* eager_api__add_backward_final_hook(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_set_master_grads(PyObject* self,
+                                            PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  // tensor_list is a list of model parameters.
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "set master_grad for tensor: " << tensor.name();
+    PADDLE_ENFORCE_EQ(
+        egr::egr_utils_api::IsLeafTensor(tensor),
+        true,
+        paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+    paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
+    PADDLE_ENFORCE_NE(grad,
+                      nullptr,
+                      paddle::platform::errors::Fatal(
+                          "Detected NULL grad"
+                          "Please check if you have manually cleared"
+                          "the grad inside autograd_meta"));
+    auto dtype = (*grad).dtype();
+    if ((*grad).initialized() &&
+        (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16)) {
+      auto master_grad =
+          paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
+      grad->set_impl(master_grad.impl());
+    }
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
@@ -1312,6 +1344,11 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"reset_saved_tensors_hooks",
      (PyCFunction)(void (*)(void))eager_api_reset_saved_tensors_hooks,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    /**amp functions**/
+    {"set_master_grads",
+     (PyCFunction)(void (*)(void))eager_api_set_master_grads,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 /**sparse functions**/

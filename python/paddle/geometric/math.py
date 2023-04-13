@@ -51,7 +51,7 @@ def segment_sum(data, segment_ids, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+        return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
             data,
@@ -108,7 +108,7 @@ def segment_mean(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
 
         check_variable_and_dtype(
@@ -165,7 +165,7 @@ def segment_min(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MIN")
     else:
         check_variable_and_dtype(
             data,
@@ -221,7 +221,7 @@ def segment_max(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MAX")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MAX")
     else:
         check_variable_and_dtype(
             data,
