@@ -35,7 +35,6 @@ KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                                  "Beta2PowOut",
                                                  "MasterParamOut"};
   paddle::small_vector<const char*> attr_names;
-
   attr_names.emplace_back(ctx.HasInput("Beta1Tensor") ? "Beta1Tensor"
                                                       : "beta1");
   attr_names.emplace_back(ctx.HasInput("Beta2Tensor") ? "Beta2Tensor"
