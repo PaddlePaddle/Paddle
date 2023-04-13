@@ -2323,15 +2323,15 @@
   outputs :
     out : Out
 
-- op: temporal_shift
-  backward: temporal_shift_grad
+- op: squared_l2_norm
+  backward: squared_l2_norm_grad
   inputs :
     x : X
   outputs :
     out : Out
-    
-- op: squared_l2_norm
-  backward: squared_l2_norm_grad
+
+- op: temporal_shift
+  backward: temporal_shift_grad
   inputs :
     x : X
   outputs :
