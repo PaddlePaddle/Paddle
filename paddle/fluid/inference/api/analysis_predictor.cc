@@ -1103,7 +1103,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }

@@ -109,4 +109,4 @@ cc_test(
 cc_test(
   sequence_pooling_test
   SRCS sequence_pooling_test.cc
-  DEPS phi)
+  DEPS phi sequence_pooling)

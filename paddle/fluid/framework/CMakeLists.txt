@@ -1182,7 +1182,9 @@ cc_library(
        operator
        dynamic_loader
        string_helper
-       phi)
+       phi
+       imperative_flag
+       layer)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
