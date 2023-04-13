@@ -42,24 +42,6 @@ void TransposeGradStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(transpose_grad,
-                           CPU,
-                           STRIDED,
-                           phi::TransposeGradStrideKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transpose_grad,
-                           GPU,
-                           STRIDED,
-                           phi::TransposeGradStrideKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(transpose_grad,
-                           XPU,
-                           STRIDED,
-                           phi::TransposeGradStrideKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose_grad,
+                                         STRIDED,
+                                         phi::TransposeGradStrideKernel) {}

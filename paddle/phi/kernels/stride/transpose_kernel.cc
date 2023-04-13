@@ -45,24 +45,6 @@ void TransposeStrideKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(transpose,
-                           CPU,
-                           STRIDED,
-                           phi::TransposeStrideKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transpose,
-                           GPU,
-                           STRIDED,
-                           phi::TransposeStrideKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(transpose,
-                           XPU,
-                           STRIDED,
-                           phi::TransposeStrideKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose,
+                                         STRIDED,
+                                         phi::TransposeStrideKernel) {}
