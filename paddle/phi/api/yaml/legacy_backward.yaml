@@ -348,17 +348,6 @@
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
   no_need_buffer : weight
 
-- backward_op : expand_as_grad
-  forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] target_shape)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : expand_as_grad
-  no_need_buffer : x
-
 - backward_op : expand_double_grad
   forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray shape)
@@ -961,16 +950,6 @@
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
-
-- backward_op : squared_l2_norm_grad
-  forward : squared_l2_norm(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : squared_l2_norm_grad
 
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)

@@ -772,10 +772,6 @@ add_subdirectory(sequence)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
 
-if(WITH_XPU)
-  add_subdirectory(xpu)
-endif()
-
 # dist xpu tests:
 if(WITH_XPU_BKCL)
   py_test(test_collective_allreduce_api_xpu
@@ -1119,6 +1115,8 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scale_op
+    test_clip_op
     test_scatter_op
     test_gather_op
     test_layer_norm_op

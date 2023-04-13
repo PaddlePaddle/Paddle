@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
