@@ -280,7 +280,7 @@ def layer_norm(
     For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
-        x(Tensor): Input Tensor. It's data type should be uint16, float16, float32, float64.
+        x(Tensor): Input Tensor. It's data type should be bfloat16, float16, float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension

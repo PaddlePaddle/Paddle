@@ -1065,12 +1065,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str, optional): The data type of the output tensor, can be uint16, float16, float32, float64.
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
