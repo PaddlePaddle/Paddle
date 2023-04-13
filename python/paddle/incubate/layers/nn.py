@@ -162,7 +162,7 @@ def fused_seqpool_cvm(
             data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
             data2 = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
             inputs = [data, data2]
-            embs = fluid.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
+            embs = paddle.incubate.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
 
             label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
             ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
@@ -1458,7 +1458,7 @@ def correlation(
                                 dtype="float32")
 
 
-            out = fluid.contrib.correlation(
+            out = paddle.incubate.layers.correlation(
                             x1,
                             x2,
                             pad_size=4,
