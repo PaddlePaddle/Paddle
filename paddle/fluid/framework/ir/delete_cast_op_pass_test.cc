@@ -226,6 +226,35 @@ TEST(ApplyCastIndexSamplePass, basic) {
                         cast_num_in_graph));
 }
 
+TEST(ApplyCastScatterPass, basic) {
+  paddle::framework::ProgramDesc program;
+  auto* block = program.MutableBlock(0);
+  auto* cast0_in = Data(block, "cast0_in", {1});
+  auto* cast0_out = AddCast(block, cast0_in, 4, 5);
+  auto* cast1_in = Data(block, "cast1_in", {1});
+  auto* cast1_out = AddCast(block, cast1_in, 4, 5);
+  auto* scatter_out = Data(block, "scatter_out", {1});
+  OpDesc* scatter = block->AppendOp();
+  scatter->SetType("scatter");
+  scatter->SetInput("X", {cast0_out->Name()});
+  scatter->SetInput("Updates", {cast1_out->Name()});
+  scatter->SetOutput("Out", {scatter_out->Name()});
+  AddCast(block, scatter_out, 5, 4);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
+  auto scope = new Scope();
+  graph->Set("__param_scope__", scope);
+  auto pass = PassRegistry::Instance().Get("delete_cast_op_pass");
+  pass->Apply(graph.get());
+  int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
+  PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "graph should have 0 cast after delete_cast_op_pass, "
+                        "but actually has %d.",
+                        cast_num_in_graph));
+}
+
 TEST(ApplyCastPass, basic) {
   paddle::framework::ProgramDesc program;
   auto* block = program.MutableBlock(0);
