@@ -285,7 +285,7 @@ int ProfileToGetBestConfig(
       // debug code
       VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
               << conv2d_diff_gpu(params, op_type) << " compared with baseline,"
-              << "cost_time: " << elapsed_time << "ms." << std::endl;
+              << "cost_time: " << elapsed_time << "ms.";
     }
   }
 
