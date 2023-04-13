@@ -53,7 +53,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <utility>
-
+#include "paddle/phi/core/macros.h"
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif

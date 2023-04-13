@@ -15,8 +15,8 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
-
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace detail {
