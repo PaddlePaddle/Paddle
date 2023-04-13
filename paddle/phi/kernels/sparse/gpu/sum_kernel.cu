@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -26,15 +27,15 @@
 namespace phi {
 namespace sparse {
 
-template <typename T>
-__global__ void SumCooCudaKernel(const int64_t* x_indices_data,
+template <typename T, typename intT>
+__global__ void SumCooCudaKernel(const intT* x_indices_data,
                                  const T* x_values_data,
                                  const int64_t x_nnz,
                                  const int64_t dense_dim,
                                  const int64_t sparse_dim,
                                  const int64_t axis,
                                  const int64_t keep_dim,
-                                 int64_t* out_indices_data,
+                                 intT* out_indices_data,
                                  T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
     int64_t i = 0;
@@ -48,90 +49,6 @@ __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
                              x_indices_data[i + j * x_nnz]) {
           same = false;
           break;
-        }
-        //        if (keep_dim){
-        //          if (j != axis && x_indices_data[index + j * x_nnz] !=
-        //                               x_indices_data[i + j * x_nnz]) {
-        //            same = false;
-        //            break;
-        //          }
-        //        }else{
-        //          if (j < axis && x_indices_data[index + j * x_nnz] !=
-        //                              x_indices_data[i + j * x_nnz]) {
-        //            same = false;
-        //            break;
-        //          }
-        //          if (j >= axis && x_indices_data[index + j * x_nnz] !=
-        //                               x_indices_data[i + (j + 1) * x_nnz]) {
-        //            same = false;
-        //            break;
-        //          }
-        //        }
-      }
-      if (same) {
-        for (int j = 0; j < dense_dim; ++j) {
-          out_values_data[j + index * dense_dim] +=
-              x_values_data[j + i * dense_dim];
-        }
-      }
-      i++;
-    }
-    if (keep_dim) {
-      for (int j = 0; j < sparse_dim; ++j) {
-        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
-        if (j == axis) {
-          out_indices_data[index + j * x_nnz] = 0;
-        }
-      }
-      return;
-    }
-    for (int j = 0; j < sparse_dim; ++j) {
-      // out_indices_data [sparse_dim, x.nnz()]
-      if (j < axis) {
-        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
-      } else {
-        out_indices_data[index + j * x_nnz] =
-            x_indices_data[index + (j + 1) * x_nnz];
-      }
-    }
-  }
-}
-
-template <typename T>
-__global__ void SumCooCudaKeepdimKernel(const int64_t* x_indices_data,
-                                        const T* x_values_data,
-                                        const int64_t x_nnz,
-                                        const int64_t dense_dim,
-                                        const int64_t sparse_dim,
-                                        const int64_t axis,
-                                        const int64_t keep_dim,
-                                        int64_t* out_indices_data,
-                                        T* out_values_data) {
-  CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
-    int64_t i = 0;
-    for (int j = 0; j < dense_dim; ++j) {
-      out_values_data[j + index * dense_dim] = 0;
-    }
-    while (i < x_nnz) {
-      bool same = true;
-      for (int j = 0; j < sparse_dim; ++j) {
-        if (keep_dim) {
-          if (j != axis && x_indices_data[index + j * x_nnz] !=
-                               x_indices_data[i + j * x_nnz]) {
-            same = false;
-            break;
-          }
-        } else {
-          if (j < axis && x_indices_data[index + j * x_nnz] !=
-                              x_indices_data[i + j * x_nnz]) {
-            same = false;
-            break;
-          }
-          if (j >= axis && x_indices_data[index + j * x_nnz] !=
-                               x_indices_data[i + (j + 1) * x_nnz]) {
-            same = false;
-            break;
-          }
         }
       }
       if (same) {
@@ -222,13 +139,13 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
   }
 }
 
-template <typename T, typename Context>
-void SumCooKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const IntArray& axis,
-                  DataType dtype,
-                  bool keep_dim,
-                  SparseCooTensor* out) {
+template <typename T, typename intT, typename Context>
+void SumCooGPUKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const IntArray& axis,
+                     DataType dtype,
+                     bool keep_dim,
+                     SparseCooTensor* out) {
   size_t axis_dim = axis.size();
   auto sparse_dim = x.sparse_dim();
   // create out sparse tensor
@@ -238,19 +155,16 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
-  using x_indices_dtype = int64_t;
-  //  using x_indices_dtype =
-  //      typename DataTypeToCppType<x.indices().dtype()>::type;
   if (axis_dim == 0) {
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
-      out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, 1});
+      out_indices = Empty<intT, Context>(dev_ctx, {sparse_dim, 1});
     } else {
       out_dims = make_ddim({1});
-      out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {1, 1});
+      out_indices = Empty<intT, Context>(dev_ctx, {1, 1});
     }
-    phi::funcs::SetConstant<Context, x_indices_dtype> set_out_indices;
-    set_out_indices(dev_ctx, &out_indices, static_cast<x_indices_dtype>(0));
+    phi::funcs::SetConstant<Context, intT> set_out_indices;
+    set_out_indices(dev_ctx, &out_indices, static_cast<intT>(0));
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
     out->SetMember(out_indices, out_values, out_dims, x.coalesced());
     return;
@@ -272,7 +186,6 @@ void SumCooKernel(const Context& dev_ctx,
   if (dim >= sparse_dim) {
     out_indices = x_indices;
     dim = dim - sparse_dim + 1;
-    LOG(INFO) << dim;
     out_values = phi::Sum<T>(dev_ctx, x.values(), {dim}, dtype, keep_dim);
     out->SetMember(out_indices, out_values, out_dims, x.coalesced());
     return;
@@ -297,27 +210,27 @@ void SumCooKernel(const Context& dev_ctx,
                                       1,
                                       std::multiplies<int64_t>());
 
-  out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, x.nnz()});
+  out_indices = Empty<intT, Context>(dev_ctx, {sparse_dim, x.nnz()});
   out_values = Empty<T, Context>(dev_ctx, out_values_dims);
 
-  const auto* x_indices_data = x_indices.data<x_indices_dtype>();
+  const auto* x_indices_data = x_indices.data<intT>();
   const auto* x_values_data = x_values.data<T>();
-  auto* out_indices_data = out_indices.data<x_indices_dtype>();
+  auto* out_indices_data = out_indices.data<intT>();
   auto* out_values_data = out_values.data<T>();
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
-  SumCooCudaKernel<T><<<config.block_per_grid.x,
-                        config.thread_per_block.x,
-                        0,
-                        dev_ctx.stream()>>>(x_indices_data,
-                                            x_values_data,
-                                            x.nnz(),
-                                            dense_dim,
-                                            sparse_dim,
-                                            dim,
-                                            keep_dim,
-                                            out_indices_data,
-                                            out_values_data);
+  SumCooCudaKernel<T, intT><<<config.block_per_grid.x,
+                              config.thread_per_block.x,
+                              0,
+                              dev_ctx.stream()>>>(x_indices_data,
+                                                  x_values_data,
+                                                  x.nnz(),
+                                                  dense_dim,
+                                                  sparse_dim,
+                                                  dim,
+                                                  keep_dim,
+                                                  out_indices_data,
+                                                  out_values_data);
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
     out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
   }
@@ -412,6 +325,19 @@ void SumCsrKernel(const Context& dev_ctx,
     }
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
+}
+
+template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
+                                 SumCooGPUKernel<T, data_t, Context>(
+                                     dev_ctx, x, axis, dtype, keep_dim, out);
+                               }));
 }
 }  // namespace sparse
 }  // namespace phi

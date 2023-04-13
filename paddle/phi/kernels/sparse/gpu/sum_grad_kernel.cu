@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
@@ -70,27 +71,27 @@ __global__ void SumCsr3DGradCudaKernel(const int64_t* x_crows_data,
   }
 }
 
-template <typename T, typename Context>
-void SumCooGradKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const SparseCooTensor& dout,
-                      const IntArray& axis,
-                      bool keep_dim,
-                      SparseCooTensor* dx) {
+template <typename T, typename intT, typename Context>
+void SumCooGradGPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const SparseCooTensor& dout,
+                         const IntArray& axis,
+                         bool keep_dim,
+                         SparseCooTensor* dx) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
   unsigned int n_dim = axis.size();
 
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& dout_indices = dout.indices();
   const DenseTensor& dout_values = dout.values();
-  const auto* dout_indices_data = dout_indices.data<int64_t>();
+  const auto* dout_indices_data = dout_indices.data<intT>();
   const auto* dout_values_data = dout_values.data<T>();
 
   DenseTensor* dx_indices = dx->mutable_indices();
   DenseTensor* dx_values = dx->mutable_values();
   *dx_indices = x_indices;
 
-  const auto* dx_indices_data = dx_indices->data<int64_t>();
+  const auto* dx_indices_data = dx_indices->data<intT>();
   auto* dx_values_data = dx_values->data<T>();
 
   if (n_dim == 0) {
@@ -189,6 +190,20 @@ void SumCsrGradKernel(const Context& dev_ctx,
   if (dx_values->dtype() != dx->dtype()) {
     *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
+}
+
+template <typename T, typename Context>
+void SumCooGradKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const SparseCooTensor& dout,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      SparseCooTensor* dx) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "SumCooGradGPUKernel", ([&] {
+        SumCooGradGPUKernel<T, data_t, Context>(
+            dev_ctx, x, dout, axis, keep_dim, dx);
+      }));
 }
 }  // namespace sparse
 }  // namespace phi

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -25,13 +26,13 @@
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void SumCooKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const IntArray& axis,
-                  DataType dtype,
-                  bool keep_dim,
-                  SparseCooTensor* out) {
+template <typename T, typename intT, typename Context>
+void SumCooCPUKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const IntArray& axis,
+                     DataType dtype,
+                     bool keep_dim,
+                     SparseCooTensor* out) {
   size_t n_dim = axis.size();
   auto sparse_dim = x.sparse_dim();
   // create out sparse tensor
@@ -41,7 +42,6 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
-
   if (n_dim == 0) {
     std::vector<int64_t> out_indices_shape;
     if (keep_dim) {
@@ -51,8 +51,8 @@ void SumCooKernel(const Context& dev_ctx,
       out_dims = make_ddim({1});
       out_indices_shape = {1};
     }
-    out_indices = Empty<int64_t, Context>(dev_ctx, out_indices_shape);
-    auto* out_indices_data = out_indices.data<int64_t>();
+    out_indices = Empty<intT, Context>(dev_ctx, out_indices_shape);
+    auto* out_indices_data = out_indices.data<intT>();
     std::fill(out_indices_data, out_indices_data + out_indices.numel(), 0);
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
     out->SetMember(out_indices, out_values, out_dims, x.coalesced());
@@ -60,7 +60,7 @@ void SumCooKernel(const Context& dev_ctx,
   }
 
   auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
-  const auto* x_indices_data = x_indices.data<int64_t>();
+  const auto* x_indices_data = x_indices.data<intT>();
   const auto* x_values_data = x_values.data<T>();
 
   std::vector<int64_t> dims;
@@ -91,9 +91,9 @@ void SumCooKernel(const Context& dev_ctx,
   }
 
   // indices_map is a mapping from output's position to values to be summed.
-  std::map<std::vector<int64_t>, std::vector<int64_t>> indices_map;
+  std::map<std::vector<intT>, std::vector<int64_t>> indices_map;
   for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
-    std::vector<int64_t> pos;
+    std::vector<intT> pos;
     for (int64_t i = 0; i < x_indices.dims()[0]; ++i) {
       if (dim != i) {
         pos.emplace_back(x_indices_data[j + i * x_indices.dims()[1]]);
@@ -114,16 +114,16 @@ void SumCooKernel(const Context& dev_ctx,
                                       1,
                                       std::multiplies<int64_t>());
 
-  out_indices = Empty<int64_t, Context>(
+  out_indices = Empty<intT, Context>(
       dev_ctx, {sparse_dim, static_cast<int>(indices_map.size())});
   out_values = Empty<T, Context>(dev_ctx, out_values_dims);
 
-  auto* out_indices_data = out_indices.data<int64_t>();
+  auto* out_indices_data = out_indices.data<intT>();
   auto* out_values_data = out_values.data<T>();
 
   auto iter_indices_map = indices_map.begin();
   for (size_t j = 0; j < indices_map.size(); ++j) {
-    std::vector<int64_t> pos = iter_indices_map->first;
+    std::vector<intT> pos = iter_indices_map->first;
     std::vector<int64_t> values_index = iter_indices_map->second;
     iter_indices_map++;
     for (auto i = 0; i < sparse_dim; ++i) {
@@ -240,6 +240,20 @@ void SumCsrKernel(const Context& dev_ctx,
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
+
+template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooCPUKernel", ([&] {
+                                 SumCooCPUKernel<T, data_t, Context>(
+                                     dev_ctx, x, axis, dtype, keep_dim, out);
+                               }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 

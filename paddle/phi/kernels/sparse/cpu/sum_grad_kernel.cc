@@ -26,13 +26,13 @@
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void SumCooGradKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const SparseCooTensor& dout,
-                      const IntArray& axis,
-                      bool keep_dim,
-                      SparseCooTensor* dx) {
+template <typename T, typename intT, typename Context>
+void SumCooGradCPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const SparseCooTensor& dout,
+                         const IntArray& axis,
+                         bool keep_dim,
+                         SparseCooTensor* dx) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
   unsigned int n_dim = axis.size();
 
@@ -80,16 +80,17 @@ void SumCooGradKernel(const Context& dev_ctx,
     dense_dim *= x.values().dims()[i];
   }
 
-  std::map<std::vector<int64_t>, int64_t> indices_map;
+  std::map<std::vector<intT>, int64_t> indices_map;
   for (auto j = 0; j < dout_indices.dims()[1]; ++j) {
-    std::vector<int64_t> pos;
+    std::vector<intT> pos;
     for (int i = 0; i < dout_indices.dims()[0]; ++i) {
       pos.push_back(dout_indices_data[j + i * dout_indices.dims()[1]]);
     }
     indices_map[pos] = j;
   }
+
   for (auto j = 0; j < dx_indices->dims()[1]; ++j) {
-    std::vector<int64_t> pos;
+    std::vector<intT> pos;
     for (int i = 0; i < dx_indices->dims()[0]; ++i) {
       if (i != dim) {
         pos.push_back(dx_indices_data[j + i * dx_indices->dims()[1]]);
@@ -170,6 +171,20 @@ void SumCsrGradKernel(const Context& dev_ctx,
   if (dx_values->dtype() != dx->dtype()) {
     *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
+}
+
+template <typename T, typename Context>
+void SumCooGradKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const SparseCooTensor& dout,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      SparseCooTensor* dx) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "SumCooGradCPUKernel", ([&] {
+        SumCooGradCPUKernel<T, data_t, Context>(
+            dev_ctx, x, dout, axis, keep_dim, dx);
+      }));
 }
 
 }  // namespace sparse
