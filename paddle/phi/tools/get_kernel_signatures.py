@@ -69,15 +69,6 @@ class KernelSignatureSearcher:
         self.filter_result()
 
     @classmethod
-    def filter_kernel(cls, kernel_name: str or list[str]):
-        if isinstance(kernel_name, str):
-            cls.filter["kernel_name"].append(kernel_name)
-        elif isinstance(kernel_name, list):
-            cls.filter["kernel_name"].extend(kernel_name)
-        else:
-            raise ValueError("kernel_name must be str or list[str].")
-
-    @classmethod
     def search(cls, search_path):
         if cls.build_path is None:
             raise ValueError("Please set build_path first.")
@@ -200,10 +191,8 @@ def get_kernel_signatures():
     Get kernel signatures of all kernels registered in phi/kernels, and
     generate a csv file named 'kernel_signatures.csv' in Paddle/build.
 
-    Example:
-        >>> # filter kernel signatures of max and bilinear
-        >>> KernelSignatureSearcher.filter_kernel(['reverse_array', 'max'])
-        >>> get_kernel_signatures()
+    If you want to filter some kernels in result, you can add them to
+    KernelSignatureSearcher.filter["kernel_name"].
     """
     Paddle_path = osp.abspath(osp.join(osp.dirname(__file__), '../../..'))
     if Paddle_path.split('/')[-1] != 'Paddle':
@@ -238,5 +227,4 @@ def get_kernel_signatures():
 
 
 if __name__ == "__main__":
-    # KernelSignatureSearcher.filter_kernel(['reverse_array', 'max'])
     get_kernel_signatures()
