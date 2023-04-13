@@ -61,13 +61,11 @@ class TestFeatures(unittest.TestCase):
         n_mels: int,
         fmin: float,
     ):
-        print("test_log_melspect begins")
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
-        if len(self.waveform.shape) == 0:
-            self.waveform = np.array([self.waveform])
+
         # librosa:
         feature_librosa = librosa.feature.melspectrogram(
             y=self.waveform,
@@ -81,11 +79,9 @@ class TestFeatures(unittest.TestCase):
             pad_mode='reflect',
         )
         feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
-        print("waveform shape: ", self.waveform.shape)
         x = paddle.to_tensor(self.waveform, dtype=np.float64).unsqueeze(
             0
         )  # Add batch dim.
-        print("x shape: ", x.shape)
         feature_extractor = paddle.audio.features.LogMelSpectrogram(
             sr=sr,
             n_fft=n_fft,
@@ -97,14 +93,12 @@ class TestFeatures(unittest.TestCase):
             top_db=None,
             dtype=x.dtype,
         )
-        print("after feature_extractor: ", feature_extractor(x).shape)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
         np.testing.assert_array_almost_equal(
             feature_librosa, feature_layer, decimal=2
         )
         # relative difference
         np.testing.assert_allclose(feature_librosa, feature_layer, rtol=1e-4)
-        print("test_log_melspect ends")
 
     @parameterize(
         [16000], [256, 128], [40, 64], [64, 128], ['float32', 'float64']
@@ -112,7 +106,6 @@ class TestFeatures(unittest.TestCase):
     def test_mfcc(
         self, sr: int, n_fft: int, n_mfcc: int, n_mels: int, dtype: str
     ):
-        print("test_mfcc begins")
         if paddle.version.cuda() != 'False':
             if float(paddle.version.cuda()) >= 11.0:
                 return
@@ -121,6 +114,7 @@ class TestFeatures(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
+
         # librosa:
         np_dtype = getattr(np, dtype)
         feature_librosa = librosa.feature.mfcc(
@@ -137,11 +131,9 @@ class TestFeatures(unittest.TestCase):
             dtype=np_dtype,
         )
         # paddlespeech.audio.features.layer
-        print("waveform shape: ", self.waveform.shape)
         x = paddle.to_tensor(self.waveform, dtype=dtype).unsqueeze(
             0
         )  # Add batch dim.
-        print("x shape: ", x.shape)
         feature_extractor = paddle.audio.features.MFCC(
             sr=sr,
             n_mfcc=n_mfcc,
@@ -151,7 +143,6 @@ class TestFeatures(unittest.TestCase):
             top_db=self.top_db,
             dtype=x.dtype,
         )
-        print("after feature_extractor: ", feature_extractor(x).shape)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
 
         np.testing.assert_array_almost_equal(
@@ -183,7 +174,6 @@ class TestFeatures(unittest.TestCase):
         np.testing.assert_allclose(
             feature_layer_mfcc, feature_librosa, rtol=1e-1
         )
-        print("test_mfcc ends")
 
 
 if __name__ == '__main__':
