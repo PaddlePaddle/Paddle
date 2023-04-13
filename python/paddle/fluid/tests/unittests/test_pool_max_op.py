@@ -152,12 +152,12 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_adaptive()
         self.init_dtype()
 
-        input = np.random.random(self.shape).astype(self.dtype)
-        input = np.round(input * 100.0, 2)
         if self.is_bfloat16_op():
-            input = input.astype(np.float32)
+            input = np.random.random(self.shape).astype(np.float32)
+            input = np.round(input * 100.0, 2)
         else:
-            input = input.astype(self.dtype)
+            input = np.random.random(self.shape).astype(self.dtype)
+            input = np.round(input * 100.0, 2)
 
         output, mask = self.pool_forward_naive(
             input,
@@ -167,13 +167,11 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.global_pool,
             self.adaptive,
         )
-
+        mask = mask.astype("int32")
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
-            mask = mask.astype(np.float32)
         else:
             output = output.astype(self.dtype)
-            mask = mask.astype(self.dtype)
 
         self.attrs = {
             'strides': self.strides,
