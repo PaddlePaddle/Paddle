@@ -116,10 +116,10 @@ void FusedTransposeKernel(const Context& dev_ctx,
     attrs.set_scales_mask(DNNL_ARG_SRC, mask);
   }
 
-  // if (shift != 0.0f) {
-  //   auto dst = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
-  //   attrs.set_zero_points(dst, mask, {static_cast<int32_t>(shift)});
-  // }
+  if (shift != 0.0f) {
+    auto arg = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
+    attrs.set_zero_points_mask(arg, mask);
+  }
 
   DataType out_dtype;
   if (output_data_type == "bf16") {
@@ -149,8 +149,32 @@ void FusedTransposeKernel(const Context& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
+  std::unordered_map<int, dnnl::memory> args = {
+      {DNNL_ARG_SRC, *reorder_src_memory_p},
+      {DNNL_ARG_DST, *reorder_dst_memory_p},
+  };
+
+  if (scale != 1.0f) {
+    auto scales_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scales = dnnl::memory(
+        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales});
+  }
+
+  if (shift != 0.0f) {
+    auto zps_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+    auto zps = dnnl::memory(zps_md, dev_ctx.GetEngine());
+    // TODO(qun): why this shift is float, can we directly cast it to int32_t?
+    *reinterpret_cast<int32_t*>(zps.get_data_handle()) =
+        static_cast<int32_t>(shift);
+    auto arg = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
+    args.insert({DNNL_ARG_ATTR_ZERO_POINTS | arg, zps});
+  }
+
   auto& astream = OneDNNContext::tls().get_stream();
-  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+  reorder_p->execute(astream, args);
   astream.wait();
 
   auto out_md = reorder_dst_memory_p->get_desc().permute_axes(
