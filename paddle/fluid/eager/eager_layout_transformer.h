@@ -52,10 +52,9 @@ inline void UpdateLayout(paddle::Tensor* out_tensor,
   if (out_tensor->layout() != layout) {
     VLOG(4) << "Update out_tensor's layout from " << out_tensor->layout()
             << " to " << layout;
-    auto meta = phi::DenseTensorUtils::GetMutableMeta(
-        static_cast<phi::DenseTensor*>(out_tensor->impl().get()));
-    meta->layout = layout;
-    meta->strides = meta->calc_strides(meta->dims, meta->layout);
+    phi::DenseTensorUtils::GetMutableMeta(
+        static_cast<phi::DenseTensor*>(out_tensor->impl().get()))
+        ->layout = layout;
   }
 }
 
@@ -133,9 +132,9 @@ class EagerLayoutTransformer {
     // This is for Agnostic op when layout is differnet
     if (need_trans) {
       auto out_tensor = EagerTraceTransposeOp(final_layout_, in);
-      auto meta = phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(out_tensor.impl().get()));
-      meta->layout = final_layout_;
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(out_tensor.impl().get()))
+          ->layout = final_layout_;
       return out_tensor;
     }
     return in;
@@ -161,10 +160,9 @@ class EagerLayoutTransformer {
     bool update_layout = !(final_layout_ == Layout::UNDEFINED);
     if (update_layout) {
       for (size_t i = 0; i < out_tensor->size(); i++) {
-        auto meta = phi::DenseTensorUtils::GetMutableMeta(
-            static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()));
-        meta->layout = DesiredLayout();
-        meta->strides = meta->calc_strides(meta->dims, meta->layout);
+        phi::DenseTensorUtils::GetMutableMeta(
+            static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()))
+            ->layout = DesiredLayout();
       }
     }
   }
@@ -228,10 +226,9 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
       if ((*out_tensor)[i].layout() != desired_layout_) {
         VLOG(4) << "Update out_tensor's layout from "
                 << (*out_tensor)[i].layout() << " to " << desired_layout_;
-        auto meta = phi::DenseTensorUtils::GetMutableMeta(
-            static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()));
-        meta->layout = desired_layout_;
-        meta->strides = meta->calc_strides(meta->dims, meta->layout);
+        phi::DenseTensorUtils::GetMutableMeta(
+            static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()))
+            ->layout = desired_layout_;
       }
     }
   }
@@ -259,10 +256,9 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     auto default_layout = DefaultLayout();
     if (final_layout_ == input_layout && in.shape().size() == 4) {
       auto out_tensor = EagerTraceTransposeOp(phi::DataLayout::UNDEFINED, in);
-      auto meta = phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(out_tensor.impl().get()));
-      meta->layout = default_layout;
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(out_tensor.impl().get()))
+          ->layout = default_layout;
       return out_tensor;
     }
     return in;
@@ -278,10 +274,9 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
       if (in_tensor.layout() == desired_layout) {
         auto out_tensor =
             EagerTraceTransposeOp(phi::DataLayout::UNDEFINED, in_tensor);
-        auto meta = phi::DenseTensorUtils::GetMutableMeta(
-            static_cast<phi::DenseTensor*>(out_tensor.impl().get()));
-        meta->layout = default_layout;
-        meta->strides = meta->calc_strides(meta->dims, meta->layout);
+        phi::DenseTensorUtils::GetMutableMeta(
+            static_cast<phi::DenseTensor*>(out_tensor.impl().get()))
+            ->layout = default_layout;
         result.emplace_back(out_tensor);
       } else {
         result.emplace_back(in_tensor);
@@ -303,10 +298,9 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
   void SetOutTensorLayout(std::vector<paddle::Tensor>* out_tensor) {
     auto default_layout = DefaultLayout();
     for (size_t i = 0; i < out_tensor->size(); i++) {
-      auto meta = phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()));
-      meta->layout = default_layout;
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()))
+          ->layout = default_layout;
     }
   }
 
