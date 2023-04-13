@@ -917,6 +917,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
+      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
+#if IS_TRT_VERSION_LT(7100)
+      return false;
+#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
