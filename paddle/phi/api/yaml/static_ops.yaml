@@ -208,7 +208,7 @@
     skip_transform : start, stop, number
 
 - op : matrix_rank
-  args : (Tensor x, Tensor tol_tensor, float tol, bool hermitian=false, bool use_default_tol=true)
+  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankStaticInferMeta
