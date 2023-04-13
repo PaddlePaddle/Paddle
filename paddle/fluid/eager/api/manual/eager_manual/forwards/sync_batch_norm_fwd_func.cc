@@ -175,6 +175,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   std::string forward_trace = "";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
+    egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
     forward_trace = egr::Controller::Instance().GetPythonStack();
   }
 
