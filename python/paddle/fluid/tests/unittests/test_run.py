@@ -25,11 +25,12 @@ pyname = 'train.py'
 colpyfile = '''# train.py for unitest
 import os
 env = os.environ.copy()
-assert "PADDLE_MASTER" in env
+if "PADDLE_AUTO_PARALLEL_CONFIG" not in env:
+    assert "PADDLE_MASTER" in env
+    assert "PADDLE_GLOBAL_RANK" in env
+    assert "PADDLE_LOCAL_RANK" in env
 assert "PADDLE_GLOBAL_SIZE" in env
 assert "PADDLE_LOCAL_SIZE" in env
-assert "PADDLE_GLOBAL_RANK" in env
-assert "PADDLE_LOCAL_RANK" in env
 '''
 
 pspyfile = '''# train.py for unitest
@@ -113,6 +114,26 @@ class Collective_Test(unittest.TestCase):
         self.assertTrue(len(c1) == 3)
         self.assertTrue(len(c2) == 3)
         log_dir.cleanup()
+
+    def test_collective_4(self):
+        log_dir = tempfile.TemporaryDirectory()
+        config_dir = tempfile.TemporaryDirectory()
+        config_path = os.path.join(config_dir.name, 'auto_parallel_config.json')
+        with open(config_path, 'w') as wobj:
+            wobj.write(
+                '{\"tuner_save_path\":\"parallel_strategy.pkl\",\"tuner_load_path\":\"parallel_strategy.pkl\",\"tuner_run_mode\":\"tuner_and_run\"}'
+            )
+        port = random.randrange(6000, 8000)
+        args = "--job_id test4 --devices 0,1 --log_dir {} --auto_parallel_config {}"
+        p1 = self.pdrun(args.format(log_dir.name + "/1", config_path))
+        p1.wait()
+        self.assertTrue(p1.poll() == 0)
+
+        c1 = get_files(log_dir.name + "/1", 'test4')
+        print(c1)
+        self.assertTrue(len(c1) == 4)
+        log_dir.cleanup()
+        config_dir.cleanup()
 
 
 class PS_Test(unittest.TestCase):

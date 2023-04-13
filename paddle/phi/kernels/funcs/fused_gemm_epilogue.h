@@ -27,6 +27,7 @@ limitations under the License. */
 #if CUDA_VERSION >= 11060
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"

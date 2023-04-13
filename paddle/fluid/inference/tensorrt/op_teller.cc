@@ -917,6 +917,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
+      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
+#if IS_TRT_VERSION_LT(7100)
+      return false;
+#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -2654,11 +2658,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "expand_v2") {
+    if (op_type == "expand_as_v2" || op_type == "expand_v2") {
       if (!with_dynamic_shape) {
+        VLOG(3) << "the " << op_type
+                << "does not support "
+                   "static shape yet";
         return false;
       }
-      if (!desc.HasAttr("shape")) {
+
+      auto inputs = desc.Inputs();
+      if (op_type == "expand_as_v2") {
+        if (!desc.HasAttr("target_shape") && inputs.find("Y") == inputs.end()) {
+          VLOG(3)
+              << "expand_as_v2 op need have input(Y) or attr(target_shape). ";
+          return false;
+        }
+      } else if (op_type == "expand_v2") {
+        if (!desc.HasAttr("shape") && inputs.find("Shape") == inputs.end() &&
+            inputs.find("expand_shapes_tensor") == inputs.end()) {
+          VLOG(3) << "expand_v2 op need have input(Shape) or "
+                     "input(expand_shapes_tensor) or attr(shape) . ";
+          return false;
+        }
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
         return false;
       }
     }
@@ -2921,6 +2949,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
@@ -3080,6 +3109,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
