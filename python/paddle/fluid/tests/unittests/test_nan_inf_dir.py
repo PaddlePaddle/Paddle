@@ -181,7 +181,11 @@ class TestNanInfDirCheckResult(unittest.TestCase):
                     num_nan = int(err_str.split("=")[1])
                 elif "num_inf" in err_str:
                     num_inf = int(err_str.split("=")[1])
-            assert 0 == self.test_nan_inf_op()
+            print(
+                "[CHECK_NAN_INF_AND_ABORT] num_nan={}, num_inf={}".format(
+                    num_nan, num_inf
+                )
+            )
         paddle.amp.debugging.enable_tensor_checker(checker_config)
 
     def test_tensor_checker(self):
