@@ -129,28 +129,29 @@ void DeterminantGradKernel(const Context& dev_ctx,
   DenseTensor inverse_A;
   // A must be square matrices!
   inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<MPType>(&inverse_A);
+  MPType* inverse_A_data = dev_ctx.template Alloc<MPType>(&inverse_A);
   phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  mat_inv(dev_ctx, x, &inverse_A);
+  mat_inv(dev_ctx, x, static_cast<T>(inverse_A_data));
 
-  VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
+  VLOG(3) << "inverse(A) dims: " << inverse_A_data.dims();
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A =
       phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
   transpose_inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<MPType>(&transpose_inverse_A);
+  MPType* transpose_inverse_A_data =
+      dev_ctx.template Alloc<MPType>(&transpose_inverse_A);
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
-          << transpose_inverse_A.dims();
+          << transpose_inverse_A_data.dims();
 
   // Third: dA * |A|
-  DenseTensor out_grad_mt;
-  out_grad_mt.Resize(out_grad.dims());
-  dev_ctx.template Alloc<MPType>(&out_grad_mt);
-  DenseTensor out_mt;
-  out_mt.Resize(out.dims());
-  dev_ctx.template Alloc<MPType>(&out_mt);
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad_mt, out_mt);
+  DenseTensor out_grad_data;
+  out_grad_data.Resize(out_grad.dims());
+  MPType out_grad_data = dev_ctx.template Alloc<MPType>(&out_grad);
+  DenseTensor out_data;
+  out_data.Resize(out.dims());
+  MPType out_data = dev_ctx.template Alloc<MPType>(&out);
+  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad_data, out_data);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
@@ -159,7 +160,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  auto res = phi::Multiply<T>(
+      dev_ctx, unsqueeze2, static_cast<T>(transpose_inverse_A_data));
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
