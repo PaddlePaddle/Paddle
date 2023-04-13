@@ -73,6 +73,11 @@ inline void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
     }
   }
 
+  if (act_type == "hard_swish") {
+    fused_op->SetAttr("fuse_alpha", 1.f / 6.f);
+    fused_op->SetAttr("fuse_beta", 1.f / 2.f);
+  }
+
   if (act_type == "gelu" && act_op->HasAttr("approximate")) {
     std::string gelu_act_type =
         PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
