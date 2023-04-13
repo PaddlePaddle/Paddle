@@ -31,47 +31,133 @@ __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
                                  const T* x_values_data,
                                  const int64_t x_nnz,
                                  const int64_t dense_dim,
-                                 const int64_t n_dim,
+                                 const int64_t sparse_dim,
                                  const int64_t axis,
                                  const int64_t keep_dim,
                                  int64_t* out_indices_data,
                                  T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
     int64_t i = 0;
-    out_values_data[index] = 0;
+    for (int j = 0; j < dense_dim; ++j) {
+      out_values_data[j + index * dense_dim] = 0;
+    }
     while (i < x_nnz) {
       bool same = true;
-      for (int j = 0; j < n_dim; ++j) {
+      for (int j = 0; j < sparse_dim + !keep_dim; ++j) {
         if (j != axis && x_indices_data[index + j * x_nnz] !=
                              x_indices_data[i + j * x_nnz]) {
           same = false;
           break;
         }
+        //        if (keep_dim){
+        //          if (j != axis && x_indices_data[index + j * x_nnz] !=
+        //                               x_indices_data[i + j * x_nnz]) {
+        //            same = false;
+        //            break;
+        //          }
+        //        }else{
+        //          if (j < axis && x_indices_data[index + j * x_nnz] !=
+        //                              x_indices_data[i + j * x_nnz]) {
+        //            same = false;
+        //            break;
+        //          }
+        //          if (j >= axis && x_indices_data[index + j * x_nnz] !=
+        //                               x_indices_data[i + (j + 1) * x_nnz]) {
+        //            same = false;
+        //            break;
+        //          }
+        //        }
       }
       if (same) {
         for (int j = 0; j < dense_dim; ++j) {
           out_values_data[j + index * dense_dim] +=
-              x_values_data[j + i * dense_dim];  // j + index * dense_dim
+              x_values_data[j + i * dense_dim];
         }
       }
       i++;
     }
     if (keep_dim) {
-      for (int j = 0; j < n_dim; ++j) {
+      for (int j = 0; j < sparse_dim; ++j) {
         out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
         if (j == axis) {
           out_indices_data[index + j * x_nnz] = 0;
         }
       }
-    } else {
-      for (int j = 0; j < n_dim; ++j) {
-        if (j < axis) {
-          out_indices_data[index + j * x_nnz] =
-              x_indices_data[index + j * x_nnz];
-        } else if (j > axis) {
-          out_indices_data[index + (j - 1) * x_nnz] =
-              x_indices_data[index + j * x_nnz];
+      return;
+    }
+    for (int j = 0; j < sparse_dim; ++j) {
+      // out_indices_data [sparse_dim, x.nnz()]
+      if (j < axis) {
+        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+      } else {
+        out_indices_data[index + j * x_nnz] =
+            x_indices_data[index + (j + 1) * x_nnz];
+      }
+    }
+  }
+}
+
+template <typename T>
+__global__ void SumCooCudaKeepdimKernel(const int64_t* x_indices_data,
+                                        const T* x_values_data,
+                                        const int64_t x_nnz,
+                                        const int64_t dense_dim,
+                                        const int64_t sparse_dim,
+                                        const int64_t axis,
+                                        const int64_t keep_dim,
+                                        int64_t* out_indices_data,
+                                        T* out_values_data) {
+  CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
+    int64_t i = 0;
+    for (int j = 0; j < dense_dim; ++j) {
+      out_values_data[j + index * dense_dim] = 0;
+    }
+    while (i < x_nnz) {
+      bool same = true;
+      for (int j = 0; j < sparse_dim; ++j) {
+        if (keep_dim) {
+          if (j != axis && x_indices_data[index + j * x_nnz] !=
+                               x_indices_data[i + j * x_nnz]) {
+            same = false;
+            break;
+          }
+        } else {
+          if (j < axis && x_indices_data[index + j * x_nnz] !=
+                              x_indices_data[i + j * x_nnz]) {
+            same = false;
+            break;
+          }
+          if (j >= axis && x_indices_data[index + j * x_nnz] !=
+                               x_indices_data[i + (j + 1) * x_nnz]) {
+            same = false;
+            break;
+          }
         }
+      }
+      if (same) {
+        for (int j = 0; j < dense_dim; ++j) {
+          out_values_data[j + index * dense_dim] +=
+              x_values_data[j + i * dense_dim];
+        }
+      }
+      i++;
+    }
+    if (keep_dim) {
+      for (int j = 0; j < sparse_dim; ++j) {
+        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+        if (j == axis) {
+          out_indices_data[index + j * x_nnz] = 0;
+        }
+      }
+      return;
+    }
+    for (int j = 0; j < sparse_dim; ++j) {
+      // out_indices_data [sparse_dim, x.nnz()]
+      if (j < axis) {
+        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+      } else {
+        out_indices_data[index + j * x_nnz] =
+            x_indices_data[index + (j + 1) * x_nnz];
       }
     }
   }
@@ -144,6 +230,7 @@ void SumCooKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCooTensor* out) {
   size_t axis_dim = axis.size();
+  auto sparse_dim = x.sparse_dim();
   // create out sparse tensor
   const auto& x_dims = x.dims();
   const auto& x_indices = x.indices();
@@ -157,8 +244,7 @@ void SumCooKernel(const Context& dev_ctx,
   if (axis_dim == 0) {
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
-      out_indices =
-          Empty<x_indices_dtype, Context>(dev_ctx, {x_dims.size(), 1});
+      out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {sparse_dim, 1});
     } else {
       out_dims = make_ddim({1});
       out_indices = Empty<x_indices_dtype, Context>(dev_ctx, {1, 1});
@@ -170,20 +256,33 @@ void SumCooKernel(const Context& dev_ctx,
     return;
   }
 
-  auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
   auto n_dim = x.dims().size();
+  auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
+
   std::vector<int64_t> dims;
   for (int i = 0; i < n_dim; ++i) {
-    if (i == dim) {
-      if (keep_dim) {
-        dims.emplace_back(1);
-      }
-    } else {
+    if (i != dim) {
       dims.emplace_back(x.dims()[i]);
+    } else if (keep_dim || (dim < sparse_dim && sparse_dim == 1)) {
+      dims.emplace_back(1);
     }
   }
   out_dims = make_ddim(dims);
-  auto sparse_dim = x.sparse_dim();
+
+  if (dim >= sparse_dim) {
+    out_indices = x_indices;
+    dim = dim - sparse_dim + 1;
+    LOG(INFO) << dim;
+    out_values = phi::Sum<T>(dev_ctx, x.values(), {dim}, dtype, keep_dim);
+    out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+    return;
+  }
+
+  // Ensure the sparse_dim is not less than 1.
+  if (sparse_dim == 1) {
+    keep_dim = true;
+  }
+  // if axis in sparse_dim and keep_dim, sparse_dim will be reduced.
   if (!keep_dim) {
     sparse_dim -= 1;
   }
@@ -214,7 +313,7 @@ void SumCooKernel(const Context& dev_ctx,
                                             x_values_data,
                                             x.nnz(),
                                             dense_dim,
-                                            n_dim,
+                                            sparse_dim,
                                             dim,
                                             keep_dim,
                                             out_indices_data,
@@ -222,7 +321,6 @@ void SumCooKernel(const Context& dev_ctx,
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
     out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
   }
-
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
 

@@ -16,6 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/unary_grad_kernel.h"
@@ -93,16 +94,32 @@ void SumCooGradKernel(const Context& dev_ctx,
   auto* dx_values_data = dx_values->data<T>();
 
   if (n_dim == 0) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
+    auto length = dx->nnz();
+    for (auto i = 1; i < x.values().dims().size(); ++i) {
+      length *= x.values().dims()[i];
+    }
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, length, 1);
+
     SetValueCudaKernel<T>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
-           dev_ctx.stream()>>>(dout_values_data, dx->nnz(), dx_values_data);
+           dev_ctx.stream()>>>(dout_values_data, length, dx_values_data);
+
+    if (dx_values->dtype() != dx->dtype()) {
+      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    }
+    return;
+  }
+
+  auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
+  auto sparse_dim = x.sparse_dim();
+  if (dim >= sparse_dim) {
+    dim = dim - sparse_dim + 1;
+    phi::ReduceSumGradKernel<T, Context>(
+        dev_ctx, x.values(), dout.values(), {dim}, keep_dim, false, dx_values);
   } else {
     *dx_values = dout_values;
-    auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
   }
   if (dx_values->dtype() != dx->dtype()) {
     *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());

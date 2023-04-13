@@ -18,8 +18,6 @@ import numpy as np
 
 import paddle
 
-paddle.device.set_device("cpu")
-
 
 class TestSparseSum(unittest.TestCase):
     """
@@ -39,7 +37,13 @@ class TestSparseSum(unittest.TestCase):
     def check_result(
         self, x_shape, dims, keepdim, format, sparse_dim=None, dtype=None
     ):
-        mask = paddle.randint(0, 2, x_shape)
+        if sparse_dim:
+            mask_shape = [*x_shape[:sparse_dim]] + [1] * (
+                len(x_shape) - sparse_dim
+            )
+            mask = paddle.randint(0, 2, mask_shape)
+        else:
+            mask = paddle.randint(0, 2, x_shape)
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
         # or the backward checks may fail.
         origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
@@ -89,6 +93,11 @@ class TestSparseSum(unittest.TestCase):
             self.check_result([8, 3, 4, 4, 5, 3], i, True, 'coo')
             # Randint now only supports access to dimension 0 to 9.
             self.check_result([2, 3, 4, 2, 3, 4, 2, 3, 4], i, False, 'coo')
+
+    def test_sum_sparse_dim(self):
+        for i in range(6):
+            self.check_result([8, 3, 4, 4, 5, 3], i, False, 'coo', sparse_dim=3)
+            self.check_result([8, 3, 4, 4, 5, 3], i, True, 'coo', sparse_dim=3)
 
 
 class TestSparseSumStatic(unittest.TestCase):
