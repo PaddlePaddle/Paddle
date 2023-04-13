@@ -60,9 +60,6 @@ class TestDigammaFP16Op(TestDigammaOp):
     def init_dtype_type(self):
         self.dtype = np.float16
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()

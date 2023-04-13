@@ -90,7 +90,6 @@ sample_gamma(ScalarT alpha,
   using MPTypeScalar = typename phi::dtype::MPTypeTrait<ScalarT>::Type;
   using MPTypeAccscalar = typename phi::dtype::MPTypeTrait<AccscalarT>::Type;
 
-  // AccscalarT scale = 1.0f;
   MPTypeAccscalar mp_scale = static_cast<MPTypeAccscalar>(1.0f);
   MPTypeScalar mp_alpha = static_cast<MPTypeScalar>(alpha);
 
