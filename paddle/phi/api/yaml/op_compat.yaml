@@ -2347,3 +2347,10 @@
     x : X
   outputs :
     out : Out
+
+- op: temporal_shift
+  backward: temporal_shift_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
