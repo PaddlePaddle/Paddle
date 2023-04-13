@@ -505,7 +505,7 @@ class FP16State(object):
 
             # rename input
             # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
-            if slot_name in op.input_names:
+            if op.type != "scale" and slot_name in op.input_names:
 
                 assert src_name in op.input(
                     slot_name
@@ -517,8 +517,15 @@ class FP16State(object):
                 op._rename_input(src_name, cast_name)
                 grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
 
+            # NOTE Special for scale op, scale op's grad op is scale,
+            # so slot name map rule could not apply to grad scale op
+            # cast_name: mean_0.tmp_0.cast_bf16, src_name: mean_0.tmp_0, dst_dtype: paddle.bfloat16, src_dtype: paddle.float32, slot_name: X.
+            if op.type == "scale":
+                grad_slot_name = "X"
             # create cast grad
-            grad_slot_name = slot_name + "@GRAD"
+            else:
+                grad_slot_name = slot_name + "@GRAD"
+
             if grad_slot_name in op.output_names:
                 # some forward input maybe stop_gradient=True, e.g. input_mask
                 if len(op.output(grad_slot_name)) == 0:
@@ -526,6 +533,7 @@ class FP16State(object):
                 assert (
                     len(op.output(grad_slot_name)) == 1
                 ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
+
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
                 grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)

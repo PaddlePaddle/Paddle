@@ -666,6 +666,7 @@ class AMPPass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
         self.dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
+        self.amp_dtype = self.get_attr("dtype")
 
         amp_lists = AutoMixedPrecisionLists(
             set(self.get_attr("custom_white_list")),
@@ -792,7 +793,7 @@ class AMPPass(PassBase):
             )
             loss = loss.astype('float32')
 
-        if (
+        if self.amp_dtype == "float16" and (
             self.get_attr("use_dynamic_loss_scaling")
             or self.get_attr("init_loss_scaling") != 1.0
         ):
