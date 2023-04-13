@@ -517,7 +517,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                     precision_mode_,
                                                     calib_res->calib_.get(),
                                                     dev_place.device,
-                                                    true,
+                                                    with_dynamic_shape_,
                                                     min_input_shape,
                                                     max_input_shape,
                                                     opt_input_shape,
