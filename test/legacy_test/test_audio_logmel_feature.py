@@ -79,7 +79,7 @@ class TestFeatures(unittest.TestCase):
             pad_mode='reflect',
         )
         feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
-        x = paddle.to_tensor(self.waveform, dtype=np.float64).unsqueeze(
+        x = paddle.to_tensor(self.waveform, dtype=paddle.float64).unsqueeze(
             0
         )  # Add batch dim.
         feature_extractor = paddle.audio.features.LogMelSpectrogram(
