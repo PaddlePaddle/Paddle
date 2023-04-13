@@ -203,7 +203,7 @@ class TestBF16Pass(unittest.TestCase):
         bf16_o1_engine.prepare(
             inputs_spec=inputs_spec, labels_spec=labels_spec, mode="train"
         )
-        self.check_program(bf16_o1_engine._dist_main_progs["train"][0])
+        self.check_program(bf16_o1_engine.main_program)
         print("BF16!check program successfully!")
 
 

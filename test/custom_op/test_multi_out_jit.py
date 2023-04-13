@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, paddle_includes
+from utils import check_output, extra_cc_args, paddle_includes
 
 import paddle
 from paddle import static
@@ -105,15 +105,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
         self.np_y = np.random.uniform(-1, 1, [4, 8]).astype("float32")
         self.np_z = np.random.uniform(-1, 1, [4, 8]).astype("float32")
 
-    def check_output(self, out, pd_out, name):
-        np.testing.assert_array_equal(
-            out,
-            pd_out,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
     def run_static(self, device, dtype):
         paddle.set_device(device)
         x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -140,14 +131,12 @@ class TestMultiOutputDtypes(unittest.TestCase):
             one_int32 = one_int32.numpy()
         # Fake_float64
         self.assertTrue('float64' in str(zero_float64.dtype))
-        np.testing.assert_array_equal(
-            zero_float64, np.zeros([4, 8]).astype('float64')
+        check_output(
+            zero_float64, np.zeros([4, 8]).astype('float64'), "zero_float64"
         )
         # ZFake_int32
         self.assertTrue('int32' in str(one_int32.dtype))
-        np.testing.assert_array_equal(
-            one_int32, np.ones([4, 8]).astype('int32')
-        )
+        check_output(one_int32, np.ones([4, 8]).astype('int32'), "one_int32")
 
     def test_multi_out_static(self):
         paddle.enable_static()
@@ -193,10 +182,10 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                self.check_output(custom_out, pd_out, "out")
+                check_output(custom_out, pd_out, "out")
                 # NOTE: In static mode, the output gradient of custom operator has been optimized to shape=[1]. However, native paddle op's output shape = [4, 8], hence we need to fetch pd_w_grad[0][0] (By the way, something wrong with native paddle's gradient, the outputs with other indexes instead of pd_w_grad[0][0] is undefined in this unittest.)
-                self.check_output(custom_w_grad, pd_w_grad[0][0], "w_grad")
-                self.check_output(custom_y_grad, pd_y_grad[0][0], "y_grad")
+                check_output(custom_w_grad, pd_w_grad[0][0], "w_grad")
+                check_output(custom_y_grad, pd_y_grad[0][0], "y_grad")
 
     def test_discrete_out_dynamic(self):
         for device in self.devices:
@@ -223,9 +212,9 @@ class TestMultiOutputDtypes(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                self.check_output(custom_out, pd_out, "out")
-                self.check_output(custom_w_grad, pd_w_grad, "w_grad")
-                self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                check_output(custom_out, pd_out, "out")
+                check_output(custom_w_grad, pd_w_grad, "w_grad")
+                check_output(custom_y_grad, pd_y_grad, "y_grad")
 
 
 if __name__ == '__main__':

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
+#include "glog/logging.h"
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -25,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
-
 DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
