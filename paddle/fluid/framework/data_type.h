@@ -83,12 +83,13 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(                                      \
       callback, ::paddle::platform::complex<double>, COMPLEX128);
 
-#define _ForEachDataTypeNormal_(callback)            \
-  _ForEachDataTypeHelper_(callback, float, FP32);    \
-  _ForEachDataTypeHelper_(callback, double, FP64);   \
-  _ForEachDataTypeHelper_(callback, int, INT32);     \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);
+#define _ForEachDataTypeNormal_(callback)                               \
+  _ForEachDataTypeHelper_(callback, float, FP32);                       \
+  _ForEachDataTypeHelper_(callback, double, FP64);                      \
+  _ForEachDataTypeHelper_(callback, int, INT32);                        \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                    \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16);
 
 // For the use of thrust, as index-type elements can be only integers.
 #define _ForEachDataTypeTiny_(callback)          \
