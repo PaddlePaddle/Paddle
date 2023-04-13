@@ -31,7 +31,7 @@ namespace fusion {
 namespace cutlass_internal {
 #define CUTLASS_CHECK(status)                                               \
   if (status != cutlass::Status::kSuccess) {                                \
-    std::cout                                                               \
+    VLOG(3)                                                                 \
         << "Cutlass can not deal with this problem size, skip this kernel!" \
         << std::endl;                                                       \
     return status;                                                          \
