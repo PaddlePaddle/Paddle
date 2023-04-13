@@ -126,11 +126,13 @@ pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
+pass_library(delete_cast_op_pass inference)
+pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
-  pass_library(trt_map_matmul_to_mul_pass inference)
+  pass_library(trt_map_ops_to_matrix_multiply_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_flash_multihead_matmul_fuse_pass inference)
   pass_library(trt_cross_multihead_matmul_fuse_pass inference)
@@ -242,7 +244,6 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
-  pass_library(delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -407,6 +408,11 @@ cc_test(
   test_delete_dequant_weight_linear_op_pass
   SRCS delete_weight_dequant_linear_op_pass_tester.cc
   DEPS delete_weight_dequant_linear_op_pass)
+cc_test(
+  test_delete_cast_op_pass
+  SRCS delete_cast_op_pass_test.cc
+  DEPS delete_cast_op_pass)
+
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
@@ -521,8 +527,4 @@ if(WITH_XPU)
     test_stack_fuse_pass
     SRCS xpu/stack_fuse_pass_test.cc
     DEPS stack_fuse_pass)
-  cc_test(
-    test_delete_cast_op_pass
-    SRCS xpu/delete_cast_op_pass_test.cc
-    DEPS delete_cast_op_pass)
 endif()

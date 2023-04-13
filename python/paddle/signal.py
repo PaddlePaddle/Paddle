@@ -219,7 +219,10 @@ def overlap_add(x, hop_length, axis=-1, name=None):
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], op_type
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
+            op_type,
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
