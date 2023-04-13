@@ -1241,8 +1241,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];
     auto &t = framework::GetVariableTensor(*scope, name);
-    (*outputs)[i] =
-        std::move(paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name));
+    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
   }
   return true;
 }
