@@ -740,9 +740,9 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : expand_as (expand_as_v2)
+  backward : expand_as_grad (expand_as_v2_grad)
   inputs :
-    x : X
-    y : Y
+    {x : X, y : Y}
   outputs :
     out : Out
 
@@ -2327,6 +2327,12 @@
   backward : while_grad
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
+
+- op : yolo_box
+  inputs :
+    {x : X, img_size : ImgSize}
+  outputs :
+    {boxes : Boxes, scores : Scores}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
