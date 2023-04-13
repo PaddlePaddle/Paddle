@@ -1716,6 +1716,7 @@ class PoolingOneDNNHandler
   }
 };
 
+// TODO(qun): re-implement this handler by using oneDNN eltwise primitive
 template <typename T>
 class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
@@ -1728,7 +1729,7 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
                                                  dev_ctx.GetPlace()) {
     dnnl::post_ops post_ops;
-    post_ops.append_eltwise(dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
+    post_ops.append_eltwise(dnnl::algorithm::eltwise_soft_relu, 1.0f, 0.0f);
     if (beta != 1.0f) {
       post_ops.append_eltwise(
           dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
