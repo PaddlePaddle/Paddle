@@ -325,7 +325,7 @@ class SumSeqPoolGradFunctor {
                           in_w,
                           out_w));
     const T* out_g_data = out_grad.data<T>();
-    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    T* in_g_data = context.template Alloc<T>(in_grad);
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
@@ -381,7 +381,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
           errors::InvalidArgument(
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
-      T* dst = output->mutable_data<T>(place);
+      T* dst = context.template Alloc<T>(output);
       phi::jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
           phi::jit::SeqPoolType::kSum);
