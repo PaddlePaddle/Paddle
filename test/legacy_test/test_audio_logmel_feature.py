@@ -80,6 +80,7 @@ class TestFeatures(unittest.TestCase):
             pad_mode='reflect',
         )
         feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
+        print("waveform shape: ", self.waveform.shape)
         x = paddle.to_tensor(self.waveform, dtype=np.float64).unsqueeze(
             0
         )  # Add batch dim.
@@ -115,9 +116,6 @@ class TestFeatures(unittest.TestCase):
             self.waveform = self.waveform.squeeze(
                 0
             )  # 1D input for librosa.feature.melspectrogram
-        if len(self.waveform.shape) == 0:
-            print("the wave can be scalar")
-            self.waveform = np.array([self.waveform])
         # librosa:
         np_dtype = getattr(np, dtype)
         feature_librosa = librosa.feature.mfcc(
@@ -134,6 +132,7 @@ class TestFeatures(unittest.TestCase):
             dtype=np_dtype,
         )
         # paddlespeech.audio.features.layer
+        print("waveform shape: ", self.waveform.shape)
         x = paddle.to_tensor(self.waveform, dtype=dtype).unsqueeze(
             0
         )  # Add batch dim.
