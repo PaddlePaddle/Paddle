@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 from test_softmax_op import stable_softmax
 
 import paddle
-from paddle.fluid import core
+from paddle.fluid import Program, core, program_guard
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -972,6 +972,35 @@ class TestSoftmaxWithCrossEntropyOpBF16(TestSoftmaxWithCrossEntropyOp):
         self.check_grad_with_place(
             place, ["Logits"], "Loss", max_relative_error=0.1
         )
+
+
+class TestSoftmaxWithCrossEntropyOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_input_dims1():
+                with paddle_static_guard():
+                    # the input dims of cross_entropy can't be 0,
+                    x1 = paddle.static.data(name='x1', shape=[], dtype="int32")
+                    lab1 = paddle.static.data(
+                        name='lab1', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.softmax_with_cross_entropy(x1, lab1)
+
+            self.assertRaises(ValueError, test_input_dims1)
+
+            def test_input_dims2():
+                with paddle_static_guard():
+                    # "input_dims - 1 != label_dims and input_dims != label_dims" must be false.
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 3, 4, 5], dtype="int32"
+                    )
+                    lab2 = paddle.static.data(
+                        name='lab2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.softmax_with_cross_entropy(x2, lab2)
+
+            self.assertRaises(ValueError, test_input_dims2)
 
 
 if __name__ == "__main__":
