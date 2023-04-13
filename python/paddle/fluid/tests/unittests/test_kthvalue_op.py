@@ -223,7 +223,7 @@ class TestKthvalueFP16Op(OpTest):
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': self.keepdim}
         output, indices = cal_kthvalue(
-            self.input_data, k=self.k, axis=self.axis
+            self.input_data, k=self.k, axis=self.axis, keepdim=self.keepdim
         )
         self.outputs = {'Out': output, 'Indices': indices}
 
