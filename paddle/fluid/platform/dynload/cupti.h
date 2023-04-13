@@ -16,7 +16,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include <cuda.h>
-#include <cuda_occupancy.h>
 #include <cupti.h>
 
 #include <mutex>  // NOLINT
