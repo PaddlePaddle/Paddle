@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/share_buffer_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 

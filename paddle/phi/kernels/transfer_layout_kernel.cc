@@ -17,6 +17,8 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"

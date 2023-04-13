@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
