@@ -3241,5 +3241,20 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+  out->share_meta(x);
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

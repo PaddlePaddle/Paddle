@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+  - op : index_put
+  args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+  inplace : (x -> out)
+  backward : index_put_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)

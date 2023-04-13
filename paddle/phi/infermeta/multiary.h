@@ -605,4 +605,10 @@ void MoeInferMeta(const MetaTensor& x,
                   const std::string& act_type,
                   MetaTensor* out);
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out);
+
 }  // namespace phi
