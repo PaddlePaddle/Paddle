@@ -75,6 +75,7 @@ set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
+set_field_default_config(AMP, "use_optimizer_fp16", False)
 
 #########################################
 # sharding configuration
