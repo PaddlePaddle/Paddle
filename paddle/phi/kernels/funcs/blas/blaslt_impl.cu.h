@@ -16,6 +16,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
+#include "glog/logging.h"
+
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -107,11 +109,10 @@ struct MatmulDescriptor {
 
   ~MatmulDescriptor() PADDLE_MAY_THROW {
     if (!is_cached) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutDestroy(out_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(out_desc));
       delete algo;
 
       op_desc = nullptr;

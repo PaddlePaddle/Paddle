@@ -130,6 +130,9 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
+        # record upstream and downstream of cur rank
+        self._up_down_streams = UpDownStream()
+
         self._json_config = json_config
 
     @property
@@ -217,6 +220,10 @@ class DistributedContext:
     @property
     def data_parallel(self):
         return self._data_parallel
+
+    @property
+    def up_down_streams(self):
+        return self._up_down_streams
 
     @data_parallel.setter
     def data_parallel(self, dp):
@@ -1220,3 +1227,45 @@ class BlockState:
             self.nblock += 1
 
         assert self.nblock == len(program.blocks)
+
+
+class UpDownStream:
+    def __init__(self):
+        self._ups = {}
+        self._downs = {}
+
+    def add_up_stream(self, rank, up_stream):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            self._ups[rank] = [up_stream]
+        elif up_stream != -1:
+            ups = list(filter(lambda a: a != -1, ups))
+            ups.append(up_stream)
+            self._ups[rank] = ups
+
+    def add_down_stream(self, rank, down_stream):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            self._downs[rank] = [down_stream]
+        elif down_stream != -1:
+            downs = list(filter(lambda a: a != -1, downs))
+            downs.append(down_stream)
+            self._downs[rank] = downs
+
+    def add_pair_stream(self, up, down):
+        self.add_up_stream(up, -1)
+        self.add_up_stream(down, up)
+        self.add_down_stream(up, down)
+        self.add_down_stream(down, -1)
+
+    def ups(self, rank):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            return None
+        return list(set(ups))
+
+    def downs(self, rank):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            return None
+        return list(set(downs))

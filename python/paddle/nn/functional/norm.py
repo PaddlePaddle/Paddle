@@ -337,7 +337,7 @@ def layer_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+            x, 'input', ['uint16', 'float16', 'float32', 'float64'], 'LayerNorm'
         )
 
         inputs = {}
@@ -426,7 +426,10 @@ def instance_norm(
         return out
     else:
         check_variable_and_dtype(
-            x, 'input', ['float32', 'float64'], "InstanceNorm"
+            x,
+            'input',
+            ['float32', 'float64', 'float16', 'uint16'],
+            "InstanceNorm",
         )
 
         attrs = {
