@@ -28,8 +28,7 @@ def as_tensors(xs):
 
 
 class Jacobian:
-    r"""
-    Computes the Jacobian matrix of a given function.
+    r"""Computes the Jacobian matrix of a given function.
 
     If the function has multiple inputs and multiple outputs, during internal
     implementation, all input tensors are concatenated after being flatten,
@@ -41,8 +40,10 @@ class Jacobian:
     submatrix is lazily evaluated along row axis, and will be cached once
     evaluated.
 
-    For examples, supposing ``is_batched=True``, you can retrieve the submatrix
-    by following methods:
+    For examples, supposing ``is_batched=True``, and ys is a single Tensor with shape of
+    ``[B, D]``, xs is a single Tensor with shape of ``[B, C]``, and result jacobian
+    matrix is with shape of ``[B, D, C]``, then you can retrieve the submatrix by
+    following methods:
 
         * J[:], retrieving the full matrix.
         * J[:, :, j], retrieving the partial derivatives w.r.t. the j'th input
@@ -76,28 +77,30 @@ class Jacobian:
 
             import paddle
 
-
             def func(x, y):
                 return paddle.matmul(x, y)
 
-
-            x = paddle.to_tensor([[1., 2.], [3., 4.]])
+            x = paddle.to_tensor([[1., 2.], [3., 4.]], stop_gradient=False)
             y = func(x, x)
-            J = paddle.incubate.autograd.Jacobian(y, x)
-            print(J[:, :])
-            # Tensor(shape=[4, 8], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[1., 3., 0., 0., 1., 0., 2., 0.],
-            #         [2., 4., 0., 0., 0., 1., 0., 2.],
-            #         [0., 0., 1., 3., 3., 0., 4., 0.],
-            #         [0., 0., 2., 4., 0., 3., 0., 4.]])
+            J = paddle.autograd.jacobian(y, x)
+
+            print(J.shape)
+            # [4, 4]
+
+            print(J[:])
+            # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[2., 3., 2., 0.],
+            #         [2., 5., 0., 2.],
+            #         [3., 0., 5., 3.],
+            #         [0., 3., 2., 8.]])
 
             print(J[0, :])
-            # Tensor(shape=[8], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [1., 3., 0., 0., 1., 0., 2., 0.])
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [2., 3., 2., 0.])
+
             print(J[:, 0])
             # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [1., 2., 0., 0.])
-
+            #        [2., 2., 3., 0.])
     """
 
     def __init__(self, ys, xs, is_batched=False):
@@ -119,56 +122,9 @@ class Jacobian:
 
 
 class Hessian(Jacobian):
-    """
-    Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
+    """Hessian class, same as Jacobian except classname"""
 
-    If the function has multiple inputs, during internal implementation,
-    all input tensors are concatenated after being flatten, the batch dimension
-    is retained.
-
-    The Hessian submatrix is lazily evaluated, and can be retrieved with a
-    multidimensional indexes. See details ``Jacobian`` .
-
-    Warning:
-        This API is in beta, the signatures could be changed in future version.
-
-    Args:
-        func (Callable): A python function that takes a Tensor or a Tensor
-            sequence as inputs and returns a Tensor with shape
-            ``[batch_size, 1]`` with batch or ``[1]`` without batch.
-        xs (Tensor|Sequence(Tensor)): The input Tensor or Tensor sequence of
-            the function ``func``.
-        is_batched (bool): If true, the first axis is batch axis. Defaults to
-            False.
-
-    Returns:
-
-        Hessian (Object): A python object retains the Hessian matrix.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle
-
-
-        def reducer(x):
-            return paddle.sum(x * x)
-
-
-        x = paddle.rand([2, 2])
-        h = paddle.incubate.autograd.Hessian(reducer, x)
-        print(h[:])
-        # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-        #        [[2., 0., 0., 0.],
-        #         [0., 2., 0., 0.],
-        #         [0., 0., 2., 0.],
-        #         [0., 0., 0., 2.]])
-    """
-
-    def __init__(self):
-        pass
+    pass
 
 
 class _Jacobian:
@@ -267,10 +223,10 @@ class _JacobianNoBatch(_Jacobian):
 
     def __init__(self, ys, xs):
         super().__init__(ys, xs)
-        self.shape = (
+        self.shape = [
             *(self._flatten_ys.shape[0:1]),
             *(self._flatten_xs.shape[0:1]),
-        )
+        ]
 
     @property
     def _lazy_axis(self):
@@ -298,11 +254,11 @@ class _JacobianBatchFirst(_Jacobian):
 
     def __init__(self, ys, xs):
         super().__init__(ys, xs)
-        self.shape = (
+        self.shape = [
             *self._flatten_xs.shape[0:1],
             *self._flatten_ys.shape[1:2],
             *self._flatten_xs.shape[1:2],
-        )
+        ]
 
     @property
     def _lazy_axis(self):
@@ -381,6 +337,7 @@ def jacobian(
         Union[List[List[Jacobian]], List[Jacobian], Jacobian]: Jacobian(s) of ys
             deriveted from xs.
     """
+
     if batch_axis is not None and batch_axis != 0:
         raise ValueError(
             f"batch_axis should be None or 0, but got {batch_axis}."
@@ -418,34 +375,63 @@ def hessian(
         Union[List[List[Hessian]], List[Hessian], Hessian]: Hessian(s) of ys
             deriveted from xs.
     """
-    if batch_axis is not None and not isinstance(batch_axis, int):
-        raise ValueError(
-            f"batch_axis should be None or int, but got {type(batch_axis)}."
-        )
-    # TODO(HydrogenSulfate): support batch_axis > 0
-    if isinstance(batch_axis, int) and batch_axis != 0:
-        raise ValueError("Only support batch_axis=0 yet.")
+
+    def jacobian_for_hessian(ys, xs, batch_axis, preorder=0):
+        """Same function as ``jacobian``, but use ``Hessian`` instead of ``Jacobian``
+        in order to set the typename of hessian matrix to ``Hessian``.
+        """
+        if batch_axis is not None and batch_axis != 0:
+            raise ValueError(
+                f"batch_axis should be None or 0, but got {batch_axis}."
+            )
+        if batch_axis is None:
+            _check_inputs(ys, 1 + preorder)  # 1 or 2
+        else:
+            _check_inputs(ys, 2 + preorder)  # 2 or 3
+
+        # TODO(HydrogenSulfate): support batch_axis > 0
+        is_batched = batch_axis is not None
+        if isinstance(ys, Sequence) and isinstance(xs, Sequence):
+            _jacobian = [
+                [Hessian(_ys, _xs, is_batched) for _xs in xs] for _ys in ys
+            ]
+        elif isinstance(ys, Sequence) and not isinstance(xs, Sequence):
+            _jacobian = [Hessian(_ys, xs, is_batched) for _ys in ys]
+        elif not isinstance(ys, Sequence) and isinstance(xs, Sequence):
+            _jacobian = [Hessian(ys, _xs, is_batched) for _xs in xs]
+        else:
+            _jacobian = Hessian(ys, xs, is_batched)
+
+        return _jacobian
 
     if batch_axis is None:
-        if ys.numel() != 1:
+        if ys.numel() > 1:
             raise ValueError(
-                f"Only support ys.numel()({ys.numel()})==1 when batch_axis is None"
+                f"Only support ys.numel()({ys.numel()})==1 when batch_axis is None."
             )
         ys = ys.reshape((1,))
-    else:
-        if ys[0].numel() != 1:
+    elif isinstance(batch_axis, int):
+        if ys[0].numel() > 1:
             raise ValueError(
                 f"Only support ys[0].numel()({ys.numel()})==1 when batch_axis is int"
             )
+        # TODO(HydrogenSulfate): support batch_axis > 0
+        if batch_axis != 0:
+            raise ValueError("Only support batch_axis=0 yet.")
         ys = ys.reshape((-1, 1))
+    else:
+        raise ValueError(
+            f"batch_axis should be None or int, but got {type(batch_axis)}."
+        )
 
-    _jacobian = jacobian(ys, xs, batch_axis)
+    _jacobian = jacobian_for_hessian(ys, xs, batch_axis, 0)
+
     if not isinstance(xs, Sequence):
-        hessian = jacobian(_jacobian, xs, batch_axis)
+        hessian = jacobian_for_hessian(_jacobian, xs, batch_axis, 1)
     else:
         hessian = []
         for _j in _jacobian:
-            hessian.append(jacobian(_j, xs, batch_axis))
+            hessian.append(jacobian_for_hessian(_j, xs, batch_axis, 1))
     return hessian
 
 
@@ -511,3 +497,15 @@ def _grad(ys, xs, v=None):
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
     return _replace_none_with_zero_tensor(xs_grad, xs)
+
+
+def _check_inputs(tensor, ndim):
+    if isinstance(tensor, Sequence):
+        for _tensor in tensor:
+            if _tensor.ndim != ndim:
+                raise ValueError(
+                    f"tensor.ndim({_tensor.ndim}) should be {ndim}."
+                )
+    else:
+        if tensor.ndim != ndim:
+            raise ValueError(f"tensor.ndim({tensor.ndim}) should be {ndim}.")
