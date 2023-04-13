@@ -2028,3 +2028,12 @@
   kernel :
     func : where
   backward : where_grad
+
+- op : yolo_box
+  args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
+  output : Tensor(boxes), Tensor(scores)
+  infer_meta :
+    func : YoloBoxInferMeta
+  kernel :
+    func : yolo_box
+    data_type : x
