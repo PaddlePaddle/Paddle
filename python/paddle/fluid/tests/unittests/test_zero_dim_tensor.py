@@ -2221,6 +2221,23 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(out1.shape, [2, 3])
         self.assertTrue(x1.grad.shape, [3, 3, 3])
 
+    def test_multi_dot(self):
+        a = paddle.randn([4])
+        a.stop_gradient = False
+        b = paddle.randn([4, 5])
+        b.stop_gradient = False
+        c = paddle.randn([5])
+        c.stop_gradient = False
+
+        out = paddle.linalg.multi_dot([a, b, c])
+        out.retain_grads()
+        out.backward()
+
+        self.assertTrue(out.shape, [])
+        self.assertTrue(a.grad.shape, [4])
+        self.assertTrue(b.grad.shape, [4, 5])
+        self.assertTrue(c.grad.shape, [5])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -3900,6 +3917,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (2, 3))
         self.assertEqual(res[1].shape, (3, 3, 3))
 
+    def test_multi_dot(self):
+        a = paddle.randn([4])
+        a.stop_gradient = False
+        b = paddle.randn([4, 5])
+        b.stop_gradient = False
+        c = paddle.randn([5])
+        c.stop_gradient = False
+
+        out = paddle.linalg.multi_dot([a, b, c])
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertTrue(res[0].shape, [])
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
@@ -4324,6 +4354,39 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
         self.assertEqual(res[3].shape, (1,))
+
+    def test_matrix_rank(self):
+        x = paddle.eye(10)
+        x.stop_gradient = False
+        out = paddle.linalg.matrix_rank(x)
+
+        self.assertTrue(out.shape, [])
+        np.testing.assert_equal(out, np.array(10))
+
+        c = paddle.ones(shape=[3, 4, 5])
+        c.stop_gradient = False
+        out_c = paddle.linalg.matrix_rank(c)
+        self.assertTrue(out_c.shape, [3])
+        np.testing.assert_equal(out_c, np.array([1, 1, 1]))
+
+    def test_static_matrix_rank(self):
+        # 2D : OUTPUT 0D
+        x = paddle.eye(10)
+        x.stop_gradient = False
+        out = paddle.linalg.matrix_rank(x)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.static.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertTrue(res[0].shape, [])
+
+        # 3D : OUTPUT 1D
+        c = paddle.ones(shape=[3, 4, 5])
+        c.stop_gradient = False
+        out_c = paddle.linalg.matrix_rank(c)
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.static.default_startup_program())
+        res = self.exe.run(prog, fetch_list=[out_c])
+        self.assertTrue(res[0].shape, [3])
 
 
 unary_apis_with_complex_input = [
