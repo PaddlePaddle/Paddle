@@ -360,8 +360,8 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
 
 void MatrixRankStaticInferMeta(const MetaTensor& x,
                                const MetaTensor& atol_tensor,
-                               bool hermitian,
                                bool use_default_tol,
+                               bool hermitian,
                                MetaTensor* out);
 
 void MatrixRankTolInferMeta(const MetaTensor& x,

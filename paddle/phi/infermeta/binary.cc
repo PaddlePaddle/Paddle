@@ -2213,8 +2213,8 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
 
 void MatrixRankStaticInferMeta(const MetaTensor& x,
                                const MetaTensor& atol_tensor,
-                               bool hermitian,
                                bool use_default_tol,
+                               bool hermitian,
                                MetaTensor* out) {
   if (atol_tensor) {
     MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
