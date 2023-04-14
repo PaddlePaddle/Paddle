@@ -16,10 +16,11 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 class TestElementwiseModOp(OpTest):
@@ -106,7 +107,7 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
             self.check_output()
 
 
-class TestElementwiseModOpFp16(TestElementwiseModOp):
+class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -120,6 +121,96 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
             self.check_output()
         else:
             self.check_output()
+
+
+class TestElementwiseModFP16Op_ZeroDim1(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, []).astype(np.float16)
+        self.out = np.mod(self.x, self.y)
+
+
+class TestElementwiseModFP16Op_ZeroDim2(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, []).astype(np.float16)
+        self.out = np.mod(self.x, self.y)
+
+
+class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float16)
+        self.out = np.mod(self.x, self.y)
+
+
+class TestElementwiseModFP16Op_scalar(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        scale_x = random.randint(0, 100000000)
+        scale_y = random.randint(1, 100000000)
+        self.x = (np.random.rand(2, 3, 4) * scale_x).astype(np.float16)
+        self.y = (np.random.rand(1) * scale_y + 1).astype(np.float16)
+        self.out = np.mod(self.x, self.y)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and (
+        core.cudnn_version() < 8100
+        or paddle.device.cuda.get_device_capability()[0] < 8
+    ),
+    "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
+)
+class TestElementwiseModBF16Op(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def init_input(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
+
+    def setUp(self):
+        self.op_type = "elementwise_mod"
+        self.python_api = paddle.remainder
+        self.axis = -1
+        self.init_dtype()
+        self.init_input()
+        self.init_kernel_type()
+        self.init_axis()
+        self.x = OpTest.np_dtype_to_fluid_dtype(self.x)
+        self.y = OpTest.np_dtype_to_fluid_dtype(self.y)
+        self.inputs = {
+            'X': convert_float_to_uint16(self.x),
+            'Y': convert_float_to_uint16(self.y),
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': convert_float_to_uint16(np.mod(self.x, self.y))}
+
+    def test_check_output(self):
+        if self.attrs['axis'] == -1:
+            self.check_output()
+        else:
+            self.check_output()
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_axis(self):
+        pass
+
+
+class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
+    def init_input(self):
+        self.x = np.random.uniform(0, 10000, []).astype("float32")
+        self.y = np.random.uniform(0, 1000, []).astype("float32")
+
+
+class TestElementwiseModBF16Op_scalar(TestElementwiseModBF16Op):
+    def init_input(self):
+        scale_x = random.randint(0, 100000000)
+        scale_y = random.randint(1, 100000000)
+        self.x = (np.random.rand(2, 3, 4) * scale_x).astype("float32")
+        self.y = (np.random.rand(1) * scale_y + 1).astype("float32")
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
