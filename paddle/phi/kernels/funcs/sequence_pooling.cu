@@ -213,7 +213,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<T, AvgPoolFunctor<T>>
@@ -224,7 +224,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_kernel<T, SumPoolFunctor<T>>
@@ -235,7 +235,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_kernel<T, SqrtPoolFunctor<T>>
@@ -246,7 +246,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_kernel<T, LastPoolFunctor<T>>
@@ -257,7 +257,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_kernel<T, FirstPoolFunctor<T>>
@@ -268,7 +268,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
@@ -430,7 +430,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<T, AvgPoolGradFunctor<T>>
@@ -440,7 +440,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_grad_kernel<T, SumPoolGradFunctor<T>>
@@ -450,7 +450,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_grad_kernel<T, SqrtPoolGradFunctor<T>>
@@ -460,7 +460,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_grad_kernel<T, LastPoolGradFunctor<T>>
@@ -470,7 +470,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_grad_kernel<T, FirstPoolGradFunctor<T>>
@@ -480,7 +480,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
 
     } else {

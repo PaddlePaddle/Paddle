@@ -14,11 +14,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/phi/kernels/funcs/sequence_pooling.h"
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 template <typename DeviceContext, typename T>
 void TestSequencePoolingSum(const DeviceContext &context,

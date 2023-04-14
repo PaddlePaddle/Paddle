@@ -1752,7 +1752,9 @@ class TracedLayer:
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
-            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
+            kwargs: Supported keys including
+                - clip_extra(bool): whether to clip extra information for every operator. Defaults to True.
+                - legacy_format(bool): whether to save program in legacy format. Default to False.
 
         Returns:
             None
@@ -1854,6 +1856,7 @@ class TracedLayer:
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
+            legacy_format = kwargs.get('legacy_format', False)
             save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
@@ -1863,4 +1866,5 @@ class TracedLayer:
                 model_filename=model_filename,
                 params_filename=params_filename,
                 clip_extra=clip_extra,
+                legacy_format=legacy_format,
             )
