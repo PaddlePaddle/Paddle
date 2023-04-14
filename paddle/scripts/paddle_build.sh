@@ -821,7 +821,7 @@ set -x
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
 
         collect_failed_tests
-        rm -f $tmp_dir/*
+        #rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
         retry_time=4
