@@ -24,7 +24,6 @@ import math
 import numbers
 
 import paddle
-from . import control_flow
 from . import nn
 from . import tensor
 from ..framework import (
@@ -434,27 +433,28 @@ def piecewise_decay(boundaries, values):
                 persistable=True,
                 name="learning_rate",
             )
-
-            current_lr = paddle.static.nn.cond(
-                pred=paddle.greater_equal(
-                    global_step, paddle.to_tensor(float(boundaries[-1]))
-                ),
-                true_fn=lambda: paddle.to_tensor(
-                    values[len(values) - 1], dtype="float32"
-                ),
-                false_fn=lambda: lr,
-            )
-            for i in range(len(boundaries) - 1, -1, -1):
-                current_lr = paddle.static.nn.cond(
-                    pred=paddle.less_than(
-                        global_step, paddle.to_tensor(float(boundaries[i]))
-                    ),
-                    true_fn=lambda: paddle.to_tensor(
-                        values[i], dtype="float32"
-                    ),
-                    false_fn=lambda: current_lr,
-                )
-            paddle.assign(current_lr, lr)
+            with paddle.static.nn.control_flow.Switch() as switch:
+                for i in range(len(boundaries)):
+                    boundary_val = paddle.tensor.fill_constant(
+                        shape=[1],
+                        dtype='float32',
+                        value=float(boundaries[i]),
+                        force_cpu=True,
+                    )
+                    with switch.case(global_step < boundary_val):
+                        paddle.tensor.fill_constant(
+                            shape=[1],
+                            dtype="float32",
+                            value=float(values[i]),
+                            out=lr,
+                        )
+                with switch.default():
+                    paddle.tensor.fill_constant(
+                        shape=[1],
+                        dtype="float32",
+                        value=float(values[len(values) - 1]),
+                        out=lr,
+                    )
             return lr
 
 

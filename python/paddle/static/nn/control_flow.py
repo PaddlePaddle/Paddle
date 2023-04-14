@@ -27,7 +27,11 @@ from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable, static_only
 
 # Temporary solution, it will be deleted later
-from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
+from paddle.fluid.layers.control_flow import (
+    ConditionalBlock,
+    ConditionalBlockGuard,
+    select_input,
+)
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1427,3 +1431,122 @@ def Print(
         },
     )
     return output
+
+
+# TODO: Switch is to be deleted, use paddle.static.nn.case instead
+class Switch:
+    """
+    :api_attr: Static Graph
+    This class is used to implement Switch branch control function.
+    Switch branch contains several case branches and one default branch.
+    Switch control flow checks whether the case branch conditions are satisfied in turn,
+    and only executes the statement after the first case branch that satisfies the conditions.
+    If there is no case branch that satisfies the condition,
+    only the statement following the default branch is executed.
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
+    Member Functions:
+        case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
+    Case and default functions can only be used inside the scope of Switch, as shown below:
+    .. code-block:: python
+        '''
+        import paddle
+        import paddle.fluid as fluid
+        with paddle.static.nn.control_flow.Switch() as switch:
+            with switch.case(cond1):
+                i = paddle.full(shape=[1], dtype='int64', fill_value=1)
+            with switch.case(cond2):
+                i = paddle.full(shape=[1], dtype='int64', fill_value=2)
+            with switch.default():
+                i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+        '''
+    Args:
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            lr = paddle.static.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
+            zero_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=0.0)
+            one_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=1.0)
+            two_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=2.0)
+            global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+            with paddle.static.nn.control_flow.Switch() as switch:
+                with switch.case(global_step == zero_var):
+                    paddle.assign(input=one_var, output=lr)
+                with switch.default():
+                    paddle.assign(input=two_var, output=lr)
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[lr])
+            print(res) # [array([1.], dtype=float32)]
+    """
+
+    def __init__(self, name=None):
+        self.helper = LayerHelper('switch', name=name)
+        self.inside_scope = False
+        self.pre_not_conditions = []
+
+    def case(self, condition):
+        if not self.inside_scope:
+            raise ValueError("case should be called inside with")
+
+        check_variable_and_dtype(
+            condition,
+            'condition',
+            ['bool'],
+            'the member function case of fluid.layers.Switch',
+        )
+
+        if len(self.pre_not_conditions) == 0:
+            cond_block = ConditionalBlock([condition], is_scalar_condition=True)
+            not_cond = paddle.logical_not(x=condition)
+            self.pre_not_conditions.append(not_cond)
+        else:
+            pre_cond_num = len(self.pre_not_conditions)
+            pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
+            new_not_cond = paddle.logical_and(
+                x=pre_not_cond, y=paddle.logical_not(x=condition)
+            )
+            self.pre_not_conditions.append(new_not_cond)
+            cond_block = ConditionalBlock(
+                [paddle.logical_and(x=pre_not_cond, y=condition)],
+                is_scalar_condition=True,
+            )
+
+        return ConditionalBlockGuard(cond_block)
+
+    def default(self):
+        pre_cond_num = len(self.pre_not_conditions)
+        if pre_cond_num == 0:
+            raise ValueError("there should be at least one condition")
+        cond_block = ConditionalBlock(
+            [self.pre_not_conditions[pre_cond_num - 1]],
+            is_scalar_condition=True,
+        )
+        return ConditionalBlockGuard(cond_block)
+
+    def __enter__(self):
+        """
+        set flag that now is inside switch.block {}
+        :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        return True
