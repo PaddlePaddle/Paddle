@@ -76,7 +76,8 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     reshape_k.push_back(Add1DConstantLayer(1));
     reshape_k.push_back(Add1DConstantLayer(-1));
     reshape_k_layer->setInput(1, *Concat(reshape_k));
-    kv_layer->setName(("shuffle_after_k(Output: " + output_name + ")").c_str());
+    reshape_k_layer->setName(
+        ("shuffle_after_k(Output: " + output_name + ")").c_str());
 
     // reshape v
     auto* reshape_v_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_v);
@@ -87,7 +88,8 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     reshape_v.push_back(Add1DConstantLayer(1));
     reshape_v.push_back(Add1DConstantLayer(-1));
     reshape_v_layer->setInput(1, *Concat(reshape_v));
-    kv_layer->setName(("shuffle_after_v(Output: " + output_name + ")").c_str());
+    reshape_v_layer->setName(
+        ("shuffle_after_v(Output: " + output_name + ")").c_str());
 
     // add concat layer, refer to concat_op.cc
     std::vector<nvinfer1::ITensor*> itensors;
