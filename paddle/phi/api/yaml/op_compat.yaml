@@ -1358,7 +1358,7 @@
 
 - op : matrix_rank
   inputs :
-    {x : X, toltensor : TolTensor}
+    {x : X, tol_tensor : TolTensor}
   outputs :
     out : Out
   manual_signature : [matrix_rank]
