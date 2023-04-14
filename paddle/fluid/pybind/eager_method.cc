@@ -1297,7 +1297,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    if (self_tensor->canNotUse) {
+    if ((*self_tensor->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 20: op_name = "
                    << "eager_method setitem"
                    << ", var name = "

@@ -410,13 +410,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 1: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 2: op_name = " << type
                        << ", var name = " << output.first;
         }
@@ -429,13 +429,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 3: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 4: op_name = " << type
                        << ", var name = " << output.first;
         }
@@ -494,13 +494,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 5: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 6: op_name = " << type
                        << ", var name = " << output.first;
         }
@@ -513,13 +513,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 7: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 8: op_name = " << type
                        << ", var name = " << output.first;
         }
@@ -572,13 +572,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 9: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 10: op_name = " << type
                        << ", var name = " << output.first;
         }
@@ -591,13 +591,13 @@ void Tracer::TraceOp(const std::string& type,
       auto var = output.second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto tensor_tmp = var->GetMutable<phi::DenseTensor>();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 11: op_name = " << type
                        << ", var name = " << output.first;
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
-        if (tensor_tmp->canNotUse) {
+        if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 12: op_name = " << type
                        << ", var name = " << output.first;
         }

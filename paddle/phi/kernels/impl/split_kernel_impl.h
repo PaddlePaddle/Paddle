@@ -29,7 +29,6 @@ void SplitKernel(const Context& dev_ctx,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  // inplace_version += 1
   for (size_t i = 0; i < outs.size(); ++i) {
     outs[i]->can_not_uses = xx.can_not_uses;
     if (*outs[i]->canNotUse == false) {

@@ -193,7 +193,7 @@ phi::DenseTensor* SetKernelOutput(const std::string& op_name,
     } else {
       auto tensor_tmp = static_cast<phi::DenseTensor*>(out->impl().get());
 
-      if (tensor_tmp->canNotUse) {
+      if ((*tensor_tmp->canNotUse) == true) {
         LOG(WARNING) << "Stride Test Log 13: op_name = " << op_name
                      << ", var name = " << tensor_name;
       }
@@ -239,7 +239,7 @@ std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
 
     auto tensor_tmp = results[i];
 
-    if (tensor_tmp->canNotUse) {
+    if ((*tensor_tmp->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 14: op_name = " << op_name
                    << ", var name = " << tensor_name;
     }
@@ -269,7 +269,7 @@ std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
       results[i] = static_cast<phi::DenseTensor*>(out->at(i).impl().get());
 
       auto tensor_tmp = results[i];
-      if (tensor_tmp->canNotUse) {
+      if ((*tensor_tmp->canNotUse) == true) {
         LOG(WARNING) << "Stride Test Log 15: op_name = " << op_name
                      << ", var name = " << tensor_name;
       }
@@ -314,7 +314,7 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(const std::string& op_name,
   auto tensor_tmp =
       static_cast<phi::SelectedRows*>(out->impl().get())->mutable_value();
 
-  if (tensor_tmp->canNotUse) {
+  if ((*tensor_tmp->canNotUse) == true) {
     LOG(WARNING) << "Stride Test Log 16: op_name = " << op_name
                  << ", var name = " << tensor_name;
   }

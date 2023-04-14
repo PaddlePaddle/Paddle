@@ -1360,6 +1360,7 @@ class Variable(metaclass=VariableMetaClass):
         belong_to_optimizer=False,
         **kwargs,
     ):
+        self.is_view_var = False
         self.block = block
         if name is None:
             name = unique_name.generate('_generated_var')
@@ -4056,6 +4057,16 @@ class Block:
                 'while',
                 'while_grad',
             }
+            for k, v in outputs.items():
+                if v.is_view_var:
+                    import warnings
+                    import inspect
+
+                    warnings.warn(
+                        'Write view var check 2: %s write view var %s, call stack: %s'
+                        % (op_type, k, inspect.stack())
+                    )
+
             if op_type not in ignore_ops:
                 pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
@@ -4069,7 +4080,55 @@ class Block:
                 )
 
             self.ops.append(op)
-
+        if op_type == "slice":
+            inputs["Input"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "strided_slice":
+            inputs["Input"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "split":
+            inputs["X"].is_view_var = True
+            for out in outputs["Out"]:
+                out.is_view_var = True
+        elif op_type == "unsqueeze" or op_type == "unsqueeze2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "share_data":  # detach
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "squeeze" or op_type == "squeeze2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "expand" or op_type == "expand_v2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "expand_as" or op_type == "expand_as_v2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "transpose" or op_type == "transpose2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "unbind":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "diagonal":
+            inputs["Input"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "flatten":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "imag":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "real":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "reshape" or op_type == "reshape2":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
+        elif op_type == "as_real":
+            inputs["X"].is_view_var = True
+            outputs["Out"].is_view_var = True
         return op
 
     def _insert_op(self, index, *args, **kwargs):

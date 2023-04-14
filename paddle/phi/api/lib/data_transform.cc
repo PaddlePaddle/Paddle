@@ -242,7 +242,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
 
-    if (dense_tensor.canNotUse) {
+    if ((*dense_tensor.canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 17: op_name = " << op_name
                    << ", var name = " << tensor_name;
     }
@@ -291,7 +291,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const auto& tensor_in = input.impl();
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
-    if (dense_tensor.canNotUse) {
+    if ((*dense_tensor.canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 18: op_name = " << op_name
                    << ", var name = " << tensor_name;
     }
@@ -342,7 +342,7 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     phi::SelectedRows& selected_rows =
         *static_cast<phi::SelectedRows*>(tensor_in.get());
 
-    if (selected_rows.mutable_value()->canNotUse) {
+    if ((*selected_rows.mutable_value()->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 19: op_name = " << op_name
                    << ", var name = " << tensor_name;
     }
