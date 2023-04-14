@@ -24,7 +24,11 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, _set_use_system_allocator
+from eager_op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+)
 
 import paddle
 from paddle import fluid, nn
@@ -154,9 +158,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 ),
             )
             np.save(filepath, data[id * stride : (id + 1) * stride])
-        data = create_or_get_tensor(
-            scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
-        )
+        if self.dtype == np.uint16:
+            data = {"input": convert_float_to_uint16(data)}
+        else:
+            data = create_or_get_tensor(
+                scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
+            )
 
         # Single-GPU, N = 32 per GPU
         main, startup, outs = self._build_program(

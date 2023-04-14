@@ -308,7 +308,6 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    ALL_LAYOUT,
                    phi::SyncBatchNormKernel,
                    float,
-                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -349,7 +348,6 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    ALL_LAYOUT,
                    phi::SyncBatchNormGradKernel,
                    float,
-                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
