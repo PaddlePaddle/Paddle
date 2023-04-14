@@ -29,10 +29,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 
 // These Op needs set output dtype when register phi kernel, but they didn't
 std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "update_loss_scaling",
-    "unique",
-    "unique_consecutive_flattened_tensor",
-    "unique_raw"};
+    "update_loss_scaling"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
@@ -458,7 +455,8 @@ void FakeInitializeOutputsForFunctionKernel(
           if (op_type == "adam" || op_type == "adamw") {
             dtype = InferMPDType(runtime_ctx, "Param");
           } else if (op_type == "arg_min" || op_type == "arg_max" ||
-                     op_type == "coalesce_tensor" || op_type == "one_hot_v2") {
+                     op_type == "coalesce_tensor" || op_type == "one_hot_v2" ||
+                     unique) {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
