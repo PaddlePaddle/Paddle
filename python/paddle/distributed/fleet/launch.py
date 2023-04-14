@@ -757,7 +757,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
+    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")
