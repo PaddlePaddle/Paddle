@@ -29,7 +29,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 
 // These Op needs set output dtype when register phi kernel, but they didn't
 std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "sync_batch_norm_grad",
     "update_loss_scaling",
     "unique",
     "unique_consecutive_flattened_tensor",
@@ -463,6 +462,12 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
+          } else if (op_type == "lamb") {
+            bool multi_precision = op.Attr<bool>("multi_precision");
+            phi::DataType dtype = GetInputDType(runtime_ctx, "X");
+            if (multi_precision && dtype == phi::DataType::FLOAT16) {
+              dtype = phi::DataType::FLOAT32;
+            }
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
