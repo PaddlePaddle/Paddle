@@ -96,6 +96,9 @@
           comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
           default : std::vector<int64_t>{}
 
+- op : generate_proposals
+  version :
+
 - op : greater_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]

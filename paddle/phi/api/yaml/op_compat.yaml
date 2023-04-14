@@ -952,6 +952,12 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : generate_proposals(generate_proposals_v2)
+  inputs :
+    {scores : Scores, bbox_deltas : BboxDeltas, im_shape : ImShape, anchors : Anchors, variances : Variances}
+  outputs :
+    {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
+
 - op : grad_add
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
