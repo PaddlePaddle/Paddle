@@ -418,7 +418,7 @@ class TestMin8DOp(OpTest):
         self.check_output()
 
 
-class TestMinFP32Op(OpTest):
+class TestMinFP16Op(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -443,17 +443,12 @@ class TestMinFP32Op(OpTest):
         self.check_output()
 
 
-class TestMinFP16Op(TestMinFP32Op):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestMinBF16Op(TestMinFP32Op):
+class TestMinBF16Op(TestMinFP16Op):
     def init_dtype(self):
         self.dtype = np.uint16
 
