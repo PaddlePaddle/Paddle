@@ -21,7 +21,7 @@ from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def sample_output_one_dimension(out, dim):
@@ -167,6 +167,11 @@ class TestMultinomialFP16Op3(TestMultinomialFP16Op):
 
 
 # BF16 OP
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestMultinomialBF16OP(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -184,7 +189,8 @@ class TestMultinomialBF16OP(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(self.verify_output, place)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -202,6 +208,11 @@ class TestMultinomialBF16OP(OpTest):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestMultinomialBF16OP2(TestMultinomialBF16OP):
     def init_data(self):
         # input probability is a matrix
@@ -217,6 +228,11 @@ class TestMultinomialBF16OP2(TestMultinomialBF16OP):
         return sample_output_two_dimension(out, [3, 4])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestMultinomialBF16OP3(TestMultinomialBF16OP):
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
