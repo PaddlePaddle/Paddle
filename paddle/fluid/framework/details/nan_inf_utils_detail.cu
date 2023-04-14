@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 DECLARE_int32(check_nan_inf_level);
@@ -294,7 +295,8 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
                                          const char* debug_info,
                                          int64_t numel,
                                          int64_t numel_max_min,
-                                         int check_nan_inf_level) {
+                                         int check_nan_inf_level,
+                                         int64_t* nan_inf_zero) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     int64_t num_nan = 0;
     int64_t num_inf = 0;
@@ -325,8 +327,12 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         min_value = tmp_min_value < min_value ? tmp_min_value : min_value;
         mean_value += tmp_mean_value;
       }
+      if (check_nan_inf_level == 0) {
+        nan_inf_zero[0] = num_nan;
+        nan_inf_zero[1] = num_inf;
+        nan_inf_zero[2] = num_zero;
+      }
     }
-
     PrintForDifferentLevel<T, MT>(debug_info,
                                   numel,
                                   num_nan,
@@ -493,6 +499,10 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                                   tensor_block_mean_ptr);
 
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
+  phi::DenseTensor nan_inf_zero_tensor;
+  nan_inf_zero_tensor.Resize({static_cast<int64_t>(3)});
+  int64_t* nan_inf_zero =
+      dev_ctx->template Alloc<int64_t>(&nan_inf_zero_tensor);
   FindGlobalMaxMinAndPrint<T, MT>
       <<<1, 1, 0, dev_ctx->stream()>>>(block_num_nan_ptr,
                                        block_num_inf_ptr,
@@ -503,7 +513,33 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        gpu_str_ptr,
                                        tensor.numel(),
                                        numel_max_min,
-                                       check_nan_inf_level);
+                                       check_nan_inf_level,
+                                       nan_inf_zero_tensor.data<int64_t>());
+
+  if (check_nan_inf_level == 0) {
+    auto nan_cpu =
+        phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 3);
+    int64_t* nan_cpu_ptr = reinterpret_cast<int64_t*>(nan_cpu->ptr());
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            nan_cpu_ptr,
+                            place,
+                            nan_inf_zero,
+                            3 * sizeof(int64_t),
+                            dev_ctx->stream());
+
+    dev_ctx->Wait();
+    if (nan_cpu_ptr[0] > 0 || nan_cpu_ptr[1] > 0) {
+      const std::string debug_info =
+          GetHintString<T>(op_type, var_name, place, dev_id);
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
+          "%s.",
+          static_cast<long long>(nan_cpu_ptr[0]),  // NOLINT
+          static_cast<long long>(nan_cpu_ptr[1]),  // NOLINT
+          static_cast<long long>(nan_cpu_ptr[2]),  // NOLINT
+          debug_info));
+    }
+  }
 #endif
 }
 

@@ -499,12 +499,19 @@ class AutoParallelizer:
                         break
                 if is_pipeline:
                     with paddle.static.program_guard(dist_main_prog):
-                        paddle.distributed.barrier()
+                        paddle.distributed.barrier(get_process_group(0))
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
             for process_group in all_process_groups:
+                if len(_g_process_group_map) > 0:
+                    tmp = paddle.to_tensor([1], dtype="int32")
+                    paddle.distributed.all_reduce(
+                        tmp, sync_op=True, group=_g_process_group_map[0]
+                    )
+                    paddle.device.cuda.synchronize()
+
                 if rank not in process_group.ranks:
                     continue
                 process_group.instantiate()
