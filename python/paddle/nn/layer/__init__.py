@@ -85,6 +85,8 @@ from .loss import TripletMarginWithDistanceLoss
 from .loss import TripletMarginLoss
 from .loss import SoftMarginLoss
 from .loss import MultiMarginLoss
+from .loss import GaussianNLLLoss
+
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401

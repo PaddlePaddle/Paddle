@@ -55,6 +55,43 @@ typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
   framework::TensorFromVector(values, ctx.device_context(), out);
 }
 
+template <typename T, typename Context>
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    phi::DenseTensor* out) {
+  // If attribute value dtype is vector<bool>, it will be converted to
+  // vector<int>. at the same time, we can not use vector<bool> to hold
+  // the value, because the c++ use bit value to replace byte value.
+  std::vector<int> assign_values;
+  assign_values.reserve(values.size());
+  for (const auto& val : values) {
+    assign_values.emplace_back(val.to<int>());
+  }
+  phi::TensorFromVector(assign_values, dev_ctx, out);
+
+  // use the array to replace to vector
+  bool* array_ptr = new T[assign_values.size()];
+  for (unsigned int i = 0; i < assign_values.size(); i++) {
+    array_ptr[i] = static_cast<T>(assign_values[i]);
+  }
+  phi::TensorFromArray(array_ptr, assign_values.size(), dev_ctx, out);
+  delete[] array_ptr;
+}
+
+template <typename T, typename Context>
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    phi::DenseTensor* out) {
+  std::vector<T> assign_values;
+  assign_values.reserve(values.size());
+  for (const auto& val : values) {
+    assign_values.emplace_back(val.to<T>());
+  }
+  phi::TensorFromVector(assign_values, dev_ctx, out);
+}
+
 template <typename T>
 class AssignValueKernel : public framework::OpKernel<T> {
  public:
