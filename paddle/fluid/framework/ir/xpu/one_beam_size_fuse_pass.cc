@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/ir/xpu/one_beam_size_fuse_pass.h"
 #include <string>
+
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"

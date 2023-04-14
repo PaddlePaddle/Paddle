@@ -113,8 +113,6 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
                 numel);
       }));
 
-  std::cout << "Debug info: run relu gpu double backward success." << std::endl;
-
   return {ddout};
 }
 

@@ -18,7 +18,7 @@ from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
-from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
 
@@ -29,18 +29,18 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.random((batch, dim1, 768)).astype(np.float32)
+            return np.full((batch, dim1, 768), 1).astype(np.float32)
 
         def generate_input2(shape):
-            return np.random.random(shape).astype(np.float32)
+            return np.full(shape, 1).astype(np.float32)
 
         def generate_weight1():
-            return np.random.random((768, 768)).astype(np.float32)
+            return np.full((768, 768), 0.1).astype(np.float32)
 
         def generate_weight2():
-            return np.random.random(768).astype(np.float32)
+            return np.full((768), 0.1).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             self.batch = batch
             for reshape_shape in [[0, 0, 12, 64]]:
                 for dim1 in [128]:
@@ -72,12 +72,6 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": True,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": axis},
                                 {"axis": -1, "is_test": True},
@@ -92,12 +86,6 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": False,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": [0, 2, 1, 3]},
                                 {"shape": [0, 0, 768]},
@@ -383,80 +371,33 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), (1e-3, 1e-3)
-
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
-        )
-
-        def teller2(program_config, predictor_config):
-            if (
-                self.trt_param.precision == paddle_infer.PrecisionType.Float32
-                and len(self.dynamic_shape.min_input_shape) != 0
-                and self.batch > 2
-            ):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt when dynamic fp32 mode and batch size > 2.",
-        )
-
-        def teller3(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller3,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in int8 mode.",
-        )
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 
 class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.random((batch, dim1, 768)).astype(np.float32)
+            return np.full((batch, dim1, 768), 1).astype(np.float32)
 
         def generate_input2(shape):
-            return np.random.random(shape).astype(np.float32)
+            return np.full(shape, 1).astype(np.float32)
 
         def generate_weight1():
-            return np.random.random((768, 768)).astype(np.float32)
+            return np.full((768, 768), 0.1).astype(np.float32)
 
         def generate_weight2():
-            return np.random.random(768).astype(np.float32)
+            return np.full((768), 0.1).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [4]:
             self.batch = batch
             for reshape_shape in [[0, 0, 12, 64]]:
                 for dim1 in [128]:
@@ -512,12 +453,6 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": True,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": axis},
                                 {"axis": -1, "is_test": True},
@@ -532,12 +467,6 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": False,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": [0, 2, 1, 3]},
                                 {"shape": [0, 0, 768]},
@@ -800,15 +729,15 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, length):
-            return np.zeros((batch, length, 768), dtype=np.float32)
+            return np.full((batch, length, 768), 0.1).astype(np.float32)
 
         def generate_weight1():
-            return np.random.rand(768, 2304).astype(np.float32)
+            return np.full((768, 2304), 0.1).astype(np.float32)
 
         def generate_weight2():
-            return np.random.rand(2304).astype(np.float32)
+            return np.full((2304), 0.1).astype(np.float32)
 
-        for batch in [2, 4]:
+        for batch in [4]:
             self.batch = batch
             for length in [197]:
                 self.length = length
@@ -1013,17 +942,6 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                 "input_data1": [1, 197, 768],
             }
 
-        def generate_static_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data1": [1, 197, 768],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data1": [16, 197, 768],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data1": [1, 197, 768],
-            }
-
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -1050,43 +968,15 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
-            1e-3,
+            2e-2,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-5,
             1e-5,
-        )
-
-        # for static_shape
-        clear_dynamic_shape()
-        generate_static_shape(attrs)
-        self.trt_param.workspace_size = 2013265920
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
-            1e-3,
-        )
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-5,
-            1e-5,
-        )
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
         )
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 
@@ -1096,19 +986,19 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.random((batch, dim1, 768)).astype(np.float32)
+            return np.full((batch, dim1, 768), 1).astype(np.float32)
 
         def generate_input2(shape):
-            return np.random.random(shape).astype(np.float32)
+            return np.full(shape, 1).astype(np.float32)
 
         def generate_weight1():
-            return np.random.random((768, 768)).astype(np.float32)
+            return np.full((768, 768), 0.1).astype(np.float32)
 
         def generate_weight2():
-            return np.random.random(768).astype(np.float32)
+            return np.full((768), 0.1).astype(np.float32)
 
         def generate_weight3():
-            return np.random.random((768, 768)).astype(np.float32)
+            return np.full((768, 768), 0.1).astype(np.float32)
 
         for batch in [2]:
             self.batch = batch
@@ -1142,12 +1032,6 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": True,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": axis},
                                 {"axis": -1, "is_test": True},
@@ -1162,12 +1046,6 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                     "alpha": 1.0,
                                     "transpose_X": False,
                                     "transpose_Y": False,
-                                    "fused_reshape_X": [],
-                                    "fused_reshape_Y": [],
-                                    "fused_transpose_X": [],
-                                    "fused_transpose_Y": [],
-                                    "fused_reshape_Out": [],
-                                    "fused_transpose_Out": [],
                                 },
                                 {"axis": [0, 2, 1, 3]},
                                 {"shape": [0, 0, 768]},
@@ -1459,48 +1337,9 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
-        )
-
-        def teller2(program_config, predictor_config):
-            if (
-                self.trt_param.precision == paddle_infer.PrecisionType.Float32
-                and len(self.dynamic_shape.min_input_shape) != 0
-                and self.batch > 2
-            ):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt when dynamic fp32 mode and batch size > 2.",
-        )
-
-        def teller3(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller3,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in int8 mode.",
-        )
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

@@ -250,6 +250,7 @@ from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
 from .math import sigmoid_  # noqa: F401
+from .math import vander  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -538,6 +539,7 @@ tensor_method_func = [  # noqa
     'polar',
     'sigmoid',
     'sigmoid_',
+    'vander',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

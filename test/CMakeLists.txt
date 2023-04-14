@@ -15,47 +15,23 @@ function(py_test_modules TARGET_NAME)
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
-            COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-            ${PYTHON_EXECUTABLE} -m coverage run --branch -p
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS}
+          COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
-      if(WITH_ASCEND_CL)
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env
-            PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      else()
-        add_test(
-          NAME ${TARGET_NAME}
-          COMMAND
-            ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
-            ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-      endif()
+      add_test(
+        NAME ${TARGET_NAME}
+        COMMAND
+          ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     if(py_test_modules_SERIAL)
@@ -131,24 +107,30 @@ if(WITH_TESTING)
   # add_subdirectory(distributed_passes)
   # add_subdirectory(distribution)
   add_subdirectory(dygraph_to_static)
-  # add_subdirectory(fft)
+  if(NOT WIN32 OR NOT WITH_GPU)
+    add_subdirectory(fft)
+  endif()
   # add_subdirectory(fleet)
   if(WITH_IPU)
     add_subdirectory(ipu)
   endif()
   # add_subdirectory(ir)
   add_subdirectory(legacy_test)
-  # add_subdirectory(mkldnn)
+  if(WITH_MKLDNN)
+    add_subdirectory(mkldnn)
+  endif()
   add_subdirectory(prim)
   # add_subdirectory(ps)
   add_subdirectory(quantization)
   # add_subdirectory(rnn)
   add_subdirectory(rpc)
   # add_subdirectory(sequence)
-  # add_subdirectory(standalone_executor)
-  # add_subdirectory(tokenizer)
+  add_subdirectory(standalone_executor)
+  add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
-  add_subdirectory(xpu)
+  if(WITH_XPU)
+    add_subdirectory(xpu)
+  endif()
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
@@ -191,9 +173,6 @@ if(${len} GREATER_EQUAL 1)
       endif()
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
-      endif()
-      if(WITH_MLU)
-        target_link_libraries(${test_name} neuware_lib)
       endif()
       if(NOT
          ("${test_name}" STREQUAL "c_broadcast_op_npu_test"

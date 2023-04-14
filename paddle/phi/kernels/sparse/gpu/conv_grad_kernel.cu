@@ -24,9 +24,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#ifdef PADDLE_WITH_CUTLASS
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
+#endif
 
 namespace phi {
 namespace sparse {
+extern size_t workspace_size;
 
 // rulebook[3, rulebook_len]:
 //[
@@ -130,34 +134,52 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemsetAsync(
       out_index_ptr, 0, sizeof(int) * x.nnz() * 2, dev_ctx.stream());
 
-  GroupIndexsV2<<<config.block_per_grid,
-                  config.thread_per_block,
-                  0,
-                  dev_ctx.stream()>>>(rulebook_len,
-                                      x.nnz(),
-                                      kernel_size,
-                                      offsets[kernel_size / 2],
-                                      rulebook_ptr,
-                                      out_index_ptr,
-                                      unique_value_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  bool cutlass = true;
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
 
-  GatherV2<T, IntT>(dev_ctx,
-                    x.values().data<T>(),
-                    out_index_ptr,
-                    unique_value_ptr,
-                    x.nnz(),
-                    kernel_size,
-                    in_channels,
-                    2,
-                    in_features_ptr);
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) cutlass = false;
 
-  Gather<T, IntT>(dev_ctx,
-                  out_grad.values().data<T>(),
-                  rulebook_ptr + rulebook_len,
-                  rulebook_len,
-                  out_channels,
-                  out_grad_features_ptr);
+  if (std::is_same<T, phi::dtype::float16>::value ||
+      std::is_same<T, double>::value)
+    cutlass = false;
 
+  if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+
+  if (!cutlass) {
+#endif
+
+    GroupIndexsV2<<<config.block_per_grid,
+                    config.thread_per_block,
+                    0,
+                    dev_ctx.stream()>>>(rulebook_len,
+                                        x.nnz(),
+                                        kernel_size,
+                                        offsets[kernel_size / 2],
+                                        rulebook_ptr,
+                                        out_index_ptr,
+                                        unique_value_ptr);
+
+    GatherV2<T, IntT>(dev_ctx,
+                      x.values().data<T>(),
+                      out_index_ptr,
+                      unique_value_ptr,
+                      x.nnz(),
+                      kernel_size,
+                      in_channels,
+                      2,
+                      in_features_ptr);
+
+    Gather<T, IntT>(dev_ctx,
+                    out_grad.values().data<T>(),
+                    rulebook_ptr + rulebook_len,
+                    rulebook_len,
+                    out_channels,
+                    out_grad_features_ptr);
+
+#ifdef PADDLE_WITH_CUTLASS
+  }
+#endif
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
     if (counter_ptr[i] <= 0 || (subm && i == half_kernel_size)) {
@@ -173,43 +195,98 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
 
-    // call gemm: d_kernel = transpose(x) * out_grad
-    // (in_channels, n) * (n, out_channels)
-    blas.GEMM(CblasTrans,
-              CblasNoTrans,
-              K,
-              N,
-              M,
-              static_cast<T>(1),
-              tmp_in_ptr,
-              tmp_out_grad_ptr,
-              static_cast<T>(0),
-              tmp_d_kernel_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+    if (cutlass) {
+      const IntT* gather_x_indices = rulebook_ptr + offsets[i];
+      const IntT* scatter_x_indices = rulebook_ptr + offsets[i];
+      const IntT* gather_out_indices = rulebook_ptr + rulebook_len + offsets[i];
+      const size_t key = autotune::GenKey(M / features_num_range, N, K);
+      // call gemm: d_kernel = transpose(x) * out_grad
+      // (in_channels, n) * (n, out_channels)
+      static cutlass::device_memory::allocation<uint8_t> workspace(
+          workspace_size);
+      GatherGemmScatterDriver<T, IntT, true, false>(
+          dev_ctx,
+          key,
+          x.values().data<T>(),
+          out_grad.values().data<T>(),
+          tmp_d_kernel_ptr,
+          tmp_d_kernel_ptr,
+          in_channels,
+          out_channels,
+          counter_ptr[i],
+          gather_x_indices,
+          gather_out_indices,
+          static_cast<const IntT*>(nullptr),
+          static_cast<const T>(1.0),
+          static_cast<const T>(0.0),
+          &workspace);
+      // call gemm: d_x = out_grad * transpose(kernel)
+      // (n, out_channels) * (out_channels, in_channels)
+      GatherGemmScatterDriver<T, IntT, false, true>(
+          dev_ctx,
+          key,
+          out_grad.values().data<T>(),
+          tmp_kernel_ptr,
+          x_grad_values_ptr,
+          x_grad_values_ptr,
+          counter_ptr[i],
+          in_channels,
+          out_channels,
+          gather_out_indices,
+          static_cast<const IntT*>(nullptr),
+          scatter_x_indices,
+          static_cast<const T>(1.0),
+          static_cast<const T>(1.0),
+          nullptr);
+    } else {
+#endif
+      // call gemm: d_kernel = transpose(x) * out_grad
+      // (in_channels, n) * (n, out_channels)
+      blas.GEMM(CblasTrans,
+                CblasNoTrans,
+                K,
+                N,
+                M,
+                static_cast<T>(1),
+                tmp_in_ptr,
+                tmp_out_grad_ptr,
+                static_cast<T>(0),
+                tmp_d_kernel_ptr);
 
-    // call gemm: d_x = out_grad * transpose(kernel)
-    // (n, out_channels) * (out_channels, in_channels)
-    blas.GEMM(CblasNoTrans,
-              CblasTrans,
-              M,
-              K,
-              N,
-              static_cast<T>(1),
-              tmp_out_grad_ptr,
-              tmp_kernel_ptr,
-              static_cast<T>(0),
-              tmp_d_x_ptr);
+      // call gemm: d_x = out_grad * transpose(kernel)
+      // (n, out_channels) * (out_channels, in_channels)
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                M,
+                K,
+                N,
+                static_cast<T>(1),
+                tmp_out_grad_ptr,
+                tmp_kernel_ptr,
+                static_cast<T>(0),
+                tmp_d_x_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+    }
+#endif
   }
 
   // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   d_x_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   x_grad->nnz(),
-                                   kernel_size,
-                                   in_channels,
-                                   2,
-                                   x_grad_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  if (!cutlass) {
+#endif
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     d_x_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     x_grad->nnz(),
+                                     kernel_size,
+                                     in_channels,
+                                     2,
+                                     x_grad_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  }
+#endif
 }
 
 template <typename T, typename Context>
