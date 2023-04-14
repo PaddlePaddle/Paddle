@@ -129,6 +129,7 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     plugin_inputs.emplace_back(kv_layer->getOutput(0));
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin);
+
     // add shuffle
     auto* reshape_after_mha_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));

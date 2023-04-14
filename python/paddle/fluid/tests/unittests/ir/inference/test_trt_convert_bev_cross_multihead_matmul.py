@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
 from functools import partial
 from typing import List
@@ -21,6 +22,11 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+q_length = 1024
+kv_length = 300
+head_num = 8
+head_size = 32
 
 
 class TrtConvertCrossBevCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
@@ -32,27 +38,39 @@ class TrtConvertCrossBevCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.random((batch, dim1, 256)).astype(np.float32) / 10
+            ans = (
+                np.random.random((batch, dim1, head_num * head_size)).astype(
+                    np.float32
+                )
+                * 10
+            )
+            return ans
 
         def generate_input2(batch, dim2):
-            return np.random.random((batch, dim2, 256)).astype(np.float32) / 10
+            return np.random.random((batch, dim2, head_num * head_size)).astype(
+                np.float32
+            )
 
         def generate_input3(batch, dim2):
-            return np.random.random((batch, dim2, 256)).astype(np.float32) / 10
+            return np.random.random((batch, dim2, head_num * head_size)).astype(
+                np.float32
+            )
 
         def generate_weight1():
-            return np.random.random((256, 256)).astype(np.float32) / 10
+            return np.random.random(
+                (head_num * head_size, head_num * head_size)
+            ).astype(np.float32)
 
-        for batch in [1, 2]:
+        for batch in [1]:
             self.batch = batch
-            for reshape_shape in [[0, 0, 8, 32]]:
-                for dim1 in [900]:
-                    for dim2 in [900]:
+            for reshape_shape in [[0, 0, head_num, head_size]]:
+                for dim1 in [q_length]:
+                    for dim2 in [kv_length]:
                         dics = [
                             {"shape": reshape_shape},
                             {"axis": [0, 2, 1, 3]},
                             {
-                                "scale": 0.1767766922712326,
+                                "scale": 1 / math.sqrt(head_size),
                                 "bias": 0.0,
                                 "bias_after_scale": True,
                             },
@@ -64,7 +82,7 @@ class TrtConvertCrossBevCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             {"axis": [0, 2, 1, 3]},
                             {"trans_x": False, "trans_y": False},
                             {"axis": [0, 2, 1, 3]},
-                            {"shape": [0, 0, 256]},
+                            {"shape": [0, 0, head_num * head_size]},
                             {"trans_x": False, "trans_y": False},
                         ]
 
@@ -213,19 +231,19 @@ class TrtConvertCrossBevCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
-                "input_data1": [1, 900, 256],
-                "input_data2": [1, 900, 256],
-                "input_data3": [1, 900, 256],
+                "input_data1": [1, q_length, head_num * head_size],
+                "input_data2": [1, kv_length, head_num * head_size],
+                "input_data3": [1, kv_length, head_num * head_size],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data1": [8, 900, 256],
-                "input_data2": [8, 900, 256],
-                "input_data3": [8, 900, 256],
+                "input_data1": [1, q_length + 1000, head_num * head_size],
+                "input_data2": [1, kv_length + 1000, head_num * head_size],
+                "input_data3": [1, kv_length + 1000, head_num * head_size],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data1": [1, 900, 256],
-                "input_data2": [1, 900, 256],
-                "input_data3": [1, 900, 256],
+                "input_data1": [1, q_length, head_num * head_size],
+                "input_data2": [1, kv_length, head_num * head_size],
+                "input_data3": [1, kv_length, head_num * head_size],
             }
 
         def clear_dynamic_shape():
@@ -251,7 +269,7 @@ class TrtConvertCrossBevCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 4), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), (1e-2, 1e-3)
+        yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
