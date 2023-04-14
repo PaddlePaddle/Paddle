@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/flags.h"
