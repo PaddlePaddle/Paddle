@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <time.h>
+#include <float.h>
 
 #include <random>
 #include <vector>
