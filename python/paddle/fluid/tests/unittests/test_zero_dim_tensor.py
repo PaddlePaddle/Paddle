@@ -1052,7 +1052,7 @@ class TestSundryAPI(unittest.TestCase):
     #     out = paddle.dot(x, y)
     #     out.retain_grads()
     #     out.backward()
-
+    #     111
     #     self.assertEqual(out.shape, [])
     #     self.assertEqual(out.grad.shape, [])
 
