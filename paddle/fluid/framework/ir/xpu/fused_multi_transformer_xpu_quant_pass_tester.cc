@@ -11,6 +11,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 

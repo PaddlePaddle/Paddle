@@ -17,6 +17,8 @@
 #include <sstream>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
