@@ -14,6 +14,8 @@
 
 import unittest
 
+from paddle.fluid import core
+from paddle.static.amp import fp16_lists
 from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 
@@ -38,6 +40,48 @@ class TestAMPList(unittest.TestCase):
         ]
         for op in default_black_list:
             self.assertTrue(op in amp_list.black_list)
+
+    def test_apis(self):
+        def _run_check_dtype():
+            fp16_lists.check_amp_dtype(dtype="int64")
+
+        self.assertRaises(ValueError, _run_check_dtype)
+
+        for vartype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
+            self.assertEqual(
+                fp16_lists.get_low_precision_vartype(vartype), vartype
+            )
+        self.assertEqual(
+            fp16_lists.get_low_precision_vartype("float16"),
+            core.VarDesc.VarType.FP16,
+        )
+        self.assertEqual(
+            fp16_lists.get_low_precision_vartype("bfloat16"),
+            core.VarDesc.VarType.BF16,
+        )
+
+        def _run_get_vartype():
+            fp16_lists.get_low_precision_vartype(dtype="int64")
+
+        self.assertRaises(ValueError, _run_get_vartype)
+
+        for dtype in ["float16", "bfloat16"]:
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(dtype), dtype
+            )
+        self.assertEqual(
+            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.FP16),
+            "float16",
+        )
+        self.assertEqual(
+            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.BF16),
+            "bfloat16",
+        )
+
+        def _run_get_dtypestr():
+            fp16_lists.get_low_precision_dtypestr(dtype="int64")
+
+        self.assertRaises(ValueError, _run_get_dtypestr)
 
 
 if __name__ == "__main__":
