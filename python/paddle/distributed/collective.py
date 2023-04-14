@@ -172,16 +172,6 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _destroy_process_group_id_map():
-    """
-
-    Destroy the custom process group. Designed for CustomDevice.
-
-
-    """
-    core.ProcessGroupIdMap.destroy()
-
-
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
