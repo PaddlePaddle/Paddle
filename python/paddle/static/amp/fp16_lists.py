@@ -19,11 +19,7 @@ from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 
 _logger = get_logger(
-<<<<<<< HEAD
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-=======
-    __name__, logging.DEBUG, fmt='%(asctime)s-%(levelname)s: %(message)s'
->>>>>>> fix unittests
 )
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
@@ -102,6 +98,20 @@ def _get_sys_unsupported_list(dtype):
     else:
         device = 'GPU'
     _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
+
+    # sys_unsupported_list will include the following ops.
+    supported_fp16_list = {
+        "conditional_block",
+        "conditional_block_infer",
+        "select_input",
+        "while",
+        "cast",
+        "tensor_array_to_tensor",
+        "lod_array_length",
+        "write_to_array",
+    }
+    sys_unsupported_list -= supported_fp16_list
+
     return device, sys_unsupported_list
 
 
@@ -189,16 +199,15 @@ class AutoMixedPrecisionLists:
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-_white_list = {
+
+_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
+
+white_list = {
     'conv2d',
     'matmul',
     'matmul_v2',
     'mul',
-}
-
-_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
-
-white_list = _white_list | _only_supported_fp16_list
+} | _only_supported_fp16_list
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
@@ -281,38 +290,4 @@ gray_list = {
     'fused_multi_transformer',
 }
 
-# The set of ops that don't support fp16 calculation
-# lookup_table fp16 is slower than fp32, though fp16 is supported.
-_sys_unsupported_fp16_list = []
-if core.is_compiled_with_xpu():
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'XPU', core.VarDesc.VarType.FP16
-    )
-elif core.is_compiled_with_custom_device('npu'):
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'NPU', core.VarDesc.VarType.FP16
-    )
-else:
-    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'GPU', core.VarDesc.VarType.FP16
-    )
-
-supported_fp16_list = {
-    "conditional_block_grad",
-    "conditional_block",
-    "conditional_block_infer",
-    "select_input",
-    "while",
-    "while_grad",
-    "cast",
-    "tensor_array_to_tensor",
-    "lod_array_length",
-    "write_to_array",
-}
-
-unsupported_fp16_list = (
-    _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
-) - supported_fp16_list
-
->>>>>>> unify o1 and o2
 CustomOpLists = AutoMixedPrecisionLists

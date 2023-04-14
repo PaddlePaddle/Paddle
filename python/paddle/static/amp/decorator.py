@@ -230,11 +230,6 @@ class OptimizerWithMixedPrecision:
                     self._amp_lists,
                     self._use_fp16_guard,
                     self._amp_vartype,
-                )
-            else:
-                rewrite_program(
-                    self._train_program, self._amp_lists, self._amp_vartype
-                )
                     level='O2',
                 )
             else:
@@ -243,9 +238,9 @@ class OptimizerWithMixedPrecision:
                     self._train_program,
                     self._amp_lists,
                     use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
                     level='O1',
                 )
-                # rewrite_program(self._train_program, self._amp_lists)
 
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
@@ -371,22 +366,17 @@ class OptimizerWithMixedPrecision:
                     test_program,
                     self._amp_lists,
                     self._use_fp16_guard,
-<<<<<<< HEAD
                     self._amp_vartype,
-                )
-            elif use_fp16_test:
-                rewrite_program(
-                    test_program, self._amp_lists, self._amp_vartype
-=======
                     level='O2',
                 )
             elif use_fp16_test:
+                # use_fp16_guard is not support amp-o1.
                 cast_model_to_fp16(
                     test_program,
                     self._amp_lists,
-                    self._use_fp16_guard,
+                    use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
                     level='O1',
->>>>>>> polish code
                 )
 
     def apply_gradients(self, params_grads):
