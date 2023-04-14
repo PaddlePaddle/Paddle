@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
+static uint64_t GetRandomSeed() {
+  std::random_device rd;
+  // double has 53 bit significant, so limit uint64 to 53 bits
+  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+}
+
 namespace phi {
 
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {

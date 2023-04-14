@@ -216,12 +216,14 @@ class DistributedSaver:
 
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
+        legacy_format = kwargs.get("legacy_format", False)
         paddle.static.save_inference_model(
             dist_path,
             dist_feed_vars,
             dist_fetch_vars,
             exe,
             program=dist_main_prog,
+            legacy_format=legacy_format,
         )
 
     def _save_rank_mapping(self, dirname):

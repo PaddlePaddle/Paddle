@@ -83,7 +83,7 @@ class KernelSignatureSearcher:
         )
         return pd.merge(
             kernel_func_df, func_signature_df, on='kernel_func', how='left'
-        )[['kernel_name', 'kernel_signature']]
+        )[['kernel_name', 'kernel_signature']].sort_values(by='kernel_name')
 
     def filter_result(self):
         for kernel_name in self.filter["kernel_name"]:
@@ -207,14 +207,14 @@ def get_kernel_signatures():
     # Because phi/kernels has some independent subdirs, whose kernel names
     # (in different namespaces) may conflict with main directory or other
     # subdirs, so we need to search them separately.
-    indenpendent_subdir = [
+    independent_subdir = [
         'fusion',
         'legacy',
         'selected_rows',
         'sparse',
         'strings',
     ]
-    for subdir in indenpendent_subdir:
+    for subdir in independent_subdir:
         sub_path = osp.join(base_path, subdir)
         sub_df = KernelSignatureSearcher.search(sub_path)
         kernel_signature_df = pd.concat(
