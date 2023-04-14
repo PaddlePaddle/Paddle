@@ -18,7 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"

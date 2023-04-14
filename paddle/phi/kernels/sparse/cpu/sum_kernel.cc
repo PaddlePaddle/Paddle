@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
