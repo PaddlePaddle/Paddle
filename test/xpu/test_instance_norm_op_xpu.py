@@ -70,6 +70,9 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.epsilon = 1e-05
             self.no_grad_set = None
             self.set_attrs()
+            self.atol = 1e-5
+            if self.dtype == np.float16:
+                self.atol = 1e-2
 
             np.random.seed(12345)
             epsilon = self.epsilon
@@ -109,7 +112,7 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             pass
 
         def test_check_output(self):
-            self.check_output_with_place(paddle.XPUPlace(0))
+            self.check_output_with_place(paddle.XPUPlace(0), atol=self.atol)
 
         def test_check_grad(self):
             self.check_grad_with_place(

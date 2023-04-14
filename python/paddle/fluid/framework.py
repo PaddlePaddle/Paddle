@@ -2758,8 +2758,6 @@ class Operator:
         'heter_listen_and_serv',
         'c_wait_comm',
         'c_wait_compute',
-        'c_gen_hccl_id',
-        'c_comm_init_hccl',
         'copy_cross_scope',
         'c_gen_cncl_id',
     }

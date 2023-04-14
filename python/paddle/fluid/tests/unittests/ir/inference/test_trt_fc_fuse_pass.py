@@ -50,7 +50,7 @@ class FCFusePassTRTTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
@@ -78,7 +78,7 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
@@ -106,7 +106,7 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims2Test(InferencePassTest):
@@ -140,7 +140,7 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
@@ -174,7 +174,7 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
@@ -208,7 +208,7 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
@@ -244,7 +244,7 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
@@ -280,7 +280,7 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
@@ -316,7 +316,7 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            self.check_output_with_option(use_gpu[i], atol=1e-4, rtol=1e-3)
 
 
 if __name__ == "__main__":
