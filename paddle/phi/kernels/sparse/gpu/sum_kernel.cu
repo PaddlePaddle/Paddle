@@ -37,33 +37,38 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
                                  const int64_t keep_dim,
                                  IntT* out_indices_data,
                                  T* out_values_data) {
-  CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
+  CUDA_KERNEL_LOOP_TYPE(index_i, x_nnz, int64_t) {
     int64_t i = 0;
     for (int j = 0; j < dense_dim; ++j) {
-      out_values_data[j + index * dense_dim] = 0;
+      out_values_data[j + index_i * dense_dim] = 0;
     }
-    while (i < x_nnz) {
+
+    int64_t index_j =
+        static_cast<int64_t>(blockIdx.y) * blockDim.y + threadIdx.y;
+    for (; index_j < x_nnz;
+         index_j += static_cast<int64_t>(blockDim.y) * gridDim.y) {
       bool same = true;
       for (int j = 0; j < sparse_dim + !keep_dim; ++j) {
-        if (j != axis && x_indices_data[index + j * x_nnz] !=
-                             x_indices_data[i + j * x_nnz]) {
+        if (j != axis && x_indices_data[index_i + j * x_nnz] !=
+                             x_indices_data[index_j + j * x_nnz]) {
           same = false;
           break;
         }
       }
       if (same) {
         for (int j = 0; j < dense_dim; ++j) {
-          out_values_data[j + index * dense_dim] +=
-              x_values_data[j + i * dense_dim];
+          out_values_data[j + index_i * dense_dim] +=
+              x_values_data[j + index_j * dense_dim];
         }
       }
-      i++;
     }
+
     if (keep_dim) {
       for (int j = 0; j < sparse_dim; ++j) {
-        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+        out_indices_data[index_i + j * x_nnz] =
+            x_indices_data[index_i + j * x_nnz];
         if (j == axis) {
-          out_indices_data[index + j * x_nnz] = 0;
+          out_indices_data[index_i + j * x_nnz] = 0;
         }
       }
       return;
@@ -71,10 +76,11 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
     for (int j = 0; j < sparse_dim; ++j) {
       // out_indices_data [sparse_dim, x.nnz()]
       if (j < axis) {
-        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+        out_indices_data[index_i + j * x_nnz] =
+            x_indices_data[index_i + j * x_nnz];
       } else {
-        out_indices_data[index + j * x_nnz] =
-            x_indices_data[index + (j + 1) * x_nnz];
+        out_indices_data[index_i + j * x_nnz] =
+            x_indices_data[index_i + (j + 1) * x_nnz];
       }
     }
   }
@@ -218,7 +224,8 @@ void SumCooGPUKernel(const Context& dev_ctx,
   auto* out_indices_data = out_indices.data<IntT>();
   auto* out_values_data = out_values.data<T>();
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, x.nnz(), x.nnz());
   SumCooCudaKernel<T, IntT><<<config.block_per_grid.x,
                               config.thread_per_block.x,
                               0,
