@@ -118,6 +118,11 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         )
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
+        print("custom_egg_path[0]", custom_egg_path[0])
+        import custom_cpp_extension
+
+        print(dir(custom_cpp_extension))
+
         # install mixed custom_op and extension
         cmd = 'cd {} && {} mix_relu_and_extension_setup.py install'.format(
             cur_dir, sys.executable
@@ -132,6 +137,11 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             custom_egg_path
         )
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
+
+        print("custom_egg_path[0]", custom_egg_path[0])
+        import mix_relu_extension
+
+        print(dir(mix_relu_extension))
         #################################
 
         # config seed
