@@ -140,16 +140,16 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             nan_position = 100
             self.x[0, nan_position, 2] = float('nan')
             v, inds = self.x.kthvalue(k=200, axis=1)
-            self.assertTrue(np.isnan(v[0, 2].numpy()[0]))
-            self.assertEqual(inds[0, 2].numpy()[0], nan_position)
+            self.assertTrue(np.isnan(v[0, 2].numpy()))
+            self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         def test_nan_in_gpu_kernel():
             paddle.set_device('gpu')
             nan_position = 100
             self.x[0, nan_position, 2] = float('nan')
             v, inds = self.x.kthvalue(k=200, axis=1)
-            self.assertTrue(np.isnan(v[0, 2].numpy()[0]))
-            self.assertEqual(inds[0, 2].numpy()[0], nan_position)
+            self.assertTrue(np.isnan(v[0, 2].numpy()))
+            self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         test_nan_in_cpu_kernel()
         if fluid.core.is_compiled_with_cuda():
