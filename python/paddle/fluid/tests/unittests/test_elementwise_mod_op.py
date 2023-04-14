@@ -189,10 +189,7 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        if self.attrs['axis'] == -1:
-            self.check_output_with_place(place)
-        else:
-            self.check_output_with_place(place)
+        self.check_output_with_place(place)
 
     def init_dtype(self):
         self.dtype = np.uint16
