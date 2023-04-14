@@ -183,9 +183,7 @@ class TestMultinomialBF16OP(OpTest):
     def init_data(self):
         # input probability is a vector, and replacement is True
         self.input_np = np.random.rand(4).astype(np.float32)
-        self.outputs = {
-            "Out": convert_float_to_uint16(np.zeros(100000).astype("int64"))
-        }
+        self.outputs = {"Out": np.zeros(100000).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
@@ -217,11 +215,7 @@ class TestMultinomialBF16OP2(TestMultinomialBF16OP):
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4).astype(np.float32)
-        self.outputs = {
-            "Out": convert_float_to_uint16(
-                np.zeros((3, 100000)).astype("int64")
-            )
-        }
+        self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def sample_output(self, out):
