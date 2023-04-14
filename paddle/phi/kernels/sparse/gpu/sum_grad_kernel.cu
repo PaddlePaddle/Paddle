@@ -71,7 +71,7 @@ __global__ void SumCsr3DGradCudaKernel(const int64_t* x_crows_data,
   }
 }
 
-template <typename T, typename intT, typename Context>
+template <typename T, typename IntT, typename Context>
 void SumCooGradGPUKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const SparseCooTensor& dout,
@@ -84,14 +84,14 @@ void SumCooGradGPUKernel(const Context& dev_ctx,
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& dout_indices = dout.indices();
   const DenseTensor& dout_values = dout.values();
-  const auto* dout_indices_data = dout_indices.data<intT>();
+  const auto* dout_indices_data = dout_indices.data<IntT>();
   const auto* dout_values_data = dout_values.data<T>();
 
   DenseTensor* dx_indices = dx->mutable_indices();
   DenseTensor* dx_values = dx->mutable_values();
   *dx_indices = x_indices;
 
-  const auto* dx_indices_data = dx_indices->data<intT>();
+  const auto* dx_indices_data = dx_indices->data<IntT>();
   auto* dx_values_data = dx_values->data<T>();
 
   if (n_dim == 0) {

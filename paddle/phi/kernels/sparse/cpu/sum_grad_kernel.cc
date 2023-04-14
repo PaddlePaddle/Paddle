@@ -25,7 +25,7 @@
 namespace phi {
 namespace sparse {
 
-template <typename T, typename intT, typename Context>
+template <typename T, typename IntT, typename Context>
 void SumCooGradCPUKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const SparseCooTensor& dout,
@@ -79,9 +79,9 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
     dense_dim *= x.values().dims()[i];
   }
 
-  std::map<std::vector<intT>, int64_t> indices_map;
+  std::map<std::vector<IntT>, int64_t> indices_map;
   for (auto j = 0; j < dout_indices.dims()[1]; ++j) {
-    std::vector<intT> pos;
+    std::vector<IntT> pos;
     for (int i = 0; i < dout_indices.dims()[0]; ++i) {
       pos.push_back(dout_indices_data[j + i * dout_indices.dims()[1]]);
     }
@@ -89,7 +89,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
   }
 
   for (auto j = 0; j < dx_indices->dims()[1]; ++j) {
-    std::vector<intT> pos;
+    std::vector<IntT> pos;
     for (int i = 0; i < dx_indices->dims()[0]; ++i) {
       if (i != dim) {
         pos.push_back(dx_indices_data[j + i * dx_indices->dims()[1]]);
