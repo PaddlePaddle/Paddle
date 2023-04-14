@@ -332,14 +332,14 @@ def _create_cond_block_and_update_optimizer(
             if master_grad and is_gradient_clip_op(op_desc):
                 if op_desc.type() == "cast":
                     if (
-                        op_desc.attr('in_dtype') == 5
-                        and op_desc.attr('out_dtype') == 4
+                        op_desc.attr('out_dtype') in [4, 22]
+                        and op_desc.attr('in_dtype') == 5
                     ):
                         cast_name_dict[
                             op_desc.output_arg_names()[0]
                         ] = op_desc.input_arg_names()[0]
                     elif (
-                        op_desc.attr('in_dtype') == 4
+                        op_desc.attr('in_dtype') in [4, 22]
                         and op_desc.attr('out_dtype') == 5
                     ):
                         cast_name_dict[
