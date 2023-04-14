@@ -678,7 +678,7 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
 
 
 @REGISTER_COMPOSITE('leaky_relu')
-def leaky_relu_composite(x, negative_slope=0.02):
+def leaky_relu_composite(x, negative_slope):
     """define composite rule of op leaky_relu."""
     if negative_slope < 1.0:
         return maximum(x, negative_slope * x)
