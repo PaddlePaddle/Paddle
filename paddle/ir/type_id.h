@@ -45,6 +45,12 @@ class TypeId {
     return TypeId(&instance);
   }
 
+  TypeId(const TypeId &other) = default;
+
+  TypeId &operator=(const TypeId &other) = default;
+
+  const Storage *storage() const { return storage_; }
+
   ///
   /// \brief Comparison operations.
   ///
@@ -55,8 +61,8 @@ class TypeId {
     return !(*this == other);
   }
   inline bool operator<(const TypeId &other) const {
-    return std::hash<const ir::TypeId::Storage *>()(storage_) <
-           std::hash<const ir::TypeId::Storage *>()(other.storage_);
+    return std::hash<const TypeId::Storage *>()(storage_) <
+           std::hash<const TypeId::Storage *>()(other.storage_);
   }
 
   ///

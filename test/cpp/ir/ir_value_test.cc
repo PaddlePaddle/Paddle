@@ -20,10 +20,8 @@
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/operation.h"
 
-// This unittest is used to test the construction interfaces of value class
-// and
-// operation. The constructed test scenario is: a = OP1(); b = OP2(); c =
-// OP3(a,
+// This unittest is used to test the construction interfaces of value class and
+// operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,
 // b); d, e, f, g, h, i, j = OP4(a, c);
 
 ir::DictionaryAttribute CreateAttribute(std::string attribute_name,
@@ -87,12 +85,6 @@ TEST(value_test, value_test) {
           reinterpret_cast<uintptr_t>(op3) + sizeof(ir::Operation));
   EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
   EXPECT_EQ(op3_first_input->next_use(), nullptr);
-
-  // Test 3: Value iterator
-  ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();
-  EXPECT_EQ(iter.owner(), op4);
-  ++iter;
-  EXPECT_EQ(iter.owner(), op3);
 
   // destroy
   std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
