@@ -385,14 +385,6 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
-    } else if (op_device.find("npu") != std::string::npos &&
-               platform::is_npu_place(place)) {
-      // when the Op that does not have NPUKernel is assigned to NPU, the
-      // CPUKernel will be executed and a warning will be given at the same
-      // time.
-
-      VLOG(3) << "Switch into " << expected_kernel_key->place_
-              << " by device_guard.";
     } else if (op_device.find("xpu") != std::string::npos &&
                platform::is_xpu_place(place)) {
       // when the Op that does not have XPUKernel is assigned to XPU, the
