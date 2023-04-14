@@ -287,6 +287,19 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split npu grad since it's not compiled with HCCL,"
         "Please recompile or reinstall Paddle with HCCL support."));
+
+  } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_CNCL
+    SplitTensorsWithType(
+        static_cast<const platform::MLUDeviceContext &>(context),
+        &dense_contents_,
+        &dense_tensors_,
+        dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split mlu grad since it's not compiled with CNCL,"
+        "Please recompile or reinstall Paddle with CNCL support."));
+#endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,
