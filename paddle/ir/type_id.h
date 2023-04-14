@@ -61,8 +61,7 @@ class TypeId {
     return !(*this == other);
   }
   inline bool operator<(const TypeId &other) const {
-    return std::hash<const TypeId::Storage *>()(storage_) <
-           std::hash<const TypeId::Storage *>()(other.storage_);
+    return storage_ < other.storage_;
   }
 
   ///
