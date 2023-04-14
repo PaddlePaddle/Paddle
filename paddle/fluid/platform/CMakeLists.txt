@@ -132,7 +132,8 @@ cc_library(
        ${MLU_CTX_DEPS}
        phi_backends
        phi_device_context
-       generator)
+       generator
+       phi_enforce)
 
 cc_library(
   collective_helper
