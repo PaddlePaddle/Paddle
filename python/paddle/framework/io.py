@@ -1071,11 +1071,15 @@ def load(path, **configs):
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
 
-                        for key in load_result["StructuredToParameterName@@"]:
+                        for (key, name) in load_result[
+                            "StructuredToParameterName@@"
+                        ].items():
                             if isinstance(load_result[key], np.ndarray):
                                 load_result[key] = _ndarray_to_tensor(
                                     load_result[key], config.return_numpy
                                 )
+                                if not config.return_numpy:
+                                    load_result[key].name = name
 
                         if (
                             not config.keep_name_table
