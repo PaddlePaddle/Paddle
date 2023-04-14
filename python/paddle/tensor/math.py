@@ -2062,7 +2062,7 @@ def inner(x, y, name=None):
         xshape = x.shape
         yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-        
+
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 

@@ -1009,7 +1009,7 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.is_empty(x)
         self.assertFalse(out)
         self.assertEqual(out.shape, [])
-        
+
         x = paddle.rand([3, 0, 5])
         out = paddle.is_empty(x)
         self.assertTrue(out)
@@ -1017,7 +1017,7 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_squeeze_(self):
         # 1) x is 0D
-        x = paddle.rand([]) 
+        x = paddle.rand([])
         x.squeeze_(0)
         self.assertEqual(x.shape, [])
 
@@ -1026,8 +1026,8 @@ class TestSundryAPI(unittest.TestCase):
         x.squeeze_(0)
         self.assertEqual(x.shape, [])
 
-        # 3）x is ND 
-        x = paddle.rand([2,1])
+        # 3）x is ND
+        x = paddle.rand([2, 1])
         x.squeeze_(1)
         self.assertEqual(x.shape, [2])
 
@@ -1043,31 +1043,31 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2])
         self.assertEqual(out.grad.shape, [])
 
-    # def test_dot(self):
-    #     # 1) x is 1D
-    #     x = paddle.rand([2])
-    #     x.stop_gradient = False
-    #     y = paddle.rand([2])
-    #     y.stop_gradient = False
-    #     out = paddle.dot(x, y)
-    #     out.retain_grads()
-    #     out.backward()
-    #     111
-    #     self.assertEqual(out.shape, [])
-    #     self.assertEqual(out.grad.shape, [])
+    def test_dot(self):
+        # 1) x is 1D
+        x = paddle.rand([2])
+        x.stop_gradient = False
+        y = paddle.rand([2])
+        y.stop_gradient = False
+        out = paddle.dot(x, y)
+        out.retain_grads()
+        out.backward()
 
-    #     # 2) x is 2D
-    #     x1 = paddle.rand([2, 2])
-    #     x1.stop_gradient = False
-    #     y1 = paddle.rand([2, 2])
-    #     y1.stop_gradient = False
-    #     out1 = paddle.dot(x1, y1)
-    #     out1.retain_grads()
-    #     out1.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
 
-    #     self.assertEqual(out1.shape, [2])
-    #     self.assertEqual(out1.grad.shape, [2])
-        
+        # 2) x is 2D
+        x1 = paddle.rand([2, 2])
+        x1.stop_gradient = False
+        y1 = paddle.rand([2, 2])
+        y1.stop_gradient = False
+        out1 = paddle.dot(x1, y1)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertEqual(out1.shape, [2])
+        self.assertEqual(out1.grad.shape, [2])
+
     def test_inner(self):
         # 0) input is 0D
         x = paddle.rand([])
@@ -1109,19 +1109,19 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.metric.accuracy(input=x, label=y, k=1)
-        self.assertEqual(out.shape, [])   
+        self.assertEqual(out.shape, [])
 
     def test_static_accuracy(self):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.static.accuracy(input=x, label=y, k=1)
-        self.assertEqual(out.shape, [])   
+        self.assertEqual(out.shape, [])
 
     def test_static_auc(self):
         x = paddle.full(shape=[3, 2], fill_value=0.25)
         y = paddle.full(shape=[3], fill_value=1, dtype="int")
         out = paddle.static.auc(input=x, label=y)
-        self.assertEqual(out[0].shape, [])   
+        self.assertEqual(out[0].shape, [])
 
     def test_std(self):
         x = paddle.rand([])
@@ -1229,7 +1229,6 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_is_tensor(self):
         self.assertTrue(paddle.is_tensor(self.x))
-
 
     def test_isfinite(self):
         out = paddle.isfinite(self.x)
@@ -2578,19 +2577,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         # 3) x is ND
         x3 = paddle.rand([3, 5])
         out3 = paddle.is_empty(x3)
-        
+
         x4 = paddle.rand([3, 0, 5])
         out4 = paddle.is_empty(x4)
-        
+
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                out1,
-                out2,
-                out3,
-                out4
-            ],
+            fetch_list=[out1, out2, out3, out4],
         )
 
         self.assertEqual(res[0].shape, ())
@@ -2610,16 +2604,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(x.shape, (2,))
         self.assertEqual(out.shape, ())
         paddle.static.append_backward(out.sum())
-        
+
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                x,
-                out,
-                x.grad_name,
-                out.grad_name
-            ],
+            fetch_list=[x, out, x.grad_name, out.grad_name],
         )
 
         self.assertEqual(res[0].shape, (2,))
@@ -2627,53 +2616,43 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2,))
         self.assertEqual(res[3].shape, ())
 
-    
-    # @prog_scope()
-    # def test_dot(self):
-    #     # 1) x is 1d
-    #     x = paddle.rand([2])
-    #     x.stop_gradient = False
-    #     y = paddle.rand([2])
-    #     y.stop_gradient = False
-    #     out = paddle.dot(x, y)
+    @prog_scope()
+    def test_dot(self):
+        # 1) x is 1d
+        x = paddle.rand([2])
+        x.stop_gradient = False
+        y = paddle.rand([2])
+        y.stop_gradient = False
+        out = paddle.dot(x, y)
 
-        
-    #     paddle.static.append_backward(out.sum())
+        paddle.static.append_backward(out.sum())
 
-    #     prog = paddle.static.default_main_program()
-    #     res = self.exe.run(
-    #         prog,
-    #         fetch_list=[
-    #             out,
-    #             out.grad_name
-    #         ],
-    #     )
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[out, out.grad_name],
+        )
 
-    #     self.assertEqual(res[0].shape, ())
-    #     self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
-    #     # 2) x is 2D
-    #     x1 = paddle.rand([2, 2])
-    #     x1.stop_gradient = False
-    #     y1 = paddle.rand([2, 2])
-    #     y1.stop_gradient = False
-    #     out1 = paddle.dot(x1, y1)
+        # 2) x is 2D
+        x1 = paddle.rand([2, 2])
+        x1.stop_gradient = False
+        y1 = paddle.rand([2, 2])
+        y1.stop_gradient = False
+        out1 = paddle.dot(x1, y1)
 
-    #     paddle.static.append_backward(out1.sum())
+        paddle.static.append_backward(out1.sum())
 
-    #     prog = paddle.static.default_main_program()
-    #     res = self.exe.run(
-    #         prog,
-    #         fetch_list=[
-    #             out1,
-    #             out1.grad_name
-    #         ],
-    #     )
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[out1, out1.grad_name],
+        )
 
-    #     self.assertEqual(res[0].shape, (2,))
-    #     self.assertEqual(res[1].shape, (2,))
-
-
+        self.assertEqual(res[0].shape, (2,))
+        self.assertEqual(res[1].shape, (2,))
 
     @prog_scope()
     def test_inner(self):
@@ -2714,12 +2693,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-    
+
     @prog_scope()
     def test_tensordot(self):
         x = paddle.full(shape=[10], fill_value=0.25, dtype='float64')
         x.stop_gradient = False
-        y = paddle.full(shape=[10], fill_value=0.25, dtype='float64')       
+        y = paddle.full(shape=[10], fill_value=0.25, dtype='float64')
         y.stop_gradient = False
         out = paddle.tensordot(x, y, axes=1)
 
@@ -2728,10 +2707,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                out,
-                out.grad_name
-            ],
+            fetch_list=[out, out.grad_name],
         )
 
         self.assertEqual(res[0].shape, ())
@@ -2746,9 +2722,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                out
-            ],
+            fetch_list=[out],
         )
 
         self.assertEqual(res[0].shape, ())
@@ -2758,13 +2732,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.static.accuracy(input=x, label=y, k=1)
-        
+
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                out
-            ],
+            fetch_list=[out],
         )
 
         self.assertEqual(res[0].shape, ())
@@ -2778,9 +2750,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[
-                out
-            ],
+            fetch_list=[out],
         )
 
         self.assertEqual(res[0].shape, ())
