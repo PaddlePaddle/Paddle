@@ -78,3 +78,6 @@ if(APPLE)
   set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
 endif()
 set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
+
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
+
