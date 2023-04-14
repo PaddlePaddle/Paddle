@@ -31,17 +31,17 @@ class TestFunctionalL1Loss(unittest.TestCase):
         dy_result = paddle.nn.functional.l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='sum')
         expected = np.sum(np.abs(self.input_np - self.label_np))
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='none')
         expected = np.abs(self.input_np - self.label_np)
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [10, 10, 5])
+        self.assertEqual(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
         input = paddle.static.data(
@@ -119,19 +119,19 @@ class TestClassL1Loss(unittest.TestCase):
         dy_result = l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
         dy_result = l1_loss(input, label)
         expected = np.sum(np.abs(self.input_np - self.label_np))
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='none')
         dy_result = l1_loss(input, label)
         expected = np.abs(self.input_np - self.label_np)
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [10, 10, 5])
+        self.assertEqual(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
         input = paddle.static.data(

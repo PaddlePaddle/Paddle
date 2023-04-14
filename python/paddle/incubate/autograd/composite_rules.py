@@ -250,7 +250,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=x.shape if len(x.shape) == 0 else [1],
+        shape=[],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )

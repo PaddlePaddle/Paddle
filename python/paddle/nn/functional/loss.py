@@ -1331,7 +1331,7 @@ def l1_loss(input, label, reduction='mean', name=None):
         unreduced = _C_ops.abs(_C_ops.subtract(input, label))
 
         if reduction == 'mean':
-            return _C_ops.mean_all(unreduced)
+            return _C_ops.mean(unreduced, [], False)
         elif reduction == 'sum':
             return _C_ops.sum(unreduced, [], None, False)
         else:

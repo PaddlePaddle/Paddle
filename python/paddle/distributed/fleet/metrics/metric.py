@@ -40,7 +40,7 @@ def sum(input, scope=None, util=None):
           # in model.py
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
           tmp = paddle.add(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
 
@@ -80,7 +80,7 @@ def max(input, scope=None, util=None):
           # in model.py
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
           tmp = paddle.maximum(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
 
@@ -120,7 +120,7 @@ def min(input, scope=None, util=None):
           # in model.py
           input = paddle.cast(some_input, dtype='float32')
           cnt = paddle.sum(input)
-          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[], value=0)
           tmp = paddle.minimum(cnt, global_cnt)
           paddle.assign(tmp, global_cnt)
 

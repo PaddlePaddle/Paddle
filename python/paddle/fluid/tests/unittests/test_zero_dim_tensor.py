@@ -197,6 +197,7 @@ class TestReduceAPI(unittest.TestCase):
 
             out_empty_list = api(x, [])
             self.assertEqual(out_empty_list, out)
+            self.assertEqual(out_empty_list.shape, [])
 
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
@@ -217,6 +218,36 @@ class TestReduceAPI(unittest.TestCase):
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
+
+            # 2) x is ND
+            if api not in [paddle.sum, paddle.mean]:
+                return
+
+            x = paddle.rand([3, 5])
+            x.stop_gradient = False
+            out = api(x, None)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.grad.shape, [3, 5])
+
+            # 3) x is 1D, axis=0, reduce to 0D
+            if api not in [paddle.sum, paddle.mean]:
+                return
+
+            x = paddle.rand([5])
+            x.stop_gradient = False
+            out = api(x, 0)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.grad.shape, [5])
 
         paddle.enable_static()
 
@@ -261,6 +292,41 @@ class TestReduceAPI(unittest.TestCase):
                     self.assertEqual(res[3].shape, ())
                     np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
+
+                # 2) x is ND
+                if api not in [paddle.sum, paddle.mean]:
+                    return
+
+                x = paddle.rand([3, 5])
+                x.stop_gradient = False
+                out = api(x, None)
+                paddle.static.append_backward(out)
+
+                fetch_list = [out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([out.grad_name, x.grad_name])
+
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                if len(res) > 1:
+                    self.assertEqual(res[1].shape, ())
+                    self.assertEqual(res[2].shape, (3, 5))
+
+                # 3) x is 1D, axis=0, reduce to 0D
+                x = paddle.rand([5])
+                x.stop_gradient = False
+                out = api(x, 0)
+                paddle.static.append_backward(out)
+
+                fetch_list = [out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([out.grad_name, x.grad_name])
+
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                if len(res) > 1:
+                    self.assertEqual(res[1].shape, ())
+                    self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
 
@@ -1228,10 +1294,18 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.clip(x, -5, 5)
         out.retain_grads()
         out.backward()
-
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
+
+        x1 = paddle.uniform([], None, -10, 10)
+        x1.stop_gradient = False
+        out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
 
     def test_increment(self):
         x = paddle.rand([])
@@ -1464,6 +1538,11 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
+
+    def test_scale_(self):
+        x = paddle.rand([])
+        out = x.scale_(scale=2.0, bias=1.0)
+        self.assertEqual(out.shape, [])
 
     def test_floor_divide(self):
         # 1-d // 0-d
@@ -1818,9 +1897,10 @@ class TestSundryAPI(unittest.TestCase):
             out0.numpy(),
             out1.numpy(),
         )
+        self.assertEqual(out0.shape, [])
 
         out0.backward()
-        self.assertEqual(out0.grad.shape, [1])
+        self.assertEqual(out0.grad.shape, [])
         self.assertEqual(logit.grad.shape, [2, 3])
 
     def test_allclose(self):
@@ -2604,14 +2684,33 @@ class TestSundryAPIStatic(unittest.TestCase):
         out = paddle.clip(x, -5, 5)
         paddle.static.append_backward(out)
 
+        x1 = paddle.uniform([], None, -10, 10)
+        x1.stop_gradient = False
+        out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
+        paddle.static.append_backward(out1)
+
         prog = paddle.static.default_main_program()
         res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+            prog,
+            fetch_list=[
+                x,
+                out,
+                x.grad_name,
+                out.grad_name,
+                x1,
+                out1,
+                x1.grad_name,
+                out1.grad_name,
+            ],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
+        self.assertEqual(res[6].shape, ())
+        self.assertEqual(res[7].shape, ())
 
     @prog_scope()
     def test_increment(self):
@@ -4195,8 +4294,7 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(
             d.log_prob(paddle.full([], 2, dtype='int64')).shape, []
         )
-        # because use paddle.sum
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
     def test_Normal(self):
         normal = paddle.distribution.Normal(0.0, 3.0)
@@ -4239,10 +4337,9 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(beta.sample([]).shape, [])
         self.assertEqual(beta.mean.shape, [])
         self.assertEqual(beta.variance.shape, [])
-        # because use paddle.sum
-        # self.assertEqual(beta.prob(self.x).shape, [])
-        # self.assertEqual(beta.log_prob(self.x).shape, [])
-        # self.assertEqual(beta.entropy().shape, [])
+        self.assertEqual(beta.prob(self.x).shape, [])
+        self.assertEqual(beta.log_prob(self.x).shape, [])
+        self.assertEqual(beta.entropy().shape, [])
 
     def test_kl_divergence(self):
         p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
@@ -4301,10 +4398,9 @@ class TestDistribution(unittest.TestCase):
         d = paddle.distribution.Multinomial(
             10, paddle.to_tensor([0.2, 0.3, 0.5])
         )
-        # because use paddle.sum
-        # self.assertEqual(d.prob(self.x).shape, [])
-        # self.assertEqual(d.log_prob(self.x).shape, [])
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
 
 if __name__ == "__main__":

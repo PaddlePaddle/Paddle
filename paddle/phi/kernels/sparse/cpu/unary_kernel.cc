@@ -30,7 +30,6 @@ void DivScalarCooKernel(const Context& dev_ctx,
                         float scalar,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-
   auto eigen_out =
       phi::EigenVector<T>::Flatten(*(out->mutable_non_zero_elements()));
   auto eigen_x = phi::EigenVector<T>::Flatten(x.non_zero_elements());

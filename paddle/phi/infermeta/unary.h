@@ -572,6 +572,19 @@ void SumRawInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void MeanInferMeta(const MetaTensor& x,
+                   const IntArray& axis,
+                   bool keep_dim,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
+void MeanRawInferMeta(const MetaTensor& x,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
                   MetaTensor* u,
