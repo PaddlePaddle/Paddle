@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_kernel.h"
@@ -46,8 +45,10 @@ class EigenMatrix<double> {
 template <>
 class EigenMatrix<phi::dtype::float16> {
  public:
-  using MatrixType =
-      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+  using MatrixType = Eigen::Matrix<phi::dtype::float16,
+                                   Eigen::Dynamic,
+                                   Eigen::Dynamic,
+                                   Eigen::RowMajor>;
 };
 
 inline int64_t GetBatchCount(const DDim dims) {
@@ -78,7 +79,6 @@ struct DeterminantFunctor {
                   int64_t rank,
                   int64_t batch_count,
                   DenseTensor* output) {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
@@ -94,7 +94,7 @@ struct DeterminantFunctor {
         }
       }
       output_vec.push_back(
-          static_cast<T>(matrix.template cast<MPType>().determinant()));
+          static_cast<T>(matrix.template cast<T>().determinant()));
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }

@@ -21,15 +21,12 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/blas/blas_impl.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 namespace phi {
 namespace detail {
 
@@ -83,7 +80,6 @@ void DeterminantGradKernel(const Context& dev_ctx,
                            const DenseTensor& out,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto input_dims_size = x.dims().size();
   if (input_dims_size > 2) {
     PADDLE_ENFORCE_EQ(
@@ -124,35 +120,35 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // -1)
 
   // First: inverse(A)
-  MPType inverse_A = static_cast<MPType>(GetValue<T, Context>(dev_ctx, x));
-  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  mat_inv(dev_ctx, x, static_cast<T>(inverse_A));
+  DenseTensor inverse_A;
+  // A must be square matrices!
+  inverse_A.Resize(x.dims());
+  dev_ctx.template Alloc<T>(&inverse_A);
 
-  // VLOG(3) << "inverse(A) dims: " << inverse_A_data.dims();
+  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
+  mat_inv(dev_ctx, x, &inverse_A);
+
+  VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
   // Second: inverse(A).transpose(-2, -1)
-  MPType transpose_inverse_A = static_cast<MPType>(
-      phi::TransposeLast2Dim<T>(dev_ctx, static_cast<T>(inverse_A)));
-  // VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: " <<
-  // transpose_inverse_A_data.dims();
+  DenseTensor transpose_inverse_A =
+      phi::TransposeLast2Dim<T, Context>(dev_ctx, inverse_A);
+
+  VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
+          << transpose_inverse_A.dims();
 
   // Third: dA * |A|
-  MPType out_grad_d =
-      static_cast<MPType>(GetValue<T, Context>(dev_ctx, out_grad));
-  MPType out_data = static_cast<MPType>(GetValue<T, Context>(dev_ctx, out));
-
-  auto mul_dA_detA = phi::Multiply<T>(
-      dev_ctx, static_cast<T>(out_grad_data), static_cast<T>(out_data));
+  auto mul_dA_detA = phi::Multiply<T, Context>(dev_ctx, out_grad, out);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
-  auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
+  auto unsqueeze1 = phi::funcs::Unsqueeze<T, Context>(dev_ctx, mul_dA_detA, -1);
   auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  auto res = phi::Multiply<T>(
-      dev_ctx, unsqueeze2, static_cast<T>(transpose_inverse_A));
+  auto res =
+      phi::Multiply<T, Context>(dev_ctx, unsqueeze2, transpose_inverse_A);
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
