@@ -512,6 +512,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
+      "delete_repeated_ops_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
       "delete_elementwise_mul_op_pass",
