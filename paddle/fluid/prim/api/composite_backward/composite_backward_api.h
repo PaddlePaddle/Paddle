@@ -1483,9 +1483,10 @@ void batch_norm_grad(const Tensor& x,
         if (bias_grad) {
           set_output<T>(out_grad_data_sum, bias_grad);
         }
-        break;
       }
+      break;
     }
+
     default:
       PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
                                                 data_layout));

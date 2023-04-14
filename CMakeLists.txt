@@ -257,7 +257,7 @@ option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
 option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF})
+option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
@@ -269,7 +269,6 @@ option(
   OFF)
 option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
-option(WITH_INFRT "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
@@ -289,7 +288,6 @@ option(NEW_RELEASE_ALL
        OFF)
 option(NEW_RELEASE_JIT
        "PaddlePaddle next-level release strategy for backup jit package" OFF)
-option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU" OFF)
 option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)

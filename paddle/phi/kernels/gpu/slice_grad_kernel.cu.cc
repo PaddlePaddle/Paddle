@@ -21,7 +21,7 @@
 PD_REGISTER_KERNEL(slice_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SliceGradRawKernel,
+                   phi::SliceGradKernel,
                    bool,
                    uint8_t,
                    int,

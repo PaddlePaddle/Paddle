@@ -36,14 +36,14 @@ void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
 
-void BilinearTensorProductGradInferMeta(const MetaTensor& x,
-                                        const MetaTensor& y,
-                                        const MetaTensor& weight,
-                                        const MetaTensor& dout,
-                                        MetaTensor* dx,
-                                        MetaTensor* dy,
-                                        MetaTensor* dweight,
-                                        MetaTensor* dbias);
+void BilinearGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           const MetaTensor& weight,
+                           const MetaTensor& dout,
+                           MetaTensor* dx,
+                           MetaTensor* dy,
+                           MetaTensor* dweight,
+                           MetaTensor* dbias);
 
 void BmmGradInferMeta(const MetaTensor& x,
                       const MetaTensor& y,

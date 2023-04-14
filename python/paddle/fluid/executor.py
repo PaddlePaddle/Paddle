@@ -493,26 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_dy2st_enable_standalone_executor():
-    return framework._dy2st_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
-def _is_cuda_graph_enable_standalone_executor():
-    return framework._cuda_graph_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -1619,10 +1599,7 @@ class Executor:
                     else program._graph
                 )
                 build_strategy = compiled_program._build_strategy
-                if (
-                    build_strategy is not None
-                    and build_strategy.force_sequential_run
-                ):
+                if build_strategy is not None and build_strategy.sequential_run:
                     schedule_flag = [
                         'FLAGS_new_executor_serial_run',
                         'FLAGS_new_executor_sequential_run',

@@ -400,7 +400,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
@@ -553,8 +552,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -694,17 +691,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-# profiler will random hang in linux cuda 10.1 or 10.2
-# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in linux cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
-if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
-  py_test_modules(test_parallel_executor_profiler MODULES
-                  test_parallel_executor_profiler)
-  set_tests_properties(test_parallel_executor_profiler
-                       PROPERTIES LABELS "RUN_TYPE=DIST")
-  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
-endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
@@ -785,14 +771,6 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(rnn)
 add_subdirectory(distribution)
-
-if(NOT WIN32 OR NOT WITH_GPU)
-  add_subdirectory(fft)
-endif()
-
-if(WITH_XPU)
-  add_subdirectory(xpu)
-endif()
 
 # dist xpu tests:
 if(WITH_XPU_BKCL)
@@ -1137,6 +1115,8 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scale_op
+    test_clip_op
     test_scatter_op
     test_gather_op
     test_layer_norm_op
@@ -1148,6 +1128,7 @@ set(TEST_CINN_OPS
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
   endif()
 endforeach()
 

@@ -187,18 +187,14 @@ void TensorAdd(const VarType& src, VarType* dst) {
   auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto place = src_tensor.place();
 
-  PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(dst_tensor->dtype()),
-                    data_type,
-                    platform::errors::PreconditionNotMet(
-                        "The data type of source tensor and destination tensor "
-                        "should be equal, Otherwise, the calculation results "
-                        "will be incorrect."));
-
   // if src and dst are in different place, copy dst to src's place
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
 
+  // AddKernel already support inputs of different dtype. For AMP master_grad,
+  // the dtype of source tensor and destination tensor will be diferent. So the
+  // check requiring input dtypes to be the same have been removed.
 #define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
     auto cpu_ctx = static_cast<CONTEXT*>(                                      \

@@ -158,5 +158,23 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
                         platform::CPUPlace());
 }
 
+phi::KernelKey GetUniqueExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+  // Return CPUPlace when Attr("is_sorted") is false. Because it means
+  // that fluid.layers.unique is called, but there is no cuda kernel.
+  if (!ctx.Attr<bool>("is_sorted")) {
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  } else {
+    // new version paddle.unique is called.
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace());
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle
