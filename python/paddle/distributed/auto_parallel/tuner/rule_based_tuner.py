@@ -2232,6 +2232,8 @@ class RuleBasedTuner:
                                     best_strategies[s][i] = dist_context
                                 else:
                                     break
+                            else:
+                                best_strategies[s][i] = dist_context
                             min_cost = cost
                     stage_layer_cost[s][i] = min_cost
                     min_max_stage_costs[s][i] = min_max_stage_cost
