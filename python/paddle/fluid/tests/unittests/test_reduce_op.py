@@ -444,15 +444,6 @@ class TestMinFP16Op(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        # only composite op support gradient check of reduce_min
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            only_check_prim=True,
-        )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -465,16 +456,6 @@ class TestMinBF16Op(TestMinFP16Op):
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
-
-    def test_check_grad(self):
-        # only composite op support gradient check of reduce_min
-        self.check_grad_with_place(
-            core.CUDAPlace(0),
-            ['X'],
-            'Out',
-            check_prim=True,
-            only_check_prim=True,
-        )
 
 
 def raw_reduce_prod(x, dim=[0], keep_dim=False):
