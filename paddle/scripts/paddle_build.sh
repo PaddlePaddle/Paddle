@@ -843,6 +843,7 @@ set -x
             echo $retry_unittests
             echo 2222
             echo $failed_test_lists
+            sleep 30d
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -898,7 +899,7 @@ set -x
                         failed_test_lists=''
                         ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
-                        rm -f $tmp_dir/*
+                        #rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
                     else
                         break
@@ -4026,7 +4027,6 @@ function main() {
         echo "========================================================"
       fi
       echo "paddle_build script finished as expected"
-      sleep 30d
 }
 
 main $@
