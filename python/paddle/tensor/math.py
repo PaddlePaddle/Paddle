@@ -2203,7 +2203,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
         )
 
         helper = LayerHelper('logsumexp', **locals())
@@ -3351,7 +3351,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], "logcumsumexp"
         )
 
         helper = LayerHelper('logcumsumexp', **locals())
