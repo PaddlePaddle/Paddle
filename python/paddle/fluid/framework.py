@@ -2759,7 +2759,6 @@ class Operator:
         'c_wait_comm',
         'c_wait_compute',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(
