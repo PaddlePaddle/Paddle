@@ -233,6 +233,8 @@ class _JacobianNoBatch(_Jacobian):
         return 0
 
     def _flatten(self, xs):
+        if isinstance(xs, paddle.Tensor):
+            return xs.reshape((-1,))
         return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
     def _evaluate(self, row_index):
@@ -263,6 +265,8 @@ class _JacobianBatchFirst(_Jacobian):
         return 1
 
     def _flatten(self, xs):
+        if isinstance(xs, paddle.Tensor):
+            return xs.reshape((xs.shape[0], -1))
         return paddle.concat(
             tuple(x.reshape((x.shape[0], -1)) for x in as_tensors(xs)), 1
         )
