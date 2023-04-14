@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class EagerStringTensorTestCase(unittest.TestCase):
@@ -41,7 +41,7 @@ class EagerStringTensorTestCase(unittest.TestCase):
         self.assertEqual(ST2.name, "ST2")
         self.assertEqual(ST2.shape, shape)
         np.testing.assert_array_equal(
-            ST2.numpy(), np.empty(shape, dtype=np.unicode_)
+            ST2.numpy(), np.empty(shape, dtype=np.str_)
         )
 
         ST3 = core.eager.StringTensor(self.str_arr, "ST3")  # constructor 3
@@ -74,7 +74,7 @@ class EagerStringTensorTestCase(unittest.TestCase):
         self.assertEqual(ST1.name, "ST1")
         self.assertEqual(ST1.shape, shape)
         np.testing.assert_array_equal(
-            ST1.numpy(), np.empty(shape, dtype=np.unicode_)
+            ST1.numpy(), np.empty(shape, dtype=np.str_)
         )
 
         ST2 = core.eager.StringTensor(self.str_arr, name="ST2")  # constructor 3

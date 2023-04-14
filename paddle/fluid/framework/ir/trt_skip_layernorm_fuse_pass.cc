@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -105,6 +108,20 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
+
+#ifdef PADDLE_WITH_TENSORRT
+  auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
+  if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
+          std::get<2>(trt_version) * 10 <
+      7200) {
+    VLOG(3) << "skip_layernorm oss plugin only available for trt version >= "
+               "7.2 Stop this pass";
+    return;
+  }
+#else
+  // if no tensorrt, early stop
+  return;
+#endif
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
@@ -164,13 +181,18 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                        layer_norm->Op()->GetAttr("out_threshold"));
     }
 
+    if (layer_norm->Op()->HasAttr("smooth_scale")) {
+      new_desc.SetAttr("smooth_scale",
+                       layer_norm->Op()->GetAttr("smooth_scale"));
+    }
+
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
 
-    if (new_desc.HasAttr("begin_norm_axis")) {
+    if (layer_norm->Op()->HasAttr("begin_norm_axis")) {
       int32_t begin_norm_axis = PADDLE_GET_CONST(
           int32_t, layer_norm->Op()->GetAttr("begin_norm_axis"));
       int32_t input_rank =

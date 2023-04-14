@@ -368,7 +368,7 @@ class AbsTransform(Transform):
             # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 0., 1.])
 
-            print(abs.inverse(paddle.to_tensor(1.)))
+            print(abs.inverse(paddle.to_tensor([1.])))
             # (Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [-1.]), Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.]))
@@ -380,7 +380,7 @@ class AbsTransform(Transform):
             #        0.))
 
             #Special case handling of 0.
-            print(abs.inverse(paddle.to_tensor(0.)))
+            print(abs.inverse(paddle.to_tensor([0.])))
             # (Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.]), Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.]))

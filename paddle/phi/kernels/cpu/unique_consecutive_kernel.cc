@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/unique_consecutive_kernel.h"
+#include <climits>
+
 #include "paddle/phi/kernels/cpu/unique_consecutive_functor.h"
+#include "paddle/phi/kernels/unique_consecutive_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/errors.h"
@@ -51,6 +53,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     int valid_axis = axis[0];
+    if (valid_axis < 0) valid_axis += x.dims().size();
     phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,

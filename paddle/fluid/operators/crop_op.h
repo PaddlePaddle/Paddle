@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {  // Internal

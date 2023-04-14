@@ -517,34 +517,6 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
-    } else if (platform::is_npu_place(place_)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      if (IsFastEagerDeletionModeEnabled()) {
-        VLOG(4) << "Use unsafe fast gc for NPU.";
-        gc.reset(new NPUUnsafeFastGarbageCollector(place_, max_memory_size));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Please set FLAGS_fast_eager_deletion_mode=true to use "
-            "GarbageCollector on NPU."));
-        // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-        VLOG(4) << "Use default stream gc for NPU.";
-        gc.reset(new NPUDefaultStreamGarbageCollector(place_, max_memory_size));
-      }
-#else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
-#endif
-    } else if (platform::is_mlu_place(place_)) {
-#ifdef PADDLE_WITH_MLU
-      if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(place_, max_memory_size));
-      } else {
-        gc.reset(new MLUDefaultStreamGarbageCollector(place_, max_memory_size));
-      }
-#else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
-#endif
     } else if (platform::is_custom_place(place_)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (IsFastEagerDeletionModeEnabled()) {
@@ -671,9 +643,8 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
+      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
         op->SetAttr("use_mkldnn", true);
-      }
     }
   }
 #else

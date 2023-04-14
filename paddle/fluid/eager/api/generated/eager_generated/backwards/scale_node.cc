@@ -93,11 +93,11 @@ static void ScaleDeviceDispatch(const phi::DenseTensor& dense_tensor,
   }
 }
 
-void ScaleAPI(const paddle::experimental::Tensor& x,
+void ScaleAPI(const paddle::Tensor& x,
               float scale,
               float bias,
               bool bias_after_scale,
-              paddle::experimental::Tensor* out) {
+              paddle::Tensor* out) {
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
@@ -161,16 +161,15 @@ void ScaleAPI(const paddle::experimental::Tensor& x,
 }
 
 void GradNodeScale::SetTensorWrappers_X(
-    const std::vector<paddle::experimental::Tensor>& tensors) {
+    const std::vector<paddle::Tensor>& tensors) {
   // Does nothing for scale
 }
 
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
 GradNodeScale::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
@@ -183,17 +182,14 @@ GradNodeScale::operator()(
           "However received: %d",
           "This indicates an issue with Eager Dygraph Backward logic",
           grads.size()));
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-      outs;
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs;
   // 2. Create needed out parttern
-  paddle::experimental::Tensor out;
+  paddle::Tensor out;
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
     // vector<vector<phi::tensor>> to apply all hooks?
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
         hooked_grads = ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0],
              scale_,

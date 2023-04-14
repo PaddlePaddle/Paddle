@@ -22,7 +22,7 @@ class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
                   const phi::DenseTensor& src,
-                  paddle::framework::Vector<size_t> index_lod,
+                  phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();

@@ -49,6 +49,12 @@ void ExpandAsGradKernel(const Context& context,
                         const std::vector<int>& target_shape,
                         DenseTensor* in_grad) {
   auto x_dims = x.dims();
+
+  if (in_grad->dims() == out_grad.dims()) {
+    phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
+    return;
+  }
+
   auto vec_in_dims = phi::vectorize<int>(x_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -65,64 +71,56 @@ void ExpandAsGradKernel(const Context& context,
   }
 
   int dims = reduce_dims_vec.size();
-  bool just_copy = true;
-  for (size_t i = 0; i < repeat_times.size(); i++) {
-    if (repeat_times[i] != 1) {
-      just_copy = false;
+
+  PADDLE_ENFORCE_GE(
+      dims,
+      0,
+      errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
+                              "expand_as_v2_grad op must be greater than or "
+                              "equal to 0, but the value received is %d.",
+                              dims));
+  PADDLE_ENFORCE_LE(
+      dims,
+      MAX_RANK_SUPPORTED,
+      errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
+                              "expand_as_v2_grad op must be less than or equal "
+                              "to %d, but the value received is %d.",
+                              MAX_RANK_SUPPORTED,
+                              dims));
+  switch (dims) {
+    case 0:
+      ExpandAsBackward<Context, T, 0>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
-    }
-  }
-  // no need reduce, just copy
-  if (just_copy) {
-    context.template Alloc<T>(in_grad);
-    phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
-  } else {
-    PADDLE_ENFORCE_GE(
-        dims,
-        1,
-        errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
-                                "expand_as_v2_grad op must be greater than or "
-                                "equal to 1, but the value received is %d.",
-                                dims));
-    PADDLE_ENFORCE_LE(dims,
-                      MAX_RANK_SUPPORTED,
-                      errors::InvalidArgument(
-                          "The rank of the input 'Out@GRAD' for "
-                          "expand_as_v2_grad op must be less than or equal "
-                          "to %d, but the value received is %d.",
-                          MAX_RANK_SUPPORTED,
-                          dims));
-    switch (dims) {
-      case 1:
-        ExpandAsBackward<Context, T, 1>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 2:
-        ExpandAsBackward<Context, T, 2>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 3:
-        ExpandAsBackward<Context, T, 3>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 4:
-        ExpandAsBackward<Context, T, 4>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 5:
-        ExpandAsBackward<Context, T, 5>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 6:
-        ExpandAsBackward<Context, T, 6>(
-            context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      default:
-        PADDLE_THROW(errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 6. But "
-            "received tensor's rank = %d.",
-            dims));
-    }
+    case 1:
+      ExpandAsBackward<Context, T, 1>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 2:
+      ExpandAsBackward<Context, T, 2>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 3:
+      ExpandAsBackward<Context, T, 3>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 4:
+      ExpandAsBackward<Context, T, 4>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 5:
+      ExpandAsBackward<Context, T, 5>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 6:
+      ExpandAsBackward<Context, T, 6>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    default:
+      PADDLE_THROW(errors::InvalidArgument(
+          "Only support tensor with rank being between 1 and 6. But "
+          "received tensor's rank = %d.",
+          dims));
   }
 }
 

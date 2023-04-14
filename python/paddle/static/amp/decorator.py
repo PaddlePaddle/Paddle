@@ -20,7 +20,6 @@ from paddle.fluid import (
     core,
     default_main_program,
     default_startup_program,
-    layers,
     program_guard,
     unique_name,
 )
@@ -33,8 +32,6 @@ from .fp16_utils import (
     rewrite_program,
     update_role_var_grad,
 )
-
-__all__ = ["decorate"]
 
 
 class OptimizerWithMixedPrecision:
@@ -190,7 +187,7 @@ class OptimizerWithMixedPrecision:
         self._train_program = train_program
 
         # NOTE(zhiqiu): _float_status is only used for NPU.
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             float_status = paddle.static.data(
                 name="float_status", shape=[8], dtype='float32'
             )
@@ -411,7 +408,7 @@ class OptimizerWithMixedPrecision:
         if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
-            if core.is_compiled_with_npu():
+            if core.is_compiled_with_custom_device('npu'):
                 with self._train_program._optimized_guard(grads):
                     _, found_inf = check_finite_and_unscale(
                         grads,
@@ -462,7 +459,7 @@ class OptimizerWithMixedPrecision:
 
         if self._is_distributed or self._use_pure_fp16:
             with self._train_program._optimized_guard([]):
-                all_infs = layers.concat(found_infs)
+                all_infs = paddle.concat(found_infs)
                 found_inf = paddle.any(all_infs)
 
         return found_inf

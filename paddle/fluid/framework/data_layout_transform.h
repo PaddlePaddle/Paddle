@@ -14,20 +14,13 @@
 
 #pragma once
 
-#include <map>
-#include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
-
-namespace paddle {
-namespace framework {
-class OpKernelType;
-}  // namespace framework
-}  // namespace paddle
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -59,6 +52,12 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
                      const phi::DenseTensor& in,
                      phi::DenseTensor* out,
                      const phi::Place& place);
+
+void TransDataLayout(phi::DataLayout from_layout,
+                     phi::DataLayout to_layout,
+                     phi::Place place,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

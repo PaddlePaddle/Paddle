@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
@@ -68,19 +69,65 @@ class TestScatterNdAddSimpleOp(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
-        ref_np = np.random.random([100]).astype("float64")
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        ref_np = np.random.random([100]).astype(target_dtype)
         index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
-        updates_np = np.random.random([100]).astype("float64")
+        updates_np = np.random.random([100]).astype(target_dtype)
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
-
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
+    def _set_dtype(self):
+        self.dtype = np.float64
+
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Updates'], 'Out')
+
+
+class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
+    """
+    A simple example
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
+    """
+    A simple example
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -91,20 +138,68 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
-        ref_np = np.random.random((10, 10)).astype("float64")
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        ref_np = np.random.random((10, 10)).astype(target_dtype)
         index_np = np.array([[], []]).astype("int32")
-        updates_np = np.random.random((2, 10, 10)).astype("float64")
+        updates_np = np.random.random((2, 10, 10)).astype(target_dtype)
 
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
 
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
+    def _set_dtype(self):
+        self.dtype = np.float64
+
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Updates'], 'Out')
+
+
+class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
+    """
+    Index has empty element
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
+    """
+    Index has empty element
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -115,23 +210,71 @@ class TestScatterNdAddWithHighRankSame(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self._set_dtype()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
         shape = (3, 2, 2, 1, 10)
-        ref_np = np.random.rand(*shape).astype("float64")
+        ref_np = np.random.rand(*shape).astype(target_dtype)
         index_np = np.vstack(
             [np.random.randint(0, s, size=100) for s in shape]
         ).T.astype("int32")
         update_shape = judge_update_shape(ref_np, index_np)
-        updates_np = np.random.rand(*update_shape).astype("float64")
+        updates_np = np.random.rand(*update_shape).astype(target_dtype)
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+
+        if self.dtype == np.uint16:
+            ref_np = convert_float_to_uint16(ref_np)
+            updates_np = convert_float_to_uint16(updates_np)
+            expect_np = convert_float_to_uint16(expect_np)
 
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
+    def _set_dtype(self):
+        self.dtype = np.float64
+
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Updates'], 'Out')
+
+
+class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
+    """
+    Both Index and X have high rank, and Rank(Index) = Rank(X)
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
+    """
+    Both Index and X have high rank, and Rank(Index) = Rank(X)
+    """
+
+    def _set_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
@@ -154,10 +297,10 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 # Test Python API
@@ -167,44 +310,38 @@ class TestScatterNdOpAPI(unittest.TestCase):
     """
 
     def testcase1(self):
-        ref1 = fluid.layers.data(
+        ref1 = paddle.static.data(
             name='ref1',
             shape=[10, 9, 8, 1, 3],
             dtype='float32',
-            append_batch_size=False,
         )
-        index1 = fluid.layers.data(
+        index1 = paddle.static.data(
             name='index1',
             shape=[5, 5, 8, 5],
             dtype='int32',
-            append_batch_size=False,
         )
-        updates1 = fluid.layers.data(
+        updates1 = paddle.static.data(
             name='update1',
             shape=[5, 5, 8],
             dtype='float32',
-            append_batch_size=False,
         )
         output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
-        ref2 = fluid.layers.data(
+        ref2 = paddle.static.data(
             name='ref2',
             shape=[10, 9, 8, 1, 3],
             dtype='double',
-            append_batch_size=False,
         )
-        index2 = fluid.layers.data(
+        index2 = paddle.static.data(
             name='index2',
             shape=[5, 8, 5],
             dtype='int32',
-            append_batch_size=False,
         )
-        updates2 = fluid.layers.data(
+        updates2 = paddle.static.data(
             name='update2',
             shape=[5, 8],
             dtype='double',
-            append_batch_size=False,
         )
         output2 = paddle.scatter_nd_add(
             ref2, index2, updates2, name="scatter_nd_add"
@@ -212,33 +349,29 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
     def testcase3(self):
         shape3 = [10, 9, 8, 1, 3]
-        index3 = fluid.layers.data(
+        index3 = paddle.static.data(
             name='index3',
             shape=[5, 5, 8, 5],
             dtype='int32',
-            append_batch_size=False,
         )
-        updates3 = fluid.layers.data(
+        updates3 = paddle.static.data(
             name='update3',
             shape=[5, 5, 8],
             dtype='float32',
-            append_batch_size=False,
         )
         output3 = paddle.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
         shape4 = [10, 9, 8, 1, 3]
-        index4 = fluid.layers.data(
+        index4 = paddle.static.data(
             name='index4',
             shape=[5, 5, 8, 5],
             dtype='int32',
-            append_batch_size=False,
         )
-        updates4 = fluid.layers.data(
+        updates4 = paddle.static.data(
             name='update4',
             shape=[5, 5, 8],
             dtype='double',
-            append_batch_size=False,
         )
         output4 = paddle.scatter_nd(index4, updates4, shape4, name='scatter_nd')
 
@@ -298,14 +431,14 @@ class TestScatterNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
             try:
-                ref5 = fluid.layers.data(
-                    name='ref5', shape=[3, 4, 5], dtype='float32'
+                ref5 = paddle.static.data(
+                    name='ref5', shape=[-1, 3, 4, 5], dtype='float32'
                 )
-                index5 = fluid.layers.data(
-                    name='index5', shape=[2, 10], dtype='int32'
+                index5 = paddle.static.data(
+                    name='index5', shape=[-1, 2, 10], dtype='int32'
                 )
-                updates5 = fluid.layers.data(
-                    name='updates5', shape=[2, 10], dtype='float32'
+                updates5 = paddle.static.data(
+                    name='updates5', shape=[-1, 2, 10], dtype='float32'
                 )
                 output5 = paddle.scatter_nd_add(ref5, index5, updates5)
             except Exception as e:
@@ -317,23 +450,20 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
-            ref6 = fluid.layers.data(
+            ref6 = paddle.static.data(
                 name='ref6',
                 shape=[10, 9, 8, 1, 3],
                 dtype='double',
-                append_batch_size=False,
             )
-            index6 = fluid.layers.data(
+            index6 = paddle.static.data(
                 name='index6',
                 shape=[5, 8, 5],
                 dtype='int32',
-                append_batch_size=False,
             )
-            updates6 = fluid.layers.data(
+            updates6 = paddle.static.data(
                 name='update6',
                 shape=[5, 8],
                 dtype='float32',
-                append_batch_size=False,
             )
             output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
@@ -341,11 +471,11 @@ class TestScatterNdOpRaise(unittest.TestCase):
         def check_raise_is_test():
             try:
                 shape = [3, 4, 5]
-                index7 = fluid.layers.data(
-                    name='index7', shape=[2, 1], dtype='int32'
+                index7 = paddle.static.data(
+                    name='index7', shape=[-1, 2, 1], dtype='int32'
                 )
-                updates7 = fluid.layers.data(
-                    name='updates7', shape=[2, 4, 5, 20], dtype='float32'
+                updates7 = paddle.static.data(
+                    name='updates7', shape=[-1, 2, 4, 5, 20], dtype='float32'
                 )
                 output7 = paddle.scatter_nd(index7, updates7, shape)
             except Exception as e:

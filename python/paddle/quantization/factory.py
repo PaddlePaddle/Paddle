@@ -56,7 +56,7 @@ class QuanterFactory(ClassWithArguments):
     """
 
     def __init__(self, *args, **kwargs):
-        super(QuanterFactory, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.partial_class = None
 
     def _instance(self, layer: Layer) -> BaseQuanter:
@@ -68,6 +68,9 @@ class QuanterFactory(ClassWithArguments):
                 self._get_class(), *self.args, **self.kwargs
             )
         return self.partial_class(layer)
+
+
+ObserverFactory = QuanterFactory
 
 
 def quanter(class_name):

@@ -25,17 +25,18 @@
 namespace paddle {
 namespace jit {
 
-InterpreterEngine::InterpreterEngine(const std::shared_ptr<FunctionInfo> &info,
-                                     const VariableMap &params_dict,
-                                     const phi::Place &place)
-    : info_(info), place_(place) {
+InterpreterEngine::InterpreterEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<VariableMap> &params_dict,
+    const phi::Place &place)
+    : info_(info), params_dict_(params_dict), place_(place) {
   info_->RemoveDescFeedFetch();
   PADDLE_ENFORCE_GT(
       static_cast<int64_t>(info_->ProgramDesc().Block(0).OpSize()),
       0,
       platform::errors::PreconditionNotMet(
           "There is no operator in ProgramDesc."));
-  utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
+  utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   CreateInterpreterCore();
 }
@@ -58,18 +59,17 @@ void InterpreterEngine::CreateInterpreterCore() {
 
   GraphToProgram(graph, &converted_prog_, nullptr);
 
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_jit = true;
+
   auto in_names = info_->InputArgNames();
   auto out_names = info_->OutputArgNames();
-  std::set<std::string> skip_gc_vars;
-  skip_gc_vars.insert(in_names.begin(), in_names.end());
-  skip_gc_vars.insert(out_names.begin(), out_names.end());
+  execution_config.skip_gc_vars.insert(in_names.begin(), in_names.end());
+  execution_config.skip_gc_vars.insert(out_names.begin(), out_names.end());
 
-  inner_interpreter_ =
-      std::make_shared<InterpreterCore>(place_,
-                                        converted_prog_.Block(0),
-                                        /*skip_gc_vars=*/skip_gc_vars,
-                                        &scope_,
-                                        /*used_for_jit=*/true);
+  inner_interpreter_ = std::make_shared<InterpreterCore>(
+      place_, converted_prog_.Block(0), &scope_, execution_config);
 }
 
 std::vector<Tensor> InterpreterEngine::operator()(
@@ -96,6 +96,11 @@ std::vector<DenseTensor> InterpreterEngine::operator()(
 
 const std::shared_ptr<FunctionInfo> &InterpreterEngine::Info() const {
   return info_;
+}
+
+std::unique_ptr<BaseEngine> InterpreterEngine::Clone(void *stream) {
+  auto *x = new InterpreterEngine(info_, params_dict_, place_);
+  return std::unique_ptr<BaseEngine>(x);
 }
 
 }  // namespace jit

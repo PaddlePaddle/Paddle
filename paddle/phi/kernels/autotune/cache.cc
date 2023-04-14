@@ -25,7 +25,7 @@ size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype) {
   const auto rank = perm.size();
-  return GetKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
+  return GenKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
 }
 
 std::string AlgorithmTypeString(int64_t algo_type) {

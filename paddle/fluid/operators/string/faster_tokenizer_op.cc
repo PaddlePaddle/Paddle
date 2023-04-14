@@ -407,8 +407,8 @@ int BertTokenizer::Encode(
 
 void BertTokenizer::BatchEncode(
     vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
-    const vector<string>& batch_text,
-    const vector<string>& batch_text_pair /* = vector<string>() */,
+    const framework::Strings& batch_text,
+    const framework::Strings& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */,
     const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */) const {
@@ -541,4 +541,5 @@ REGISTER_OPERATOR(faster_tokenizer,
                   ops::FasterTokenizerOp,
                   ops::FasterTokenizerOpMaker);
 
-REGISTER_OP_CPU_KERNEL(faster_tokenizer, ops::FasterTokenizerKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    faster_tokenizer, CPU, ALL_LAYOUT, ops::FasterTokenizerKernel, int64_t) {}

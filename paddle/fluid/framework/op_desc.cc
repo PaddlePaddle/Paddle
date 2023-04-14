@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -582,6 +583,10 @@ bool OpDesc::HasOutput(const std::string &name) const {
   return outputs_.find(name) != outputs_.end();
 }
 
+bool OpDesc::HasInput(const std::string &name) const {
+  return inputs_.find(name) != inputs_.end();
+}
+
 std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
@@ -671,6 +676,11 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (extra_attr_iter != extra_attr_map.end()) {
     is_runtime_attr = true;
     attrs_ptr = &(this->runtime_attrs_);
+    // When an attribute is found in both attrs and runtime_attrs, it must
+    // be a runtime attribute, so it's value in attrs should be removed.
+    if (this->attrs_.find(name) != this->attrs_.end()) {
+      this->attrs_.erase(name);
+    }
   }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
@@ -679,10 +689,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INTS &&
       PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
-    auto attr_type =
-        is_runtime_attr
-            ? static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1)
-            : GetProtoAttr(name).type();
+    if (is_runtime_attr) {
+      attr_type =
+          static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1);
+    } else if (HasProtoAttr(name)) {
+      attr_type = GetProtoAttr(name).type();
+    }
     switch (attr_type) {
       case proto::AttrType::BOOLEANS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
@@ -752,6 +764,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   }
 
   attrs_ptr->operator[](name) = v;
+  VLOG(10) << "op_type: " << Type() << ", attr name: " << name
+           << " , type index: " << attrs_ptr->operator[](name).index();
   need_update_ = true;
 }
 
@@ -918,6 +932,11 @@ struct SetAttrDescVisitor {
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(double v) const { attr_->set_float64(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
+  void operator()(const paddle::experimental::Scalar &v) const {
+    auto *s = new proto::Scalar;
+    *s = MakeScalarProto(v);
+    attr_->set_allocated_scalar(s);
+  }
 
   // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
   template <class T,
@@ -969,6 +988,15 @@ struct SetAttrDescVisitor {
 
   void operator()(const std::vector<double> &v) const {
     VectorToRepeated(v, attr_->mutable_float64s());
+  }
+
+  void operator()(const std::vector<paddle::experimental::Scalar> &v) const {
+    std::vector<proto::Scalar> scalars;
+    scalars.reserve(v.size());
+    for (const auto &item : v) {
+      scalars.emplace_back(MakeScalarProto(item));
+    }
+    VectorToRepeated(scalars, attr_->mutable_scalars());
   }
 
   void operator()(paddle::blank) const {

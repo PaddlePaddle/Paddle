@@ -43,30 +43,49 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
-  kConvForwardV8 = 4,
-  kConvBackwardDataV8 = 5,
-  kConvBackwardFilterV8 = 6,
-  kTranspose = 7,
-  kAlgorithmCount = 8
-#else
   kTranspose = 4,
-  kAlgorithmCount = 5
+  kMatmul = 5,
+  kGatherGemmScatterFP16NN = 6,
+  kGatherGemmScatterFP32NN = 7,
+  kGatherGemmScatterFP32TN = 8,
+  kGatherGemmScatterFP32NT = 9,
+#if !defined(PADDLE_WITH_CUDNN_FRONTEND)
+  kAlgorithmCount = 10
+#else
+  kConvForwardV8 = 10,
+  kConvBackwardDataV8 = 11,
+  kConvBackwardFilterV8 = 12,
+  kAlgorithmCount = 13
 #endif
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-// (todo. hong) use cudnnConvolutionFwdAlgo_t
-using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 // AlgorithmType -> AlgorithmsCache
+using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
+
+// (todo. hong) use cudnnConvolutionFwdAlgo_t
 using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
 using ConvAlgorithmsTypeMap =
     std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
+
+using MatmulAlgorithmsCacheMap = MatmulAlgorithmsCache<size_t, int64_t>;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 using CudnnV8AlgorithmsTypeMap =
     std::unordered_map<int64_t, CudnnFrontendPlanCache>;
 #endif
+
+#define DEFINE_GET_GATHER_GEMM_SCATTER(                    \
+    dtype, transpose_a, transpose_b, algo_type)            \
+  template <typename T, bool TransposeA, bool TransposeB>  \
+  typename std::enable_if<std::is_same<T, dtype>::value && \
+                              TransposeA == transpose_a && \
+                              TransposeB == transpose_b,   \
+                          AlgorithmsCacheMap&>::type       \
+  GetGatherGemmScatter() {                                 \
+    return Get(algo_type);                                 \
+  }
+
 class AutoTuneCache {
  public:
   static AutoTuneCache& Instance() {
@@ -78,17 +97,33 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
+  MatmulAlgorithmsCacheMap& GetMatmul() { return matmul_auto_tune_map_; }
+
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
+  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP16NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 true,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32TN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 true,
+                                 AlgorithmType::kGatherGemmScatterFP32NT);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   CudnnFrontendPlanCache& GetConvV8(const AlgorithmType& algo_type) {
     return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 #endif
-
-  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
     for (auto& v : auto_tune_map_) {
@@ -163,6 +198,7 @@ class AutoTuneCache {
 
   AlgorithmsTypeMap auto_tune_map_;
   ConvAlgorithmsTypeMap conv_auto_tune_map_;
+  MatmulAlgorithmsCacheMap matmul_auto_tune_map_;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
 #endif

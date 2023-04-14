@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.nets as nets
+from paddle import fluid
+from paddle.fluid import nets
 from paddle.fluid.framework import Program
 
 
@@ -39,8 +39,8 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            images = fluid.layers.data(
-                name='pixel', shape=[3, 48, 48], dtype='float32'
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
             hidden1 = paddle.static.nn.batch_norm(input=images)
             hidden2 = paddle.static.nn.fc(
@@ -54,8 +54,8 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            images = fluid.layers.data(
-                name='pixel', shape=[3, 48, 48], dtype='float32'
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
             paddle.nn.functional.dropout(x=images, p=0.5)
 
@@ -66,8 +66,8 @@ class TestLayer(unittest.TestCase):
         startup_program = Program()
 
         with fluid.program_guard(main_program, startup_program):
-            images = fluid.layers.data(
-                name='pixel', shape=[3, 48, 48], dtype='float32'
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
             conv1 = conv_block(images, 64, 2, [0.3, 0])
             conv_block(conv1, 256, 3, [0.4, 0.4, 0])
@@ -78,11 +78,11 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            image1 = fluid.layers.data(
-                name='pixel1', shape=[3, 48, 48], dtype='float32'
+            image1 = paddle.static.data(
+                name='pixel1', shape=[-1, 3, 48, 48], dtype='float32'
             )
-            image2 = fluid.layers.data(
-                name='pixel2', shape=[3, 48, 48], dtype='float32'
+            image2 = paddle.static.data(
+                name='pixel2', shape=[-1, 3, 48, 48], dtype='float32'
             )
             paddle.nn.functional.relu(paddle.add(x=image1, y=image2))
         print(main_program)

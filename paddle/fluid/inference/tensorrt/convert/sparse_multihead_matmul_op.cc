@@ -39,7 +39,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid sparse_multihead_matmul op to a corresponding "
+    VLOG(3) << "convert a sparse_multihead_matmul op to a corresponding "
                "tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);

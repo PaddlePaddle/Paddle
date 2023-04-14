@@ -111,7 +111,7 @@ def simple_img_conv_pool(
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            img = fluid.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
+            img = paddle.static.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
                                                         num_filters=20,
@@ -214,7 +214,7 @@ def img_conv_group(
             import paddle
             paddle.enable_static()
 
-            img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
+            img = paddle.static.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
@@ -296,7 +296,7 @@ def sequence_conv_pool(
     and :ref:`api_fluid_layers_sequence_pool` .
 
     Args:
-        input (Variable): 2-D LoDTensor, the input of sequence_conv,
+        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
             which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
@@ -320,7 +320,7 @@ def sequence_conv_pool(
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
         .. code-block:: python
@@ -331,7 +331,7 @@ def sequence_conv_pool(
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = fluid.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
+            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = fluid.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
@@ -341,7 +341,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(
+    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -350,7 +350,9 @@ def sequence_conv_pool(
         act=act,
     )
 
-    pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
+    pool_out = paddle.static.nn.sequence_lod.sequence_pool(
+        input=conv_out, pool_type=pool_type
+    )
     return pool_out
 
 
@@ -389,7 +391,7 @@ def glu(input, dim=-1):
             import paddle
             paddle.enable_static()
 
-            data = fluid.data(
+            data = paddle.static.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
@@ -470,9 +472,9 @@ def scaled_dot_product_attention(
             import paddle
             paddle.enable_static()
 
-            queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
-            keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
-            values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")
+            queries = paddle.static.data(name="queries", shape=[3, 5, 9], dtype="float32")
+            keys = paddle.static.data(name="keys", shape=[3, 6, 9], dtype="float32")
+            values = paddle.static.data(name="values", shape=[3, 6, 10], dtype="float32")
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """

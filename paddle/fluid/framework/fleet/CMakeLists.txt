@@ -29,7 +29,7 @@ if(WITH_HETERPS)
       nv_library(
         ps_gpu_wrapper
         SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-        DEPS heter_ps gloo_wrapper ps_framework_proto graph_gpu_wrapper
+        DEPS heter_ps gloo_wrapper ps_framework_proto graph_gpu_wrapper fleet
              ${BRPC_DEPS})
     else()
       nv_library(
@@ -124,10 +124,3 @@ cc_test(
   test_fleet_cc
   SRCS test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper fs shell)
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  cc_library(
-    ascend_wrapper
-    SRCS ascend_wrapper.cc
-    DEPS framework_proto lod_tensor ascend_ge ascend_graph)
-endif()

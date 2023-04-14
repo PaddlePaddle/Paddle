@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,7 @@ Sampler::~Sampler() {}
 
 UniformSampler::UniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), inv_range_(1.0 / (range + 1)) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 }
 
@@ -36,7 +36,7 @@ float UniformSampler::Probability(int64_t value) const { return inv_range_; }
 
 LogUniformSampler::LogUniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), log_range_(log(range + 1)) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
 }
 
@@ -66,7 +66,7 @@ CustomSampler::CustomSampler(int64_t range,
                              const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
-  random_engine_ = framework::GetCPURandomEngine(seed_);
+  random_engine_ = phi::GetCPURandomEngine(seed_);
   real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
   int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 

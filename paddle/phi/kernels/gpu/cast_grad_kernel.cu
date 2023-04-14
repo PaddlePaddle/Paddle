@@ -32,24 +32,23 @@ void CastGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
-  PD_REGISTER_KERNEL(cast_grad,                         \
-                     GPU,                               \
-                     ALL_LAYOUT,                        \
-                     phi::CastGradKernel,               \
-                     float,                             \
-                     double,                            \
-                     int,                               \
-                     int64_t,                           \
-                     int16_t,                           \
-                     bool,                              \
-                     uint8_t,                           \
-                     phi::dtype::float16,               \
-                     phi::dtype::complex<float>,        \
-                     phi::dtype::complex<double>,       \
-                     ##__VA_ARGS__) {                   \
-    kernel->OutputAt(0).SetDataType(                    \
-        paddle::experimental::DataType::UNDEFINED);     \
+#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)        \
+  PD_REGISTER_KERNEL(cast_grad,                                \
+                     GPU,                                      \
+                     ALL_LAYOUT,                               \
+                     phi::CastGradKernel,                      \
+                     float,                                    \
+                     double,                                   \
+                     int,                                      \
+                     int64_t,                                  \
+                     int16_t,                                  \
+                     bool,                                     \
+                     uint8_t,                                  \
+                     phi::dtype::float16,                      \
+                     phi::dtype::complex<float>,               \
+                     phi::dtype::complex<double>,              \
+                     ##__VA_ARGS__) {                          \
+    kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
   }
 
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast_grad, phi::dtype::bfloat16)

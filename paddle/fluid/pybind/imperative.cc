@@ -15,6 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -146,8 +151,6 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
-  } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
-    return place_obj.cast<platform::MLUPlace>();
   } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
     return place_obj.cast<platform::CustomPlace>();
   } else {
@@ -202,8 +205,6 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
     SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_ipu_place(place)) {
     SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
     SetTensorFromPyArray<platform::CustomPlace>(
         tensor, array, place, zero_copy);
@@ -345,7 +346,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<phi::DenseTensor>());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "We should only get paddle::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }
@@ -624,6 +625,11 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+
+  m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
+    memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
+        size);
+  });
 #endif
 
   m.def("start_imperative_gperf_profiler",
@@ -718,14 +724,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::MLUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
            &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
            py::arg("value"),
            py::arg("place"),
@@ -760,11 +758,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "")
       .def("__init__",
            &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::MLUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("name") = "")
@@ -1871,18 +1864,6 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::MLUPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::CustomPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
@@ -2207,11 +2188,6 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::MLUPlace>(obj)) {
-              auto p = obj.cast<platform::MLUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CustomPlace>(obj)) {
               auto p = obj.cast<platform::CustomPlace *>();
               self.SetExpectedPlace(*p);
@@ -2408,28 +2384,6 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
-              const platform::MLUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
               const platform::CPUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
@@ -2495,7 +2449,6 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -2537,9 +2490,9 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
-    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_CNCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2606,34 +2559,8 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<imperative::HCCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::HCCLParallelContext>>(
-      m, "HCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::NPUPlace &>())
-      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::HCCLParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
-#if defined(PADDLE_WITH_CNCL)
-  py::class_<imperative::CNCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::CNCLParallelContext>>(
-      m, "CNCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::MLUPlace &>())
-      .def("init", [](imperative::CNCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::CNCLParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::HeterParallelContext,
              imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(

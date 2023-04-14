@@ -21,9 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 # open eager delete mode
 os.environ['FLAGS_eager_delete_tensor_gb'] = '0.0'
@@ -60,11 +59,11 @@ class BuildIrMemOptBase(unittest.TestCase):
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
 
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1
+        data = paddle.static.data(
+            name="words", shape=[-1, 1], dtype="int64", lod_level=1
         )
 
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
         cost = network(data, label, len(self.word_dict))
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
@@ -76,13 +75,12 @@ class BuildIrMemOptBase(unittest.TestCase):
         # execution
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
-        reader = feeder.decorate_reader(self.train_reader, multi_devices=True)
+        reader = feeder.feed(self.train_reader())
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        train_cp = compiler.CompiledProgram(fluid.default_main_program())
-        train_cp = train_cp.with_data_parallel(
-            loss_name=cost.name, build_strategy=build_strategy
+        train_cp = compiler.CompiledProgram(
+            fluid.default_main_program(), build_strategy=build_strategy
         )
         fetch_list = [cost.name]
 

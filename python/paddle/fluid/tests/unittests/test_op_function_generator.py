@@ -17,12 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 
 
-class TestTracedLayer(fluid.dygraph.Layer):
+class TestTracedLayer(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 
@@ -72,7 +71,6 @@ class TestVariable(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_trace_backward(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             b = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -80,8 +78,11 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
             x.stop_gradient = False
             y.stop_gradient = False
+            x.retain_grads()
+            y.retain_grads()
 
             loss = _legacy_C_ops.elementwise_mul(x, y)
+            loss.retain_grads()
 
             loss.backward()
             x_grad = x.gradient()
@@ -89,7 +90,6 @@ class TestVariable(unittest.TestCase):
 
             np.testing.assert_array_equal(x_grad, loss.gradient() * b)
             np.testing.assert_array_equal(y_grad, loss.gradient() * a)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

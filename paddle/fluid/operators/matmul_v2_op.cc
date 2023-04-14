@@ -1,4 +1,4 @@
-//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,174 +18,138 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 
 namespace paddle {
 namespace operators {
 
-static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
-                                      const std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
+void MatMulV2Op::InferShape(framework::InferShapeContext* ctx) const {
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
+  bool trans_x = ctx->Attrs().Get<bool>("trans_x");
+  bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-  PADDLE_ENFORCE_GT(dim.size(),
+  std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
+  std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
                     0,
-                    platform::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
+                    phi::errors::InvalidArgument(
+                        "The Input(X) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
 
-  if (!shape.empty() && !axis.empty()) {
-    dim = dim.reshape(shape).transpose(axis);
+  bool x_broadcasted = false;
+  bool y_broadcasted = false;
+
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
   }
-  return dim;
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (trans_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (trans_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
+  ctx->ShareLoD("X", "Out");
 }
 
-class MatMulV2Op : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
-    bool trans_x = ctx->Attrs().Get<bool>("trans_x");
-    bool trans_y = ctx->Attrs().Get<bool>("trans_y");
+phi::KernelKey MatMulV2Op::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  auto input_data_type =
+      OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
 
-    std::vector<int64_t> dims_x = phi::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y = phi::vectorize(GetDimForInput(*ctx, "Y"));
-    auto ndims_x = dims_x.size();
-    auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-
-    bool x_broadcasted = false, y_broadcasted = false;
-    if (ndims_x == 1) {
-      dims_x.insert(dims_x.begin(), 1);
-      ndims_x = 2;
-      x_broadcasted = true;
-    }
-
-    if (ndims_y == 1) {
-      dims_y.push_back(1);
-      ndims_y = 2;
-      y_broadcasted = true;
-    }
-
-    size_t M, N;
-    if (trans_x) {
-      M = dims_x[ndims_x - 1];
-    } else {
-      M = dims_x[ndims_x - 2];
-    }
-    if (trans_y) {
-      N = dims_y[ndims_y - 2];
-    } else {
-      N = dims_y[ndims_y - 1];
-    }
-
-    std::vector<int64_t> new_dims;
-    if (ndims_x > ndims_y) {
-      new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else if (ndims_x < ndims_y) {
-      new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-    } else {
-      new_dims.reserve(ndims_x);
-      for (size_t i = 0; i < ndims_x - 2; ++i) {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-      }
-    }
-    if (!x_broadcasted) {
-      new_dims.push_back(M);
-    }
-    if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
-    }
-
-    auto ddim_out = phi::make_ddim(new_dims);
-
+phi::KernelKey MatMulV2Op::GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const {
+  if (framework::IsComplexType(expected_kernel_type.dtype())) {
+    // only promote inputs’s types when contains complex input
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  } else {
 #ifdef PADDLE_WITH_MKLDNN
-    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!shape.empty() && !axis.empty()) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-#endif
-
-    ctx->SetOutputDim("Out", ddim_out);
-    ctx->ShareLoD("X", "Out");
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
-  }
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
-      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
-    } else {
-#ifdef PADDLE_WITH_MKLDNN
-      // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op previously) then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-          (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-              phi::DataLayout::kNHWC) {
-        return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
-                              expected_kernel_type.dtype());
-      }
-#endif
+    // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+    // op previously) then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+            phi::DataLayout::kNHWC) {
       return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
     }
+#endif
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
-};
+}
 
-class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
-    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
-    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
-    AddAttr<bool>("trans_x",
-                  "Set true to transpose the last two dimensions of X before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddAttr<bool>("trans_y",
-                  "Set true to transpose the last two dimensions of Y before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+void MatMulV2OpMaker::Make() {
+  AddInput("X", "tensor of shape (d0, d1 ... M, K)");
+  AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+  AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+  AddAttr<bool>("trans_x",
+                "Set true to transpose the last two dimensions of X before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddAttr<bool>("trans_y",
+                "Set true to transpose the last two dimensions of Y before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddComment(
+      R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
-  }
-};
+  Apply();
+}
 
 class MatMulV2OpGrad : public framework::OperatorWithKernel {
  public:
@@ -283,6 +247,50 @@ class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+
+class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+  void Apply() override {
+    // get inputs
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor dout =
+        this->GetSingleForwardInput(framework::GradVarName("Out"));
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+
+    // get attr
+    bool trans_x = this->Attr<bool>("trans_x");
+    bool trans_y = this->Attr<bool>("trans_y");
+
+    // get output
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+    VLOG(3) << "Runing matmul_double_grad composite func";
+    // call composite backward func
+    prim::matmul_double_grad<prim::DescTensor>(
+        x, y, dout, ddx, ddy, trans_x, trans_y, x_grad, y_grad, grad_out_grad);
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -372,6 +380,7 @@ REGISTER_OPERATOR(matmul_v2_grad,
                   ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
+                  ops::MatMulCompositeDoubleGradOpMaker,
                   MatMulV2GradInferShapeFunctor);
 
 REGISTER_OPERATOR(matmul_v2_grad_grad,

@@ -153,7 +153,7 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     } else {
       batch_size = x->lod()[0].size() - 1;
     }
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int input_dim = 0;
     int timesteps = 0;
     if (is_tensor) {
@@ -231,7 +231,7 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     } else {
       batch_size = x->lod()[0].size() - 1;
     }
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = 0;
     int input_dim = 0;
     if (is_tensor) {

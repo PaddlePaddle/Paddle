@@ -432,6 +432,8 @@ static bool IsFileExists(const std::string &path) {
 
 void RegisterAllCustomOperator();
 
+void InitGflagsFromEnv();
+
 static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }

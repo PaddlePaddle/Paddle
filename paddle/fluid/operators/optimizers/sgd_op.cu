@@ -164,7 +164,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       int thread_x = kThreadsPerBlock;
       int max_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
       int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-      paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
+      phi::MixVector<int64_t> mixv_in_rows(&in_rows);
       SparseSGDFunctorKernel<<<max_blocks,
                                thread_x,
                                0,

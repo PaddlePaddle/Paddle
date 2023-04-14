@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
@@ -129,7 +129,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -138,7 +138,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -164,7 +164,7 @@ def lm_model(
                 weight_1 = weight_1_arr[k]
                 bias = bias_arr[k]
 
-                nn = layers.concat([input, pre_hidden], 1)
+                nn = paddle.concat([input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -230,8 +230,8 @@ def lm_model(
             )
             last_cell_array.append(last_c)
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
-        last_hidden = layers.concat(last_hidden_array, 0)
-        last_cell = layers.concat(last_cell_array, 0)
+        last_hidden = paddle.concat(last_hidden_array, 0)
+        last_cell = paddle.concat(last_cell_array, 0)
 
         return real_res, last_hidden, last_cell
 
@@ -250,7 +250,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -259,7 +259,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -288,7 +288,7 @@ def lm_model(
                 weight_1 = weight_1_arr[k]
                 bias = bias_arr[k]
 
-                nn = layers.concat([input, pre_hidden], 1)
+                nn = paddle.concat([input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -314,49 +314,41 @@ def lm_model(
 
             res.append(input)
 
-        last_hidden = layers.concat(hidden_array, 1)
+        last_hidden = paddle.concat(hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, num_layers, hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
 
-        last_cell = layers.concat(cell_array, 1)
+        last_cell = paddle.concat(cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, num_layers, hidden_size]
         )
         last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
 
-        real_res = layers.concat(res, 0)
+        real_res = paddle.concat(res, 0)
         real_res = paddle.reshape(real_res, shape=[len, -1, hidden_size])
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
 
         return real_res, last_hidden, last_cell
 
     batch_size_each = batch_size
-    x = layers.data(
-        name="x",
-        shape=[batch_size_each, num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    x = paddle.static.data(
+        name="x", shape=[batch_size_each, num_steps, 1], dtype='int64'
     )
-    y = layers.data(
-        name="y",
-        shape=[batch_size_each * num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    y = paddle.static.data(
+        name="y", shape=[batch_size_each * num_steps, 1], dtype='int64'
     )
 
-    init_hidden = layers.data(
+    init_hidden = paddle.static.data(
         name="init_hidden",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
-    init_cell = layers.data(
+    init_cell = paddle.static.data(
         name="init_cell",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
 
     init_cell.persistable = True
@@ -376,7 +368,7 @@ def lm_model(
         is_sparse=False,
         param_attr=fluid.ParamAttr(
             name='embedding_para',
-            initializer=fluid.initializer.UniformInitializer(
+            initializer=paddle.nn.initializer.Uniform(
                 low=-init_scale, high=init_scale
             ),
         ),
@@ -414,7 +406,7 @@ def lm_model(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )
@@ -422,7 +414,7 @@ def lm_model(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )
@@ -447,8 +439,8 @@ def lm_model(
     # can be used directly in next batch. This can avoid the fetching of
     # last_hidden and last_cell and feeding of init_hidden and init_cell in
     # each training step.
-    layers.assign(input=last_cell, output=init_cell)
-    layers.assign(input=last_hidden, output=init_hidden)
+    paddle.assign(last_cell, output=init_cell)
+    paddle.assign(last_hidden, output=init_hidden)
 
     feeding_list = ['x', 'y', 'init_hidden', 'init_cell']
     return loss, last_hidden, last_cell, feeding_list
@@ -481,7 +473,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         # You can override the function to set your own config.
         pass
 
-    def _prepare_program(self, config, parallel=True):
+    def _prepare_program(self, config):
         paddle.seed(config.random_seed)
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -525,16 +517,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 
         self.exe.run(self.startup_program)
 
-        if parallel:
-            self.train_program = fluid.compiler.CompiledProgram(
-                self.main_program
-            ).with_data_parallel(
-                loss_name=self.loss.name,
-                build_strategy=self.build_strategy,
-                exec_strategy=self.exec_strategy,
-            )
-        else:
-            self.train_program = self.main_program
+        self.train_program = self.main_program
 
     def _generate_init_data(self):
         init_hidden = np.zeros(
@@ -629,29 +612,27 @@ class PaddingRNNTestBase(unittest.TestCase):
             ppl = np.append(ppl, batch_ppl)
         return ppl
 
-    def train(self, config, parallel=True, use_program_cache=True):
+    def train(self, config, use_program_cache=True):
         self.set_customed_config()
 
         self.config = config
-        self._prepare_program(config, parallel)
+        self._prepare_program(config)
         ppl = np.zeros(shape=(0, config.batch_size))
         for epoch_id in range(config.max_epoch):
             train_ppl = self._train_an_epoch(epoch_id, use_program_cache)
             ppl = np.append(ppl, train_ppl)
         return ppl
 
-    def compare_padding_static_mode(
-        self, parallel=True, use_program_cache=True
-    ):
+    def compare_padding_static_mode(self, use_program_cache=True):
         '''
         Test that train ppl of padding mode is same to that of static graph mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
-            padding_rnn_ppl = self.train(config, parallel, use_program_cache)
+            padding_rnn_ppl = self.train(config, use_program_cache)
         config = RNNConfig('test', 'static')
         with fluid.scope_guard(fluid.Scope()):
-            static_rnn_ppl = self.train(config, parallel, use_program_cache)
+            static_rnn_ppl = self.train(config, use_program_cache)
         np.testing.assert_allclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001)
 
 
@@ -662,7 +643,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
+        self.compare_padding_static_mode(use_program_cache=True)
 
     def test_padding_mode_eager_deletion(self):
         '''
@@ -670,7 +651,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
+        self.compare_padding_static_mode(use_program_cache=True)
 
 
 if __name__ == '__main__':

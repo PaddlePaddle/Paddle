@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
@@ -177,7 +177,7 @@ def create_test_case(margin, reduction):
                 self.run_dynamic_functional_api(place)
                 self.run_dynamic_broadcast_api(place)
 
-    cls_name = "TestMarginRankLossCase_{}_{}".format(margin, reduction)
+    cls_name = f"TestMarginRankLossCase_{margin}_{reduction}"
     MarginRankingLossCls.__name__ = cls_name
     globals()[cls_name] = MarginRankingLossCls
 

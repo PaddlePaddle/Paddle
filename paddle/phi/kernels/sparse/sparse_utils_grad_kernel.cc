@@ -32,7 +32,7 @@ void CooToDenseGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& out_grad,
                           SparseCooTensor* x_grad) {
-  SparseMaskKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
+  MaskCooKernel<T, Context>(dev_ctx, out_grad, x, x_grad);
 }
 
 }  // namespace sparse
@@ -48,7 +48,8 @@ PD_REGISTER_KERNEL(values_coo_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -62,7 +63,8 @@ PD_REGISTER_KERNEL(coo_to_dense_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -91,7 +93,8 @@ PD_REGISTER_KERNEL(values_coo_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 PD_REGISTER_KERNEL(coo_to_dense_grad,
@@ -105,7 +108,8 @@ PD_REGISTER_KERNEL(coo_to_dense_grad,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 PD_REGISTER_KERNEL(sparse_coo_tensor_grad,

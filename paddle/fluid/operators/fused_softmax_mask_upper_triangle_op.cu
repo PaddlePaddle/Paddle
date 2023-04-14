@@ -43,11 +43,11 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -67,11 +67,20 @@ __device__ __inline__ void load_data_upper_tri(plat::float16* dst,
   *(reinterpret_cast<float2*>(dst)) = *(reinterpret_cast<const float2*>(src));
 }
 
+__device__ __inline__ void load_data_upper_tri(plat::bfloat16* dst,
+                                               const plat::bfloat16* src) {
+  *(reinterpret_cast<float2*>(dst)) = *(reinterpret_cast<const float2*>(src));
+}
+
 __device__ __inline__ void load_data_upper_tri(float* dst, const float* src) {
   *(reinterpret_cast<float4*>(dst)) = *(reinterpret_cast<const float4*>(src));
 }
 
 __device__ __inline__ void load_zero_vector_upper_tri(plat::float16* dst) {
+  *(reinterpret_cast<float2*>(dst)) = make_float2(0.0f, 0.0f);
+}
+
+__device__ __inline__ void load_zero_vector_upper_tri(plat::bfloat16* dst) {
   *(reinterpret_cast<float2*>(dst)) = make_float2(0.0f, 0.0f);
 }
 
@@ -345,7 +354,7 @@ __global__ void SoftmaxMaskFuseUpperTriangleGradGPUKernel(const T* grad_input,
   }
 }
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -377,7 +386,8 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
                           "received the last dimension of x is %d",
                           key_seq_len));
 
-    auto& place = *context.template device_context<Place>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto stream = context.cuda_device_context().stream();
 
     int pow2_index = get_pow2_index_value(key_seq_len);
@@ -461,7 +471,7 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -482,7 +492,8 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
     auto query_seq_len = y_dim[2];
     auto key_seq_len = y_dim[3];
 
-    auto& place = *context.template device_context<Place>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto stream = context.cuda_device_context().stream();
 
     int pow2_index = get_pow2_index_value(key_seq_len);
@@ -593,11 +604,18 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fused_softmax_mask_upper_triangle,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_softmax_mask_upper_triangle_grad,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftmaxMaskFuseUpperTriangleKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SoftmaxMaskFuseUpperTriangleGradKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}

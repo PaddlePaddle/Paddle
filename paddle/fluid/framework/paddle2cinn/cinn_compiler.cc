@@ -26,10 +26,12 @@
 #include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
+#include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/optimize.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/graph_compiler.h"
+#include "cinn/hlir/framework/visualize_helper.h"
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -38,6 +40,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -47,6 +50,7 @@
 
 DECLARE_bool(enable_pe_launch_cinn);
 DECLARE_bool(enable_cinn_auto_tune);
+DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -54,6 +58,7 @@ namespace paddle2cinn {
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
+using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
@@ -70,16 +75,37 @@ const CinnCompiledObject &CinnCompiler::Compile(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     void *stream) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(
       graph, input_tensors, target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
 
   if (!cache_by_address_.count(cur_key_by_address)) {
+    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_.";
     // generate the structure cache key
     cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
     if (!cache_by_struct_.count(cur_key_by_struct)) {
+      VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
       std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+
+      if (!FLAGS_cinn_subgraph_graphviz_dir.empty()) {
+        const std::string &viz_path = FLAGS_cinn_subgraph_graphviz_dir +
+                                      "/fusion_groups_" +
+                                      std::to_string(compiled_num) + "/";
+        if (!::cinn::hlir::framework::MakeDirectory(
+                viz_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+          LOG_IF(WARNING, compiled_num == 0)
+              << "Failed to make directory: \"" << viz_path
+              << "\", the CINN subgraph's graphviz dot file will not print.";
+        } else {
+          LOG_IF(INFO, compiled_num == 0)
+              << "The CINN subgraph's graphviz dot file will writing into "
+                 "path: \""
+              << FLAGS_cinn_subgraph_graphviz_dir << "\"";
+          ::cinn::hlir::framework::WriteToFile(viz_path + "cinn_subgraph.dot",
+                                               VizGraph(graph));
+        }
+      }
+
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
       std::unique_lock<std::mutex> guard(lock_);
@@ -178,7 +204,8 @@ std::string CinnCompiler::VizGraph(const Graph &graph) const {
             shape.begin(), shape.end(), shape_str.begin(), [](const auto &val) {
               return std::to_string(val);
             });
-        label += "\n" + string::join_strings(shape_str, ',');
+        label += "\n[" + string::join_strings(shape_str, ',') + "]";
+        label += "\n" + VarDataTypeToString(n->Var()->GetDataType());
       }
       dot.AddNode(
           node_id,
@@ -239,11 +266,17 @@ void CinnCompiler::CheckCompiledValid(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const CinnCompiledObject &compiled_obj) const {
   const auto &input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
+  const auto &inplace_var_names =
+      graph.Get<std::unordered_set<std::string>>(kInplaceVarNames);
   const auto &output_var_names =
       graph.Get<std::vector<std::string>>(kOutputVars);
   auto *launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
-  for (auto &&var_name : output_var_names) {
+  for (auto var_name : output_var_names) {
+    // inplace variables are renamed with a specified suffix
+    if (inplace_var_names.count(var_name)) {
+      var_name += InplaceOutSuffix;
+    }
     PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
                       true,
                       platform::errors::PreconditionNotMet(

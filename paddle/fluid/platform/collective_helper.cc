@@ -340,9 +340,7 @@ BKCLComm* BKCLCommContext::CreateComm(
   BKCLContext_t comm = nullptr;
   platform::SetXPUDeviceId(dev_id);
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_init_rank(&comm, rank, nranks, bkcl_id));
-
   auto* comm_wrapper = AssignBKCLComm(comm, nranks, rank, dev_id, ring_id);
-
   VLOG(1) << "bkcl communicator of rank " << rank << " in ring " << ring_id
           << " has been created on device " << dev_id;
 
@@ -372,30 +370,27 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
-
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);
   c->set_rank(rank);
   c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
-
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {
     comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<BKCLComm>>());
   }
   auto& dev2comm = comm_map_[ring_id];
-
   dev2comm.emplace(dev_id, std::unique_ptr<BKCLComm>(c));
   comm_map_mutex_.unlock();
-
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(
             platform::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }
-
+  VLOG(3) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()
+          << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }
 

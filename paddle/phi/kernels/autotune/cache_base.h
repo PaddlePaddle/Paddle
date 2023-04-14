@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -54,7 +55,7 @@ namespace phi {
 namespace autotune {
 
 template <typename... Args>
-size_t GetKey(Args&&... args) {
+size_t GenKey(Args&&... args) {
   size_t seed = 0;
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
@@ -79,7 +80,7 @@ struct ConvCacheKey {
         groups(arg_groups),
         data_layout(arg_data_layout) {}
   size_t hash_value() const {
-    return GetKey(x_dims,
+    return GenKey(x_dims,
                   w_dims,
                   strides,
                   paddings,
@@ -211,6 +212,35 @@ class ConvAlgorithmsCache : public AlgorithmsCache<ConvCacheKey,
     }
     AlgorithmsCacheBase::hash_[key] = algo;
   }
+};
+
+template <typename KeyT, typename AlgorithmT>
+class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
+ public:
+  MatmulAlgorithmsCache() : AlgorithmsCache<KeyT, AlgorithmT>() {}
+
+  bool FindSubKey(const KeyT& sub_key) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    bool ret = (sub_hash_.find(sub_key) != sub_hash_.end()) ? true : false;
+    return ret;
+  }
+
+  void SetSubKey(const KeyT& sub_key, void* algo) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    sub_hash_[sub_key] = algo;
+  }
+
+  void* GetSubKey(const KeyT& sub_key) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    PADDLE_ENFORCE_NE(
+        sub_hash_.find(sub_key),
+        sub_hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
+    return sub_hash_[sub_key];
+  }
+
+ private:
+  std::unordered_map<KeyT, void*> sub_hash_;
 };
 
 }  // namespace autotune

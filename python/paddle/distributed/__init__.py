@@ -19,7 +19,8 @@ from .launch.main import launch  # noqa: F401
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
-
+from .parallel import ParallelEnv  # noqa: F401
+from .parallel import DataParallel
 from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
@@ -45,6 +46,7 @@ from .communication import (
     reduce,
     send,
     scatter,
+    gather,
     scatter_object_list,
     isend,
     recv,
@@ -69,11 +71,6 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
-# (TODO: GhostScreaming) It needs migration of ParallelEnv. However,
-# it's hard to migrate APIs in paddle.fluid.dygraph.parallel completely.
-# It will be replaced later.
-from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
-
 from . import cloud_utils  # noqa: F401
 
 from .sharding import group_sharded_parallel  # noqa: F401
@@ -86,6 +83,7 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "gather",
     "scatter_object_list",
     "broadcast",
     "broadcast_object_list",

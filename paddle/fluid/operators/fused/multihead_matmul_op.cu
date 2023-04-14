@@ -21,6 +21,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -343,10 +344,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     // (B*S, hidden)
     const phi::DenseTensor input_matrix =
-        framework::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
+        phi::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
     // (hidden, 3 * all_head_size)
     const phi::DenseTensor w_matrix =
-        framework::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
+        phi::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
 
     phi::DenseTensor temp_out_tensor;
     auto temp_out_dims =

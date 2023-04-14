@@ -30,6 +30,8 @@
 namespace paddle {
 namespace imperative {
 
+const static framework::AttributeMap empty_default_attr_map;  // NOLINT
+
 // TODO(zjl): to support py_func layer
 class OpBase {
  public:
@@ -123,7 +125,12 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
+  const framework::AttributeMap& DefaultAttrsMap() {
+    if (default_attrs_ == nullptr) {
+      return empty_default_attr_map;
+    }
+    return *default_attrs_;
+  }
 
   bool HasAttr(const std::string& name) const {
     VLOG(6) << "Default attrs: " << default_attrs_;

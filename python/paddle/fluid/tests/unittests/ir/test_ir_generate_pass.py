@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core, ir
+from paddle.fluid import core
+from paddle.incubate.passes import ir
 from paddle.static import InputSpec
 
 
@@ -204,7 +205,7 @@ def get_multi_pass_desc_from_str(s):
 
 class TestGeneratePass(unittest.TestCase):
     def convert_ops_to_op_dicts(self, ops):
-        op_dicts = dict()
+        op_dicts = {}
         for op in ops:
             op_list = op_dicts.get(op.type)
             if isinstance(op_list, list):

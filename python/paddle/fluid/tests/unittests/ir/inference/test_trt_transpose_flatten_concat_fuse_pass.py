@@ -18,18 +18,18 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig
 
 
 class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[8, 32, 128], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[8, 32, 128], dtype="float32"
             )
 
@@ -38,7 +38,7 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             flatt1 = paddle.flatten(trans1, 1, -1)
             flatt2 = paddle.flatten(trans2, 1, -1)
 
-            concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
+            concat_out = paddle.concat([flatt1, flatt2], axis=1)
             # There is no parameters for above structure.
             # Hence, append a batch_norm to avoid failure caused by load_combined.
             reshape_out = paddle.reshape(concat_out, [-1, 0, 1, 1])

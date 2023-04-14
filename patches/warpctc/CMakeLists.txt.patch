@@ -1,0 +1,13 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -23,6 +23,10 @@
+ option(BUILD_SHARED "build warp-ctc shared library."  ON)
+ option(WITH_ROCM     "Compile PaddlePaddle with ROCM platform"             OFF)
+ 
++set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -ccbin ${CCBIN_COMPILER} -allow-unsupported-compiler")
++set(NVCC_PREPEND_FLAGS "${NVCC_PREPEND_FLAGS} -ccbin ${CCBIN_COMPILER} -allow-unsupported-compiler")
++set(CCBIN "-ccbin ${CCBIN_COMPILER} -allow-unsupported-compiler")
++
+ if(WITH_ROCM)
+     add_definitions(-DWARPCTC_WITH_HIP)
+     include(hip)

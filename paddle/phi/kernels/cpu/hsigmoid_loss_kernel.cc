@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/hsigmoid_loss_kernel.h"
 
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -34,7 +34,6 @@ void HSigmoidLossKernel(const Context& ctx,
                         const paddle::optional<DenseTensor>& path,
                         const paddle::optional<DenseTensor>& code,
                         int num_classes,
-                        bool remote_prefetch,
                         bool is_sparse,
                         DenseTensor* out,
                         DenseTensor* pre_out,
@@ -82,7 +81,7 @@ void HSigmoidLossKernel(const Context& ctx,
   }
   bit_code->Mul(pre_out, w, x);
   // clip to [-40, 40]
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(ctx,
         pre_out_data,
         pre_out_data + pre_out->numel(),

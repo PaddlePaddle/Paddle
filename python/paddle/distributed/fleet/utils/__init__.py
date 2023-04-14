@@ -15,30 +15,34 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 from paddle.distributed import fleet
 
 import paddle
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
+from . import tensor_parallel_utils  # noqa: F401
+
 
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
 
 
 def recompute(function, *args, **kwargs):
     """
-    recompute intermediate activations to save then memory.
+    recompute intermediate activations to save the memory.
 
     Parameters:
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
-        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be
-              restored when the forward recalculation of backpropagation is performed. The default
-              preserve_rng_state is True.
-
+        **kwargs(Dict): Kwargs should only contain two kinds of key-value params, the one is part of function's key-value params,
+                        and the other contains ``preserve_rng_state`` and ``use_reentrant``. the key-value pair of ``preserve_rng_state``,
+                        which is used to indicate whether to save the forward rng. If it is True, then the last forward rng value
+                        will be restored when the forward recalculation of backpropagation is performed, its default value is True.
+                        the key-value pair of ``use_reentrant`` is used to indicate which implementation of recompute you will be used.
+                        ``use_reentrant=True`` means to use the PyLayer implementation of recompute, ``use_reentrant=False`` means to
+                        use the Hook implementation of recompute, its default value is True.
     Returns:
         Output of function on args.
 
@@ -75,7 +79,7 @@ def recompute(function, *args, **kwargs):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super(Naive_fc_net, self).__init__()
+                    super().__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)

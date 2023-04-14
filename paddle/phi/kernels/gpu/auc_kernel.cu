@@ -273,4 +273,8 @@ void AucKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(auc, GPU, ALL_LAYOUT, phi::AucKernel, float) {}
+PD_REGISTER_KERNEL(auc, GPU, ALL_LAYOUT, phi::AucKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT64);
+}

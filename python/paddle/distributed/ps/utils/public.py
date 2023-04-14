@@ -18,8 +18,8 @@ import os
 import warnings
 from functools import reduce
 
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+from paddle.distributed.io import is_persistable
+from paddle.fluid.framework import generate_control_dev_var_name
 from paddle.framework import core
 
 # logging.basicConfig(
@@ -194,7 +194,7 @@ class TrainerRuntimeConfig:
                     'communicator_send_queue_size'
                 ] = num_threads
 
-        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+        return {key: str(self.runtime_configs[key]) for key in need_keys}
 
 
 def get_lr_ops(program):
@@ -571,7 +571,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])
     origin_programs = attrs['origin_main_programs']
-    print("is_heter_ps_mode? {}".format(split_dense_table))
+    print(f"is_heter_ps_mode? {split_dense_table}")
 
     idx = 0
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
@@ -589,7 +589,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 
             splited_varname = []
             for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
+                splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
                 True if param_name in distibuted_varnames else False
@@ -1169,7 +1169,7 @@ def get_communicate_var_info(
         shape = var.shape
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
+        input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
     info = {
         "input_var_reshape_dim": input_var_reshape_dim,
@@ -1253,7 +1253,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if fluid.io.is_persistable(var):
+        if is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
@@ -1676,9 +1676,7 @@ def add_send_op(program, block, _vars):
         table_dict[table_id]['var_list'].append(persistable_var)
 
     for table_id in table_dict:
-        dummy_output = block.create_var(
-            name=framework.generate_control_dev_var_name()
-        )
+        dummy_output = block.create_var(name=generate_control_dev_var_name())
         send_input_vars = [
             block.vars[union_var]
             for union_var in table_dict[table_id]['var_list']
@@ -1700,7 +1698,7 @@ def add_send_op(program, block, _vars):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 

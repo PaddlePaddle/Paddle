@@ -17,6 +17,8 @@
 #include <sstream>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -79,7 +81,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
                          size_of_dtype
                    : static_cast<size_t>(size);
     const void *ptr =
-        lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
+        lod_tensors[i]->initialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
     ss << "input(" << i << "-th tensor) dim:(" << lod_tensors[i]->dims() << ") "
        << " addres:" << ptr << " len: " << len << ", ";
@@ -127,7 +129,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
         output[i],
         errors::InvalidArgument("The %d-th output tensor cannot be nullptr.",
                                 i));
-    if (!input[i]->IsInitialized()) {
+    if (!input[i]->initialized()) {
       has_not_init_in_vars = true;
     }
   }
@@ -142,7 +144,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     for (size_t i = 0; i < input.size(); ++i) {
       phi::DDim dims(concated_shapes.data() + accumulated_ranks,
                      concated_ranks[i]);
-      if (!input[i]->IsInitialized()) {
+      if (!input[i]->initialized()) {
         PADDLE_ENFORCE_EQ(
             input[i],
             output[i],
@@ -185,7 +187,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   size_t numel = 0;
 
   if (size_of_dtype == -1) {
-    size_of_dtype = paddle::experimental::SizeOf(dtype);
+    size_of_dtype = phi::SizeOf(dtype);
   }
   GetMemSizeAndDtype(
       input, &numel, size_of_dtype, dev_ctx.GetPlace(), use_align, align_size);
@@ -220,7 +222,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
       auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len));
       // some var may not persistable, or persistable var may not init
-      if (output[i]->IsInitialized()) {
+      if (output[i]->initialized()) {
         phi::Copy(dev_ctx, *output[i], dev_ctx.GetPlace(), false, &sub_tensor);
       }
       offset += use_align
@@ -270,7 +272,9 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    phi::CoalesceTensorKernel,
                    int,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(coalesce_tensor,
@@ -282,6 +286,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    float,
                    double) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
 
@@ -295,5 +300,6 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    float,
                    double) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

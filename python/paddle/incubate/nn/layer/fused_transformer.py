@@ -121,7 +121,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but recieved {}".format(embed_dim)
+            "but received {}".format(embed_dim)
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
@@ -178,7 +178,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
             self.embed_dim,
             self.seq_len,
@@ -459,7 +459,7 @@ class FusedMultiHeadAttention(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
             self.embed_dim,
             self.num_heads,
@@ -689,7 +689,7 @@ class FusedFeedForward(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
             self._d_model,
             self._dim_feedforward,
@@ -1382,6 +1382,7 @@ class FusedMultiTransformer(Layer):
         pre_caches=None,
         rotary_embs=None,
         rotary_emb_dims=0,
+        seq_lens=None,
         time_step=None,
     ):
         r"""
@@ -1406,6 +1407,7 @@ class FusedMultiTransformer(Layer):
             rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
             rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
                 1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+            seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1441,6 +1443,7 @@ class FusedMultiTransformer(Layer):
             pre_caches=pre_caches,
             rotary_embs=rotary_embs,
             time_step=time_step,
+            seq_lens=seq_lens,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             rotary_emb_dims=rotary_emb_dims,

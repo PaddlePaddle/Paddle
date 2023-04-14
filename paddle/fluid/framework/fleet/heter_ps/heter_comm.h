@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <thread>
+#include <memory>
 #include <vector>
-
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
 #if defined(PADDLE_WITH_CUDA)
@@ -60,7 +59,7 @@ class HeterComm {
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
   HeterComm(size_t capacity,
             std::shared_ptr<HeterPsResource> resource,
-            const GPUAccessor& gpu_accessor);
+            GPUAccessor& gpu_accessor);  // NOLINT
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -299,10 +298,11 @@ class HeterComm {
 
   struct LocalStorage {
     LocalStorage() { sem_wait = std::make_unique<Semaphore>(); }
-    void init(int device_num, int dev_id) {
+    void init(int device_num, int dev_id, phi::Stream stream) {
       place_ = platform::CUDAPlace(dev_id);
       h_recv_offsets.resize(device_num);
       h_fea_sizes.resize(device_num);
+      stream_ = stream;
     }
     template <typename T>
     T* alloc_cache(const size_t& len,
@@ -310,20 +310,31 @@ class HeterComm {
                    bool need_copy = false) {
       size_t need_mem = len * sizeof(T);
       if (alloc.get() == nullptr) {
-        alloc = memory::Alloc(place_, need_mem);
+        alloc = memory::Alloc(place_, need_mem, stream_);
       } else if (need_mem > alloc->size()) {
         if (need_copy) {
           std::shared_ptr<memory::Allocation> tmp =
-              memory::Alloc(place_, need_mem);
-          cudaMemcpy(tmp->ptr(),
-                     alloc->ptr(),
-                     alloc->size(),
-                     cudaMemcpyDeviceToDevice);
+              memory::Alloc(place_, need_mem, stream_);
+#if defined(PADDLE_WITH_CUDA)
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaMemcpyAsync(tmp->ptr(),  // output
+                              alloc->ptr(),
+                              alloc->size(),
+                              cudaMemcpyDeviceToDevice,
+                              reinterpret_cast<cudaStream_t>(stream_.id())));
+#else
+          memory::Copy(place_,
+                       tmp->ptr(),
+                       place_,
+                       alloc->ptr(),
+                       alloc->size(),
+                       reinterpret_cast<void*>(stream_.id()));
+#endif
           alloc.reset();
           alloc = tmp;
         } else {
           alloc.reset();
-          alloc = memory::Alloc(place_, need_mem);
+          alloc = memory::Alloc(place_, need_mem, stream_);
         }
       }
       return reinterpret_cast<T*>(alloc->ptr());
@@ -343,6 +354,11 @@ class HeterComm {
       d_merged_push_keys = local_keys;
       d_merged_vals = all_grads;
       d_merged_push_vals = local_grads;
+    }
+    void check(const size_t& len,
+               const size_t& value_bytes = sizeof(GradType)) {
+      CHECK_GE(all_keys_mem->size(), len);
+      CHECK_GE(all_grads_mem->size(), len * value_bytes);
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
@@ -375,6 +391,7 @@ class HeterComm {
 #elif defined(PADDLE_WITH_XPU_KP)
     platform::XPUPlace place_;
 #endif
+    phi::Stream stream_;
     std::shared_ptr<memory::Allocation> all_keys_mem = nullptr;
     std::shared_ptr<memory::Allocation> all_grads_mem = nullptr;
 
@@ -554,8 +571,6 @@ class HeterComm {
   size_t gather_sparse_keys_by_all2all(const int& gpu_id,
                                        const size_t& fea_size,
                                        const KeyType* d_in_keys,
-                                       KeyType* d_out_keys,
-                                       KeyType* d_tmp_keys,
                                        const cudaStream_t& stream);
   void scatter_sparse_vals_by_all2all(const int& gpu_id,
                                       const size_t& fea_size,
@@ -642,6 +657,19 @@ class HeterComm {
                                         const cudaStream_t& stream);
   // debug time
   void print_debug_time(const int& gpu_id, bool force = false);
+  // alloc temp memory
+  template <typename T, typename TPlace, typename StreamType>
+  T* AllocCache(std::shared_ptr<memory::Allocation>* alloc,
+                const TPlace& place,
+                const size_t& byte_len,
+                const StreamType& stream) {
+    if (alloc->get() == nullptr || byte_len > (*alloc)->size()) {
+      alloc->reset();
+      auto id = phi::Stream(reinterpret_cast<phi::StreamId>(stream));
+      *alloc = memory::Alloc(place, byte_len, id);
+    }
+    return reinterpret_cast<T*>((*alloc)->ptr());
+  }
 
   using Table = HashTable<KeyType, ValType>;
   using PtrTable = HashTable<KeyType, float*>;

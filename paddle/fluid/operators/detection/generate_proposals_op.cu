@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/bbox_util.cu.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

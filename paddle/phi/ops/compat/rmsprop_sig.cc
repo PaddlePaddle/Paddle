@@ -20,15 +20,35 @@ KernelSignature RmspropOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Grad")) {
     return KernelSignature(
         "rmsprop",
-        {"Param", "MeanSquare", "Grad", "Moment", "LearningRate", "MeanGrad"},
-        {"epsilon", "decay", "momentum", "centered"},
-        {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});
+        {"Param",
+         "MeanSquare",
+         "Grad",
+         "Moment",
+         "LearningRate",
+         "MeanGrad",
+         "MasterParam"},
+        {"epsilon", "decay", "momentum", "centered", "multi_precision"},
+        {"ParamOut",
+         "MomentOut",
+         "MeanSquareOut",
+         "MeanGradOut",
+         "MasterParamOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature(
         "rmsprop_dense_param_sparse_grad",
-        {"Param", "MeanSquare", "Grad", "Moment", "LearningRate", "MeanGrad"},
-        {"epsilon", "decay", "momentum", "centered"},
-        {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});
+        {"Param",
+         "MeanSquare",
+         "Grad",
+         "Moment",
+         "LearningRate",
+         "MeanGrad",
+         "MasterParam"},
+        {"epsilon", "decay", "momentum", "centered", "multi_precision"},
+        {"ParamOut",
+         "MomentOut",
+         "MeanSquareOut",
+         "MeanGradOut",
+         "MasterParamOut"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});

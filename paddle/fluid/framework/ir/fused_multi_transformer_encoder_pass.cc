@@ -1547,15 +1547,15 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
                                   const int dim_head,
                                   const int dim_embed) {
   switch (wq_tensor->dtype()) {
-    case paddle::experimental::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       QKVWeightsProcess<platform::float16>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       QKVWeightsProcess<float>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::INT8:
+    case phi::DataType::INT8:
       QKVWeightsProcess<int8_t>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1566,11 +1566,11 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
       break;
   }
   switch (bq_tensor->dtype()) {
-    case paddle::experimental::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       QKVBiasProcess<platform::float16>(
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       QKVBiasProcess<float>(
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1660,15 +1660,15 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
                                          const int dim_head,
                                          const int dim_embed) {
   switch (qkv_w_tensor->dtype()) {
-    case paddle::experimental::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       QKVWeightsProcessFuseQKV<platform::float16>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       QKVWeightsProcessFuseQKV<float>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::INT8:
+    case phi::DataType::INT8:
       QKVWeightsProcessFuseQKV<int8_t>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1679,11 +1679,11 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
       break;
   }
   switch (qkv_b_tensor->dtype()) {
-    case paddle::experimental::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       QKVBiasProcessFuseQKV<platform::float16>(
           qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
-    case paddle::experimental::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       QKVBiasProcessFuseQKV<float>(qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
     default:

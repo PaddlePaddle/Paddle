@@ -36,6 +36,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
+#include "gflags/gflags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -52,8 +53,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/multiary.h"
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
 
 DECLARE_int32(low_precision_op_list);
 """

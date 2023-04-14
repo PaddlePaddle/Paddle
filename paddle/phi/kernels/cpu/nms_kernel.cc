@@ -69,6 +69,18 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
+  PADDLE_ENFORCE_EQ(
+      boxes.dims().size(),
+      2,
+      phi::errors::InvalidArgument("The shape [%s] of boxes must be (N, 4).",
+                                   boxes.dims()));
+
+  PADDLE_ENFORCE_EQ(
+      boxes.dims()[1],
+      4,
+      phi::errors::InvalidArgument("The shape [%s] of boxes must be (N, 4).",
+                                   boxes.dims()));
+
   int64_t num_boxes = boxes.dims()[0];
   DenseTensor output_tmp;
   output_tmp.Resize(phi::make_ddim({num_boxes}));
@@ -82,4 +94,6 @@ void NMSKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nms, CPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
+PD_REGISTER_KERNEL(nms, CPU, ALL_LAYOUT, phi::NMSKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

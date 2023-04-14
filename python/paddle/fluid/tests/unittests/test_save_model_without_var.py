@@ -15,14 +15,13 @@
 import unittest
 import warnings
 
-import paddle.fluid as fluid
+import paddle
+from paddle import fluid
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):
     def test_no_var_save(self):
-        data = fluid.layers.data(
-            name='data', shape=[-1, 1], dtype='float32', append_batch_size=False
-        )
+        data = paddle.static.data(name='data', shape=[-1, 1], dtype='float32')
         data_plus = data + 1
 
         if fluid.core.is_compiled_with_cuda():

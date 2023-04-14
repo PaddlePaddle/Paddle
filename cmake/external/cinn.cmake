@@ -17,7 +17,7 @@ if(NOT WITH_CINN)
 endif()
 
 if(NOT CINN_GIT_TAG)
-  set(CINN_GIT_TAG release/v0.2)
+  set(CINN_GIT_TAG develop)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
@@ -39,7 +39,10 @@ set(CINN_OPTIONAL_ARGS
     -DWITH_MKL_CBLAS=${WITH_MKL}
     -DWITH_MKLDNN=${WITH_MKL}
     -DPUBLISH_LIBS=ON
-    -DWITH_TESTING=ON)
+    -DWITH_TESTING=ON
+    -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+    -DPYTHON_INCLUDE_DIR=${PYTHON_INCLUDE_DIR}
+    -DPYTHON_LIBRARIES=${PYTHON_LIBRARIES})
 set(CINN_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cinnapi -j)
 set(CINN_BINARY_DIR ${CINN_PREFIX_DIR}/src/external_cinn-build)
 set(CINN_LIB_NAME "libcinnapi.so")
@@ -55,7 +58,6 @@ ExternalProject_Add(
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND ""
   CMAKE_ARGS ${CINN_OPTIONAL_ARGS}
-  CMAKE_GENERATOR "Unix Makefiles"
   BUILD_BYPRODUCTS ${CINN_LIB})
 
 ExternalProject_Get_Property(external_cinn BINARY_DIR)

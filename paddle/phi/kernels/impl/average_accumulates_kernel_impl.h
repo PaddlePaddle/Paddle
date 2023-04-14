@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -48,17 +49,17 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
   // int64_t old_num_accumulates = 0;
 
   auto num_updates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_updates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_updates_cpu->ptr());
 
   auto num_accumulates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_accumulates_cpu->ptr());
 
   auto old_num_accumulates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* old_num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(old_num_accumulates_cpu->ptr());
 

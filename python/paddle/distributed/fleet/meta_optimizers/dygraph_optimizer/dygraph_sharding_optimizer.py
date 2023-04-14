@@ -176,7 +176,7 @@ class DygraphShardingOptimizer:
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
-        input_param_names = set([param.name for param in parameters])
+        input_param_names = {param.name for param in parameters}
         parameters = list(
             filter(
                 lambda x: x.name in input_param_names,

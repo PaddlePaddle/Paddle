@@ -1,36 +1,3 @@
-proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
-              simple_threadpool)
-if(WITH_PYTHON)
-  py_proto_compile(profiler_py_proto SRCS profiler.proto)
-  add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                       touch __init__.py)
-  add_dependencies(profiler_py_proto profiler_py_proto_init)
-
-  if(NOT WIN32)
-    add_custom_command(
-      TARGET profiler_py_proto
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMENT
-        "Copy generated python proto into directory paddle/fluid/proto/profiler."
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler/")
-    add_custom_command(
-      TARGET profiler_py_proto
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMAND copy /Y *.py ${proto_dstpath}
-      COMMENT
-        "Copy generated python proto into directory paddle/fluid/proto/profiler."
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
-endif()
-
 cc_library(
   denormal
   SRCS denormal.cc
@@ -60,26 +27,10 @@ cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
   DEPS phi_backends)
-cc_library(
-  os_info
-  SRCS os_info.cc
-  DEPS enforce)
 cc_test(
   os_info_test
   SRCS os_info_test.cc
-  DEPS os_info)
-
-if(WITH_GPU)
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator phi_backends)
-else()
-  cc_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator)
-endif()
+  DEPS phi_os_info)
 
 cc_library(
   place
@@ -121,21 +72,6 @@ if(WITH_IPU)
   set(IPU_CTX_DEPS ipu_info)
 else()
   set(IPU_CTX_DEPS)
-endif(WITH_IPU)
-
-if(WITH_ASCEND_CL)
-  set(NPU_CTX_DEPS npu_stream npu_info)
-endif()
-
-if(WITH_MLU)
-  set(MLU_CTX_DEPS mlu_device_context)
-endif()
-
-if(WITH_ASCEND_CL OR WITH_MLU)
-  cc_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
 endif()
 
 if(WITH_GPU)
@@ -153,8 +89,6 @@ endif()
 
 if(WITH_GPU OR WITH_ROCM)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
-elseif(WITH_ASCEND_CL)
-  set(STREAM_CALLBACK_DEPS stream_callback_manager)
 else()
   set(STREAM_CALLBACK_DEPS)
 endif()
@@ -170,7 +104,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context custom_kernel context_pool)
+  DEPS device_context custom_kernel context_pool memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -196,7 +130,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)
@@ -205,9 +138,6 @@ cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context enforce)
-if(WITH_ASCEND_CL)
-  target_link_libraries(collective_helper npu_collective_helper)
-endif()
 
 if(WITH_CNCL)
   target_link_libraries(collective_helper mlu_collective_helper)
@@ -217,16 +147,8 @@ if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
 
-if(WITH_ASCEND_CL)
-  target_link_libraries(device_context npu_resource_pool)
-endif()
-
 if(WITH_XPU)
   target_link_libraries(device_context xpu_resource_pool)
-endif()
-
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
@@ -248,16 +170,6 @@ set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
 
-if(WITH_ASCEND_CL)
-  cc_library(
-    device_event_npu
-    SRCS device_event_npu.cc
-    DEPS device_event_base npu_resource_pool)
-  set(DEVICE_EVENT_LIBS
-      device_event_npu
-      CACHE INTERNAL "device event libs")
-endif()
-
 if(WITH_GPU)
   nv_library(
     device_event_gpu
@@ -277,6 +189,18 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+  if(WITH_CUSTOM_DEVICE)
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
+           allocator phi_backends)
+  else()
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -285,10 +209,11 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
-  nv_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
+else()
+  cc_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS device_context allocator)
 endif()
 
 if(WITH_ROCM)
@@ -314,10 +239,6 @@ if(WITH_ROCM)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
-  hip_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 cc_library(timer SRCS timer.cc)
@@ -343,46 +264,45 @@ cc_test(
 
 add_subdirectory(profiler)
 
-cc_library(
-  device_tracer
-  SRCS device_tracer.cc
-  DEPS profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          gpu_info
          enforce
          dynload_cuda
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          gpu_info
          enforce
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          enforce
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 endif()
 
 cc_test(
@@ -462,3 +382,13 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+
+cc_library(
+  init_phi
+  SRCS init_phi.cc
+  DEPS init)
+
+cc_test(
+  init_phi_test
+  SRCS init_phi_test.cc
+  DEPS phi_tensor init_phi)

@@ -19,9 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
@@ -65,16 +64,20 @@ class TestSaveLoadBF16(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = SGDOptimizer(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -130,7 +133,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(self.temp_dir.name, "test_1")
-            fluid.save(main_program, save_dir)
+            paddle.static.save(main_program, save_dir)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -144,7 +147,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(self.temp_dir.name, "test_1.pdparams"),
                 exe,

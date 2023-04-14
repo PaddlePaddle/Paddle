@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 
+#include <thrust/sort.h>
+#include <thrust/unique.h>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,9 +46,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
       x.dims(), sparse_dim, sparse_offsets.data());
 
   DenseTensorMeta sparse_offset_meta(
-      paddle::experimental::CppTypeToDataType<IntT>::Type(),
-      {sparse_dim},
-      DataLayout::NCHW);
+      phi::CppTypeToDataType<IntT>::Type(), {sparse_dim}, DataLayout::NCHW);
   DenseTensor d_sparse_offsets =
       phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
   DenseTensor indexs = phi::Empty(

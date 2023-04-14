@@ -132,11 +132,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseFcPadding(
 /// \param[in] memory_pool_init_size_mb initial size of the GPU memory pool in
 /// MB.
 /// \param[in] device_id device_id the GPU card to use.
+/// \param[in] precision_mode the precision used in Paddle-GPU inference.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableUseGpu(
     __pd_keep PD_Config* pd_config,
     uint64_t memory_pool_init_size_mb,
-    int32_t device_id);
+    int32_t device_id,
+    PD_PrecisionType precision_mode);
 ///
 /// \brief Turn off GPU.
 ///
@@ -212,14 +214,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool adaptive_seqlen,
     PD_Bool enable_multi_stream);
 ///
-/// \brief Turn on NPU.
-///
-/// \param[in] pd_onfig config
-/// \param[in] device_id device_id the NPU card to use.
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNpu(
-    __pd_keep PD_Config* pd_config, int32_t device_id);
-///
 /// \brief A boolean state telling whether the XPU is turned on.
 ///
 /// \param[in] pd_onfig config
@@ -258,6 +252,38 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
 /// \return The NPU device id.
 ///
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Turn on custome device.
+///
+/// \param[in] pd_config config
+/// \param[in] device_type device type
+/// \param[in] device_id device_id the custome device card to use.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
+    __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
+///
+/// \brief A boolean state telling whether the custom device is turned on.
+///
+/// \param[in] pd_config config
+/// \return Whether the custom device is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseCustomDevice(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get the custom device id.
+///
+/// \param[in] pd_config config
+/// \return int The custom device id.
+///
+PADDLE_CAPI_EXPORT extern int32_t PD_ConfigCustomDeviceId(
+    __pd_keep PD_Config* pd_config);
+/// \brief Get the custom device type.
+///
+/// \param[in] pd_config config
+/// \return string The custom device type.
+///
+PADDLE_CAPI_EXPORT extern char* PD_ConfigCustomDeviceType(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the initial size in MB of the GPU memory pool.
@@ -607,6 +633,22 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetBfloat16Op(
     __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
 ///
+/// \brief Turn on MKLDNN int8.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnInt8(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether to use the MKLDNN int8.
+///
+/// \param[in] pd_onfig config
+/// \return Whether to use the MKLDNN int8.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnInt8Enabled(
+    __pd_keep PD_Config* pd_config);
+
+///
 /// \brief Enable the GPU multi-computing stream feature.
 /// NOTE: The current behavior of this interface is to bind the computation
 /// stream to the thread, and this behavior may be changed in the future.
@@ -624,6 +666,12 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableGpuMultiStream(
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigThreadLocalStreamEnabled(
     __pd_keep PD_Config* pd_config);
+///
+/// \brief Set execution stream. If not set a stream will be created
+/// internally.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetExecStream(
+    __pd_keep PD_Config* pd_config, void* stream);
 ///
 /// \brief Specify the memory buffer of program and parameter.
 /// Used when model and params are loaded directly from memory.

@@ -33,6 +33,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -60,7 +61,7 @@ class MLP(paddle.nn.Layer):
 
 class Encoder(paddle.nn.Layer):
     def __init__(self, encoder):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.first_stage = paddle.nn.Linear(1024, 1024)
         self.encoder = encoder
 
@@ -72,7 +73,7 @@ class Encoder(paddle.nn.Layer):
 
 class Decoder(paddle.nn.Layer):
     def __init__(self, decoder):
-        super(Decoder, self).__init__()
+        super().__init__()
         self.decoder = decoder
         self.final_stage = paddle.nn.Linear(1024, 1024)
         self.group_norm = paddle.nn.GroupNorm(64, 1024)
@@ -86,7 +87,7 @@ class Decoder(paddle.nn.Layer):
 
 class SpecialModel(paddle.nn.Layer):
     def __init__(self):
-        super(SpecialModel, self).__init__()
+        super().__init__()
         self.shared = paddle.nn.Linear(1024, 1024, bias_attr=False)
         self.encoder = Encoder(self.shared)
         self.decoder = Decoder(self.shared)
@@ -135,6 +136,7 @@ def train_mlp(
     model,
     sharding_stage,
     use_pure_fp16=False,
+    use_bfp16=False,
     accumulate_grad=False,
     batch_size=100,
     opt_group=False,
@@ -154,7 +156,10 @@ def train_mlp(
 
     if use_pure_fp16:
         model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32'
+            models=model,
+            level='O2',
+            save_dtype='float32',
+            dtype='bfloat16' if use_bfp16 else 'float16',
         )
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
@@ -201,7 +206,11 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-            with paddle.amp.auto_cast(use_pure_fp16, level='O2'):
+            with paddle.amp.auto_cast(
+                use_pure_fp16,
+                level='O2',
+                dtype='bfloat16' if use_bfp16 else 'float16',
+            ):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
@@ -240,7 +249,23 @@ def train_mlp(
 
 def test_stage2_stage3():
     paddle.distributed.init_parallel_env()
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = (
+    (
+        mlp,
+        mlp1,
+        mlp2,
+        mlp3,
+        mlp4,
+        mlp5,
+        mlp6,
+        mlp7,
+        mlp8,
+        mlp9,
+        mlp10,
+        mlp11,
+        mlp12,
+    ) = (
+        MLP(),
+        MLP(),
         MLP(),
         MLP(),
         MLP(),
@@ -264,6 +289,8 @@ def test_stage2_stage3():
     mlp8.set_state_dict(state_dict)
     mlp9.set_state_dict(state_dict)
     mlp10.set_state_dict(state_dict)
+    mlp11.set_state_dict(state_dict)
+    mlp12.set_state_dict(state_dict)
 
     # fp32
     stage2_params = train_mlp(
@@ -335,6 +362,37 @@ def test_stage2_stage3():
         np.testing.assert_allclose(
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6
         )
+
+    # bfp16
+    # NOTE: this is a hack to get int format nccl version, like 2134
+    # if current platform is not linux, version number will be 0
+    nccl_version_str = get_nccl_version_str()
+    nccl_version = (
+        int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
+    )
+
+    if nccl_version >= 2100:
+        stage2_params = train_mlp(
+            mlp11,
+            sharding_stage=2,
+            use_pure_fp16=True,
+            opt_group=False,
+            use_bfp16=True,
+        )
+        stage3_params = train_mlp(
+            mlp12,
+            sharding_stage=3,
+            use_pure_fp16=True,
+            opt_group=False,
+            use_bfp16=True,
+        )
+        for i in range(len(stage2_params)):
+            np.testing.assert_allclose(
+                stage2_params[i].numpy(),
+                stage3_params[i].numpy(),
+                rtol=1e-4,
+                atol=1e-3,
+            )
 
     # test for share layer parameters and exclude_layer function.
     sm1, sm2, sm3, sm4 = (

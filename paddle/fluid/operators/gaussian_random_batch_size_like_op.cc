@@ -19,12 +19,35 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    float mean = context.Attr<float>("mean");
+    float std = context.Attr<float>("std");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
+    std::normal_distribution<T> dist(mean, std);
+    int64_t size = tensor->numel();
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(engine);
+    }
+  }
+};
+
 class GaussianRandomBatchSizeLikeOp : public BatchSizeLikeOp {
  protected:
   using BatchSizeLikeOp::BatchSizeLikeOp;
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
@@ -76,4 +99,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 
-// Kernels are registered in gaussian_random_op.cc and gaussian_random_op.cu
+REGISTER_OP_CPU_KERNEL(
+    gaussian_random_batch_size_like,
+    paddle::operators::CPUGaussianRandomBatchSizeLikeKernel<float>,
+    paddle::operators::CPUGaussianRandomBatchSizeLikeKernel<double>);

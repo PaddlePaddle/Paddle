@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -31,7 +33,6 @@ template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
                                               const IndexT* index,
-                                              int64_t nums,
                                               int64_t N,
                                               int64_t stride,
                                               int64_t size,
@@ -104,7 +105,6 @@ void IndexSelectGradKernel(const Context& ctx,
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
@@ -115,7 +115,6 @@ void IndexSelectGradKernel(const Context& ctx,
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
@@ -132,5 +131,6 @@ PD_REGISTER_KERNEL(index_select_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

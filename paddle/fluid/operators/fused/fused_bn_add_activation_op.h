@@ -89,13 +89,13 @@ class FusedBatchNormAddActOpInferVarType
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedBatchNormAddActKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedBatchNormAddActGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;

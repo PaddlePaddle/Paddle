@@ -2,6 +2,7 @@ add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
+add_subdirectory(jit)
 
 math_library(deformable_conv_functor DEPS dense_tensor)
 math_library(concat_and_split_functor DEPS dense_tensor)
@@ -23,11 +24,12 @@ math_library(softmax DEPS math_function)
 math_library(maxouting)
 math_library(matrix_bit_code)
 math_library(sequence_scale)
+math_library(sequence_padding DEPS lod_utils)
 
 cc_library(
   phi_data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor)
+  DEPS tensor blas)
 
 if(WITH_GPU OR WITH_ROCM)
   if(MKL_FOUND AND WITH_ONEMKL)

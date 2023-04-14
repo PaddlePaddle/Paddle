@@ -55,6 +55,14 @@ void PNormKernel(const Context& dev_ctx,
   int n = 1;
   int t = 1;
   GetDims(xdim, axis, &m, &t, &n, asvector);
+
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
+
   x_dim.push_back(m);
   x_dim.push_back(t);
   x_dim.push_back(n);

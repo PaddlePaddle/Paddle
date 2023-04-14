@@ -32,6 +32,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
+    dev_ctx.template Alloc<T>(out);
     phi::funcs::set_constant(dev_ctx, out, 0.0);
     return;
   }

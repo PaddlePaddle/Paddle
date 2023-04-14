@@ -305,15 +305,6 @@ TEST(inference_api_native, image_classification_xpu) {
 }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-TEST(inference_api_native, word2vec_npu) {
-  MainWord2Vec(paddle::PaddlePlace::kNPU);
-}
-// TEST(inference_api_native, image_classification_npu) {
-//   MainImageClassification(paddle::PaddlePlace::kNPU);
-// }
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(inference_api_native, word2vec_gpu) {
   MainWord2Vec(paddle::PaddlePlace::kGPU);
@@ -329,6 +320,18 @@ TEST(inference_api_native, image_classification_gpu) {
 // TEST(inference_api_native, image_classification_gpu_threads) {
 //   MainThreadsImageClassification(paddle::PaddlePlace::kGPU);
 // }
+#endif
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(inference_api_native, image_classification_cpu_onednn) {
+  FLAGS_use_mkldnn = true;
+  MainImageClassification(paddle::PaddlePlace::kCPU);
+}
+
+TEST(inference_api_native, word2vec_cpu_onednn) {
+  FLAGS_use_mkldnn = true;
+  MainWord2Vec(paddle::PaddlePlace::kCPU);
+}
 #endif
 
 TEST(PassBuilder, Delete) {

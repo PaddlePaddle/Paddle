@@ -147,5 +147,5 @@ PD_REGISTER_KERNEL(overlap_add,
                    float,
                    double,
                    phi::dtype::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

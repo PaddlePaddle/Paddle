@@ -76,7 +76,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -129,7 +129,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
-      paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
+      phi::MixVector<size_t> mixv_input_lod(&input_lod[level]);
       MergeAndDelCudaKernel<T>
           <<<1, 1, 0, stream>>>(num_tokens,
                                 tokens,
@@ -165,6 +165,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(ctc_align,
-                        paddle::operators::CTCAlignOpCUDAKernel<int>,
-                        paddle::operators::CTCAlignOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+
+PD_REGISTER_STRUCT_KERNEL(
+    ctc_align, GPU, ALL_LAYOUT, ops::CTCAlignOpCUDAKernel, int, int64_t) {}

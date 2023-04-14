@@ -43,7 +43,6 @@ class BasicApiTransformer(BaseTransformer):
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
-
         return self.wrapper_root
 
     def visit_Assign(self, node):
@@ -127,6 +126,61 @@ class ToTensorTransformer(BaseTransformer):
         return node
 
 
+class NameloadJstTransformer(BaseTransformer):
+    """
+    change name and attribute load to __jst.Ld(name) pattern.
+    for example:
+        a.dtype -->  __jst.Ld(__jst.Ld(a).dtype)
+
+    In paddle science and deepxde, we have to support changing tensor into variable
+    in arbitrary occasion such as global tensor.
+
+    NOTE: we only deal with ctx=Load() case.
+    """
+
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
+
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def _surround_with_ld(self, node):
+        node = (
+            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
+            .body[0]
+            .value
+        )
+        return node
+
+    def visit_Call(self, node):
+        """
+        Can't convert name of function call, bacause this will affect CallTransformer.
+        """
+        node.args = [self.generic_visit(arg) for arg in node.args]
+        return node
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+        assert isinstance(node.attr, str)
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
+        return node
+
+    def visit_Name(self, node):
+        assert isinstance(node, gast.Name)
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
+        return node
+
+
 class AttributeJstTransformer(BaseTransformer):
     """
     change some special attribute into __jst.XXX(obj, "attr_name") format.
@@ -141,11 +195,9 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set(
-            [
-                'size',
-            ]
-        )
+        self.interested_name = {
+            'size',
+        }
         self.root = node
 
     def transform(self):

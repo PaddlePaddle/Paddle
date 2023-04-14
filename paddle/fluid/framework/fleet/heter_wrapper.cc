@@ -158,7 +158,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < req_var.lod(i).lod_data_size(); ++j) {
       v.push_back(req_var.lod(i).lod_data(j));
     }
@@ -203,7 +203,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < req_var.lod(i).lod_data_size(); ++j) {
       v.push_back(req_var.lod(i).lod_data(j));
     }

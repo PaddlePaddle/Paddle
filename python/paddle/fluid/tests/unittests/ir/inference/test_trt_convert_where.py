@@ -35,7 +35,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:
@@ -45,7 +45,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input2(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:
@@ -55,7 +55,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input3(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:
@@ -73,7 +73,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         "op_inputs": {"X": ["condition_data"]},
                         "op_outputs": {"Out": ["condition_data_bool"]},
                         "op_attrs": {"in_dtype": 5, "out_dtype": 0},
-                        "outputs_dtype": {"condition_data_bool": np.bool},
+                        "outputs_dtype": {"condition_data_bool": np.bool_},
                     },
                     {
                         "op_type": "where",
@@ -84,7 +84,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         },
                         "op_outputs": {"Out": ["output_data"]},
                         "op_attrs": dics[0],
-                        "outputs_dtype": {"condition_data_bool": np.bool},
+                        "outputs_dtype": {"condition_data_bool": np.bool_},
                     },
                 ]
                 ops = self.generate_op_config(ops_config)

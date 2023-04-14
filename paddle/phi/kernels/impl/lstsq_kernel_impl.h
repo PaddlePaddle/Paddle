@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
@@ -153,12 +153,12 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -222,12 +222,12 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,

@@ -17,7 +17,7 @@ include(ExternalProject)
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
 
 set(CUTLASS_REPOSITORY https://github.com/NVIDIA/cutlass.git)
-set(CUTLASS_TAG v2.10.0)
+set(CUTLASS_TAG v2.11.0)
 
 include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/")
 include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")
@@ -25,6 +25,10 @@ include_directories(
   "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
+
+if(NOT PYTHON_EXECUTABLE)
+  find_package(PythonInterp REQUIRED)
+endif()
 
 ExternalProject_Add(
   extern_cutlass
@@ -38,6 +42,23 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
+add_custom_target(
+  cutlass_codegen
+  COMMAND
+    rm -rf
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build
+  COMMAND
+    mkdir -p
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build/generated/gemm
+  COMMAND
+    ${PYTHON_EXECUTABLE} -B
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/gather_gemm_scatter_generator.py
+    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
+    "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/build"
+    "${CMAKE_CUDA_COMPILER_VERSION}"
+  VERBATIM)
+
 add_library(cutlass INTERFACE)
 
+add_dependencies(cutlass_codegen extern_cutlass)
 add_dependencies(cutlass extern_cutlass)

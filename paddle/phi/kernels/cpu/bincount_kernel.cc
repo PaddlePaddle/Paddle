@@ -111,4 +111,6 @@ PD_REGISTER_KERNEL(bincount,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

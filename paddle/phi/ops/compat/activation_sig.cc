@@ -41,21 +41,16 @@ namespace phi {
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardSwish,
-                               "hardswish",
-                               "threshold" comma "scale" comma
-                               "offset");                // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");  // NOLINT
-
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
-                               "stanh",
-                               "scale_a" comma "scale_b");  // NOLINT
-
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");         // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
 
+KernelSignature HardSwishGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("hardswish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
+}
+
 KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "hardswish_raw", {"X"}, {"threshold", "scale", "offset"}, {"Out"});
+  return KernelSignature("hardswish", {"X"}, {}, {"Out"});
 }
 
 KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
@@ -66,58 +61,12 @@ KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
 }
 
-KernelSignature PowOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("FactorTensor")) {
-    return KernelSignature("pow", {"X"}, {"FactorTensor"}, {"Out"});
-  } else {
-    return KernelSignature("pow", {"X"}, {"factor"}, {"Out"});
-  }
-}
-
-KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("FactorTensor")) {
-    return KernelSignature(
-        "pow_grad", {"X", "Out@GRAD"}, {"FactorTensor"}, {"X@GRAD"});
-  } else {
-    return KernelSignature(
-        "pow_grad", {"X", "Out@GRAD"}, {"factor"}, {"X@GRAD"});
-  }
-}
-
-KernelSignature PowDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("FactorTensor")) {
-    return KernelSignature("pow_double_grad",
-                           {"X", "DOut", "DDX"},
-                           {"FactorTensor"},
-                           {"DX", "DDOut"});
-  } else {
-    return KernelSignature(
-        "pow_double_grad", {"X", "DOut", "DDX"}, {"factor"}, {"DX", "DDOut"});
-  }
-}
-
-KernelSignature PowTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("FactorTensor")) {
-    return KernelSignature("pow_triple_grad",
-                           {"X", "DOut", "DDX", "D_DX", "D_DDOut"},
-                           {"FactorTensor"},
-                           {"D_X", "D_DOut", "D_DDX"});
-  } else {
-    return KernelSignature("pow_triple_grad",
-                           {"X", "DOut", "DDX", "D_DX", "D_DDOut"},
-                           {"factor"},
-                           {"D_X", "D_DOut", "D_DDX"});
-  }
-}
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish_grad, hardswish_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(stanh_grad, phi::STanhGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
@@ -126,9 +75,3 @@ PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,
 PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(swish, phi::SwishOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(pow_grad, phi::PowGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(pow_double_grad,
-                           phi::PowDoubleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(pow_triple_grad,
-                           phi::PowTripleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(pow, phi::PowOpArgumentMapping);

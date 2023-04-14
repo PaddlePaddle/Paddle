@@ -30,8 +30,6 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
             paddle.distributed.is_initialized()
         ), "The distributed environment has been initialized."
 
-        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
     def test_collective_alltoall_single(self):
         rank = dist.get_rank()
         size = dist.get_world_size()

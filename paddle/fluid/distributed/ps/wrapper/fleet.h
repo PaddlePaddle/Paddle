@@ -286,6 +286,12 @@ class FleetWrapper {
                                              int to_client_id,
                                              const std::string& msg);
 
+  std::string GetDistDesc() const {
+    CHECK(is_initialized_ == true)
+        << "fleetwrapper should be initialized first!!!";
+    return dist_desc_;
+  }
+
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
@@ -321,6 +327,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  std::string dist_desc_;
   paddle::distributed::PaddlePSEnvironment ps_env_;
   size_t GetAbsoluteSum(size_t start,
                         size_t end,

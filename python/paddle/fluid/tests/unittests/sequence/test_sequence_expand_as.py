@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 sys.path.append("../")
-from op_test import OpTest
+from eager_op_test import OpTest
 
-import paddle.fluid as fluid
+import paddle
 from paddle.fluid import Program, program_guard
 
 
@@ -92,16 +92,25 @@ class TestSequenceExpandAsOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the input x must be Variable
             x1 = np.random.random((2, 4)).astype("float32")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x1)
+            self.assertRaises(
+                TypeError, paddle.static.nn.sequence_lod.sequence_expand_as, x1
+            )
 
             # the dtype of input x must be float32, float64, int32 or int64
-            x2 = fluid.data(name='x2', shape=[None, 4], dtype="bool")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x2)
+            x2 = paddle.static.data(name='x2', shape=[None, 4], dtype="bool")
+            self.assertRaises(
+                TypeError, paddle.static.nn.sequence_lod.sequence_expand_as, x2
+            )
 
             # the input y must be Variable
-            x3 = fluid.data(name='x3', shape=[None, 4], dtype="float32")
+            x3 = paddle.static.data(name='x3', shape=[None, 4], dtype="float32")
             y = np.random.random((2, 4)).astype("float32")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x3, y)
+            self.assertRaises(
+                TypeError,
+                paddle.static.nn.sequence_lod.sequence_expand_as,
+                x3,
+                y,
+            )
 
 
 if __name__ == '__main__':
