@@ -286,10 +286,10 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFP16(TestBceLossOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=5e-1)
+        self.check_grad(['X'], 'Out')
 
     def init_test_dtype(self):
         self.dtype = np.float16
