@@ -15,6 +15,8 @@
 import os
 from site import getsitepackages
 
+from utils import extra_compile_args
+
 from paddle.utils.cpp_extension import CUDAExtension, setup
 
 paddle_includes = []
@@ -37,7 +39,7 @@ setup(
             "custom_relu_forward.cu",
         ],
         include_dirs=paddle_includes,
-        extra_compile_args={'cc': ['-w', '-g']},
+        extra_compile_args=extra_compile_args,
         verbose=True,
     ),
 )
