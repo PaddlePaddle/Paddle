@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/erfinv_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
@@ -34,4 +36,4 @@ void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double) {}
+PD_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
