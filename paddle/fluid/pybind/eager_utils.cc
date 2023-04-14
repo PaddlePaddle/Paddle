@@ -219,9 +219,6 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 
 void SetPythonStack() {
   if (FLAGS_check_nan_inf) {
-    std::string filename = __FILE__;
-    std::string line = std::to_string(__LINE__);
-    std::string function_name = __FUNCTION__;
     pybind11::gil_scoped_acquire gil;
     PyObject* mod = PyImport_ImportModule("traceback");
     PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
