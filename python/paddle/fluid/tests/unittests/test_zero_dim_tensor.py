@@ -2428,6 +2428,64 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(xt_1_out.shape, [])
         self.assertTrue(xt_1_out.grad.shape, [3, 3])
 
+    def test_linalg_norm(self):
+        def test_case(x, p='fro', axis=None):
+            out = paddle.linalg.norm(x, p=p, axis=axis)
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [24])
+
+        # 1D input, p = fro ,axis = None, using reduceInferMeta
+        x_1 = paddle.arange(24, dtype="float32") - 12
+        x_1.stop_gradient = False
+        # using frobenius_norm, depends on reduce inferMeta support 0d output
+        # out_1 = paddle.linalg.norm(x)
+        # out_1.retain_grads()
+        # out_1.backward()
+
+        # self.assertEqual(out_1.shape, [])
+        # self.assertTrue(x.grad.shape, [24])
+
+        # 1D input, p = 1 ,axis = None,
+        x_2 = paddle.arange(24, dtype="float32") - 12
+        x_2.stop_gradient = False
+        out_2 = paddle.linalg.norm(x_2, p=1)
+        out_2.retain_grads()
+        out_2.backward()
+
+        self.assertEqual(out_2.shape, [])
+        self.assertEqual(x_2.grad.shape, [24])
+
+        # 2D input, p = fro, axis = None
+        x_3 = x_2.reshape([4, 6])
+        out_3 = paddle.linalg.norm(x_3)
+        out_3.retain_grads()
+        out_3.backward()
+
+        self.assertEqual(out_3.shape, [])
+        self.assertEqual(x_3.grad.shape, [4, 6])
+
+        # 2D input, p = 1, axis = None
+        # using p_matrix_norm, depends on paddle.sum
+        # x_4 = x_2.reshape([4, 6])
+        # out_4 = paddle.linalg.norm(x_4)
+        # out_4.retain_grads()
+        # out_4.backward()
+
+        # self.assertEqual(out_4.shape, [])
+        # self.assertEqual(x_4.grad.shape, [4, 6])
+
+        # 2D input, p = inf, axis = None
+        # using p_matrix_norm, depends on paddle.max, paddle.min
+        # x_5 = x_2.reshape([4, 6])
+        # out_5 = paddle.linalg.norm(x_5)
+        # out_5.retain_grads()
+        # out_5.backward()
+
+        # self.assertEqual(out_5.shape, [])
+        # self.assertEqual(x_5.grad.shape, [4, 6])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -4318,6 +4376,56 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, ())
+
+    @prog_scope
+    def test_linalg_norm(self):
+        def test_case(x, p='fro', axis=None):
+            out = paddle.linalg.norm(x, p=p, axis=axis)
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(out.shape, [])
+            self.assertEqual(x.grad.shape, [24])
+
+        # 1D input, p = fro ,axis = None, using reduceInferMeta
+        # using frobenius_norm, depends on reduce inferMeta support 0d output
+        # x_1 = paddle.arange(24, dtype="float32") - 12
+        # x_1.stop_gradient = False
+        # out_1 = paddle.linalg.norm(x)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_1])
+        # self.assertEqual(res[0].shape, ())
+
+        # 1D input, p = 1 ,axis = None,
+        x_2 = paddle.arange(24, dtype="float32") - 12
+        x_2.stop_gradient = False
+        out_2 = paddle.linalg.norm(x_2, p=1)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_2])
+        self.assertEqual(res[0].shape, ())
+
+        # 2D input, p = fro, axis = None
+        x_3 = x_2.reshape([4, 6])
+        out_3 = paddle.linalg.norm(x_3)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_3])
+        self.assertEqual(res[0].shape, ())
+
+        # 2D input, p = 1, axis = None
+        # using p_matrix_norm, depends on paddle.sum
+        # x_4 = x_2.reshape([4, 6])
+        # out_4 = paddle.linalg.norm(x_4)
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_4])
+        # self.assertEqual(res[0].shape, ())
+
+        # 2D input, p = inf, axis = None
+        # using p_matrix_norm, depends on paddle.max, paddle.min
+        # x_5 = x_2.reshape([4, 6])
+        # out_5 = paddle.linalg.norm(x_5)
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_5])
+        # self.assertEqual(res[0].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
