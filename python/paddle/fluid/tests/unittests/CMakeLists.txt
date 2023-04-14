@@ -1166,6 +1166,7 @@ set(STATIC_BUILD_TESTS
     test_bincount_op
     test_decoupled_py_reader
     test_eig_op
+    test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_imperative_optimizer
