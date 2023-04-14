@@ -1933,6 +1933,7 @@ class TestLeakyRelu(TestActivation):
     def setUp(self):
         self.op_type = "leaky_relu"
         self.python_api = paddle.nn.functional.leaky_relu
+        self.public_python_api = paddle.nn.functional.leaky_relu
         self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
@@ -1979,6 +1980,7 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
         self.prim_op_type = "comp"
         self.enable_cinn = False
         self.python_api = paddle.nn.functional.leaky_relu
+        self.public_python_api = paddle.nn.functional.relu
         self.init_dtype()
         self.init_shape()
         alpha = self.get_alpha()
