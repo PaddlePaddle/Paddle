@@ -4608,7 +4608,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         self.exe.run(paddle.static.default_startup_program())
         res = self.exe.run(prog, fetch_list=[out_c])
-        self.assertTrue(res[0].shape, [3])
+        self.assertEqual(res[0].shape, (3,))
 
 
 unary_apis_with_complex_input = [
