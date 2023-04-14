@@ -899,7 +899,7 @@ void slice_grad(const Tensor& input,
   if (input_grad) {
     size_t rank = input.dims().size();
     auto out_dims = out_grad.dims();
-    std::vector<int> origin_out_shape;
+    std::vector<int64_t> origin_out_shape;
     auto in_dims = input.dims();
 
     auto decrease_size = decrease_axis.size();
