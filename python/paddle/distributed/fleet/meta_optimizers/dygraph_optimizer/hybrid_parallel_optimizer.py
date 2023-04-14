@@ -238,8 +238,6 @@ class HybridParallelOptimizer:
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
-        self._dp_pp_overlap = False
-        self._comm_buffers = []
 
         self._use_dp_mode = (
             self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL
@@ -249,7 +247,11 @@ class HybridParallelOptimizer:
 
         # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization
         # is achieved through reducer, so there is no need to call fuse_allreduce in optimizer.
-        self._dp_enable = not self._use_dp_mode and self._need_dp
+        self._dp_enable = (
+            not self._use_dp_mode
+            and self._need_dp
+            and not self._strategy.hybrid_configs["pp_configs"].dp_comm_overlap
+        )
 
         self._sharding_enable = self._hcg.get_sharding_parallel_world_size() > 1
 
@@ -381,12 +383,7 @@ class HybridParallelOptimizer:
             sharding_reduce_gradients(list(parameters_list), self._hcg)
 
         if self._dp_enable:
-            assert not self._dp_pp_overlap and len(self._comm_buffers) == 0
             fused_allreduce_gradients(list(parameters_list), self._hcg)
-        else:
-            assert self._dp_pp_overlap and len(self._comm_buffers) > 0
-            for buffer in self._comm_buffers:
-                buffer.scale_and_split_grads()
 
         self._step(parameters_list)
 
@@ -406,12 +403,7 @@ class HybridParallelOptimizer:
             sharding_reduce_gradients(list(parameter_list), self._hcg)
 
         if self._dp_enable:
-            assert not self._dp_pp_overlap and len(self._comm_buffers) == 0
             fused_allreduce_gradients(list(parameter_list), self._hcg)
-        else:
-            assert self._dp_pp_overlap and len(self._comm_buffers) > 0
-            for buffer in self._comm_buffers:
-                buffer.scale_and_split_grads()
 
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
