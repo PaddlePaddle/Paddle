@@ -233,8 +233,6 @@ class _JacobianNoBatch(_Jacobian):
         return 0
 
     def _flatten(self, xs):
-        if len(xs) == 1 and xs[0].ndim == 0:
-            return xs[0]
         return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
     def _evaluate(self, row_index):
@@ -384,10 +382,6 @@ def hessian(
             raise ValueError(
                 f"batch_axis should be None or 0, but got {batch_axis}."
             )
-        if batch_axis is None:
-            _check_inputs(ys, 1 + preorder)  # 1 or 2
-        else:
-            _check_inputs(ys, 2 + preorder)  # 2 or 3
 
         # TODO(HydrogenSulfate): support batch_axis > 0
         is_batched = batch_axis is not None
@@ -409,7 +403,7 @@ def hessian(
             raise ValueError(
                 f"Only support ys.numel()({ys.numel()})==1 when batch_axis is None."
             )
-        ys = ys.reshape((1,))
+        ys = ys.reshape(())
     elif isinstance(batch_axis, int):
         if ys[0].numel() > 1:
             raise ValueError(
@@ -418,7 +412,7 @@ def hessian(
         # TODO(HydrogenSulfate): support batch_axis > 0
         if batch_axis != 0:
             raise ValueError("Only support batch_axis=0 yet.")
-        ys = ys.reshape((-1, 1))
+        ys = ys.reshape((-1,))
     else:
         raise ValueError(
             f"batch_axis should be None or int, but got {type(batch_axis)}."
@@ -497,15 +491,3 @@ def _grad(ys, xs, v=None):
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
     return _replace_none_with_zero_tensor(xs_grad, xs)
-
-
-def _check_inputs(tensor, ndim):
-    if isinstance(tensor, Sequence):
-        for _tensor in tensor:
-            if _tensor.ndim != ndim:
-                raise ValueError(
-                    f"tensor.ndim({_tensor.ndim}) should be {ndim}."
-                )
-    else:
-        if tensor.ndim != ndim:
-            raise ValueError(f"tensor.ndim({tensor.ndim}) should be {ndim}.")
