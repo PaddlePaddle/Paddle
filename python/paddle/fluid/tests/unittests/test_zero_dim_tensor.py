@@ -1113,7 +1113,7 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.static.accuracy(input=x, label=y, k=1)
-        self.assertEqual(out.shape, ())   
+        self.assertEqual(out.shape, [])   
 
     def test_static_auc(self):
         x = paddle.full(shape=[3, 2], fill_value=0.25)

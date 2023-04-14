@@ -1160,17 +1160,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         x_dims.to_str(),
                         y_dims.to_str()));
 
-  // VLOG(0)<<"fsdf"<<" afds";
-  // // const phi::DDim out_dims(in_dims.Get(), input_rank - 1);
-  // // x_dims[x_dims.size() - 1] = 1;
-  // VLOG(0)<<x_dims.to_str()<<".";
-  // std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
-  // std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end()-1);
-  // x_dims = phi::make_ddim(x_dims_vec_cut);
-  // VLOG(0)<<x_dims.to_str()<<".";
-  VLOG(0)<<x_dims.to_str()<<".";
-  x_dims[x_dims.size() - 1] = 1;
-  VLOG(0)<<x_dims.to_str()<<".";
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end()-1);
+  x_dims = phi::make_ddim(x_dims_vec_cut);
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
