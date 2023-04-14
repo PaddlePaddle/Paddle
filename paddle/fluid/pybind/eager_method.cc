@@ -767,9 +767,9 @@ static PyObject* tensor_method_detach(TensorObject* self,
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::Tensor();
-    auto tensor = std::make_shared<phi::DenseTensor>(*self->tensor.impl().get())
-
-                      tensor->can_not_uses = self->tensor.impl()->can_not_uses;
+    auto tensor =
+        std::make_shared<phi::DenseTensor>(*self->tensor.impl().get());
+    tensor->can_not_uses = self->tensor.impl()->can_not_uses;
     if (*tensor->canNotUse == false) {
       *tensor->canNotUse = *self->tensor.impl()->canNotUse;
     }
