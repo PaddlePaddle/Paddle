@@ -17,80 +17,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename DeviceContext, typename T>
-class SequencePoolKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<phi::DenseTensor>("X");
-    auto* out = context.Output<phi::DenseTensor>("Out");
-    std::string pooltype = context.Attr<std::string>("pooltype");
-    T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
-
-    auto dims = in->dims();
-    auto lod = in->lod();
-    auto lod_level = lod.size();
-    // InferShape by lod
-    PADDLE_ENFORCE_GT(lod_level,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "Input(X) phi::DenseTensor of SequencePoolOp "
-                          "does not contain LoD information."));
-    PADDLE_ENFORCE_LE(lod_level,
-                      2UL,
-                      platform::errors::InvalidArgument(
-                          "The lod level of input shall be no more than 2."
-                          "Received lod level is %d.",
-                          lod_level));
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[lod_level - 1].size() - 1),
-        platform::errors::InvalidArgument(
-            "The first dimension of Input(X) must be large than batch size."
-            "But received first dimension of Input(X) is %d, while batch"
-            "size is %d.",
-            dims[0],
-            static_cast<int64_t>(lod[lod_level - 1].size() - 1)));
-    if (lod_level > 1UL) {
-      PADDLE_ENFORCE_EQ(lod[0][lod[0].size() - 1],
-                        lod[1].size() - 1,
-                        platform::errors::InvalidArgument(
-                            "The input lod information is illegal."));
-      framework::LoD out_lod;
-      out_lod.push_back(lod[0]);
-      out->set_lod(out_lod);
-    }
-    dims[0] = lod[lod_level - 1].size() - 1;
-    out->Resize({dims});
-    out->mutable_data<T>(context.GetPlace());
-    phi::DenseTensor* index = nullptr;
-
-    bool is_test =
-        context.HasAttr("is_test") ? context.Attr<bool>("is_test") : false;
-
-    // Do not create index buffer for inference mode
-    if (pooltype == "MAX" &&
-        (is_test == false ||
-         platform::is_cpu_place(context.GetPlace()) == false)) {
-      index = context.Output<phi::DenseTensor>("MaxIndex");
-      index->Resize({dims});
-      index->mutable_data<int>(context.GetPlace());
-    }
-    math::SequencePoolFunctor<DeviceContext, T> pool;
-    pool(context.template device_context<DeviceContext>(),
-         pooltype,
-         pad_value,
-         *in,
-         out,
-         is_test,
-         index);
-  }
-};
 
 template <typename DeviceContext, typename T>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
@@ -105,7 +36,7 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
       index = context.Input<phi::DenseTensor>("MaxIndex");
     }
     in_g->mutable_data<T>(context.GetPlace());
-    math::SequencePoolGradFunctor<DeviceContext, T> pool;
+    phi::funcs::SequencePoolGradFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(),
          pooltype,
          *out_g,
