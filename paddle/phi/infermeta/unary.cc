@@ -2024,6 +2024,7 @@ void MatrixRankInferMeta(const MetaTensor& x,
                           "if hermitian == true, matrix should be n*n"));
   }
   DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+  if (dim_x.size() == 2 && hermitian) dim_x_batch = phi::make_ddim({1});
   out->set_dims(dim_x_batch);
   out->share_lod(x);
 }
