@@ -394,9 +394,9 @@ class Engine:
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
-            if self._strategy.pipeline.mode == "1F1B":
+            if self._strategy.pipeline.schedule_mode == "1F1B":
                 fwd_task = fleet_opt["tasks"][1]
-            elif self._strategy.pipeline.mode == "stream":
+            elif self._strategy.pipeline.schedule_mode == "stream":
                 fwd_task = fleet_opt["tasks"][0]
             assert fwd_task is not None
             fwd_prog = fwd_task.get_program()
