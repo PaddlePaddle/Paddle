@@ -27,14 +27,13 @@ from paddle.distributed.auto_parallel.utils import (
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.fluid.contrib.mixed_precision.fp16_lists import (
     AutoMixedPrecisionLists,
 )
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     _keep_layer_norm_scale_bias_to_fp32,
     _need_keep_fp32,
     _valid_types,
-    _dtype_to_str,
 )
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
@@ -55,6 +54,23 @@ __amp_skip_ops__ = [
     'while',
     'cast',
 ]
+__target_dtype__ = None
+
+
+def _dtype_to_str(dtype):
+    """
+    Convert specific variable type to its corresponding string.
+    Args:
+        dtype (VarType): Variable type.
+    """
+    if dtype == core.VarDesc.VarType.FP16:
+        # TODO(Xreki): change the returned str to "bf16" for BF16 data type.
+        # Currently too many codes use "cast_fp16" as key.
+        return 'fp16'
+    elif dtype == core.VarDesc.VarType.BF16:
+        return 'bf16'
+    else:
+        return 'fp32'
 
 
 def set_op_dtype_to_fp16(op):
@@ -62,14 +78,20 @@ def set_op_dtype_to_fp16(op):
         op.has_attr('in_dtype')
         and op.attr('in_dtype') == core.VarDesc.VarType.FP32
     ):
-        op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+        op._set_attr('in_dtype', __target_dtype__)
     if (
         op.has_attr('out_dtype')
         and op.attr('out_dtype') == core.VarDesc.VarType.FP32
     ):
-        op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+        op._set_attr('out_dtype', __target_dtype__)
     if op.has_attr('dtype') and op.attr('dtype') == core.VarDesc.VarType.FP32:
-        op._set_attr('dtype', core.VarDesc.VarType.FP16)
+        op._set_attr('dtype', __target_dtype__)
+
+    if __target_dtype__ == core.VarDesc.VarType.BF16:
+        if op.has_attr('use_mkldnn'):
+            op._set_attr('use_mkldnn', True)
+        if op.has_attr('mkldnn_data_type'):
+            op._set_attr('mkldnn_data_type', 'bfloat16')
 
 
 # adapot for backward op
@@ -156,6 +178,7 @@ class FP16State(object):
             list
         )  # {forward_op_id: [(output_name, input_name, out_dtype, in_dtype, slot_name), ]}
         self.is_train = False
+        self.out_var_op_deps = {}
 
     def _is_fp16_op(self, op_id):
         return self._op_fp16_dict.get(op_id, None)
@@ -169,6 +192,14 @@ class FP16State(object):
         # assume all backward block are behind forward blocks
         for block in self.program.blocks:
             for op in block.ops:
+                for name in op.output_arg_names:
+                    if name not in self.out_var_op_deps:
+                        self.out_var_op_deps[name] = [op.desc.original_id()]
+                    else:
+                        self.out_var_op_deps[name].extend(
+                            [op.desc.original_id()]
+                        )
+
                 self._mark_op(op)
 
         # set forward tensor dtype
@@ -192,6 +223,18 @@ class FP16State(object):
             if op.type == "assign" and "array_" in op.input_arg_names[0]:
                 self._op_fp16_dict[op.desc.original_id()] = False
                 return
+            # If assign op is inplace-operation, assign op exec mode should be same with the created op of output_var.
+            if op.type == "assign":
+                out_name = op.output_arg_names[0]
+                if len(self.out_var_op_deps[out_name]) > 1:
+                    if not self._op_fp16_dict[
+                        self.out_var_op_deps[out_name][0]
+                    ]:
+                        self._op_fp16_dict[op.desc.original_id()] = False
+                    else:
+                        self._op_fp16_dict[op.desc.original_id()] = True
+                    return
+
             if _need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
@@ -228,7 +271,7 @@ class FP16State(object):
             return
 
         if var.dtype == core.VarDesc.VarType.FP32:
-            var.desc.set_dtype(core.VarDesc.VarType.FP16)
+            var.desc.set_dtype(__target_dtype__)
 
     def resolute_tensor_dtype(self, block):
 
@@ -260,7 +303,7 @@ class FP16State(object):
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
                             continue
-                        if out_var.dtype == core.VarDesc.VarType.FP16:
+                        if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
                 if self._is_fp16_op(op.desc.original_id()) == True:
@@ -276,7 +319,7 @@ class FP16State(object):
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
                             continue
-                        if out_var.dtype == core.VarDesc.VarType.FP16:
+                        if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
 
     def cast_block(self, block):
@@ -295,7 +338,7 @@ class FP16State(object):
                         op,
                         idx,
                         block,
-                        core.VarDesc.VarType.FP16,
+                        __target_dtype__,
                         core.VarDesc.VarType.FP32,
                         self.dist_context,
                     )
@@ -305,7 +348,7 @@ class FP16State(object):
                         idx,
                         block,
                         core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16,
+                        __target_dtype__,
                         self.dist_context,
                     )
             elif is_backward_op(op):
@@ -315,7 +358,7 @@ class FP16State(object):
                             op,
                             idx,
                             block,
-                            core.VarDesc.VarType.FP16,
+                            __target_dtype__,
                             core.VarDesc.VarType.FP32,
                             self.dist_context,
                         )
@@ -325,7 +368,7 @@ class FP16State(object):
                             idx,
                             block,
                             core.VarDesc.VarType.FP32,
-                            core.VarDesc.VarType.FP16,
+                            __target_dtype__,
                             self.dist_context,
                         )
                 elif op.type == "sum":
@@ -399,6 +442,9 @@ class FP16State(object):
                             dist_context, cast_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -410,6 +456,9 @@ class FP16State(object):
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )
@@ -455,63 +504,79 @@ class FP16State(object):
         ) in self.forward_input_cast_ops[forward_op_id]:
 
             # rename input
-            assert src_name in op.input(
-                slot_name
-            ), "var: {} not in op's {}. {}".format(src_name, slot_name, str(op))
-            src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
-            assert src_var_dist_attr is not None
-            op._rename_input(src_name, cast_name)
-            grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
+            # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
+            if op.type != "scale" and slot_name in op.input_names:
 
+                assert src_name in op.input(
+                    slot_name
+                ), "var: {} not in op's {}. {}".format(
+                    src_name, slot_name, str(op)
+                )
+                src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
+                assert src_var_dist_attr is not None
+                op._rename_input(src_name, cast_name)
+                grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
+
+            # NOTE Special for scale op, scale op's grad op is scale,
+            # so slot name map rule could not apply to grad scale op
+            # cast_name: mean_0.tmp_0.cast_bf16, src_name: mean_0.tmp_0, dst_dtype: paddle.bfloat16, src_dtype: paddle.float32, slot_name: X.
+            if op.type == "scale":
+                grad_slot_name = "X"
             # create cast grad
-            grad_slot_name = slot_name + "@GRAD"
-            assert grad_slot_name in op.output_names
-            if len(op.output(grad_slot_name)) == 0:
-                var = block.var(src_name)
-                assert var.stop_gradient is True
-                continue
-            assert len(op.output(grad_slot_name)) == 1
-            grad_name = op.output(grad_slot_name)[0]
-            grad = block.var(grad_name)
-            grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
-            assert grad_dist_attr is not None, "{}".format(grad_name)
-            ref_mesh = grad_dist_attr.process_mesh
-            ref_mapping = grad_dist_attr.dims_mapping
+            else:
+                grad_slot_name = slot_name + "@GRAD"
 
-            cast_grad = block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    "".join([cast_name, '@GRAD'])
-                ),
-                dtype=dst_dtype,
-                shape=grad.shape,
-                type=grad.type,
-                persistable=grad.persistable,
-                stop_gradient=grad.stop_gradient,
-            )
-            dist_context.set_tensor_dist_attr_for_program(
-                cast_grad, grad_dist_attr
-            )
-            op._rename_output(grad_name, cast_grad.name)
-            grad_op_attr.set_output_dist_attr(cast_grad.name, grad_dist_attr)
+            if grad_slot_name in op.output_names:
+                # some forward input maybe stop_gradient=True, e.g. input_mask
+                if len(op.output(grad_slot_name)) == 0:
+                    continue
+                assert (
+                    len(op.output(grad_slot_name)) == 1
+                ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
 
-            # add cast
-            cast_op = block._insert_op_without_sync(
-                idx + 1,
-                type="cast",
-                inputs={"X": [cast_grad.name]},
-                outputs={"Out": [grad.name]},
-                attrs={
-                    "in_dtype": dst_dtype,
-                    "out_dtype": src_dtype,
-                    OP_ROLE_KEY: OpRole.Backward,
-                },
-            )
-            grad.desc.set_dtype(src_dtype)
+                grad_name = op.output(grad_slot_name)[0]
+                grad = block.var(grad_name)
+                grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
+                assert grad_dist_attr is not None, "{}".format(grad_name)
+                ref_mesh = grad_dist_attr.process_mesh
+                ref_mapping = grad_dist_attr.dims_mapping
 
-            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_op, ref_mesh, ref_mapping, dist_context
-            )
-            num_cast_ops += 1
+                cast_grad = block.create_var(
+                    name=unique_name.generate_with_ignorable_key(
+                        "".join([cast_name, '@GRAD'])
+                    ),
+                    dtype=dst_dtype,
+                    shape=grad.shape,
+                    type=grad.type,
+                    persistable=grad.persistable,
+                    stop_gradient=grad.stop_gradient,
+                )
+                dist_context.set_tensor_dist_attr_for_program(
+                    cast_grad, grad_dist_attr
+                )
+                op._rename_output(grad_name, cast_grad.name)
+                grad_op_attr.set_output_dist_attr(
+                    cast_grad.name, grad_dist_attr
+                )
+
+                # add cast
+                cast_op = block._insert_op_without_sync(
+                    idx + 1,
+                    type="cast",
+                    inputs={"X": [cast_grad.name]},
+                    outputs={"Out": [grad.name]},
+                    attrs={
+                        "in_dtype": dst_dtype,
+                        "out_dtype": src_dtype,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+                grad.desc.set_dtype(src_dtype)
+
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    cast_op, ref_mesh, ref_mapping, dist_context
+                )
+                num_cast_ops += 1
 
         return num_cast_ops
 
@@ -573,7 +638,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
     fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
-    fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16]
+    fp16_grads = [g for g in grads if g.dtype == __target_dtype__]
     assert len(fp32_grads) + len(fp16_grads) == len(
         grads
     ), "Data types of all grads must be either fp16 or fp32."
@@ -633,17 +698,15 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
     # TODO to support CUDAPinned/NPU/XPU Places
     if direction == "D2H":
         dst_place_type = 0
-    elif direction == "D2H":
-        dst_place_type = 1
     else:
         raise NotImplementedError(
-            "direction [{}] is not supported yet.".format(direction)
+            f"direction [{direction}] is not supported yet."
         )
 
     attrs = {'dst_place_type': dst_place_type}
     new_op = block._insert_op_without_sync(
         index=idx,
-        type='memcpy',
+        type='memcpy_d2h',
         inputs={'X': [src_var]},
         outputs={'Out': [output_var]},
         attrs=attrs,
@@ -678,17 +741,17 @@ def cast_startup_program():
     for op in startup_program.global_block().ops:
         if is_initialization_op(op):
             output_name = op.output_arg_names[0]
-            if (
-                param_to_dtype.get(output_name, None)
-                == core.VarDesc.VarType.FP16
-            ):
+            if param_to_dtype.get(output_name, None) == __target_dtype__:
                 assert op.has_attr(
                     'dtype'
                 ), "initialization op is supported to has dtype attribute but got {}.".format(
                     str(op)
                 )
+                out_var = startup_program.global_block().var(output_name)
+                if out_var.dtype == core.VarDesc.VarType.FP32:
+                    out_var.desc.set_dtype(__target_dtype__)
                 if op.attr('dtype') == core.VarDesc.VarType.FP32:
-                    op._set_attr('dtype', core.VarDesc.VarType.FP16)
+                    op._set_attr('dtype', __target_dtype__)
 
 
 @register_pass("auto_parallel_fp16")
@@ -701,14 +764,44 @@ class FP16Pass(AMPPass):
     # in distributed scenario, all ranks should have the same modification.
     def _apply_single_impl(self, main_program, startup_program, context):
         self.dist_context = self.get_attr("dist_context")
+        self.target_dtype = self.get_attr("dtype")
         params_grads = self.get_attr("params_grads")
 
+        self.use_optimizer_fp16 = self.get_attr("use_optimizer_fp16", None)
+        if self.use_optimizer_fp16 is None:
+            self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
+
+        # swith enviroment for fp16 / bf16.
+        if self.target_dtype == "float16":
+            __target_dtype = core.VarDesc.VarType.FP16
+
+        elif self.target_dtype == "bfloat16":
+            __target_dtype = core.VarDesc.VarType.BF16
+        else:
+            raise NotImplementedError(
+                "target dtype [{}] is for amp o2 not supported yet.".format(
+                    self.target_dtype
+                )
+            )
+        global __target_dtype__
+        __target_dtype__ = __target_dtype
         amp_list = AutoMixedPrecisionLists(
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
-            None,
+            dtype=self.target_dtype,
         )
-
+        amp_list.unsupported_list -= {
+            "conditional_block_grad",
+            "conditional_block",
+            "conditional_block_infer",
+            "select_input",
+            "while",
+            "while_grad",
+            "cast",
+            "tensor_array_to_tensor",
+            "lod_array_length",
+            "write_to_array",
+        }
         # NOTE don't not change input data dtype, since it is controled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
@@ -726,93 +819,96 @@ class FP16Pass(AMPPass):
             cast_startup_program()
 
         if is_train:
-            with paddle.static.program_guard(main_program, startup_program):
-                # TODO (JZ-LIANG)support cast forward program only when inference
-                self._init_amp_var()
-                self._scale_loss()
+            if self.target_dtype == "fp16":
+                with paddle.static.program_guard(main_program, startup_program):
+                    # TODO (JZ-LIANG)support cast forward program only when inference
+                    self._init_amp_var()
+                    self._scale_loss()
 
-                grads, fp32_grads, fp16_grads = _split_grads(params_grads)
+                    grads, fp32_grads, fp16_grads = _split_grads(params_grads)
 
-                if (
-                    self.get_attr("use_dynamic_loss_scaling")
-                    or self.get_attr("init_loss_scaling") != 1.0
-                ):
-                    found_infs = []
-                    if fp32_grads:
-                        with main_program._optimized_guard([]):
-                            _, found_inf_fp32 = _check_and_update_gradient(
-                                fp32_grads,
-                                self._loss_scaling,
-                                "@fp32",
-                                self.dist_context,
-                            )
-                        found_infs.append(found_inf_fp32)
-                    if fp16_grads:
-                        with main_program._optimized_guard([]):
-                            _, found_inf_fp16 = _check_and_update_gradient(
-                                fp16_grads,
-                                self._loss_scaling,
-                                "@fp16",
-                                self.dist_context,
-                            )
-                        found_infs.append(found_inf_fp16)
-                    with main_program._optimized_guard([]):
-                        block = main_program.global_block()
-
-                        all_infs = paddle.fluid.layers.concat(found_infs)
-                        set_var_dist_attr(
-                            self.dist_context,
-                            all_infs,
-                            [-1],
-                            world_process_group.ranks,
-                        )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "concat"
-                        _set_op_dist_attr_with_ranks(
-                            new_op,
-                            world_process_group.ranks,
-                            block,
-                            self.dist_context,
-                        )
-
-                        found_inf = paddle.fluid.layers.reduce_any(all_infs)
-                        set_var_dist_attr(
-                            self.dist_context,
-                            found_inf,
-                            [-1],
-                            world_process_group.ranks,
-                        )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "reduce_any"
-                        _set_op_dist_attr_with_ranks(
-                            new_op,
-                            world_process_group.ranks,
-                            block,
-                            self.dist_context,
-                        )
-
-                if self.get_attr("use_dynamic_loss_scaling"):
-                    with main_program._optimized_guard([]):
+                    if (
+                        self.get_attr("use_dynamic_loss_scaling")
+                        or self.get_attr("init_loss_scaling") != 1.0
+                    ):
+                        found_infs = []
                         if fp32_grads:
-                            self._update_loss_scaling(fp32_grads, found_inf)
+                            with main_program._optimized_guard([]):
+                                _, found_inf_fp32 = _check_and_update_gradient(
+                                    fp32_grads,
+                                    self._loss_scaling,
+                                    "@fp32",
+                                    self.dist_context,
+                                )
+                            found_infs.append(found_inf_fp32)
                         if fp16_grads:
-                            self._update_loss_scaling(fp16_grads, found_inf)
+                            with main_program._optimized_guard([]):
+                                _, found_inf_fp16 = _check_and_update_gradient(
+                                    fp16_grads,
+                                    self._loss_scaling,
+                                    "@fp16",
+                                    self.dist_context,
+                                )
+                            found_infs.append(found_inf_fp16)
+                        with main_program._optimized_guard([]):
+                            block = main_program.global_block()
+
+                            all_infs = paddle.fluid.layers.concat(found_infs)
+                            set_var_dist_attr(
+                                self.dist_context,
+                                all_infs,
+                                [-1],
+                                world_process_group.ranks,
+                            )
+                            new_op = block.ops[-1]
+                            assert new_op.type == "concat"
+                            _set_op_dist_attr_with_ranks(
+                                new_op,
+                                world_process_group.ranks,
+                                block,
+                                self.dist_context,
+                            )
+
+                            found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                            set_var_dist_attr(
+                                self.dist_context,
+                                found_inf,
+                                [-1],
+                                world_process_group.ranks,
+                            )
+                            new_op = block.ops[-1]
+                            assert new_op.type == "reduce_any"
+                            _set_op_dist_attr_with_ranks(
+                                new_op,
+                                world_process_group.ranks,
+                                block,
+                                self.dist_context,
+                            )
+
+                    if self.get_attr("use_dynamic_loss_scaling"):
+                        with main_program._optimized_guard([]):
+                            if fp32_grads:
+                                self._update_loss_scaling(fp32_grads, found_inf)
+                            if fp16_grads:
+                                self._update_loss_scaling(fp16_grads, found_inf)
 
             # modify optimizer
             base_opt = self.get_attr("base_opt")
             base_opt._multi_precision = True
-            if self.get_attr("use_optimizer_fp16"):
+            if self.use_optimizer_fp16:
                 base_opt._multi_precision = False
-            if isinstance(
-                base_opt, (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW)
-            ):
-                with main_program._optimized_guard([]):
-                    # found_inf = paddle.tensor.creation._memcpy(
-                    #     found_inf, paddle.CPUPlace())
-                    insert_idx = _get_memcopy_idx(block, found_inf)
-                    found_inf = _insert_memcopy(
-                        block, insert_idx, found_inf, self.dist_context
-                    )
-                base_opt._set_auxiliary_var('found_inf', found_inf.name)
-            elif hasattr(base_opt, "_set_auxiliary_var"):
-                base_opt._set_auxiliary_var('found_inf', found_inf.name)
+            if self.target_dtype == "fp16":
+                if isinstance(
+                    base_opt,
+                    (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW),
+                ):
+                    with main_program._optimized_guard([]):
+                        # found_inf = paddle.tensor.creation._memcpy(
+                        #     found_inf, paddle.CPUPlace())
+                        insert_idx = _get_memcopy_idx(block, found_inf)
+                        found_inf = _insert_memcopy(
+                            block, insert_idx, found_inf, self.dist_context
+                        )
+                    base_opt._set_auxiliary_var('found_inf', found_inf.name)
+                elif hasattr(base_opt, "_set_auxiliary_var"):
+                    base_opt._set_auxiliary_var('found_inf', found_inf.name)
