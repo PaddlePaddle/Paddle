@@ -131,8 +131,6 @@ _OP_WITHOUT_KERNEL_SET = {
     'heter_listen_and_serv',
     'c_wait_comm',
     'c_wait_compute',
-    'c_gen_hccl_id',
-    'c_comm_init_hccl',
     'copy_cross_scope',
 }
 
@@ -391,9 +389,6 @@ def create_fake_model(program_config):
         op_desc.set_input('X', [name])
         op_desc.set_output('Out', ["fetch"])
         op_desc._set_attr("col", index)
-
-    main_program_desc._set_version()
-    paddle.fluid.core.save_op_version_info(main_program_desc)
 
     model = main_program_desc.serialize_to_string()
 

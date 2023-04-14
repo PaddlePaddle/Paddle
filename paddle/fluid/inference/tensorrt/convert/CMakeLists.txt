@@ -2,11 +2,9 @@
 list(
   APPEND
   CONVERT_FILES
-  matmul_op.cc
-  matmul_v2_op.cc
+  matrix_multiply_op.cc
   bmm_op.cc
   conv2d_op.cc
-  fc_op.cc
   pool2d_op.cc
   elementwise_op.cc
   batch_norm_op.cc
@@ -106,6 +104,7 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  cumsum_op.cc
   temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

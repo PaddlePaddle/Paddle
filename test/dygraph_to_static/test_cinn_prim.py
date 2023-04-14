@@ -170,10 +170,10 @@ class TestBackend(unittest.TestCase):
         out2 = self.forward(x, None)
         np.testing.assert_allclose(out1, out2, rtol=1e-6)
 
-    def forward(self, x, beckend=None):
+    def forward(self, x, backend=None):
         paddle.seed(2022)
         net = PrimeNet()
-        net = paddle.jit.to_static(net, backend=beckend)
+        net = paddle.jit.to_static(net, backend=backend)
         out = net(x)
         return out
 

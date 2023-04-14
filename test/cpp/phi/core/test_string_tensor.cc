@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"

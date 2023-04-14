@@ -16,7 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, paddle_includes
+from utils import (
+    check_output,
+    check_output_allclose,
+    extra_cc_args,
+    paddle_includes,
+)
 
 import paddle
 from paddle import static
@@ -260,7 +265,7 @@ class TestJITLoad(unittest.TestCase):
                 pd_out = test_custom_add_static(
                     self.add, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
 
                 out = test_custom_subtract_static(
                     self.subtract, device, dtype, x
@@ -268,7 +273,7 @@ class TestJITLoad(unittest.TestCase):
                 pd_out = test_custom_subtract_static(
                     self.subtract, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
 
                 out = test_custom_multiply_static(
                     self.multiply, device, dtype, x
@@ -276,13 +281,13 @@ class TestJITLoad(unittest.TestCase):
                 pd_out = test_custom_multiply_static(
                     self.multiply, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
 
                 out = test_custom_divide_static(self.divide, device, dtype, x)
                 pd_out = test_custom_divide_static(
                     self.divide, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
 
     def _test_dynamic(self):
         for device in self.devices:
@@ -297,9 +302,9 @@ class TestJITLoad(unittest.TestCase):
                 pd_out, pd_x_grad = test_custom_add_dynamic(
                     self.add, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
-                np.testing.assert_allclose(
-                    x_grad, pd_x_grad, rtol=1e-5, atol=1e-8
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
+                check_output_allclose(
+                    x_grad, pd_x_grad, "x_grad", rtol=1e-5, atol=1e-8
                 )
 
                 out, x_grad = test_custom_subtract_dynamic(
@@ -308,9 +313,9 @@ class TestJITLoad(unittest.TestCase):
                 pd_out, pd_x_grad = test_custom_subtract_dynamic(
                     self.subtract, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
-                np.testing.assert_allclose(
-                    x_grad, pd_x_grad, rtol=1e-5, atol=1e-8
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
+                check_output_allclose(
+                    x_grad, pd_x_grad, "x_grad", rtol=1e-5, atol=1e-8
                 )
 
                 out, x_grad = test_custom_multiply_dynamic(
@@ -319,9 +324,9 @@ class TestJITLoad(unittest.TestCase):
                 pd_out, pd_x_grad = test_custom_multiply_dynamic(
                     self.multiply, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
-                np.testing.assert_allclose(
-                    x_grad, pd_x_grad, rtol=1e-5, atol=1e-8
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
+                check_output_allclose(
+                    x_grad, pd_x_grad, "x_grad", rtol=1e-5, atol=1e-8
                 )
 
                 out, x_grad = test_custom_divide_dynamic(
@@ -330,7 +335,7 @@ class TestJITLoad(unittest.TestCase):
                 pd_out, pd_x_grad = test_custom_divide_dynamic(
                     self.divide, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                check_output_allclose(out, pd_out, "out", rtol=1e-5, atol=1e-8)
 
     def _test_logical_operants(self):
         for device in self.devices:
@@ -342,19 +347,19 @@ class TestJITLoad(unittest.TestCase):
 
             out = self.custom_module.custom_logical_and(x, y)
             pd_out = paddle.bitwise_and(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_logical_or(x, y)
             pd_out = paddle.bitwise_or(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_logical_xor(x, y)
             pd_out = paddle.bitwise_xor(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_logical_not(x)
             pd_out = paddle.bitwise_not(x)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
     def _test_compare_operants(self):
         for device in self.devices:
@@ -366,27 +371,27 @@ class TestJITLoad(unittest.TestCase):
 
             out = self.custom_module.custom_less_than(x, y)
             pd_out = paddle.less_than(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_less_equal(x, y)
             pd_out = paddle.less_equal(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_equal(x, y)
             pd_out = paddle.equal(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_not_equal(x, y)
             pd_out = paddle.not_equal(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_greater_than(x, y)
             pd_out = paddle.greater_than(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
             out = self.custom_module.custom_greater_equal(x, y)
             pd_out = paddle.greater_equal(x, y)
-            np.testing.assert_equal(out.numpy(), pd_out.numpy())
+            check_output(out.numpy(), pd_out.numpy(), "out")
 
 
 if __name__ == '__main__':
