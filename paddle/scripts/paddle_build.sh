@@ -841,6 +841,10 @@ set -x
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            echo 1111
+            echo $retry_unittests
+            echo 2222
+            echo $failed_test_lists
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -4003,6 +4007,7 @@ function main() {
         echo "========================================================"
       fi
       echo "paddle_build script finished as expected"
+      sleep 30d
 }
 
 main $@
