@@ -55,13 +55,13 @@ GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
   }
   for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
   }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
 }
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils.hybrid_parallel_util import (
@@ -337,7 +337,7 @@ class PipelineParallel(MetaParallelBase):
                     assert len(outputs) == len(output_tensor_grad)
                     paddle.autograd.backward(
                         tensors=outputs,
-                        grad_tensors=[t for t in output_tensor_grad],
+                        grad_tensors=list(output_tensor_grad),
                     )
                 else:
                     paddle.autograd.backward(

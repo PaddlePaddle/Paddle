@@ -126,5 +126,6 @@ Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
   op->InferShape(*block);
   return out;
 }
+
 }  // namespace prim
 }  // namespace paddle

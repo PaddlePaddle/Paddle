@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import paddle
-import paddle.framework as framework
+import paddle.distributed as dist
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+from paddle.fluid import data_feeder
 
 
 def _reduce_scatter_tensor_in_dygraph(
@@ -63,6 +65,40 @@ def _reduce_scatter_in_dygraph(
         task.wait()
 
     return task
+
+
+def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
+    op_type = 'reduce_scatter'
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        op_type,
+    )
+
+    helper = framework.LayerHelper(op_type, **locals())
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+
+    helper.append_op(
+        type=op_type,
+        inputs={'x': [tensor_or_tensor_list]},
+        outputs={'out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'nranks': nranks,
+        },
+    )
+    return None
 
 
 def reduce_scatter(
@@ -141,10 +177,13 @@ def reduce_scatter(
                 sync_op,
                 use_calc_stream,
             )
-
-    raise RuntimeError(
-        "paddle.distributed.stream.reduce_scatter is only supported in dygraph mode now."
-    )
+    else:
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
+        return _reduce_scatter_in_static_mode(
+            tensor, tensor_or_tensor_list, group
+        )
 
 
 def _reduce_scatter_base(

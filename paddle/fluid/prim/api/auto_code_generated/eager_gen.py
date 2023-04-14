@@ -28,7 +28,7 @@ inplace_optional_out_type_map = {
 
 
 class BaseAPI:
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         # self.api = api_item_yaml['op']
         self.api = api_item_yaml['name']
 
@@ -248,7 +248,7 @@ class BaseAPI:
 
 
 class EagerPrimAPI(BaseAPI):
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         super().__init__(api_item_yaml, prims)
 
     def get_api__func_name(self):

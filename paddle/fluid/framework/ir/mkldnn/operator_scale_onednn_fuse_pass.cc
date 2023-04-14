@@ -31,6 +31,8 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
       "fused_matmul",
       "matmul",
       "matmul_v2",
+      "fused_elementwise_mul",
+      "fused_elementwise_div",
       "elementwise_add",
       "elementwise_sub",
       "elementwise_mul",
@@ -87,10 +89,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
-    if (op_type == "matmul" || op_type == "matmul_v2") {
-      ConvertToFusedOp(operator_op->Op());
-    }
-
+    ConvertToFusedOp(operator_op->Op());
     operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 
@@ -120,6 +119,8 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
             .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
+            .EQ("fused_elementwise_mul", 0)
+            .EQ("fused_elementwise_div", 0)
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)
             .LE("elementwise_mul", 1)

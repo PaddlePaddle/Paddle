@@ -284,7 +284,7 @@ def is_parameter_related(varname, block, dist_context=None):
         varname = varname[: varname.index(".quantized")]
     assert block._find_var_recursive(
         varname
-    ), "cannot find var {} in cur block".format(varname)
+    ), f"cannot find var {varname} in cur block"
     var = block._var_recursive(varname)
     # NOTE(hack method): to find the param which is resharded
     if dist_context and "@RESHARD" in varname:
@@ -440,9 +440,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )
-        allreduce_op._set_attr(
-            'op_namescope', str('/') + ParallelMode.DataParallel
-        )
+        allreduce_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
         added_ops.append(allreduce_op)
 
         if dist_ctx.gradient_scale:
@@ -452,9 +450,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
                 outputs={'Out': grad_var},
                 attrs={'scale': 1.0 / dp_degree, OP_ROLE_KEY: OpRole.Backward},
             )
-            scale_op._set_attr(
-                'op_namescope', str('/') + ParallelMode.DataParallel
-            )
+            scale_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
             added_ops.append(scale_op)
 
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)

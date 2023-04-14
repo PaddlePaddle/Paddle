@@ -75,12 +75,6 @@ class ApiOnesZerosError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error3)
 
-        def test_error4():
-            with paddle.static.program_guard(paddle.static.Program()):
-                ones = paddle.ones(shape=[10], dtype="int8")
-
-        self.assertRaises(TypeError, test_error4)
-
 
 if __name__ == "__main__":
     unittest.main()

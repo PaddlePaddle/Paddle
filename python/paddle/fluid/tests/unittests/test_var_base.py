@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestVarBase(unittest.TestCase):
@@ -168,7 +168,7 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x_array.dtype, x.numpy().dtype)
                 np.testing.assert_array_equal(x_array, x.numpy())
 
-                x = paddle.to_tensor(1.0)
+                x = paddle.to_tensor(1.0, place=place)
                 self.assertEqual(x.item(), 1.0)
                 self.assertTrue(isinstance(x.item(), float))
 
@@ -272,9 +272,6 @@ class TestVarBase(unittest.TestCase):
             check_with_place("gpu_pinned")
             check_with_place(core.CUDAPlace(0))
             check_with_place("gpu:0")
-        if core.is_compiled_with_npu():
-            check_with_place(core.NPUPlace(0))
-            check_with_place("npu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
         with paddle.fluid.dygraph.guard(core.CPUPlace()):
@@ -1018,9 +1015,7 @@ class TestVarBase(unittest.TestCase):
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
-            np.testing.assert_array_equal(
-                var.numpy(), fluid.framework._var_base_to_np(var)
-            )
+            np.testing.assert_array_equal(var.numpy(), var.numpy(False))
 
     def test_var_base_as_np(self):
         with fluid.dygraph.guard():
@@ -1051,7 +1046,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_to_static_var(self):
         with fluid.dygraph.guard():
-            # Convert VarBase into Variable or Parameter
+            # Convert Tensor into Variable or Parameter
             var_base = fluid.dygraph.to_variable(self.array, name="var_base_1")
             static_var = var_base._to_static_var()
             self._assert_to_static(var_base, static_var)
@@ -1060,7 +1055,7 @@ class TestVarBase(unittest.TestCase):
             static_param = var_base._to_static_var(to_parameter=True)
             self._assert_to_static(var_base, static_param, True)
 
-            # Convert ParamBase into Parameter
+            # Convert EagerParamBase into Parameter
             fc = paddle.nn.Linear(
                 10,
                 20,
@@ -1078,7 +1073,7 @@ class TestVarBase(unittest.TestCase):
         if is_param:
             self.assertTrue(isinstance(static_var, fluid.framework.Parameter))
             self.assertTrue(static_var.persistable, True)
-            if isinstance(var_base, fluid.framework.ParamBase):
+            if isinstance(var_base, fluid.framework.EagerParamBase):
                 for attr in ['trainable', 'is_distributed', 'do_model_average']:
                     self.assertEqual(
                         getattr(var_base, attr), getattr(static_var, attr)

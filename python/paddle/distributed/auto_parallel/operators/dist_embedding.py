@@ -278,6 +278,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         for mapping in ids_dims_mapping[1:]:
             if is_dim_shard(mapping):
                 return False
+
+        if is_dim_shard(ids_dims_mapping[0]) and is_dim_shard(
+            w_dims_mapping[-2]
+        ):
+            if ids_dims_mapping[0] == w_dims_mapping[-2]:
+                return False
         return True
 
     def is_output_compatible(self, dist_op):
@@ -356,7 +362,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"forward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')

@@ -195,13 +195,20 @@ REGISTER_OPERATOR(prroi_pool,
                   ops::PRROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::PRROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
-REGISTER_OP_CPU_KERNEL(prroi_pool,
-                       ops::CPUPRROIPoolOpKernel<phi::CPUContext, float>,
-                       ops::CPUPRROIPoolOpKernel<phi::CPUContext, double>,
-                       ops::CPUPRROIPoolOpKernel<phi::CPUContext, int>,
-                       ops::CPUPRROIPoolOpKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(prroi_pool_grad,
-                       ops::CPUPRROIPoolGradOpKernel<phi::CPUContext, float>,
-                       ops::CPUPRROIPoolGradOpKernel<phi::CPUContext, double>,
-                       ops::CPUPRROIPoolGradOpKernel<phi::CPUContext, int>,
-                       ops::CPUPRROIPoolGradOpKernel<phi::CPUContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(prroi_pool,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUPRROIPoolOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(prroi_pool_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUPRROIPoolGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

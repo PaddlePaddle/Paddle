@@ -18,7 +18,7 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -172,16 +172,6 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _destroy_process_group_id_map():
-    """
-
-    Destroy the custom process group. Designed for CustomDevice.
-
-
-    """
-    core.ProcessGroupIdMap.destroy()
-
-
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -286,16 +276,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_npu():
-                place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_mlu():
-                place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             elif core.is_compiled_with_xpu():

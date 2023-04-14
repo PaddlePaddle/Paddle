@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
+from paddle import nn
 from paddle.distributed.fleet import auto
+from paddle.fluid import core
 from paddle.static import InputSpec
 from paddle.static.amp.bf16.amp_utils import _valid_types
 from paddle.static.amp.fp16_utils import find_true_prev_op
@@ -203,7 +203,7 @@ class TestBF16Pass(unittest.TestCase):
         bf16_o1_engine.prepare(
             inputs_spec=inputs_spec, labels_spec=labels_spec, mode="train"
         )
-        self.check_program(bf16_o1_engine._dist_main_progs["train"][0])
+        self.check_program(bf16_o1_engine.main_program)
         print("BF16!check program successfully!")
 
 

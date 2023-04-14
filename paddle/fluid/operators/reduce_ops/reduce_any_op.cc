@@ -32,7 +32,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_any,
                             ReduceAnyInferShapeFunctor,
                             PD_INFER_META(phi::ReduceInferMetaBase));
 
-class ReduceAnyOpMaker : public ops::ReduceOpMaker {
+class ReduceAnyOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_any"; }
   virtual std::string GetOpType() const { return "Reduce reduce_any"; }

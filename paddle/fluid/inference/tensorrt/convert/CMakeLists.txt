@@ -2,11 +2,9 @@
 list(
   APPEND
   CONVERT_FILES
-  matmul_op.cc
-  matmul_v2_op.cc
+  matrix_multiply_op.cc
   bmm_op.cc
   conv2d_op.cc
-  fc_op.cc
   pool2d_op.cc
   elementwise_op.cc
   batch_norm_op.cc
@@ -28,10 +26,12 @@ list(
   multihead_matmul_roformer_op.cc
   flash_multihead_matmul_op.cc
   cross_multihead_matmul_op.cc
+  qk_multihead_matmul_op.cc
   grid_sampler_op.cc
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc
+  bitwise_not_op.cc
   one_hot_op.cc
   swish_op.cc
   silu_op.cc
@@ -104,6 +104,7 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  cumsum_op.cc
   temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

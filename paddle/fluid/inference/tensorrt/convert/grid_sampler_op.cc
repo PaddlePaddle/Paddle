@@ -27,7 +27,7 @@ class GridSamplerOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(8510)
-    VLOG(3) << "convert a fluid grid_sampler op to tensorrt GridSample layer";
+    VLOG(3) << "convert a grid_sampler op to tensorrt GridSample layer";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_x_name = op_desc.Input("X").front();
     std::string input_grid_name = op_desc.Input("Grid").front();

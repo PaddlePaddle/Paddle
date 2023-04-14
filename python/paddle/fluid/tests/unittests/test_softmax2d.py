@@ -18,7 +18,7 @@ import numpy as np
 from test_softmax_op import ref_softmax
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class TestSoftmax2DAPI(unittest.TestCase):

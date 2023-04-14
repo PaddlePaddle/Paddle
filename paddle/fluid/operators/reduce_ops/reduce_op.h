@@ -88,7 +88,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
       PADDLE_ENFORCE_LT(e,
                         dim_size,
                         paddle::platform::errors::InvalidArgument(
-                            "ReduceOp: invalid axis, when x_dims is %d, "
+                            "ReduceBaseOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
                             e));
@@ -499,20 +499,20 @@ class ReduceGradKernel : public framework::OpKernel<T> {
   }
 };
 
-class ReduceOp : public framework::OperatorWithKernel {
+class ReduceBaseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceBaseOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(),
                       0,
                       platform::errors::InvalidArgument(
-                          "The input dim dimensions of ReduceOp "
+                          "The input dim dimensions of ReduceBaseOp "
                           "should be greater than 0. But received the dim "
                           "dimesions of Reduce = %d.",
                           dims.size()));
@@ -636,9 +636,9 @@ class ReduceOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReduceOpUseInputPlace : public ReduceOp {
+class ReduceOpUseInputPlace : public ReduceBaseOp {
  public:
-  using ReduceOp::ReduceOp;
+  using ReduceBaseOp::ReduceBaseOp;
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -655,11 +655,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
                    "Input",
                    "Out@GRAD",
-                   "ReduceOp");
+                   "ReduceBaseOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     // TODO(dev): We should delete Infershape and migrate it into
@@ -710,7 +710,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceBaseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
     AddInput("X",
@@ -763,7 +763,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 #if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 template <typename T,
           template <typename>
-          class ReduceOp,
+          class ReduceBaseOp,
           template <typename, typename>
           class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
@@ -790,7 +790,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
 
-    phi::Reduce<T, ReduceOp, TransformOp>(
+    phi::Reduce<T, ReduceBaseOp, TransformOp>(
         dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
   }
 };
@@ -869,14 +869,14 @@ struct DivideFunctor {
 namespace ops = paddle::operators;
 
 #define REGISTER_REDUCE_OP(op_name)                                           \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {                \
    protected:                                                                 \
     virtual std::string GetName() const { return #op_name; }                  \
     virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
   };                                                                          \
   REGISTER_OPERATOR(                                                          \
       op_name,                                                                \
-      ops::ReduceOp,                                                          \
+      ops::ReduceBaseOp,                                                      \
       __##op_name##Maker__,                                                   \
       paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
       paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
@@ -884,14 +884,14 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
 #define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {           \
    protected:                                                            \
     virtual std::string GetName() const { return #op_name; }             \
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
   REGISTER_OPERATOR(                                                     \
       op_name,                                                           \
-      ops::ReduceOp##__VA_ARGS__,                                        \
+      ops::ReduceBaseOp##__VA_ARGS__,                                    \
       __##op_name##Maker__,                                              \
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

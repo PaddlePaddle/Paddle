@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle.fluid import Program, core, program_guard
@@ -148,14 +148,10 @@ class TestMarginCrossEntropyOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-5, check_eager=True
-        )
+        self.check_output_with_place(core.CUDAPlace(0), atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CUDAPlace(0), ["Logits"], "Loss", check_eager=True
-        )
+        self.check_grad_with_place(core.CUDAPlace(0), ["Logits"], "Loss")
 
 
 @unittest.skipIf(
@@ -172,7 +168,6 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
             "Loss",
             numeric_grad_delta=5e-2,
             max_relative_error=5e-2,
-            check_eager=True,
         )
 
 
@@ -184,9 +179,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(
-            core.CUDAPlace(0), atol=5e-2, check_eager=True
-        )
+        self.check_output_with_place(core.CUDAPlace(0), atol=5e-2)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -195,7 +188,91 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
             "Loss",
             numeric_grad_delta=6e-1,
             max_relative_error=6e-1,
-            check_eager=True,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMarginCrossEntropyBF16Op(OpTest):
+    def initParams(self):
+        self.python_api = python_api
+        self.op_type = "margin_cross_entropy"
+        self.python_out_sig = ["Loss"]
+        self.axis = -1
+        self.batch_dim = 5
+        self.feat_dim = 41
+        self.num_class = 37
+
+    def init_loss_params(self):
+        self.margin1 = 1.0
+        self.margin2 = 0.5
+        self.margin3 = 0.0
+        self.scale = 2.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        # For bfloat16, converts float32 to uint16
+        self.np_dtype = "float32"
+
+    def setUp(self):
+        self.initParams()
+        self.init_loss_params()
+        self.init_dtype()
+
+        datas = np.random.uniform(
+            -0.99, 0.99, [self.batch_dim, self.feat_dim]
+        ).astype(self.np_dtype)
+        datas = datas / np.sqrt(np.sum(np.square(datas), axis=1, keepdims=True))
+        weights = np.random.uniform(
+            -0.99, 0.99, [self.feat_dim, self.num_class]
+        ).astype(self.np_dtype)
+        weights = weights / np.sqrt(
+            np.sum(np.square(weights), axis=0, keepdims=True)
+        )
+        logits = np.matmul(datas, weights)
+
+        labels = np.random.randint(
+            0, self.num_class, (self.batch_dim,), dtype="int64"
+        )
+
+        loss, softmax = margin_cross_entropy(
+            logits,
+            labels,
+            self.axis,
+            self.margin1,
+            self.margin2,
+            self.margin3,
+            self.scale,
+        )
+
+        self.inputs = {
+            "Logits": convert_float_to_uint16(logits),
+            "Label": labels,
+        }
+        self.outputs = {
+            "Softmax": convert_float_to_uint16(softmax.astype(self.np_dtype)),
+            "Loss": convert_float_to_uint16(loss.astype(self.np_dtype)),
+        }
+        self.attrs = {
+            'margin1': self.margin1,
+            'margin2': self.margin2,
+            'margin3': self.margin3,
+            'scale': self.scale,
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), atol=5e-2)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
+            ["Logits"],
+            "Loss",
+            numeric_grad_delta=6e-1,
+            max_relative_error=6e-1,
         )
 
 
@@ -224,17 +301,13 @@ class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
 class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     def test_check_output(self):
         try:
-            self.check_output_with_place(
-                core.CPUPlace(), atol=1e-5, check_eager=True
-            )
+            self.check_output_with_place(core.CPUPlace(), atol=1e-5)
         except RuntimeError:
             pass
 
     def test_check_grad(self):
         try:
-            self.check_grad_with_place(
-                core.CPUPlace(), ["Logits"], "Loss", check_eager=True
-            )
+            self.check_grad_with_place(core.CPUPlace(), ["Logits"], "Loss")
         except RuntimeError:
             pass
 
@@ -279,63 +352,64 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             self.check_static_result(place=place)
 
     def check_static_result(self, place):
-        with program_guard(Program(), Program()):
-            datas = np.random.uniform(
-                -0.99, 0.99, [self.batch_dim, self.feat_dim]
-            ).astype(self.dtype)
-            datas = datas / np.sqrt(
-                np.sum(np.square(datas), axis=1, keepdims=True)
-            )
-            weights = np.random.uniform(
-                -0.99, 0.99, [self.feat_dim, self.num_class]
-            ).astype(self.dtype)
-            weights = weights / np.sqrt(
-                np.sum(np.square(weights), axis=0, keepdims=True)
-            )
+        with paddle_static_guard():
+            with program_guard(Program(), Program()):
+                datas = np.random.uniform(
+                    -0.99, 0.99, [self.batch_dim, self.feat_dim]
+                ).astype(self.dtype)
+                datas = datas / np.sqrt(
+                    np.sum(np.square(datas), axis=1, keepdims=True)
+                )
+                weights = np.random.uniform(
+                    -0.99, 0.99, [self.feat_dim, self.num_class]
+                ).astype(self.dtype)
+                weights = weights / np.sqrt(
+                    np.sum(np.square(weights), axis=0, keepdims=True)
+                )
 
-            logits_np = np.matmul(datas, weights)
-            labels_np = np.random.randint(
-                0, self.num_class, (self.batch_dim,), dtype="int64"
-            )
+                logits_np = np.matmul(datas, weights)
+                labels_np = np.random.randint(
+                    0, self.num_class, (self.batch_dim,), dtype="int64"
+                )
 
-            loss_np, softmax_np = margin_cross_entropy(
-                logits_np,
-                labels_np,
-                self.axis,
-                self.margin1,
-                self.margin2,
-                self.margin3,
-                self.scale,
-                self.reduction,
-            )
+                loss_np, softmax_np = margin_cross_entropy(
+                    logits_np,
+                    labels_np,
+                    self.axis,
+                    self.margin1,
+                    self.margin2,
+                    self.margin3,
+                    self.scale,
+                    self.reduction,
+                )
 
-            logits = paddle.static.data(
-                name='logits',
-                shape=[self.batch_dim, self.num_class],
-                dtype=self.dtype,
-            )
-            label = paddle.static.data(
-                name='label', shape=[self.batch_dim], dtype="int64"
-            )
-            loss, softmax = paddle.nn.functional.margin_cross_entropy(
-                logits,
-                label,
-                margin1=self.margin1,
-                margin2=self.margin2,
-                margin3=self.margin3,
-                scale=self.scale,
-                return_softmax=True,
-                reduction=self.reduction,
-            )
+                logits = paddle.static.data(
+                    name='logits',
+                    shape=[self.batch_dim, self.num_class],
+                    dtype=self.dtype,
+                )
+                label = paddle.static.data(
+                    name='label', shape=[self.batch_dim], dtype="int64"
+                )
+                loss, softmax = paddle.nn.functional.margin_cross_entropy(
+                    logits,
+                    label,
+                    margin1=self.margin1,
+                    margin2=self.margin2,
+                    margin3=self.margin3,
+                    scale=self.scale,
+                    return_softmax=True,
+                    reduction=self.reduction,
+                )
 
-            exe = paddle.fluid.Executor(place)
-            [loss_res, softmax_res] = exe.run(
-                paddle.fluid.default_main_program(),
-                feed={'logits': logits_np, 'label': labels_np},
-                fetch_list=[loss, softmax],
-            )
-            np.testing.assert_allclose(loss_res, loss_np)
-            np.testing.assert_allclose(softmax_res, softmax_np)
+                exe = paddle.fluid.Executor(place)
+                [loss_res, softmax_res] = exe.run(
+                    paddle.fluid.default_main_program(),
+                    feed={'logits': logits_np, 'label': labels_np},
+                    fetch_list=[loss, softmax],
+                )
+                np.testing.assert_allclose(loss_res, loss_np)
+                np.testing.assert_allclose(softmax_res, softmax_np)
 
     def test_dynamic(self):
         for place in self.places:

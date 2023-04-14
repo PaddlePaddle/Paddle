@@ -225,6 +225,9 @@ class GradNodeBase {
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                      const AutogradMeta* fwd_in_other,
+                      size_t slot_rank);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user

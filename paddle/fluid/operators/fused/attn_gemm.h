@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
@@ -129,21 +129,21 @@ class AttnMatMul {
                        bool fused = false) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     if (compute_bias_ && fused) {
-      ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
-                                          d_output,
-                                          input,
-                                          weight,
-                                          nullptr,
-                                          bsz_seq_,      // M
-                                          output_size_,  // N
-                                          input_size_,   // K
-                                          transA_,
-                                          transB_,
-                                          "none",
-                                          d_input,
-                                          d_weight,
-                                          d_bias,
-                                          use_addto);
+      phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                                      d_output,
+                                                      input,
+                                                      weight,
+                                                      nullptr,
+                                                      bsz_seq_,      // M
+                                                      output_size_,  // N
+                                                      input_size_,   // K
+                                                      transA_,
+                                                      transB_,
+                                                      "none",
+                                                      d_input,
+                                                      d_weight,
+                                                      d_bias,
+                                                      use_addto);
       return;
     }
 #endif

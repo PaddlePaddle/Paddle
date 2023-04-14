@@ -70,7 +70,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
-            output = list()
+            output = []
             index = 0
             for count in self.lod[0]:
                 arr = ids[index : count + index]
@@ -107,7 +107,7 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
     def test_api(self):
         with paddle_static_guard():
             if ver.mkl() == "ON" and 'Linux' in platform.platform():
-                import paddle.fluid as fluid
+                from paddle import fluid
 
                 dict_size = 20
                 data_t = paddle.static.data(

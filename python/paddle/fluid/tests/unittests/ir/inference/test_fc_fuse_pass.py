@@ -19,8 +19,6 @@ import numpy as np
 from auto_scan_test import IgnoreReasons, PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
-import paddle.inference as paddle_infer
-
 
 class TestFcFusePass(PassAutoScanTest):
     r"""
@@ -45,14 +43,6 @@ class TestFcFusePass(PassAutoScanTest):
 
         # trt static_shape
         config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=8,
-            workspace_size=102400,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False,
-        )
         yield config, ['fc'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):

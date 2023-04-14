@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Program, default_main_program, program_guard
 
 paddle.enable_static()

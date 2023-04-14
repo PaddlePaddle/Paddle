@@ -565,6 +565,7 @@ def exp(x, name=None):
             [
                 'int32',
                 'int64',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -1025,7 +1026,7 @@ def erf(x, name=None):
         return _C_ops.erf(x)
 
     locals_var = locals().copy()
-    kwargs = dict()
+    kwargs = {}
     for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val

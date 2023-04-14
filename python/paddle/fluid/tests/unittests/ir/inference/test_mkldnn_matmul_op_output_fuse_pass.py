@@ -18,8 +18,8 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm, clip
 
@@ -37,7 +39,7 @@ def _obtain_optimizer_parameters_list(optimizer):
             for param in group['params']:
                 parameters_list.append(param)
     else:
-        parameters_list = [param for param in optimizer._parameter_list]
+        parameters_list = list(optimizer._parameter_list)
 
     return parameters_list
 
@@ -200,7 +202,10 @@ class HybridParallelClipGrad:
             + paddle.to_tensor([1.0e-6], dtype=paddle.float32),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
-        clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
+
+        # bf16 is not supported on XPU now
+        if not paddle.is_compiled_with_xpu():
+            clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
                 continue
@@ -209,6 +214,10 @@ class HybridParallelClipGrad:
             if g.dtype == paddle.float16:
                 g.scale_(clip_var_fp16)
             elif g.dtype == paddle.bfloat16:
+                if paddle.is_compiled_with_xpu():
+                    raise NotImplementedError(
+                        "BF16 is not supported on XPU now"
+                    )
                 g.scale_(clip_var_bf16)
             else:
                 g.scale_(clip_var)
@@ -285,6 +294,83 @@ class HybridParallelOptimizer:
                                 self._inner_opt._grad_clip, hcg
                             )
 
+    def _filter_fn(self, param):
+        p_name = param.name
+        tar_param = ["embedding", "layer_norm", ".b_"]
+        if param.is_distributed is False:
+            for tar in tar_param:
+                if tar in p_name:
+                    return True
+        return False
+
+    def _step(self, parameters_list):
+        mp_group = self._hcg.get_model_parallel_group()
+        src_rank = self._hcg.get_model_parallel_group_src_rank()
+        params = None
+        mp_configs = None
+
+        if mp_group.nranks > 1:
+            mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+                "mp_configs"
+            ]
+
+        if mp_configs and (
+            mp_configs.sync_param
+            or mp_configs.sync_grad
+            or mp_configs.sync_moment
+        ):
+            params = sorted(
+                [p for p in parameters_list if self._filter_fn(p)],
+                key=lambda p: p.name,
+            )
+
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
+            for p in params:
+                if p.grad is None:
+                    continue
+                paddle.distributed.broadcast(
+                    p.grad, src=src_rank, group=mp_group, sync_op=True
+                )
+
+        self._inner_opt.step()
+
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
+            for p in params:
+                paddle.distributed.broadcast(
+                    p, src=src_rank, group=mp_group, sync_op=True
+                )
+
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
+            for p in params:
+                # support opt state of adam and adamw to broadcast now.
+                if isinstance(
+                    self._inner_opt,
+                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
+                ):
+                    if (
+                        self._inner_opt._multi_precision
+                        and p.name in self._master_weights
+                    ):
+                        paddle.distributed.broadcast(
+                            self._inner_opt._master_weights[p.name],
+                            src=src_rank,
+                            group=mp_group,
+                            sync_op=True,
+                        )
+
+                    moment1 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment1_acc_str, p
+                    )
+                    moment2 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment2_acc_str, p
+                    )
+                    paddle.distributed.broadcast(
+                        moment1, src=src_rank, group=mp_group, sync_op=True
+                    )
+                    paddle.distributed.broadcast(
+                        moment2, src=src_rank, group=mp_group, sync_op=True
+                    )
+
     @no_grad()
     @framework.dygraph_only
     def step(self):
@@ -295,7 +381,7 @@ class HybridParallelOptimizer:
         if self._dp_enable:
             fused_allreduce_gradients(list(parameters_list), self._hcg)
 
-        self._inner_opt.step()
+        self._step(parameters_list)
 
     @no_grad()
     def minimize(

@@ -16,9 +16,9 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-import paddle.fluid as fluid
-import paddle.fluid.io as io
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
+from paddle.fluid import io
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
@@ -82,6 +82,7 @@ class Collective(Fleet):
         target_vars=None,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for
@@ -109,6 +110,7 @@ class Collective(Fleet):
             None,
             None,
             export_for_deployment,
+            legacy_format=legacy_format,
         )
 
     def save_persistables(
@@ -301,9 +303,7 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _check_condition(self, name, **kwargs):
         for k, v in kwargs.items():
             if v is True:
-                raise AssertionError(
-                    "you can't use %s and %s together" % (name, k)
-                )
+                raise AssertionError(f"you can't use {name} and {k} together")
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
@@ -494,8 +494,8 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def raiseOptimizeError(self, strategy_name, optimize_name):
         raise ValueError(
-            "can not use {0} when you set DistStrategy.{1} "
-            "as True".format(optimize_name, strategy_name)
+            f"can not use {optimize_name} when you set DistStrategy.{strategy_name} "
+            "as True"
         )
 
     def minimize(
