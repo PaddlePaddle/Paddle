@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -58,6 +59,8 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
         if scale is not None:
+            if np.isscalar(scale) and not isinstance(scale, str):
+                scale = [scale]
             div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
             paddle.fluid.framework._dygraph_tracer().trace_op(
                 type="elementwise_div",
