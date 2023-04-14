@@ -141,11 +141,9 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
-  std::cout << "line  143" << std::endl;
   const size_t total_dims = x.dims().size();
   auto bd_dim = BroadCastTensorsDims(int_indices_v);
 
-  std::cout << "line  147" << std::endl;
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
@@ -155,8 +153,9 @@ void IndexPutKernel(const Context& dev_ctx,
   if (int_indices_v.size() < total_dims) {
     std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
     int len_bd_dim = bd_dim.size();
-    res_dim_v.insert(
-        res_dim_v.end(), tmp_x_dims.begin() + len_bd_dim, tmp_x_dims.end());
+    res_dim_v.insert(res_dim_v.end(),
+                     tmp_x_dims.begin() + int_indices_v.size(),
+                     tmp_x_dims.end());
 
     std::vector<DenseTensor> reshaped_indices_v;
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
@@ -167,7 +166,12 @@ void IndexPutKernel(const Context& dev_ctx,
         reshaped_indices_v.emplace_back(*int_indices_v[i]);
       }
     }
-    for (size_t i = int_indices_v.size(); i < total_dims; ++i) {
+
+    for (auto dim : res_dim_v) {
+      std::cout << dim << std::endl;
+    }
+
+    for (size_t i = len_bd_dim; i < res_dim_v.size(); ++i) {
       reshaped_indices_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
           dev_ctx, res_dim_v[i], phi::DataType::INT64));
     }
@@ -179,7 +183,10 @@ void IndexPutKernel(const Context& dev_ctx,
               dev_ctx,
               reshaped_indices_v[i],
               res_dim,
-              ((i < int_indices_v.size()) ? 0 : i)));
+              bd_dim,
+              ((i < int_indices_v.size())
+                   ? 0
+                   : i - int_indices_v.size() + len_bd_dim)));
     }
     for (size_t i = 0; i < res_indices_v.size(); ++i) {
       res_indices_v[i] = &tmp_res_indices_v[i];
@@ -235,7 +242,6 @@ void IndexPutKernel(const Context& dev_ctx,
       ptr_value = &value;
     }
   }
-  std::cout << "line  249" << std::endl;
 
   switch (total_dims) {
     case 1:
@@ -268,7 +274,6 @@ void IndexPutKernel(const Context& dev_ctx,
           "%d",
           x.dims().size()));
   }
-  std::cout << "line  276" << std::endl;
 }
 }  // namespace phi
 

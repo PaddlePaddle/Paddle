@@ -147,8 +147,9 @@ void IndexPutKernel(const Context& dev_ctx,
   if (int_indices_v.size() < total_dims) {
     std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
     int len_bd_dim = bd_dim.size();
-    res_dim_v.insert(
-        res_dim_v.end(), tmp_x_dims.begin() + len_bd_dim, tmp_x_dims.end());
+    res_dim_v.insert(res_dim_v.end(),
+                     tmp_x_dims.begin() + int_indices_v.size(),
+                     tmp_x_dims.end());
 
     std::vector<DenseTensor> reshaped_indices_v;
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
@@ -159,7 +160,7 @@ void IndexPutKernel(const Context& dev_ctx,
         reshaped_indices_v.emplace_back(*int_indices_v[i]);
       }
     }
-    for (size_t i = int_indices_v.size(); i < total_dims; ++i) {
+    for (size_t i = len_bd_dim; i < res_dim_v.size(); ++i) {
       reshaped_indices_v.emplace_back(GetRangeTensor<int64_t, Context>(
           dev_ctx, res_dim_v[i], phi::DataType::INT64));
     }
@@ -171,7 +172,10 @@ void IndexPutKernel(const Context& dev_ctx,
               dev_ctx,
               reshaped_indices_v[i],
               res_dim,
-              ((i < int_indices_v.size()) ? 0 : i)));
+              bd_dim,
+              ((i < int_indices_v.size())
+                   ? 0
+                   : i - int_indices_v.size() + len_bd_dim)));
     }
     for (size_t i = 0; i < res_indices_v.size(); ++i) {
       res_indices_v[i] = &tmp_res_indices_v[i];

@@ -33,13 +33,19 @@ static phi::DenseTensor GetReshapeAndExpandTensor(
     const Context& dev_ctx,
     const phi::DenseTensor& tensor,
     const phi::DDim& res_dim,
+    const phi::DDim& bd_dim,
     int index) {
   std::vector<int64_t> before_dims = phi::vectorize(tensor.dims());
   std::vector<int64_t> mid_dims(res_dim.size(), 1);
 
-  for (size_t i = 0; i < before_dims.size(); ++i) {
-    mid_dims[i + index] = before_dims[i];
+  if (index == 0) {
+    for (size_t i = 0; i < before_dims.size(); ++i) {
+      mid_dims[bd_dim.size() - i - 1] = before_dims[before_dims.size() - i - 1];
+    }
+  } else {
+    mid_dims[index] = before_dims[0];
   }
+
   phi::DenseTensor mid_tensor(tensor.dtype());
   mid_tensor.Resize(phi::make_ddim(mid_dims));
   ReshapeInferKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
