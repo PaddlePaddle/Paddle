@@ -826,17 +826,17 @@ set +x
                 grep -F  -f all_ut_depend_on_protobuf3 ut_run_in_py3 > ut_run_by_protobuf3_in_py3
                 ut_run_by_protobuf3=''
                 for ut_case in $(cat all_ut_depend_on_protobuf3);do
-                if [[ "$ut_run_by_protobuf3" == "" ]]; then
-                    ut_run_by_protobuf3="^$ut_case$"
-                else
-                    ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
-                fi
+                    if [[ "$ut_run_by_protobuf3" == "" ]]; then
+                        ut_run_by_protobuf3="^$ut_case$"
+                    else
+                        ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
+                    fi
                 done
                 #run tests which do not depend on prootbuf3
                 ctest -E "$disable_ut_quickly|${ut_run_by_protobuf3}" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
                 pip install protobuf==3.20.2
                 #run tests which depend on prootbuf3
-                ctest -R "${ut_run_by_protobuf3_in_py3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+                ctest -R "${ut_run_by_protobuf3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             fi
         else
             if [[ "$protobuf_version" == 3.* ]]; then
@@ -857,11 +857,11 @@ set +x
                 grep -F  -f  all_ut_depend_on_protobuf3 ut_list_prec_list > ut_run_by_protobuf3_in_py3
                 ut_run_by_protobuf3=''
                 for ut_case in $(cat ut_run_by_protobuf3_in_py3);do
-                if [[ "$ut_run_by_protobuf3" == "" ]]; then
-                    ut_run_by_protobuf3="^$ut_case$"
-                else
-                    ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
-                fi
+                    if [[ "$ut_run_by_protobuf3" == "" ]]; then
+                        ut_run_by_protobuf3="^$ut_case$"
+                    else
+                        ut_run_by_protobuf3="$ut_run_by_protobuf3|^$ut_case$"
+                    fi
                 done
                 #run tests which depend on prootbuf3
                 ctest -R "${ut_run_by_protobuf3}" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
