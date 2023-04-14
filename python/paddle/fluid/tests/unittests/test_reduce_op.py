@@ -418,12 +418,17 @@ class TestMin8DOp(OpTest):
         self.check_output()
 
 
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework."
+)
 class TestMinFP16Op(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"
         self.python_api = paddle.min
+        self.public_python_api = paddle.min
         self.init_dtype()
         if self.dtype == np.uint16:
             x = np.random.random((5, 6, 10)).astype(np.float32)
