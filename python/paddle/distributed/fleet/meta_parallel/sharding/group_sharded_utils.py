@@ -200,8 +200,9 @@ def device_guard(dev_id=0, device="cpu"):
     origin_device = paddle.device.get_device()
     if device == "cpu":
         paddle.set_device(device)
-    elif device in ["gpu", "xpu", "npu"]:
+    elif device in ["gpu", "xpu"]:
         paddle.set_device(f"{device}:{dev_id}")
+
     try:
         yield
     finally:
@@ -313,8 +314,6 @@ def cvt_to_device(x, dev_id, blocking=True):
     """
     if paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(dev_id)
-    elif paddle.is_compiled_with_npu():
-        place = paddle.NPUPlace(dev_id)
     elif paddle.is_compiled_with_xpu():
         place = paddle.XPUPlace(dev_id)
     else:

@@ -33,6 +33,42 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto offset = full<T>(phi::vectorize(x.dims()), 3.0, x.dtype());
+    auto condition = less_equal<T>(x, offset);
+    auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + 0.5), out_grad);
+    auto res = where<T>(
+        less_than<T>(x, full<T>(phi::vectorize(x.dims()), -3.0, x.dtype())),
+        full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()),
+        tmp1);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void leaky_relu_grad(const Tensor& out,
+                     const Tensor& out_grad,
+                     float negative_slope,
+                     Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition, out_grad, out_grad * negative_slope);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void silu_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+    auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto condition = greater_than<T>(
@@ -362,7 +398,7 @@ void elementwise_pow_grad(const Tensor& x,
     // dy = lnx * x^y
     auto lnx = log<T>(x);
     auto x_pow_y = elementwise_pow<T>(x, y);
-    auto dy_res = lnx * x_pow_y;
+    auto dy_res = lnx * x_pow_y * out_grad;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -382,7 +418,7 @@ void elementwise_pow_grad(const Tensor& x,
     // dx = y * x^(y-1)
     auto tmp_z = y - 1.0;
     auto x_pow_z = elementwise_pow<T>(x, tmp_z);
-    auto dx_res = y * x_pow_z;
+    auto dx_res = y * x_pow_z * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -1447,9 +1483,10 @@ void batch_norm_grad(const Tensor& x,
         if (bias_grad) {
           set_output<T>(out_grad_data_sum, bias_grad);
         }
-        break;
       }
+      break;
     }
+
     default:
       PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
                                                 data_layout));
@@ -1527,6 +1564,23 @@ void gelu_grad(const Tensor& x,
       auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
       set_output<T>(out_grad * (cdf + x * pdf), x_grad);
     }
+  }
+}
+
+template <typename T>
+void roll_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& shifts,
+               const std::vector<int64_t>& axis,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto shifts_ = shifts.GetData();
+    int64_t nums = shifts_.size();
+    for (int64_t i = 0; i < nums; i++) {
+      shifts_[i] = 0 - shifts_[i];
+    }
+    auto x_grad_output = roll<T>(out_grad, shifts_, axis);
+    set_output<T>(x_grad_output, x_grad);
   }
 }
 }  // namespace prim

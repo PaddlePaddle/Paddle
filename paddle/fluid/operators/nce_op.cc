@@ -320,9 +320,8 @@ REGISTER_OPERATOR(nce_grad,
                   ops::NCEOpGrad,
                   ops::NCEOpGradVarTypeInference,
                   ops::NCEGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(nce,
-                       ops::NCEKernel<paddle::platform::CPUPlace, float>,
-                       ops::NCEKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(nce_grad,
-                       ops::NCEGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::NCEGradKernel<paddle::platform::CPUPlace, double>);
+
+PD_REGISTER_STRUCT_KERNEL(nce, CPU, ALL_LAYOUT, ops::NCEKernel, float, double) {
+}
+PD_REGISTER_STRUCT_KERNEL(
+    nce_grad, CPU, ALL_LAYOUT, ops::NCEGradKernel, float, double) {}

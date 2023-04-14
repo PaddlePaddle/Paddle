@@ -37,6 +37,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
   set_tests_properties(test_pass_grad_clip
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_random_ctrl MODULES test_random_ctrl)
+  set_tests_properties(test_random_ctrl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                   TIMEOUT 50)
   py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
   set_tests_properties(test_pass_gradient_merge
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)

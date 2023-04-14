@@ -92,7 +92,7 @@ inline T GetValue(const phi::DenseTensor* x) {
   if (!platform::is_cpu_place(x->place())) {
     phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     const platform::DeviceContext* dev_ctx = pool.Get(x->place());
     dev_ctx->Wait();

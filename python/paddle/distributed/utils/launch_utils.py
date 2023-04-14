@@ -485,7 +485,7 @@ def start_local_trainers(
 
         fn = None
         if log_dir is not None:
-            os.system(f"mkdir -p {log_dir}")
+            os.makedirs(log_dir, exist_ok=True)
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:

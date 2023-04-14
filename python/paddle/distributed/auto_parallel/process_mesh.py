@@ -22,6 +22,8 @@ from paddle.framework import core
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
 _g_current_process_mesh = None
+# {shape_process_ids : unique_id}
+_g_unique_process_mesh_map = {}
 
 
 def get_current_process_mesh():
@@ -40,6 +42,30 @@ def reset_current_process_mesh():
     global _g_previous_process_mesh
     global _g_current_process_mesh
     _g_current_process_mesh = _g_previous_process_mesh
+
+
+def get_unique_id_for_process_mesh(shape, process_ids):
+    key = f"shape {shape}, process_ids {process_ids}"
+    global _g_unique_process_mesh_map
+    if key in _g_unique_process_mesh_map:
+        unique_id = _g_unique_process_mesh_map[key]
+    else:
+        unique_id = len(_g_unique_process_mesh_map) + 1
+        _g_unique_process_mesh_map[key] = unique_id
+
+    return unique_id
+
+
+def retrive_unique_id_for_process_mesh(shape, process_ids):
+    key = f"shape {shape}, process_ids {process_ids}"
+    global _g_unique_process_mesh_map
+    assert key in _g_unique_process_mesh_map
+    return _g_unique_process_mesh_map[key]
+
+
+def get_unique_process_mesh_map():
+    global _g_unique_process_mesh_map
+    return _g_unique_process_mesh_map
 
 
 class ProcessMesh(core.ProcessMesh):
@@ -124,12 +150,27 @@ class ProcessMesh(core.ProcessMesh):
         pg0 = get_process_group(0)
         pg0.add_ranks(self.process_ids)
 
+        # Uniqe Mesh Id
+        self._unique_id = get_unique_id_for_process_mesh(
+            self._shape, self._process_ids
+        )
+
     @property
     def mesh(self):
         """
         Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
+
+    @property
+    def unique_id(self):
+        """
+        Get the unique id of ProcessMesh.
+        NOTE
+        Unique id only take process_ids and shape into account.
+        Different ProcessMesh with same process_ids and shape have same unique id.
+        """
+        return self._unique_id
 
     def __getitem__(self, index):
         if isinstance(index, tuple):

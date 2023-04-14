@@ -54,7 +54,10 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                 "sin_input": [1, 12, 128, 64],
             },
         )
-        yield config, ["multihead_matmul_roformer", "matmul"], (1e-2, 1e-3)
+        yield config, ["multihead_matmul_roformer", "matrix_multiply"], (
+            1e-2,
+            1e-3,
+        )
 
     def sample_program_config(self, draw):
         def generate_mul_input():
@@ -263,12 +266,6 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             alpha=1.0,
             transpose_X=False,
             transpose_Y=True,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         ele_3 = OpConfig(
             "elementwise_add",
@@ -316,12 +313,6 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             alpha=1.0,
             transpose_X=False,
             transpose_Y=False,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         ops = [
             mul_0,

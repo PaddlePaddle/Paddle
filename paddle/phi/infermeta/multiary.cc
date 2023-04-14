@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
@@ -40,6 +42,7 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
+                       const MetaTensor& learning_rate,
                        const MetaTensor& master_param,
                        float rho,
                        float epsilon,
@@ -48,6 +51,11 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        MetaTensor* avg_squared_grad_out,
                        MetaTensor* avg_squared_update_out,
                        MetaTensor* master_param_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
       param_dims,
@@ -1426,7 +1434,6 @@ void HSigmoidLossInferMeta(const MetaTensor& x,
                            const MetaTensor& path,
                            const MetaTensor& code,
                            int num_classes,
-                           bool remote_prefetch,
                            bool is_sparse,
                            MetaTensor* out,
                            MetaTensor* pre_out,
