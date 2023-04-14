@@ -84,8 +84,6 @@ std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> relu_cpu_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
-  CHECK_CPU_INPUT(out);
-  CHECK_CPU_INPUT(ddx);
   auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_double_backward", ([&] {
@@ -111,30 +109,18 @@ std::vector<paddle::Tensor> relu_xpu_backward(const paddle::Tensor& x,
   CHECK_XPU_INPUT(x);
   CHECK_XPU_INPUT(out);
   CHECK_XPU_INPUT(grad_out);
-  auto grad_x = paddle::empty_like(x, x.dtype(), x.place());
-  auto ones = paddle::experimental::full_like(x, 1.0, x.dtype(), x.place());
-  auto zeros = paddle::experimental::full_like(x, 0.0, x.dtype(), x.place());
-  auto condition = paddle::experimental::greater_than(x, zeros);
 
-  grad_x = grad_out * condition;
-
-  return {grad_x};
+  // Reuse cpu implementation.
+  return relu_cpu_backward(x, out, grad_out);
 }
 
 std::vector<paddle::Tensor> relu_xpu_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
   CHECK_XPU_INPUT(out);
   CHECK_XPU_INPUT(ddx);
-  auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
-  auto ones =
-      paddle::experimental::full_like(out, 1.0, out.dtype(), out.place());
-  auto zeros =
-      paddle::experimental::full_like(out, 0.0, out.dtype(), out.place());
-  auto condition = paddle::experimental::greater_than(out, zeros);
 
-  ddout = ddx * condition;
-
-  return {ddout};
+  // Reuse cpu implementation.
+  return relu_cpu_double_backward(out, ddx);
 }
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
@@ -163,7 +149,7 @@ std::vector<paddle::Tensor> ReluDoubleBackward(const paddle::Tensor& out,
                                                const paddle::Tensor& ddx) {
   if (out.is_cpu()) {
     return relu_cpu_double_backward(out, ddx);
-  } else if (out.place().GetType() == phi::AllocationType::XPU) {
+  } else if (out.is_xpu()) {
     return relu_xpu_double_backward(out, ddx);
   } else {
     PD_THROW("Not implemented.");
