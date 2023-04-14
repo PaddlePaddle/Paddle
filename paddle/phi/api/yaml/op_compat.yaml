@@ -65,6 +65,7 @@
     episilon :
       data_type : float
       tensor_name : EpisilonTensor
+  manual_signature : [adam_]
 
 - op : adamax_
   inputs :
