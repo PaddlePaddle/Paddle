@@ -61,52 +61,9 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(reshape_grad,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeGradKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeDoubleGradKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(reshape_grad,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeGradKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeDoubleGradKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(reshape_grad,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeGradKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeDoubleGradKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_GENERAL_KERNEL(reshape_grad,
-                           Custom,
-                           ALL_LAYOUT,
-                           phi::ReshapeGradKernel<phi::CustomContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
-                           Custom,
-                           ALL_LAYOUT,
-                           phi::ReshapeDoubleGradKernel<phi::CustomContext>,
-                           ALL_DTYPE) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_grad,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeGradKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_double_grad,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeDoubleGradKernel) {}
