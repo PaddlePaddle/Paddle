@@ -19,7 +19,7 @@ namespace ir {
 ///
 /// \brief Tool template classe for construct interfaces or Traits.
 ///
-template <typename... Args>
+template <typename ConcreteOp, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
@@ -37,29 +37,33 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   void PlacementConstrctInterface(
       std::pair<TypeId, void *> *&p_interface) {  // NOLINT
-    // new 1 个
+    // void* ptmp = malloc(sizeof(T::Model<ConcreteOp>));
+    // new (ptmp) T::Model<ConcreteOp>();
+    // std::pair<TypeId, void*> pair_tmp = make_pair(TypeId::get<T>(), ptmp);
+    // memcpy(p_interface, &pair_tmp, sizeof(std::pair<TypeId, void*>));
     p_interface += 1;
   }
   /// Placement new trait.
   template <typename T>
   void PlacementConstrctTrait(TypeId *&p_trait) {  // NOLINT
-    // new 1 个
+    // new (p_trait) TypeId(TypeId::get<T>())
     p_trait += 1;
   }
 };
 
 /// Specialized for tuple type.
-template <typename... Args>
-class ConstructInterfacesOrTraits<std::tuple<Args...>> {
+template <typename ConcreteOp, typename... Args>
+class ConstructInterfacesOrTraits<ConcreteOp, std::tuple<Args...>> {
  public:
   /// Construct method for interfaces.
   static void interface(std::pair<TypeId, void *> *p_interface) {
-    return ConstructInterfacesOrTraits<Args...>::interface(p_interface);
+    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::interface(
+        p_interface);
   }
 
   /// Construct method for traits.
   static void trait(TypeId *p_trait) {
-    return ConstructInterfacesOrTraits<Args...>::trait(p_trait);
+    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::trait(p_trait);
   }
 };
 
@@ -79,9 +83,10 @@ class OpInfoImpl {
     // then placement new them.
     // (1) 先malloc，得到 p_first_interface_ 和 p_first_trait_
     // (2) 调用 ConstructInterfaces 和 ConstructTraits 构建:
-    // ConstructInterfacesOrTraits<ConcreteOp::InterfaceList>::interface(p_first_interface_);
-    // ConstructInterfacesOrTraits<ConcreteOp::TraitList>::trait(p_first_trait_);
-    // (3) placement new opinfo
+    // ConstructInterfacesOrTraits<ConcreteOp,
+    // ConcreteOp::InterfaceList>::interface(p_first_interface_);
+    // ConstructInterfacesOrTraits<ConcreteOp,
+    // ConcreteOp::TraitList>::trait(p_first_trait_); (3) placement new opinfo
     // (4) placement new attributes name
   }
 
