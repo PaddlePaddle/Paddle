@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/op_info.h"
+#include <string.h>
 #include "paddle/ir/type.h"
 
 namespace ir {
@@ -39,16 +40,16 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   void PlacementConstrctInterface(
       std::pair<TypeId, void *> *&p_interface) {  // NOLINT
-    // void* ptmp = malloc(sizeof(T::Model<ConcreteOp>));
-    // new (ptmp) T::Model<ConcreteOp>();
-    // std::pair<TypeId, void*> pair_tmp = make_pair(TypeId::get<T>(), ptmp);
-    // memcpy(p_interface, &pair_tmp, sizeof(std::pair<TypeId, void*>));
+    void *ptmp = malloc(sizeof(T::Model<ConcreteOp>));
+    new (ptmp) T::Model<ConcreteOp>();
+    std::pair<TypeId, void *> pair_tmp = make_pair(TypeId::get<T>(), ptmp);
+    memcpy(p_interface, &pair_tmp, sizeof(std::pair<TypeId, void *>));
     p_interface += 1;
   }
   /// Placement new trait.
   template <typename T>
   void PlacementConstrctTrait(TypeId *&p_trait) {  // NOLINT
-    // new (p_trait) TypeId(TypeId::get<T>())
+    new (p_trait) TypeId(TypeId::get<T>());
     p_trait += 1;
   }
 };
@@ -89,18 +90,21 @@ class OpInfoImpl {
     // ConcreteOp::InterfaceList>::interface(p_first_interface_);
     // ConstructInterfacesOrTraits<ConcreteOp,
     // ConcreteOp::TraitList>::trait(p_first_trait_); (3) placement new opinfo
-    // (4) placement new attributes name
+    // (4) sort interface and trait
+    // (5) placement new attributes name
   }
 
   void destroy() {
     // desctrctor and free memory
+    // (1) interface中 {TypeId, void*}，void* 需要手动 free，其他的可以直接删除
+    // (2) free memeory
   }
 
   ///
   /// \brief Search methods for Trait or Interface.
   ///
   bool HasTrait(TypeId trait_id) {
-    // Todo: 二分法搜索
+    // Todo: 从p_first_trait_开始二分法搜索
   }
 
   template <typename Trait>
@@ -109,7 +113,7 @@ class OpInfoImpl {
   }
 
   bool HasInterface(TypeId interface_id) {
-    // Todo: 二分法搜索
+    // Todo: 从p_first_interface_开始二分法搜索
   }
 
   template <typename Interface>
