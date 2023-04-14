@@ -28,12 +28,12 @@ void ContiguousKernel(const Context& dev_ctx,
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
   out->set_meta(meta);
 
-  const T* input_data = input.data<T>();
-  T* output_data = dev_ctx.template Alloc<T>(out);
+  auto input_data = reinterpret_cast<XPUT*>(input.data<T>());
+  auto output_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out));
 
   int r = xpu::as_strided<XPUT>(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUT*>(input_data),
-                                reinterpret_cast<const XPUT*>(output_data),
+                                input_data,
+                                output_data,
                                 phi::vectorize<int64_t>(input.dims()),
                                 phi::vectorize<int64_t>(input.strides()),
                                 0);
