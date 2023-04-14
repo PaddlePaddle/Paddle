@@ -17,7 +17,7 @@ import struct
 import unittest
 
 import numpy as np
-from amp_base_models import build_add_model, build_embedding_model
+from amp_base_models import AmpTestBase, build_add_model, build_embedding_model
 
 import paddle
 from paddle import fluid
@@ -220,11 +220,7 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestProgramBF16(unittest.TestCase):
+class TestProgramBF16(AmpTestBase):
     def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
         for op_type, value in expected_bf16_calls.items():
             self.assertEqual(
@@ -270,11 +266,7 @@ class TestProgramBF16(unittest.TestCase):
         self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestStaticBF16(unittest.TestCase):
+class TestStaticBF16(AmpTestBase):
     def _generate_feed_x(self):
         x = np.random.random(size=[16, 16]).astype("float32")
         x_bf16 = convert_float_to_uint16(x)
