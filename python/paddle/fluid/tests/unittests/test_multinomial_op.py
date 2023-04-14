@@ -232,7 +232,7 @@ class TestMultinomialBF16OP3(TestMultinomialBF16OP):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000).astype(np.float32)
         self.outputs = {
-            "Out": convert_float_to_uint16(np.zeros(100).astype("int64"))
+            "Out": np.zeros(100).astype("int64")
         }
         self.attrs = {"num_samples": 100, "replacement": False}
 
