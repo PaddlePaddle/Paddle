@@ -114,8 +114,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
             os.getenv('PLUGIN_TAG'),
-            self.cur_dir,
             sys.executable,
+            self.cur_dir,
         )
         os.system(cmd)
 
