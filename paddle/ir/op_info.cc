@@ -24,12 +24,14 @@ class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
   static void interface(std::pair<TypeId, void *> *p_interface) {
-    (PlacementConstrctInterface<Args>(p_interface), ...);
+    (void)std::initializer_list<int>{
+        0, (PlacementConstrctInterface<Args>(p_interface), 0)...};
   }
 
   /// Construct method for traits.
   static void trait(TypeId *p_trait) {
-    (PlacementConstrctTrait<Args>(p_trait), ...);
+    (void)std::initializer_list<int>{
+        0, (PlacementConstrctTrait<Args>(p_trait), 0)...};
   }
 
  private:
