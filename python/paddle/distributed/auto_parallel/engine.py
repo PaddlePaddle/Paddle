@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import json
 import logging
 import numbers
 import os
@@ -177,6 +178,23 @@ class Engine:
         self._strategy = strategy or Strategy()
 
         self._logger = get_logger(logging.INFO)
+
+        self._json_config = None
+        if cluster:
+            self._cluster = cluster
+        else:
+            if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
+                try:
+                    path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
+                    with open(path, "r") as f:
+                        self._json_config = json.load(f)
+                except Exception as e:
+                    self._logger.info(
+                        "Load json failed, please check json file, engine will run default config."
+                    )
+                    self._json_config = None
+            self._cluster = get_default_cluster(self._json_config)
+
         if os.getenv("POD_NAME"):
             self._logger.info(
                 "Distribute training by paddle.distributed.launch"
@@ -653,6 +671,7 @@ class Engine:
             fetch_vars,
             self._cluster,
             self._strategy,
+            self._json_config,
         )
         self._fwd_dist_contexts[mode] = DistributedContext(
             serial_main_prog,
@@ -663,6 +682,7 @@ class Engine:
             fetch_vars,
             self._cluster,
             self._strategy,
+            self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
         self._fwd_main_progs[mode] = serial_main_prog.clone()
