@@ -68,7 +68,6 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
-add_dependencies(phi_backends ${BACKENDS_DEPS})
 
 # for inference library
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)

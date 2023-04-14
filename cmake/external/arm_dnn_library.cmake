@@ -37,9 +37,13 @@ include(ExternalProject)
 
 set(ARM_DNN_LIBRARY_PROJECT "extern_arm_dnn_library")
 set(ARM_DNN_LIBRARY_PREFIX_DIR ${THIRD_PARTY_PATH}/arm_dnn_library)
+set(ARM_DNN_LIBRARY_SOURCE_DIR
+    ${ARM_DNN_LIBRARY_PREFIX_DIR}/src/${ARM_DNN_LIBRARY_PROJECT}/${ARM_DNN_LIBRARY_SOURCE_SUBDIR}
+)
 set(ARM_DNN_LIBRARY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/arm_dnn_library)
 set(ARM_DNN_LIBRARY_INCLUDE_DIR
     "${ARM_DNN_LIBRARY_INSTALL_DIR}/include"
+    "${ARM_DNN_LIBRARY_SOURCE_DIR}/include"
     CACHE PATH "arm dnn library include directory." FORCE)
 set(ARM_DNN_LIBRARY_LIBRARY_DIR
     "${ARM_DNN_LIBRARY_INSTALL_DIR}/lib"
