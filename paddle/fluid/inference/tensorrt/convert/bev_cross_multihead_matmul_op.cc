@@ -40,16 +40,12 @@ class BevCrossMultiheadMatMulOpConverter : public OpConverter {
     auto* input_q = engine_->GetITensor(op_desc.Input("InputQ").front());
     auto* input_k = engine_->GetITensor(op_desc.Input("InputK").front());
     auto* input_v = engine_->GetITensor(op_desc.Input("InputV").front());
-    auto in_dim = input_q->getDimensions();
     nvinfer1::ITensor* input_q_shape_tensor = Shape(input_q);
     auto output_name = op_desc.Output("Out")[0];
 
     // NLE -> NLHD
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
-    int q_length = PADDLE_GET_CONST(int, op_desc.GetAttr("q_length"));
     int kv_length = PADDLE_GET_CONST(int, op_desc.GetAttr("kv_length"));
-    int k_length = kv_length;
-    int v_length = kv_length;
 
     // reshape q
     auto* reshape_q_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_q);
