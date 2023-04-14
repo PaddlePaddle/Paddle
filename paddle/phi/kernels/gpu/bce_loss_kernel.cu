@@ -41,7 +41,7 @@ struct BCELossFunctor {
     PADDLE_ENFORCE(
         (x_mt >= zero) && (x_mt <= one),
         "Input is expected to be within the interval [0, 1], but received %f.",
-        x);
+        x_mt);
 
     MT term1 = max(phi::kps::details::Log(x_mt), neg_100);
     MT term2 = max(phi::kps::details::Log(one - x_mt), neg_100);
