@@ -20,11 +20,11 @@ from paddle.fluid import framework
 
 def as_tensors(xs):
     if isinstance(xs, framework.Variable):
-        return (xs,)
+        return xs
     elif isinstance(xs, Sequence):
         return tuple(xs)
     else:
-        return (xs,)
+        return xs
 
 
 class Jacobian:
@@ -118,6 +118,8 @@ class Jacobian:
         return self._jacobian[indexes]
 
     def __getattr__(self, __name: str):
+        if __name == "shape":
+            return getattr(self._jacobian, __name)
         return getattr(self._jacobian[:], __name)
 
 
@@ -149,8 +151,28 @@ class _Jacobian:
     """
 
     def __init__(self, ys, xs):
+        self.original_xs_shape = xs.shape
+        self.original_ys_shape = ys.shape
         self._xs = xs
+        if len(self._xs.shape) == 0 and not self.is_batched:
+            self._xs = self._xs.reshape(
+                [
+                    -1,
+                ]
+            )
+        if len(self._xs.shape) == 1 and self.is_batched:
+            self._xs = self._xs.reshape([-1, 1])
+
         self._ys = ys
+        if len(self._ys.shape) == 0 and not self.is_batched:
+            self._ys = self._ys.reshape(
+                [
+                    -1,
+                ]
+            )
+        if len(self._ys.shape) == 1 and self.is_batched:
+            self._ys = self._ys.reshape([-1, 1])
+
         self._flatten_xs = self._flatten(as_tensors(self._xs))
         self._flatten_ys = self._flatten(as_tensors(self._ys))
         self._cache = {}
@@ -183,7 +205,35 @@ class _Jacobian:
         )
 
     def __getitem__(self, indexes):
-        indexes = _multi_index(indexes, self.shape)
+        if self.is_batched is False:
+            if len(self.shape) == 0:
+                # xs and ys are both 0-D tensor
+                raise IndexError(
+                    "0-D tensor can not be indexed, please use .item() to get it's value."
+                )
+            elif len(self.shape) == 1:
+                # either ys or xs is 0-D tensor
+                indexes = (
+                    (0, indexes)
+                    if len(self.original_ys_shape) == 0
+                    else (indexes, 0)
+                )
+        else:
+            if len(self.shape) == 1:
+                # xs and ys are both 1-D tensor
+                indexes = (indexes, 0, 0)
+            elif len(self.shape) == 2:
+                # either xs or ys is 1-D tensor
+                if isinstance(indexes, slice):
+                    indexes = (indexes, slice(None, None, None))
+                else:
+                    indexes = (
+                        (indexes[0], 0, indexes[1])
+                        if len(self.original_ys_shape) == 1
+                        else (indexes[0], indexes[1], 0)
+                    )
+
+        indexes = _multi_index(indexes, self.inner_shape)
 
         if isinstance(indexes[self._lazy_axis], int):
             other_indexes = (
@@ -195,7 +245,7 @@ class _Jacobian:
         lazy_indexes = self._lazy_indexes(indexes)
         # Using concat and reshape to replace stack operator temporarily, as
         # it is not a primitive operator.
-        shape = list(self.shape)
+        shape = list(self.inner_shape)
         shape[self._lazy_axis] = len(lazy_indexes)
         part_jac = paddle.concat(
             [self._cached_evaluate(i) for i in lazy_indexes],
@@ -222,10 +272,16 @@ class _JacobianNoBatch(_Jacobian):
     """
 
     def __init__(self, ys, xs):
+        self.is_batched = False
         super().__init__(ys, xs)
-        self.shape = [
+        # inner_shape is for convenient, it will regard 0-D tensor as 1-D tensor
+        self.inner_shape = [
             *(self._flatten_ys.shape[0:1]),
             *(self._flatten_xs.shape[0:1]),
+        ]
+        self.shape = [
+            *(self.original_ys_shape[0:1]),
+            *(self.original_xs_shape[0:1]),
         ]
 
     @property
@@ -233,7 +289,7 @@ class _JacobianNoBatch(_Jacobian):
         return 0
 
     def _flatten(self, xs):
-        if isinstance(xs, paddle.Tensor):
+        if not isinstance(xs, Sequence):
             return xs.reshape((-1,))
         return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
@@ -253,11 +309,18 @@ class _JacobianBatchFirst(_Jacobian):
     """
 
     def __init__(self, ys, xs):
+        self.is_batched = True
         super().__init__(ys, xs)
+        # inner_shape is for convenient, it will regard 0-D tensor as 1-D tensor
+        self.inner_shape = [
+            *(self._flatten_xs.shape[0:1]),
+            *(self._flatten_ys.shape[1:2]),
+            *(self._flatten_xs.shape[1:2]),
+        ]
         self.shape = [
-            *self._flatten_xs.shape[0:1],
-            *self._flatten_ys.shape[1:2],
-            *self._flatten_xs.shape[1:2],
+            *(self._flatten_xs.shape[0:1]),
+            *(self.original_ys_shape[1:2]),
+            *(self.original_xs_shape[1:2]),
         ]
 
     @property
@@ -265,7 +328,7 @@ class _JacobianBatchFirst(_Jacobian):
         return 1
 
     def _flatten(self, xs):
-        if isinstance(xs, paddle.Tensor):
+        if not isinstance(xs, Sequence):
             return xs.reshape((xs.shape[0], -1))
         return paddle.concat(
             tuple(x.reshape((x.shape[0], -1)) for x in as_tensors(xs)), 1
@@ -365,11 +428,11 @@ def hessian(
     ys: paddle.Tensor,
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
-) -> Union[List[List[Hessian]], List[Hessian], Hessian]:
+) -> Union[List[List[Hessian]], Hessian]:
     """Function that computes the hessians of ys deriveted from xs.
 
     Args:
-        ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or list of outputs derived from xs.
+        ys (paddle.Tensor): Output or list of outputs derived from xs.
         xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
@@ -399,7 +462,6 @@ def hessian(
         )
 
     _jacobian = jacobian(ys, xs, batch_axis)
-
     if not isinstance(xs, Sequence):
         hessian = jacobian(_jacobian, xs, batch_axis)
 
