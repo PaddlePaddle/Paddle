@@ -360,6 +360,7 @@ PD_REGISTER_KERNEL(sync_batch_norm,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
+}
 #endif
 #endif
 
@@ -381,13 +382,13 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
-  PD_REGISTER_KERNEL(sync_batch_norm_grad,
-                     GPU,
-                     ALL_LAYOUT,
-                     phi::SyncBatchNormGradKernel,
-                     float,
-                     double,
-                     phi::dtype::float16) {}
+PD_REGISTER_KERNEL(sync_batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SyncBatchNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #endif
 #endif
 
