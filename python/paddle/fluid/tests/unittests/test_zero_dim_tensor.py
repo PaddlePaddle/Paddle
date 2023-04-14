@@ -4303,17 +4303,26 @@ class TestSundryAPIStatic(unittest.TestCase):
             prog,
             feed={
                 "x1": np.array(1.0, dtype='float32'),
-                "x2": 100.5,
             },
             fetch_list=[
                 x1.name,
-                x2.name,
             ],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], np.array(1.0))
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[1], 100.5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            feed={
+                "x2": 100.5,
+            },
+            fetch_list=[
+                x2.name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 100.5)
 
     @prog_scope()
     def test_prelu(self):
