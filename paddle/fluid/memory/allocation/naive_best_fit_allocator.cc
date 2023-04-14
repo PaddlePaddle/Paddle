@@ -242,9 +242,6 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
         string::HumanReadableSize(Used<platform::XPUPlace>(place))));
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   return ptr;
