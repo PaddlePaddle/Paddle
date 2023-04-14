@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/operation.h"
+#include "paddle/ir/utils.h"
 
 namespace ir {
 class OpBase {
@@ -96,5 +97,34 @@ class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
 
   void InferShape() { impl_->infer_shape_(operation()); }
 };
+
+template <typename ConcreteOp, class... TraitOrInterface>
+class Op : public OpBase {
+ public:
+  // 利用TraitOrInterface中是OpTraitBase还是OpTraitInterface的基类，分别拆出TraitList和InterfaceList.
+  using TraitList =
+      typename Filter<OpTraitBase, std::tuple<TraitOrInterface...>>::Type;
+  using InterfaceList =
+      typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
+};
+
+class ConvOp : Op<ConvOp, ReadOnlyTrait, InferShapeInterface> {
+ public:
+  // Op name.
+  const char *name() { return "conv_2d"; }
+
+  // Op attributes name.
+  std::vector<std::string> attributes_name = {"strides",
+                                              "paddings",
+                                              "padding_algorithm",
+                                              "dilations",
+                                              "groups",
+                                              "data_format"};
+
+  // ConvOp 包含了 InferShapeInterface, 因此，必须定义 InferShape 成员函数.
+  // 在该算子注册的时候，会实例化InferShapeInterface::Strategy<ConvOp>,
+  // 如果没有定义inferShape函数，会在编译时报错
+  static void InferShape();
+}
 
 }  // namespace ir

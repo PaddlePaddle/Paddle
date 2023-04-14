@@ -14,9 +14,14 @@
 
 #pragma once
 
+#include <functional>
+
 namespace ir {
 class OpInfoImpl;
 
+///
+/// \brief OpInfo class.
+///
 class OpInfo {
  public:
   constexpr OpInfo() = default;

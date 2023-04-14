@@ -16,6 +16,56 @@
 #include "paddle/ir/type.h"
 
 namespace ir {
+///
+/// \brief Tool template classe for construct interfaces or Traits.
+///
+template <typename... Args>
+class ConstructInterfacesOrTraits {
+ public:
+  /// Construct method for interfaces.
+  static void interface(std::pair<TypeId, void *> *p_interface) {
+    (PlacementConstrctInterface<Args>(p_interface), ...);
+  }
+
+  /// Construct method for traits.
+  static void trait(TypeId *p_trait) {
+    (PlacementConstrctTrait<Args>(p_trait), ...);
+  }
+
+ private:
+  /// Placement new interface.
+  template <typename T>
+  void PlacementConstrctInterface(
+      std::pair<TypeId, void *> *&p_interface) {  // NOLINT
+    // new 1 个
+    p_interface += 1;
+  }
+  /// Placement new trait.
+  template <typename T>
+  void PlacementConstrctTrait(TypeId *&p_trait) {  // NOLINT
+    // new 1 个
+    p_trait += 1;
+  }
+};
+
+/// Specialized for tuple type.
+template <typename... Args>
+class ConstructInterfacesOrTraits<std::tuple<Args...>> {
+ public:
+  /// Construct method for interfaces.
+  static void interface(std::pair<TypeId, void *> *p_interface) {
+    return ConstructInterfacesOrTraits<Args...>::interface(p_interface);
+  }
+
+  /// Construct method for traits.
+  static void trait(TypeId *p_trait) {
+    return ConstructInterfacesOrTraits<Args...>::trait(p_trait);
+  }
+};
+
+///
+/// \brief OpInfoImpl class.
+///
 class OpInfoImpl {
  public:
   ///
@@ -27,12 +77,21 @@ class OpInfoImpl {
   static OpInfoImpl *create() {
     // todo: First malloc memroy by ConcreteOp's InterfaceList and TraitList,
     // then placement new them.
+    // (1) 先malloc，得到 p_first_interface_ 和 p_first_trait_
+    // (2) 调用 ConstructInterfaces 和 ConstructTraits 构建:
+    // ConstructInterfacesOrTraits<ConcreteOp::InterfaceList>::interface(p_first_interface_);
+    // ConstructInterfacesOrTraits<ConcreteOp::TraitList>::trait(p_first_trait_);
+    // (3) placement new opinfo
+    // (4) placement new attributes name
   }
 
   void destroy() {
     // desctrctor and free memory
   }
 
+  ///
+  /// \brief Search methods for Trait or Interface.
+  ///
   bool HasTrait(TypeId trait_id) {
     // Todo: 二分法搜索
   }
