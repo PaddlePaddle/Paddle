@@ -431,16 +431,27 @@ class TestMinFP16Op(OpTest):
         else:
             x = np.random.random((5, 6, 10)).astype(self.dtype)
             self.inputs = {'X': x}
-        self.attrs = {'dim': [2]}
-        self.outputs = {
-            'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
-        }
+        self.attrs = {'dim': [2], 'keep_dim': True}
+        out = x.min(axis=tuple(self.attrs['dim']), keepdims=True)
+        if self.dtype == np.uint16:
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+        else:
+            self.outputs = {'Out': out}
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        # only composite op support gradient check of reduce_min
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            only_check_prim=True,
+        )
 
 
 @unittest.skipIf(
@@ -456,7 +467,7 @@ class TestMinBF16Op(TestMinFP16Op):
         self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad(self):
-        # only composite op support gradient check of reduce_max
+        # only composite op support gradient check of reduce_min
         self.check_grad_with_place(
             core.CUDAPlace(0),
             ['X'],
