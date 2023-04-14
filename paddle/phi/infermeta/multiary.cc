@@ -184,17 +184,17 @@ void AdamInferMeta(const MetaTensor& param,
   param_out->set_dtype(param.dtype());
 
   if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
-    phi::DataType m_type = phi::DataType::FLOAT32;
+    phi::DataType dtype = phi::DataType::FLOAT32;
   }
   moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(m_type);
+  moment1_out->set_dtype(dtype);
   moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(m_type);
+  moment2_out->set_dtype(dtype);
 
   beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(m_type);
+  beta1_pow_out->set_dtype(dtype);
   beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(m_type);
+  beta2_pow_out->set_dtype(dtype);
 }
 
 void AdamaxInferMeta(const MetaTensor& param,
