@@ -14,10 +14,12 @@
 
 import unittest
 
+from amp_base_models import build_while_model
+
 import paddle
 
 
-class TestAMPList(unittest.TestCase):
+class TestOpStatsEager(unittest.TestCase):
     def _check_result(self, dtype):
         # Returned the dict.
         op_list = paddle.fluid.core.get_low_precision_op_list()
@@ -63,6 +65,18 @@ class TestAMPList(unittest.TestCase):
                 out = conv(x)
 
         self._check_result(dtype=out.dtype)
+
+
+class TestOpStatsStatic(unittest.TestCase):
+    def test_while_op(self):
+        paddle.enable_static()
+        main_program, startup_program = build_while_model()
+        self.assertEqual(main_program.num_blocks, 2)
+
+        paddle.static.amp.debugging.collect_operator_stats(
+            program=main_program, print_subblocks=True
+        )
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
