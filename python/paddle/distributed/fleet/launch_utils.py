@@ -1988,14 +1988,13 @@ def check_backend(backend):
         'bkcl',
         'cncl',
         'auto',
-        'hccl',
         'heter',
         'xccl',
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
-            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'heter', 'xccl' "
             "but got %s" % backend
         )
 
