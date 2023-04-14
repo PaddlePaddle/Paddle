@@ -166,12 +166,13 @@ class TestElementwiseModBF16Op(OpTest):
         self.use_mkldnn = False
 
     def init_input(self):
-        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
-        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype("float32")
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype("float32")
 
     def setUp(self):
         self.op_type = "elementwise_mod"
         self.python_api = paddle.remainder
+        self.public_python_api = paddle.remainder
         self.axis = -1
         self.init_dtype()
         self.init_input()
@@ -187,10 +188,11 @@ class TestElementwiseModBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(np.mod(self.x, self.y))}
 
     def test_check_output(self):
+        place = core.CUDAPlace(0)
         if self.attrs['axis'] == -1:
-            self.check_output()
+            self.check_output_with_place(place)
         else:
-            self.check_output()
+            self.check_output_with_place(place)
 
     def init_dtype(self):
         self.dtype = np.uint16
