@@ -263,21 +263,8 @@ def create_test_fp16(parent):
     globals()[cls_name] = TestSplitFP16Op
 
 
-def create_test_split_with_num_fp16(parent):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestSplitWithNumFP16Op(parent):
-        def get_dtype(self):
-            return np.float16
-
-    cls_name = "{}_{}".format(parent.__name__, "FP16Op")
-    TestSplitWithNumFP16Op.__name__ = cls_name
-    globals()[cls_name] = TestSplitWithNumFP16Op
-
-
 create_test_fp16(TestSplitOp)
-create_test_split_with_num_fp16(TestSplitWithNumOp)
+create_test_fp16(TestSplitWithNumOp)
 
 # ----------------Split Bf16----------------
 
@@ -305,31 +292,8 @@ def create_test_bf16(parent):
     globals()[cls_name] = TestSplitBF16Op
 
 
-def create_test_split_with_num_bf16(parent):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not compiled with CUDA or not support bfloat16",
-    )
-    class TestSplitWithNumBF16Op(TestSplitWithNumOp):
-        def get_dtype(self):
-            return np.uint16
-
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
-
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'out2')
-
-    cls_name = "{}_{}".format(parent.__name__, "BF16Op")
-    TestSplitWithNumBF16Op.__name__ = cls_name
-    globals()[cls_name] = TestSplitWithNumBF16Op
-
-
 create_test_bf16(TestSplitOp)
-create_test_split_with_num_bf16(TestSplitWithNumOp)
+create_test_bf16(TestSplitWithNumOp)
 
 
 class TestSplitAPI(unittest.TestCase):
