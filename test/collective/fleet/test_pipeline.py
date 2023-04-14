@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 from test_dist_base import TestDistBase
 
 import paddle
