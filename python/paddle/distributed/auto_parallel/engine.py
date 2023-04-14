@@ -789,7 +789,7 @@ class Engine:
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
 
-            if self._strategy.auto_mode == "full":
+            if self._strategy.auto_mode == "full_random":
                 auto_utils.initialize_pg_in_full_mode(
                     all_process_groups, self._cur_rank
                 )
