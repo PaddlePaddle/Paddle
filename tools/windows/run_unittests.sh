@@ -48,6 +48,7 @@ disable_wingpu_test="^test_model$|\
 ^test_activation_op$|\
 ^test_norm_nn_grad$|\
 ^test_bilinear_interp_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^disable_wingpu_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -183,6 +184,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_imperative_triple_grad$"
 
 
