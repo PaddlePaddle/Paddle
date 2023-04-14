@@ -18,20 +18,20 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-__global__ void ContiguousFunc(const T* input_data,
-                               T* out_data,
-                               const int64_t* input_stride,
-                               const int64_t* dims,
-                               const int rank,
-                               const int64_t numel) {
+__global__ void ContiguousFunc(
+    const T* input_data,
+    T* out_data,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    const int rank,
+    const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
     for (int dim = rank - 1; dim >= 0; --dim) {
-      int64_t mod = index_tmp % dims[dim];
+      input_offset += index_tmp % dims[dim] * input_stride[dim];
       index_tmp = index_tmp / dims[dim];
-      input_offset += mod * input_stride[dim];
     }
 
     out_data[i] = input_data[input_offset];
@@ -49,46 +49,19 @@ void ContiguousKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
-  const int64_t* dims = input.dims().Get();
-  const int64_t* strides = input.strides().Get();
   auto numel = input.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
 
-  int64_t* tmp_data =
-      reinterpret_cast<int64_t*>(malloc(sizeof(int64_t) * rank * 2));
-  std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
-  std::memcpy(tmp_data + rank, strides, sizeof(int64_t) * rank);
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  for (int i = 0; i < input.dims().size(); i++) {
+    input_dims[i] = input.dims()[i];
+    input_stride[i] = input.strides()[i];
+  }
 
-  auto dims_strides = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      sizeof(int64_t) * rank * 2,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       dims_strides_data,
-                       phi::CPUPlace(),
-                       tmp_data,
-                       sizeof(int64_t) * rank * 2,
-                       dev_ctx.stream());
-#ifdef PADDLE_WITH_HIP
-  hipStreamCallback_t free_when_cb = [](cudaStream_t stream,
-                                        cudaError_t status,
-                                        void* userData) { free(userData); };
-  hipStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
-
-#else
-  cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
-                                         cudaError_t status,
-                                         void* userData) { free(userData); };
-  cudaStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
-#endif
-  ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(input_data,
-                                                       output_data,
-                                                       dims_strides_data + rank,
-                                                       dims_strides_data,
-                                                       rank,
-                                                       numel);
+  ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(
+      input_data, output_data, input_stride, input_dims, rank, numel);
 }
 
 }  // namespace phi
