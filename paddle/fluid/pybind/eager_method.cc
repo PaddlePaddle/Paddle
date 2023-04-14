@@ -770,8 +770,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
     phi::DenseTensor* tensor_src =
         static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     if (tensor_src) {
-      auto tensor =
-          std::make_shared<phi::DenseTensor>(*self->tensor.impl().get());
+      auto tensor = std::make_shared<phi::DenseTensor>(*tensor_src);
       tensor->can_not_uses = tensor_src->can_not_uses;
       if (*tensor->canNotUse == false) {
         *tensor->canNotUse = *tensor_src->canNotUse;
