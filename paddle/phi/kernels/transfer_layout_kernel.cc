@@ -17,6 +17,8 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -136,9 +138,6 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
-    auto out_format = funcs::OneDNNFormatForSize(
-        x.dims().size(), funcs::ToOneDNNFormat(src_layout));
-
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
     // is expecting NHWC dims description order
@@ -148,9 +147,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
-                                    funcs::ToOneDNNDataType(x.dtype()),
-                                    out_format);
+    dnnl::memory::desc out_mem_desc = funcs::make_memory_desc(*out, src_layout);
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
@@ -205,15 +202,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::CPUContext>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::GPUContext>) {}
 #endif

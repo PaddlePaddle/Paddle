@@ -22,7 +22,7 @@ import numpy as np
 import yaml
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 try:
     import paddle.inference as paddle_infer

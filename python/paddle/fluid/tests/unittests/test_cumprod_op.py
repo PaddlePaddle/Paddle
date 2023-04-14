@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 np.random.seed(0)
 
@@ -166,7 +166,7 @@ class TestCumprodAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                x = paddle.static.data('X', self.shape, dtype=self.dtype)
                 out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])

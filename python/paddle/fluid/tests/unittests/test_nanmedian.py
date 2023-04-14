@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 np.random.seed(102)
 
@@ -83,7 +83,7 @@ class TestNanmedian(unittest.TestCase):
         paddle.enable_static()
         np_res = np.nanmedian(data, keepdims=True)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', data.shape)
+            x = paddle.static.data('X', data.shape)
             out1 = paddle.nanmedian(x, keepdim=True)
             out2 = paddle.tensor.nanmedian(x, keepdim=True)
             out3 = paddle.tensor.stat.nanmedian(x, keepdim=True)
@@ -151,10 +151,10 @@ class TestNanmedian(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data("X", [10, 12])
+            x = paddle.static.data("X", [10, 12])
 
             def test_dtype():
-                x2 = paddle.fluid.data('X2', [10, 12], 'bool')
+                x2 = paddle.static.data('X2', [10, 12], 'bool')
                 paddle.nanmedian(x2)
 
             def test_empty_axis():
@@ -189,7 +189,7 @@ class TestNanmedian(unittest.TestCase):
         x_np[2, 3:] = np.nan
         x_np_sorted = np.sort(x_np)
         nan_counts = np.count_nonzero(np.isnan(x_np).astype(np.int32), axis=1)
-        np_grad = np.zeros((shape))
+        np_grad = np.zeros(shape)
         for i in range(shape[0]):
             valid_cnts = shape[1] - nan_counts[i]
             if valid_cnts == 0:

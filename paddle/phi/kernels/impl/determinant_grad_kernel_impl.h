@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"

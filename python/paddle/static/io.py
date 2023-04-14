@@ -77,7 +77,7 @@ def _check_vars(name, var_list):
         var_list = [var_list]
     if not var_list or not all([isinstance(var, Variable) for var in var_list]):
         raise ValueError(
-            "'{}' should be a Variable or a list of Variable.".format(name)
+            f"'{name}' should be a Variable or a list of Variable."
         )
 
 
@@ -212,9 +212,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
-                var = paddle.scale(
-                    var, 1.0, name="save_infer_model/scale_{}".format(i)
-                )
+                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
@@ -507,9 +505,9 @@ def save_inference_model(
     model_path = path_prefix + ".pdmodel"
     params_path = path_prefix + ".pdiparams"
     if os.path.isdir(model_path):
-        raise ValueError("'{}' is an existing directory.".format(model_path))
+        raise ValueError(f"'{model_path}' is an existing directory.")
     if os.path.isdir(params_path):
-        raise ValueError("'{}' is an existing directory.".format(params_path))
+        raise ValueError(f"'{params_path}' is an existing directory.")
 
     # verify feed_vars
     _check_vars('feed_vars', feed_vars)
@@ -994,7 +992,7 @@ def save_vars(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
-            save_path = str()
+            save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
@@ -1336,7 +1334,7 @@ def save(program, model_path, protocol=4, **configs):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     dir_name = os.path.dirname(model_path)
@@ -1498,7 +1496,7 @@ def load(program, model_path, executor=None, var_list=None):
                     "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
             program_var_list = program.list_vars()
-            program_var_name_set = set([var.name for var in program_var_list])
+            program_var_name_set = {var.name for var in program_var_list}
 
             # check all the variable inlcuded in program
             for var in var_list:
@@ -1538,14 +1536,7 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
-        elif p.is_npu_place():
-            p = paddle.fluid.core.Place()
-            p.set_place(t._place())
-            place = paddle.fluid.NPUPlace(p.npu_device_id())
-        elif p.is_mlu_place():
-            p = paddle.fluid.core.Place()
-            p.set_place(t._place())
-            place = paddle.fluid.MLUPlace(p.mlu_device_id())
+
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -1583,7 +1574,7 @@ def load(program, model_path, executor=None, var_list=None):
         opt_file_name = model_prefix + ".pdopt"
         assert os.path.exists(
             opt_file_name
-        ), "Optimizer file [{}] not exits".format(opt_file_name)
+        ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
             paddle.fluid.core._create_loaded_parameter(
@@ -1682,14 +1673,6 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
-            elif ten_place.is_npu_place():
-                p = paddle.fluid.core.Place()
-                p.set_place(ten_place)
-                py_place = paddle.fluid.NPUPlace(p.npu_device_id())
-            elif ten_place.is_mlu_place():
-                p = paddle.fluid.core.Place()
-                p.set_place(ten_place)
-                py_place = paddle.fluid.MLUPlace(p.mlu_device_id())
 
             ten.set(new_para_np, py_place)
 
@@ -1721,7 +1704,7 @@ def get_program_persistable_vars(program):
             import paddle.static.io as io
             import paddle.fluid as fluid
             paddle.enable_static()
-            data = fluid.data(name="img", shape=[64, 784])
+            data = paddle.static.data(name="img", shape=[64, 784])
             w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = io.get_program_persistable_vars(  fluid.default_main_program() )
@@ -1890,7 +1873,7 @@ def load_program_state(model_path, var_list=None):
 
     assert os.path.exists(
         parameter_file_name
-    ), "Parameter file [{}] not exits".format(parameter_file_name)
+    ), f"Parameter file [{parameter_file_name}] not exits"
 
     with open(parameter_file_name, 'rb') as f:
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'

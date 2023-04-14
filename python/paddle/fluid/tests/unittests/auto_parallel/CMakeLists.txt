@@ -37,6 +37,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
   set_tests_properties(test_pass_grad_clip
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_random_ctrl MODULES test_random_ctrl)
+  set_tests_properties(test_random_ctrl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                   TIMEOUT 50)
   py_test_modules(test_pass_gradient_merge MODULES test_pass_gradient_merge)
   set_tests_properties(test_pass_gradient_merge
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
@@ -80,6 +83,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_align_tool PROPERTIES TIMEOUT 20)
   py_test_modules(test_pass_base_list MODULES test_pass_base_list)
   set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 20)
+  py_test_modules(test_fuse_adamw_pass MODULES test_fuse_adamw_pass)
+  set_tests_properties(test_fuse_adamw_pass PROPERTIES TIMEOUT 20)
   # End of unittests WITH single card and timeout
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
@@ -126,6 +131,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_convert_to_process_meshes)
   py_test_modules(test_pass_bf16 MODULES test_pass_bf16)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
+  py_test_modules(test_engine_save_load MODULES test_engine_save_load)
+  py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

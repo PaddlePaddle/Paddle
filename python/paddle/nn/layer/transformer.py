@@ -1317,9 +1317,9 @@ class Transformer(Layer):
                 encoder_bias_attr = [bias_attr[0], bias_attr[-1]]
                 decoder_bias_attr = bias_attr
             else:
-                assert (
-                    False
-                ), "length of bias_attr should be 1 or 2 or 3 when it is a list/tuple"
+                raise AssertionError(
+                    "length of bias_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
         else:
             encoder_bias_attr = bias_attr
             decoder_bias_attr = bias_attr
@@ -1339,9 +1339,9 @@ class Transformer(Layer):
                 encoder_weight_attr = [weight_attr[0], weight_attr[-1]]
                 decoder_weight_attr = weight_attr
             else:
-                assert (
-                    False
-                ), "length of weight_attr should be 1 or 2 or 3 when it is a list/tuple"
+                raise AssertionError(
+                    "length of weight_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
         else:
             encoder_weight_attr = weight_attr
             decoder_weight_attr = weight_attr

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.layers.nn import _pull_gpups_sparse
 
 paddle.enable_static()

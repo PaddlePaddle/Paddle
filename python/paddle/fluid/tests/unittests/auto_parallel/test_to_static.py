@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import LazyGuard
+from paddle import LazyGuard, nn
 from paddle.distributed.auto_parallel.helper import ProgramHelper, ProxyLayer
 from paddle.distributed.fleet import auto
 from paddle.fluid.framework import _non_static_mode

@@ -33,10 +33,9 @@ import functools
 import tarfile
 from multiprocessing import cpu_count
 
-import paddle.utils.deprecated as deprecated
 from paddle.dataset.image import load_image_bytes, simple_transform
 from paddle.reader import map_readers, xmap_readers
-from paddle.utils import try_import
+from paddle.utils import deprecated, try_import
 
 from .common import download
 

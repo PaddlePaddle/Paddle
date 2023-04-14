@@ -15,7 +15,7 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 from paddle.distributed import fleet
 
 import paddle

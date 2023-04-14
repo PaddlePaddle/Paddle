@@ -20,4 +20,5 @@ REGISTER_OP_CUDA_KERNEL(fill,
                         ops::FillKernel<double>,
                         ops::FillKernel<int64_t>,
                         ops::FillKernel<int>,
-                        ops::FillKernel<paddle::platform::float16>);
+                        ops::FillKernel<paddle::platform::float16>,
+                        ops::FillKernel<paddle::platform::bfloat16>);

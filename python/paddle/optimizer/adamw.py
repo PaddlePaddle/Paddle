@@ -238,16 +238,16 @@ class AdamW(Optimizer):
 
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
-        self._learning_rate_map = dict()
+        self._learning_rate_map = {}
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
-        self._accumulators = defaultdict(lambda: dict())
+        self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
-        self._param_device_map = dict()
+        self._param_device_map = {}
         self.clear_gradients = self.clear_grad
 
         self.type = "adamw"
@@ -530,7 +530,7 @@ class AdamW(Optimizer):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
 
     @imperative_base.no_grad
-    @framework.dygraph_only
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -553,6 +553,10 @@ class AdamW(Optimizer):
                 opt.step()
                 opt.clear_grad()
         """
+        if paddle.fluid.dygraph.base.in_declarative_mode():
+            self._declarative_step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -586,7 +590,7 @@ class AdamW(Optimizer):
         else:
             # optimize parameters in groups
             for param_group in self._param_groups:
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue

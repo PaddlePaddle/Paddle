@@ -402,7 +402,7 @@ static inline void GetPaddings(int* paddings,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -520,7 +520,7 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class Pad2dGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -873,11 +873,8 @@ REGISTER_OPERATOR(pad2d,
 REGISTER_OPERATOR(pad2d_grad,
                   ops::Pad2dOpGrad,
                   ops::Pad2dOpGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(pad2d,
-                       ops::Pad2dCPUKernel<float>,
-                       ops::Pad2dCPUKernel<double>,
-                       ops::Pad2dCPUKernel<int>,
-                       ops::Pad2dCPUKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(pad2d_grad,
-                       ops::Pad2dGradCPUKernel<float>,
-                       ops::Pad2dGradCPUKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    pad2d, CPU, ALL_LAYOUT, ops::Pad2dCPUKernel, float, double, int, int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(
+    pad2d_grad, CPU, ALL_LAYOUT, ops::Pad2dGradCPUKernel, float, double) {}

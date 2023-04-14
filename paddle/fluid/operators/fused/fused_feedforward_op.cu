@@ -65,7 +65,7 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
 #endif
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const phi::GPUContext& ctx,
@@ -301,7 +301,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
  public:
   void MatMulGrad(const phi::GPUContext& ctx,
@@ -628,14 +628,19 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fused_feedforward,
-    ops::FusedFeedForwardKernel<phi::GPUContext, float>,
-    ops::FusedFeedForwardKernel<phi::GPUContext, double>,
-    ops::FusedFeedForwardKernel<phi::GPUContext, paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_feedforward_grad,
-    ops::FusedFeedForwardGradKernel<phi::GPUContext, float>,
-    ops::FusedFeedForwardGradKernel<phi::GPUContext, double>,
-    ops::FusedFeedForwardGradKernel<phi::GPUContext,
-                                    paddle::platform::float16>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(fused_feedforward,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedFeedForwardKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_feedforward_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedFeedForwardGradKernel,
+                          float,
+                          double,
+                          plat::float16) {}
