@@ -374,30 +374,6 @@ def hessian(
             deriveted from xs.
     """
 
-    def jacobian_for_hessian(ys, xs, batch_axis, preorder=0):
-        """Same function as ``jacobian``, but use ``Hessian`` instead of ``Jacobian``
-        in order to set the typename of hessian matrix to ``Hessian``.
-        """
-        if batch_axis is not None and batch_axis != 0:
-            raise ValueError(
-                f"batch_axis should be None or 0, but got {batch_axis}."
-            )
-
-        # TODO(HydrogenSulfate): support batch_axis > 0
-        is_batched = batch_axis is not None
-        if isinstance(ys, Sequence) and isinstance(xs, Sequence):
-            _jacobian = [
-                [Hessian(_ys, _xs, is_batched) for _xs in xs] for _ys in ys
-            ]
-        elif isinstance(ys, Sequence) and not isinstance(xs, Sequence):
-            _jacobian = [Hessian(_ys, xs, is_batched) for _ys in ys]
-        elif not isinstance(ys, Sequence) and isinstance(xs, Sequence):
-            _jacobian = [Hessian(ys, _xs, is_batched) for _xs in xs]
-        else:
-            _jacobian = Hessian(ys, xs, is_batched)
-
-        return _jacobian
-
     if batch_axis is None:
         if ys.numel() > 1:
             raise ValueError(
@@ -418,14 +394,23 @@ def hessian(
             f"batch_axis should be None or int, but got {type(batch_axis)}."
         )
 
-    _jacobian = jacobian_for_hessian(ys, xs, batch_axis, 0)
+    _jacobian = jacobian(ys, xs, batch_axis)
 
     if not isinstance(xs, Sequence):
-        hessian = jacobian_for_hessian(_jacobian, xs, batch_axis, 1)
+        hessian = jacobian(_jacobian, xs, batch_axis)
+
+        # change classname to Hessian instead of Jacobian.
+        hessian.__class__ = Hessian
     else:
         hessian = []
         for _j in _jacobian:
-            hessian.append(jacobian_for_hessian(_j, xs, batch_axis, 1))
+            hessian.append(jacobian(_j, xs, batch_axis))
+
+        # change classname to Hessian instead of Jacobian.
+        for i in range(len(hessian)):
+            for j in range(len(hessian[0])):
+                hessian[i][j].__class__ = Hessian
+
     return hessian
 
 
