@@ -291,7 +291,7 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
-    """sync_batch_norm op test for FP16 input."""
+    """sync_batch_norm op test for BF16 input."""
 
     def setUp(self):
         """Setup."""
