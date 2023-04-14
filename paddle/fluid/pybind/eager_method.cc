@@ -767,16 +767,22 @@ static PyObject* tensor_method_detach(TensorObject* self,
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::Tensor();
-    auto tensor =
-        std::make_shared<phi::DenseTensor>(*self->tensor.impl().get());
-    tensor->can_not_uses = self->tensor.impl()->can_not_uses;
-    if (*tensor->canNotUse == false) {
-      *tensor->canNotUse = *self->tensor.impl()->canNotUse;
-    }
-    self->tensor.impl()->can_not_uses->insert(tensor->canNotUse);
-    self->tensor.impl()->can_not_uses->insert(self->tensor.impl()->canNotUse);
+    phi::DenseTensor* tensor_src =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (tensor_src) {
+      auto tensor =
+          std::make_shared<phi::DenseTensor>(*self->tensor.impl().get());
+      tensor->can_not_uses = tensor_src->can_not_uses;
+      if (*tensor->canNotUse == false) {
+        *tensor->canNotUse = *tensor_src->canNotUse;
+      }
+      tensor_src->can_not_uses->insert(tensor->canNotUse);
+      tensor_src->can_not_uses->insert(tensor_src->canNotUse);
 
-    v->tensor.set_impl(tensor);
+      v->tensor.set_impl(tensor);
+    } else {
+      v->tensor.set_impl(self->tensor.impl());
+    }
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
     auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
