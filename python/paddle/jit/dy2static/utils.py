@@ -38,7 +38,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
-from .ast_utils import ast_to_source_code
+from .ast_utils import ast_to_source_code, modify_function_code
 from .static_analysis import StaticAnalysisVisitor
 from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
 from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
@@ -650,6 +650,10 @@ def func_to_source_code(function, dedent=True):
         for line in source_code_list
     ]
     source_code = ''.join(source_code_list)
+    # check the 'register hook' in the source code
+    if 'register_hook' in source_code:
+        source_code = modify_function_code(function)
+
     if dedent:
         source_code = textwrap.dedent(source_code)
 
