@@ -21,15 +21,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceGradRawKernel(const Context& ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& out_grad,
-                        const std::vector<int64_t>& axes,
-                        const IntArray& starts_t,
-                        const IntArray& ends_t,
-                        const std::vector<int64_t>& infer_flags,
-                        const std::vector<int64_t>& decrease_axis,
-                        DenseTensor* input_grad) {
+void SliceGradKernel(const Context& ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& out_grad,
+                     const std::vector<int64_t>& axes,
+                     const IntArray& starts_t,
+                     const IntArray& ends_t,
+                     const std::vector<int64_t>& infer_flags,
+                     const std::vector<int64_t>& decrease_axis,
+                     DenseTensor* input_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(input_grad);
 
@@ -82,7 +82,7 @@ void SliceGradRawKernel(const Context& ctx,
 PD_REGISTER_KERNEL(slice_grad,
                    XPU,
                    ALL_LAYOUT,
-                   phi::SliceGradRawKernel,
+                   phi::SliceGradKernel,
                    float,
                    int,
                    phi::dtype::float16) {}

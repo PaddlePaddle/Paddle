@@ -2202,7 +2202,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
         )
 
         helper = LayerHelper('logsumexp', **locals())
@@ -2347,7 +2347,10 @@ def max(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('max', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'max',
         )
         if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
@@ -3347,7 +3350,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], "logcumsumexp"
         )
 
         helper = LayerHelper('logcumsumexp', **locals())
@@ -3676,7 +3679,7 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3694,7 +3697,7 @@ def tanh(x, name=None):
         out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3715,7 +3718,7 @@ def tanh(x, name=None):
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tanh'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'tanh'
         )
         check_type(x, 'x', (Variable), 'tanh')
         helper = LayerHelper('tanh', **locals())
@@ -4037,7 +4040,9 @@ def digamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.digamma(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'digamma'
+        )
         helper = LayerHelper('digamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
@@ -4854,7 +4859,17 @@ def angle(x, name=None):
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'angle',
         )
         op_type = "angle"
         helper = LayerHelper(op_type, **locals())

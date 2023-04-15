@@ -390,9 +390,6 @@ def create_fake_model(program_config):
         op_desc.set_output('Out', ["fetch"])
         op_desc._set_attr("col", index)
 
-    main_program_desc._set_version()
-    paddle.fluid.core.save_op_version_info(main_program_desc)
-
     model = main_program_desc.serialize_to_string()
 
     util_program._sync_with_cpp()
