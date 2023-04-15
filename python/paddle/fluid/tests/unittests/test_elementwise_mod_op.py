@@ -178,14 +178,14 @@ class TestElementwiseModBF16Op(OpTest):
         self.init_input()
         self.init_kernel_type()
         self.init_axis()
-        self.x = OpTest.np_dtype_to_fluid_dtype(self.x)
-        self.y = OpTest.np_dtype_to_fluid_dtype(self.y)
+        x = OpTest.np_dtype_to_fluid_dtype(self.x)
+        y = OpTest.np_dtype_to_fluid_dtype(self.y)
         self.inputs = {
-            'X': convert_float_to_uint16(self.x),
-            'Y': convert_float_to_uint16(self.y),
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': convert_float_to_uint16(np.mod(self.x, self.y))}
+        self.outputs = {'Out': convert_float_to_uint16(np.mod(x, y))}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
