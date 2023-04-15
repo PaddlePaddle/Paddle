@@ -2340,6 +2340,13 @@
   outputs :
     {boxes : Boxes, scores : Scores}
 
+- op : yolo_loss (yolov3_loss)
+  backward: yolo_loss_grad (yolov3_loss_grad)
+  inputs :
+    {x : X,  gt_box : GTBox, gt_label : GTLabel ,gt_score : GTScore}
+  outputs :
+    {loss : Loss , objectness_mask : ObjectnessMask, gt_match_mask : GTMatchMask}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
