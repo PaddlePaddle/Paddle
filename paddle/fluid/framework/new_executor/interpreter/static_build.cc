@@ -452,7 +452,7 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = GetInputDType(runtime_ctx, "X");
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
-            phi::DataType dtype = GetInputDType(runtime_ctx, "Param");
+            dtype = GetInputDType(runtime_ctx, "Moment1");
             if (multi_precision && dtype == phi::DataType::FLOAT16) {
               dtype = phi::DataType::FLOAT32;
             }
