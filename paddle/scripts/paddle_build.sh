@@ -1470,7 +1470,7 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -1707,7 +1707,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -1973,7 +1973,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -2081,7 +2081,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -2259,7 +2259,7 @@ EOF
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=CINN mean the case would run in CINN CI.
