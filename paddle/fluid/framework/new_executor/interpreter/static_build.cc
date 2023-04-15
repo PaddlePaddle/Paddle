@@ -446,7 +446,7 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferMPDType(runtime_ctx, "Param");
           } else if (op_type == "arg_min" || op_type == "arg_max" ||
                      op_type == "coalesce_tensor" || op_type == "one_hot_v2" ||
-                     "unique") {
+                     op_type == "unique") {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
