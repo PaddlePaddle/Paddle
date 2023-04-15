@@ -51,12 +51,9 @@ __all__ = [
     'rank_attention',
     'tdm_sampler',
     'batch_fc',
-    '_pull_box_extended_sparse',
     'bilateral_slice',
     'correlation',
     'fused_bn_add_act',
     'fused_seqpool_cvm',
     'pow2_decay_with_linear_warmup',
-    '_pull_gpups_sparse',
-    '_pull_box_sparse',
 ]
