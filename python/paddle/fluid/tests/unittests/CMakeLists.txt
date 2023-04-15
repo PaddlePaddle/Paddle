@@ -18,7 +18,6 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
@@ -159,8 +158,6 @@ list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)
 # NOTE: @xiongkun03, cpu is too slow, fix it in next PR
 
 if(NOT WITH_GLOO)
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
-
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_unused_variables_gloo)
   list(REMOVE_ITEM TEST_OPS
        test_parallel_dygraph_sparse_embedding_over_height_gloo)
@@ -176,7 +173,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
