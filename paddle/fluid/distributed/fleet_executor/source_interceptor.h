@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/distributed/fleet_executor/interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
 
 namespace paddle {
 namespace distributed {
@@ -25,16 +25,19 @@ namespace distributed {
  *   1. receive `start` message from carrier
  *   2. send num_of_steps `data_is_ready` message to downstream
  */
-class SourceInterceptor final : public Interceptor {
+class SourceInterceptor final : public ComputeInterceptor {
  public:
   SourceInterceptor(int64_t interceptor_id, TaskNode* node);
 
  private:
-  void SendDataReadyToDownStream(int64_t down_id);
-  void Run(const InterceptorMessage& msg);
+  void Compute(const InterceptorMessage& msg) override;
+  void SendDataReadyToDownStream() override;
+  bool AllDownsFinished();
+  void Run();
   int64_t max_run_times_;
-  // downstream_id->cur_step
-  std::map<int64_t, int64_t> downstream_step_;
+  // downstream_id->received_useless
+  std::map<int64_t, bool> downstream_flag_;
+  int64_t step_{0};
 };
 
 }  // namespace distributed

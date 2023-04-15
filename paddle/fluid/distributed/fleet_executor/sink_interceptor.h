@@ -28,14 +28,16 @@ namespace distributed {
 class SinkInterceptor final : public Interceptor {
  public:
   SinkInterceptor(int64_t interceptor_id, TaskNode* node);
+  void SetConditionVariable(std::condition_variable* cv) override { cv_ = cv; }
 
  private:
   void ReplyCompletedToUpStream(int64_t up_id);
   void Run(const InterceptorMessage& msg);
-  void StopCarrierIfComplete();
+  void StopIfComplete();
   int64_t max_run_times_;
   // upstream_id->cur_step
   std::map<int64_t, int64_t> upstream_step_;
+  std::condition_variable* cv_;
 };
 }  // namespace distributed
 }  // namespace paddle

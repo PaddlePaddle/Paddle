@@ -28,14 +28,15 @@ SinkInterceptor::SinkInterceptor(int64_t interceptor_id, TaskNode* node)
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Run(msg); });
 }
 
-void SinkInterceptor::StopCarrierIfComplete() {
-  bool flag = true;
+void SinkInterceptor::StopIfComplete() {
+  int64_t count = 0;
   for (const auto& up : upstream_step_) {
-    flag = flag && (up.second == max_run_times_);
+    count += up.second;
   }
-  if (flag) {
+  if (count == max_run_times_) {
     VLOG(3) << "Sink Interceptor is stopping carrier";
-    StopCarrier();
+    // Set condition variable to stop the carrier
+    cv_->notify_one();
     for (const auto& up : upstream_step_) {
       upstream_step_.at(up.first) = 0;
     }
@@ -48,15 +49,22 @@ void SinkInterceptor::ReplyCompletedToUpStream(int64_t upstream_id) {
   InterceptorMessage msg;
   msg.set_message_type(DATA_IS_USELESS);
   msg.set_scope_idx(scope_idx);
-  Send(upstream_id, msg);
+  msg.set_src_id(interceptor_id_);
+  msg.set_dst_id(upstream_id);
+  EnqueueRemoteInterceptorMessage(msg);
   upstream_step_.at(upstream_id) = micro_step + 1;
-  if (micro_step == max_run_times_ - 1) {
-    StopCarrierIfComplete();
+  // For convience, we don't take multi-sink in the same carrier into
+  // consideration. However, it should take into consideration in the future.
+  int64_t micro_scope_in_carrier = max_run_times_ / multi_carriers_.size();
+  if (micro_step == micro_scope_in_carrier - 1) {
+    StopIfComplete();
   }
 }
 
 void SinkInterceptor::Run(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
+    VLOG(3) << "Sink interceptor receiving data is ready message from "
+            << msg.src_id();
     ReplyCompletedToUpStream(msg.src_id());
   }
 }

@@ -34,6 +34,7 @@ def body(i, ten, data):
 
 
 num_micro_batches = 4
+sub_num_micro_batches = 2
 
 
 def batch_generator_creator():
@@ -153,7 +154,7 @@ class TestFleetExecutor(unittest.TestCase):
 
         task_a = TaskNode(
             0,
-            num_micro_batches,
+            sub_num_micro_batches,
             node_type="Start",
             task_id=0,
             program=program_a,
@@ -161,7 +162,7 @@ class TestFleetExecutor(unittest.TestCase):
         )
         task_b = TaskNode(
             0,
-            num_micro_batches,
+            sub_num_micro_batches,
             node_type="Cond",
             task_id=1,
             program=paddle.static.Program(),
@@ -170,7 +171,7 @@ class TestFleetExecutor(unittest.TestCase):
         )
         task_c = TaskNode(
             0,
-            num_micro_batches,
+            sub_num_micro_batches,
             node_type="Compute",
             task_id=2,
             program=program_b,
@@ -178,7 +179,7 @@ class TestFleetExecutor(unittest.TestCase):
         )
         task_d = TaskNode(
             0,
-            num_micro_batches,
+            sub_num_micro_batches,
             node_type="Compute",
             task_id=3,
             program=paddle.static.Program(),
@@ -188,9 +189,53 @@ class TestFleetExecutor(unittest.TestCase):
         )
         task_e = TaskNode(
             0,
-            num_micro_batches,
+            sub_num_micro_batches,
             node_type="Compute",
             task_id=4,
+            program=paddle.static.Program(),
+            lazy_initialize=True,
+        )
+
+        task_a1 = TaskNode(
+            0,
+            sub_num_micro_batches,
+            node_type="Start",
+            task_id=5,
+            program=program_a.clone(),
+            lazy_initialize=True,
+        )
+        task_b1 = TaskNode(
+            0,
+            sub_num_micro_batches,
+            node_type="Cond",
+            task_id=6,
+            program=paddle.static.Program(),
+            cond_var_name=cond_var_name,
+            lazy_initialize=True,
+        )
+        task_c1 = TaskNode(
+            0,
+            sub_num_micro_batches,
+            node_type="Compute",
+            task_id=7,
+            program=program_b.clone(),
+            lazy_initialize=True,
+        )
+        task_d1 = TaskNode(
+            0,
+            sub_num_micro_batches,
+            node_type="Compute",
+            task_id=8,
+            program=paddle.static.Program(),
+            vars_to_dtype={'x': 'float32', 'tmp_1': 'int64'},
+            vars_to_shape={'x': (1,), 'tmp_1': (1,)},
+            lazy_initialize=True,
+        )
+        task_e1 = TaskNode(
+            0,
+            sub_num_micro_batches,
+            node_type="Compute",
+            task_id=9,
             program=paddle.static.Program(),
             lazy_initialize=True,
         )
@@ -215,20 +260,52 @@ class TestFleetExecutor(unittest.TestCase):
             task_b.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
         )
 
+        task_a1.add_downstream_task(task_b1.task_id(), 2)
+        task_b1.add_upstream_task(task_a1.task_id(), 2)
+        task_b1.add_downstream_task(task_c1.task_id(), infinite_buff_size)
+        task_c1.add_upstream_task(task_b1.task_id(), infinite_buff_size)
+        task_c1.add_downstream_task(task_d1.task_id(), 2)
+        task_d1.add_upstream_task(task_c1.task_id(), 2)
+        task_d1.add_downstream_task(
+            task_b1.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
+        task_b1.add_upstream_task(
+            task_d1.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
+        task_b1.add_downstream_task(
+            task_e1.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
+        )
+        task_e1.add_upstream_task(
+            task_b1.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
+        )
+
         main_program._pipeline_opt = {
             "fleet_opt": {
-                'tasks': [task_a, task_b, task_c, task_d, task_e],
-                'task_id_to_rank': {
-                    task_a.task_id(): 0,
-                    task_b.task_id(): 0,
-                    task_c.task_id(): 0,
-                    task_d.task_id(): 0,
-                    task_e.task_id(): 0,
-                },
+                'tasks': [
+                    [task_a, task_b, task_c, task_d, task_e],
+                    [task_a1, task_b1, task_c1, task_d1, task_e1],
+                ],
+                'task_id_to_rank': [
+                    {
+                        task_a.task_id(): 0,
+                        task_b.task_id(): 0,
+                        task_c.task_id(): 0,
+                        task_d.task_id(): 0,
+                        task_e.task_id(): 0,
+                    },
+                    {
+                        task_a1.task_id(): 0,
+                        task_b1.task_id(): 0,
+                        task_c1.task_id(): 0,
+                        task_d1.task_id(): 0,
+                        task_e1.task_id(): 0,
+                    },
+                ],
                 'num_micro_batches': num_micro_batches,
                 'inference_generation': True,
                 'fetch_var': ['x'],
                 "source_program": source_program,
+                "num_of_carrier": 2,
             },
         }
 

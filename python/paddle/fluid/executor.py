@@ -2511,7 +2511,9 @@ class Executor(object):
                 " task_id_to_rank should also be provided."
             )
             print('fleet executor will use user defined task nodes')
-            tasks = [task.task_node() for task in fleet_opt['tasks']]
+            tasks = []
+            for task_list in fleet_opt['tasks']:
+                tasks.append([task.task_node() for task in task_list])
             task_id_to_rank = fleet_opt['task_id_to_rank']
         else:
             scheduler = fleet_opt['scheduler']
@@ -2554,16 +2556,24 @@ class Executor(object):
                     scheduler
                 ) + "."
             # NOTE: have to hold these vars, otherwise will be destructed
-            fleet_opt['tasks'] = tasks
-            fleet_opt['task_id_to_rank'] = task_id_to_rank
+            fleet_opt['tasks'] = [tasks]
+            fleet_opt['task_id_to_rank'] = [task_id_to_rank]
         place = core.Place()
         place.set_place(self.place)
 
         inference_root_scope_vars = (
             fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
         )
+        source_program = (
+            fleet_opt["source_program"]
+            if "source_program" in fleet_opt
+            else None
+        )
+        num_of_carrier = (
+            fleet_opt["num_of_carrier"] if "num_of_carrier" in fleet_opt else 1
+        )
         self._fleet_executor.init(
-            carrier_id,
+            num_of_carrier,
             program.desc,
             scope,
             place,
@@ -2572,6 +2582,7 @@ class Executor(object):
             task_id_to_rank,
             inference_root_scope_vars,
             micro_scope_list,
+            source_program.desc,
         )
 
     def _run_using_fleet_executor(
@@ -2634,35 +2645,37 @@ class Executor(object):
                 # then insert fetch ops into the last task node.
 
                 # Insert feed ops
-                feed_task = fleet_opt['tasks'][0]
-                print("Inserting feed ops for task", feed_task.task_id())
-                feed_program = feed_task.get_program()
-                feed_program = self._add_feed_ops(
-                    program=feed_program,
-                    feed=real_feed,
-                    feed_var_name=feed_var_name,
-                )
-                feed_task.set_program(feed_program)
+                for task_list in fleet_opt['tasks']:
+                    feed_task = task_list[0]
+                    print("Inserting feed ops for task", feed_task.task_id())
+                    feed_program = feed_task.get_program()
+                    feed_program = self._add_feed_ops(
+                        program=feed_program,
+                        feed=real_feed,
+                        feed_var_name=feed_var_name,
+                    )
+                    feed_task.set_program(feed_program)
 
                 # Insert fetch ops
-                fetch_task = fleet_opt['tasks'][-1]
-                print("Inserting fetch ops for task", fetch_task.task_id())
-                fetch_program = fetch_task.get_program()
-                fetch_program = self._add_fetch_ops(
-                    program=fetch_program,
-                    fetch_list=fetch_list,
-                    fetch_var_name=fetch_var_name,
-                )
-                main_block = fetch_program.block(0)
-                for op in main_block.ops:
-                    # set the op_role of fetch op to Optimize to avoid
-                    # erase the fetched vars by gc for pipeline
-                    if op.type == 'fetch':
-                        op._set_attr(
-                            'op_role',
-                            core.op_proto_and_checker_maker.OpRole.Optimize,
-                        )
-                fetch_task.set_program(fetch_program)
+                for task_list in fleet_opt['tasks']:
+                    fetch_task = task_list[-1]
+                    print("Inserting fetch ops for task", fetch_task.task_id())
+                    fetch_program = fetch_task.get_program()
+                    fetch_program = self._add_fetch_ops(
+                        program=fetch_program,
+                        fetch_list=fetch_list,
+                        fetch_var_name=fetch_var_name,
+                    )
+                    main_block = fetch_program.block(0)
+                    for op in main_block.ops:
+                        # set the op_role of fetch op to Optimize to avoid
+                        # erase the fetched vars by gc for pipeline
+                        if op.type == 'fetch':
+                            op._set_attr(
+                                'op_role',
+                                core.op_proto_and_checker_maker.OpRole.Optimize,
+                            )
+                    fetch_task.set_program(fetch_program)
 
             self._prepare_fleet_executor_carrier(
                 cache_key,
@@ -2692,7 +2705,7 @@ class Executor(object):
             )
             tensor.set(data, self.place)
 
-        self._fleet_executor.run(cache_key)
+        self._fleet_executor.run()
 
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate

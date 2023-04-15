@@ -14,6 +14,7 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 
 #include <algorithm>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -27,6 +28,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -49,8 +51,8 @@ FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
 }
 
 FleetExecutor::~FleetExecutor() {
-  for (const auto& carrier_id : carrier_ids_) {
-    GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
+  for (const auto& carrier : carriers_) {
+    carrier.get()->Release();
   }
 }
 
@@ -154,20 +156,61 @@ GetSubUnusedVars(const framework::ProgramDesc& program_desc,
 
 }  // namespace
 
-void FleetExecutor::Init(
-    const std::string& carrier_id,
+void FleetExecutor::CopyParametersFromRoot(
+    const framework::ProgramDesc& program,
+    const std::vector<std::string>& inference_root_scope_vars) {
+  std::map<std::string, int> inference_root_scope_var_map;
+  for (auto var_name : inference_root_scope_vars) {
+    inference_root_scope_var_map.insert({var_name, 1});
+  }
+  // Create persistable variables in root scope
+  for (size_t i = 0; i < program.Size(); ++i) {
+    for (auto& var : program.Block(i).AllVars()) {
+      std::string var_name = var->Name();
+      bool force_root = inference_root_scope_var_map.find(var_name) !=
+                        inference_root_scope_var_map.end();
+      if (force_root) {
+        VLOG(4) << var_name
+                << " will be forced to be created in the root scope.";
+      }
+      if (var->Persistable() || force_root) {
+        if (root_scope_->FindVar(var_name)) {
+          VLOG(4) << "Variable " << var_name
+                  << " has been created in the root scope.";
+          continue;
+        }
+        auto* ptr = root_scope_->Var(var_name);
+        InitializeVariable(ptr, var->GetType());
+        VLOG(5) << "Create persistable var: " << var_name
+                << ", which pointer is " << ptr;
+      }
+    }
+  }
+  // Create other normal parameters in each micro-scope
+  for (auto& micro_scope : microbatch_scopes_) {
+    for (size_t i = 0; i < program.Size(); ++i) {
+      for (auto& var : program.Block(i).AllVars()) {
+        if (!var->Persistable()) {
+          auto* ptr = micro_scope->Var(var->Name());
+          VLOG(5) << "Create variable " << var->Name() << " for microbatch ptr "
+                  << micro_scope << ", which pointer is " << ptr << ".";
+          InitializeVariable(ptr, var->GetType());
+        }
+      }
+    }
+  }
+}
+
+std::shared_ptr<RuntimeGraph> FleetExecutor::CreateRuntimeGraph(
     const framework::ProgramDesc& program_desc,
-    framework::Scope* scope,
-    const platform::Place& place,
-    int64_t num_micro_batches,
     const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
-    const std::vector<std::string>& inference_root_scope_vars,
-    const std::vector<framework::Scope*>& micro_scope_list) {
+    const std::vector<std::string>& inference_root_scope_vars) {
   PADDLE_ENFORCE_GT(task_nodes.size(),
                     0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
+  // Analyze the variables in program_desc, consider the program has while op
   // Set the unused var after running while op
   std::set<TaskNode*> sub_block_tasks;
   std::vector<std::string> while_block_vars;
@@ -218,7 +261,7 @@ void FleetExecutor::Init(
   // inf. If they are GCed, it will cause error during ZeroCopy the result.
   PreventVarsDelete(&global_unused_vars, inference_root_scope_vars);
 
-  runtime_graph_ = std::make_shared<RuntimeGraph>();
+  auto runtime_graph = std::make_shared<RuntimeGraph>();
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
   for (auto task_node : task_nodes) {
     if (sub_block_tasks.find(task_node) == sub_block_tasks.end()) {
@@ -229,42 +272,132 @@ void FleetExecutor::Init(
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
   }
-  runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
-  runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
 
-  VLOG(5) << runtime_graph_->DebugString();
-  Carrier* carrier =
-      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier_ids_.insert(carrier_id);
-  // Set current running carrier
-  GlobalVal<std::string>::Set(new std::string(carrier_id));
-  InitCarrier(carrier,
-              scope,
-              place,
-              num_micro_batches,
-              program_desc,
-              inference_root_scope_vars,
-              micro_scope_list);
+  runtime_graph->SetInterceptorIdToRank(task_id_to_rank);
+  runtime_graph->SetInterceptorIdToNode(interceptor_id_to_task);
+
+  VLOG(5) << runtime_graph->DebugString();
+  return runtime_graph;
+}
+
+void FleetExecutor::Init(
+    int32_t num_of_carriers,
+    const framework::ProgramDesc& program_desc,
+    framework::Scope* scope,
+    const platform::Place& place,
+    int64_t num_micro_batches,
+    const std::vector<std::vector<TaskNode*>>& task_nodes,
+    const std::vector<std::unordered_map<int64_t, int64_t>>& task_id_to_rank,
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list,
+    paddle::framework::ProgramDesc* source_program) {
+  root_scope_ = scope;
+  // Create num_micro_batches micro_scope if micro_scope_list is none
+  // Create persistable parameters in root scope
+  // Create other parameters in each micro_scope
+  // Be careful, the persistable parameters is unique in root scope.
+  bool need_create_scope = micro_scope_list.empty();
+  if (need_create_scope) {
+    minibatch_scope_ = &scope->NewScope();
+    microbatch_scopes_.resize(num_micro_batches);
+    for (int i = 0; i < num_micro_batches; ++i) {
+      microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+    }
+  } else {
+    microbatch_scopes_ = micro_scope_list;
+  }
+
+  for (auto id = 0; id < num_of_carriers; ++id) {
+    auto graph = CreateRuntimeGraph(program_desc,
+                                    task_nodes[id],
+                                    task_id_to_rank[id],
+                                    inference_root_scope_vars);
+    runtime_graph_.emplace_back(graph);
+  }
+  CopyParametersFromRoot(program_desc, inference_root_scope_vars);
+
+  // Here we set the thread num to num_of_carriers + 1, because we use one
+  // thread for one carrier for now, and one thread for interceptor which not
+  // belong to any carrier.
+  thread_pool_ = std::make_unique<TaskLoopThreadPool>();
+  thread_pool_->SetThreadNum(num_of_carriers + 1);
+  thread_pool_->Start();
+
+  CreateSourceAndSink(
+      microbatch_scopes_.size(), task_nodes, place, source_program);
+
+  std::vector<std::vector<framework::Scope*>> sub_micro_scope_list(
+      num_of_carriers);
+  bool divided = microbatch_scopes_.size() % num_of_carriers == 0;
+  PADDLE_ENFORCE_EQ(
+      divided,
+      true,
+      platform::errors::InvalidArgument(
+          "The number of microbatch scopes should be divided by the number of "
+          "carriers, but got %d microbatch scopes and %d carriers",
+          microbatch_scopes_.size(),
+          num_of_carriers));
+  for (size_t i = 0; i < microbatch_scopes_.size(); ++i) {
+    int carrier_id = (i % num_of_carriers);
+    sub_micro_scope_list[carrier_id].emplace_back(microbatch_scopes_[i]);
+  }
+  for (auto id = 0; id < num_of_carriers; ++id) {
+    carriers_.emplace_back(std::make_unique<Carrier>(id));
+    InitCarrier(carriers_[id].get(),
+                scope,
+                minibatch_scope_,
+                place,
+                program_desc,
+                sub_micro_scope_list[id],
+                runtime_graph_[id]);
+  }
+
+  // Configure the source and sink interceptor
+  source_interceptor_->SetPlace(place);
+  source_interceptor_->SetMiniBatchScope(minibatch_scope_);
+  source_interceptor_->SetMicroBatchScope(microbatch_scopes_);
+  source_interceptor_->SetRootScope(root_scope_);
+  std::vector<Carrier*> multi_carriers;
+  for (const auto& carrier : carriers_) {
+    multi_carriers.emplace_back(carrier.get());
+  }
+  source_interceptor_->RegisterMultiCarrier(multi_carriers);
+  auto* loop = thread_pool_->GetLoop(carriers_.size());
+  PADDLE_ENFORCE_NOT_NULL(
+      loop,
+      platform::errors::Fatal(
+          "thread task loop for source and sink must not null"));
+  source_interceptor_->RegisterTaskLoop(loop);
+  sink_interceptor_->RegisterTaskLoop(loop);
+  sink_interceptor_->SetConditionVariable(&cond_var_);
+  sink_interceptor_->RegisterMultiCarrier(multi_carriers);
+
+  for (auto& carrier : carriers_) {
+    carrier->SetSourceInterceptor(source_interceptor_.get());
+    carrier->SetSinkInterceptor(sink_interceptor_.get());
+  }
+
+  GlobalVal<MessageBus>::Get()->RegisterMultiCarrier(multi_carriers);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 
 void FleetExecutor::InitCarrier(
     Carrier* carrier,
     framework::Scope* scope,
+    framework::Scope* minibatch_scope,
     const platform::Place& place,
-    int64_t num_micro_batches,
     const framework::ProgramDesc& program_desc,
-    const std::vector<std::string>& inference_root_scope_vars,
-    const std::vector<framework::Scope*>& micro_scope_list) {
+    const std::vector<framework::Scope*>& micro_scope_list,
+    const std::shared_ptr<RuntimeGraph>& runtime_graph) {
   carrier->Init(exe_desc_.cur_rank(),
-                runtime_graph_->interceptor_id_to_rank(),
-                runtime_graph_->interceptor_id_to_node(),
+                runtime_graph->interceptor_id_to_rank(),
+                runtime_graph->interceptor_id_to_node(),
                 program_desc,
                 scope,
-                num_micro_batches,
+                minibatch_scope,
                 place,
-                inference_root_scope_vars,
-                micro_scope_list);
+                micro_scope_list,
+                thread_pool_.get());
 }
 
 void FleetExecutor::InitMessageBus() {
@@ -302,14 +435,63 @@ void FleetExecutor::InitMessageBus() {
   GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
 }
 
-void FleetExecutor::Run(const std::string& carrier_id) {
-  Carrier* carrier = GlobalMap<std::string, Carrier>::Get(carrier_id);
-  // Set current running carrier
-  if (*GlobalVal<std::string>::Get() != carrier_id) {
-    GlobalVal<std::string>::Set(new std::string(carrier_id));
-    GlobalVal<MessageBus>::Get()->Barrier();
+void FleetExecutor::WaitCondVarToExit() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  cond_var_.wait(lock);
+}
+
+void FleetExecutor::CreateSourceAndSink(
+    int64_t max_run_times,
+    const std::vector<std::vector<TaskNode*>>& task_node_lists,
+    const platform::Place& place,
+    paddle::framework::ProgramDesc* source_program) {
+  auto cur_rank = exe_desc_.cur_rank();
+  TaskNode* source =
+      source_program
+          ? new TaskNode(source_program, SOURCE_ID, cur_rank, max_run_times)
+          : new TaskNode(cur_rank, SOURCE_ID, max_run_times);
+  TaskNode* sink = new TaskNode(cur_rank, SINK_ID, max_run_times);
+
+  // find nodes without upstreams or without downstreams
+  std::vector<TaskNode*> origin_sources, origin_sinks;
+  for (const auto& task_node_list : task_node_lists) {
+    for (const auto& task_node : task_node_list) {
+      if (task_node->upstream().empty()) {
+        origin_sources.emplace_back(task_node);
+      }
+      if (task_node->downstream().empty()) {
+        origin_sinks.emplace_back(task_node);
+      }
+    }
   }
-  carrier->Start();
+  // link source node with origin source
+  for (const auto& node : origin_sources) {
+    source->AddDownstreamTask(node->task_id(),
+                              std::numeric_limits<int64_t>::max());
+    node->AddUpstreamTask(SOURCE_ID, std::numeric_limits<int64_t>::max());
+  }
+  for (const auto& node : origin_sinks) {
+    sink->AddUpstreamTask(node->task_id(), std::numeric_limits<int64_t>::max());
+    node->AddDownstreamTask(SINK_ID, std::numeric_limits<int64_t>::max());
+  }
+  // create source and sink interceptor
+  source_interceptor_ = InterceptorFactory::Create("Source", SOURCE_ID, source);
+  sink_interceptor_ = InterceptorFactory::Create("Sink", SINK_ID, sink);
+}
+
+void FleetExecutor::Run() {
+  for (const auto& carrier : carriers_) {
+    carrier->Start();
+  }
+  // Send start message to source interceptor
+  InterceptorMessage start_msg;
+  start_msg.set_message_type(START);
+  source_interceptor_->EnqueueRemoteInterceptorMessage(start_msg);
+
+  WaitCondVarToExit();
+  for (const auto& carrier : carriers_) {
+    carrier.get()->ClearMicroScopes();
+  }
 }
 
 }  // namespace distributed

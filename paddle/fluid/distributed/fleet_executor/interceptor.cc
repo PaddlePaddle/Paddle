@@ -62,13 +62,6 @@ void Interceptor::LoopOnce() {
   }
 }
 
-void Interceptor::StopCarrier() {
-  PADDLE_ENFORCE_NOT_NULL(
-      carrier_,
-      platform::errors::PreconditionNotMet("Carrier is not registered."));
-  carrier_->WakeUp();
-}
-
 void Interceptor::EnqueueRemoteInterceptorMessage(
     const InterceptorMessage& message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox

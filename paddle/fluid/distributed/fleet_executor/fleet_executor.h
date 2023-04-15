@@ -15,6 +15,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
@@ -39,31 +40,55 @@ class FleetExecutor final {
   explicit FleetExecutor(const std::string& exe_desc_str);
   explicit FleetExecutor(const FleetExecutorDesc& exe_desc);
   ~FleetExecutor();
-  void Init(const std::string& carrier_id,
-            const framework::ProgramDesc& program_desc,
-            framework::Scope* scope,
-            const platform::Place& place,
-            int64_t num_micro_batches,
-            const std::vector<TaskNode*>& task_nodes,
-            const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
-            const std::vector<std::string>& inference_root_scope_vars = {},
-            const std::vector<framework::Scope*>& micro_scope_list = {});
-  void Run(const std::string& carrier_id);
+  void Init(
+      int32_t num_of_carriers,
+      const framework::ProgramDesc& program_desc,
+      framework::Scope* scope,
+      const platform::Place& place,
+      int64_t num_micro_batches,
+      const std::vector<std::vector<TaskNode*>>& task_nodes,
+      const std::vector<std::unordered_map<int64_t, int64_t>>& task_id_to_rank,
+      const std::vector<std::string>& inference_root_scope_vars = {},
+      const std::vector<framework::Scope*>& micro_scope_list = {},
+      paddle::framework::ProgramDesc* source_program = nullptr);
+  void Run();
+  std::shared_ptr<RuntimeGraph> CreateRuntimeGraph(
+      const framework::ProgramDesc& program_desc,
+      const std::vector<TaskNode*>& task_nodes,
+      const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
+      const std::vector<std::string>& inference_root_scope_vars);
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   void InitMessageBus();
-  void InitCarrier(
-      Carrier* carrier,
-      framework::Scope* scope,
+  void InitCarrier(Carrier* carrier,
+                   framework::Scope* scope,
+                   framework::Scope* minibatch_scope,
+                   const platform::Place& place,
+                   const framework::ProgramDesc& program_desc,
+                   const std::vector<framework::Scope*>& micro_scope_list,
+                   const std::shared_ptr<RuntimeGraph>& runtime_graph);
+  void WaitCondVarToExit();
+  void CopyParametersFromRoot(
+      const framework::ProgramDesc& program,
+      const std::vector<std::string>& inference_root_scope_vars);
+  void CreateSourceAndSink(
+      int64_t max_run_times,
+      const std::vector<std::vector<TaskNode*>>& task_nodes,
       const platform::Place& place,
-      int64_t num_micro_batches,
-      const framework::ProgramDesc& program_desc,
-      const std::vector<std::string>& inference_root_scope_vars = {},
-      const std::vector<framework::Scope*>& micro_scope_list = {});
+      paddle::framework::ProgramDesc* source_program);
+
   FleetExecutorDesc exe_desc_;
-  std::shared_ptr<RuntimeGraph> runtime_graph_;
-  std::unordered_set<std::string> carrier_ids_;
+  std::vector<std::shared_ptr<RuntimeGraph>> runtime_graph_;
+  std::unique_ptr<Interceptor> source_interceptor_;
+  std::unique_ptr<Interceptor> sink_interceptor_;
+  std::vector<std::unique_ptr<Carrier>> carriers_;
+  std::mutex mutex_;
+  std::condition_variable cond_var_;
+  std::unique_ptr<TaskLoopThreadPool> thread_pool_;
+  std::vector<framework::Scope*> microbatch_scopes_;
+  framework::Scope* root_scope_{nullptr};
+  framework::Scope* minibatch_scope_{nullptr};
 };
 
 }  // namespace distributed

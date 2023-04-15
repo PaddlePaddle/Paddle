@@ -89,6 +89,4 @@ if(WITH_DISTRIBUTE)
     message_service.h PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
     message_service.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-
-  add_subdirectory(test)
 endif()
