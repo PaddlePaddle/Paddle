@@ -1470,15 +1470,15 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                     # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                     # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
-                    is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                    is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
-                    is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                    is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE") || true
+                    is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST") || true
+                    is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY") || true
                     continue
                 fi
                 testcase=$(echo "$line"|grep -oEi "\w+$")
@@ -1707,7 +1707,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -1973,7 +1973,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -2081,7 +2081,7 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
@@ -2251,7 +2251,7 @@ function parallel_test_base_cinn() {
     ========================================
 EOF
 
-#set +x
+set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V)        # get all test cases
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
@@ -2259,11 +2259,11 @@ EOF
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')"
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=CINN mean the case would run in CINN CI.
-                    is_cinn=$(echo "$line"|grep -oEi "RUN_TYPE=CINN")
+                    is_cinn=$(echo "$line"|grep -oEi "RUN_TYPE=CINN") || true
                     continue
                 fi
                 testcase=$(echo "$line"|grep -oEi "\w+$")
