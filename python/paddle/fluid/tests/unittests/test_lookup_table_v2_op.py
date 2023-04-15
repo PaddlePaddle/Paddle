@@ -49,7 +49,7 @@ class TestLookupTableOp(OpTest):
         self.python_api = paddle.nn.functional.embedding
         self.init_dtype()
 
-        table = np.random.random((17, 31)).astype(self.dtype)
+        table = np.random.random((17, 32)).astype(self.dtype)
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
 
         self.inputs = {'W': table, 'Ids': ids}
