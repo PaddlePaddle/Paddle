@@ -2046,13 +2046,13 @@ void LambInferMeta(const MetaTensor& param,
       beta2_pow_out,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
 
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
-
   phi::DataType dtype = param.dtype();
   if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
     dtype = phi::DataType::FLOAT32;
   }
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(dtype);
 
   moment1_out->set_dims(param_dims);
   moment1_out->set_dtype(dtype);
@@ -2063,6 +2063,10 @@ void LambInferMeta(const MetaTensor& param,
   beta1_pow_out->set_dtype(dtype);
   beta2_pow_out->set_dims(beta2_pow_dims);
   beta2_pow_out->set_dtype(dtype);
+
+  if (master_param_outs) {
+    master_param_outs->set_dtype(dtype);
+  }
 }
 
 void LogspaceInferMeta(const MetaTensor& start,
