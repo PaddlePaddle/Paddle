@@ -142,7 +142,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
-  auto unsqueeze1 = phi::funcs::Unsqueeze(dev_ctx, mul_dA_detA, -1);
+  auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
   auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
