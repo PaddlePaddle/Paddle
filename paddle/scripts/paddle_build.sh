@@ -687,10 +687,10 @@ EOF
         is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
@@ -702,7 +702,7 @@ EOF
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -835,10 +835,10 @@ set +x
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -848,7 +848,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -866,7 +866,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1470,18 +1470,18 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                     # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                     # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
-                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
-                    read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                    is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
                     continue
                 fi
-                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                testcase=$(echo "$line"|grep -oEi "\w+$")
 
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
@@ -1490,7 +1490,7 @@ set +x
                 if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
                     will_test="false"
                     for case in $precision_cases; do
-                        if [[ $testcase == $case ]]; then
+                        if [[ testcase == $case ]]; then
                             will_test="true"
                             break
                         fi
@@ -1503,7 +1503,7 @@ set +x
 
                 if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                  is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
                 fi
                 if [[ "$is_exclusive" != "" ]]; then
                     if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
@@ -1589,10 +1589,10 @@ set +x
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -1602,7 +1602,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -1620,7 +1620,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1630,9 +1630,9 @@ set +x
                         echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
-                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
-                                read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
-                                read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+                                tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
+                                tmp_mul_tmp="$( echo $multiple_card_tests | grep -oEi $line )"
+                                exclusive_tmp="$( echo $exclusive_tests | grep -oEi $line )"
 
                                 if [[ "$tmp_one_tmp" != ""  ]]; then
                                     if [[ "$one_card_retry" == "" ]]; then
@@ -1707,18 +1707,18 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                 # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
-                read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                 echo $testcase" will only run at night."
@@ -1729,7 +1729,7 @@ set +x
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
             if [[ "$is_exclusive" != "" ]]; then
                 exclusive_card_tests="$exclusive_card_tests|^$testcase$"
@@ -1973,16 +1973,16 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$testcase" == "simple_precision_test" ]]; then
                 continue
@@ -1990,7 +1990,7 @@ set +x
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
 
             if [[ "$is_exclusive" != "" ]]; then
@@ -2081,20 +2081,20 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
 
             if [[ "$is_exclusive" != "" ]]; then
@@ -2223,7 +2223,7 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
             else
@@ -2259,14 +2259,14 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr=$(echo "$line"|grep -oEi 'Test[ \t]+#')
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=CINN mean the case would run in CINN CI.
-                    read is_cinn <<< $(echo "$line"|grep -oEi "RUN_TYPE=CINN")
+                    is_cinn=$(echo "$line"|grep -oEi "RUN_TYPE=CINN")
                     continue
                 fi
-                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                testcase=$(echo "$line"|grep -oEi "\w+$")
                 if [[ "$is_cinn" != "" ]]; then
                     if [[ "$single_card_tests" == "" ]]; then
                         single_card_tests="^$testcase$"
@@ -2523,7 +2523,7 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
             else
