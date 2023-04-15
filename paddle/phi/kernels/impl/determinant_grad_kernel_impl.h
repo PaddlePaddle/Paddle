@@ -15,6 +15,7 @@
 #pragma once
 
 #include "glog/logging.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
@@ -79,6 +80,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
                            const DenseTensor& out,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto input_dims_size = x.dims().size();
   if (input_dims_size > 2) {
     PADDLE_ENFORCE_EQ(
@@ -122,10 +124,10 @@ void DeterminantGradKernel(const Context& dev_ctx,
   DenseTensor inverse_A;
   // A must be square matrices!
   inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<T>(&inverse_A);
+  dev_ctx.template Alloc<MPType>(&inverse_A);
 
-  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
+  if (!std::is_same<T, phi::dtype::float16>::value) {
     mat_inv(dev_ctx,
             phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
             &inverse_A);
@@ -137,12 +139,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A;
-  if (std::is_same<T, phi::dtype::float16>::value) {
-    transpose_inverse_A = phi::TransposeLast2Dim<T, Context>(
+  phi::TransposeLast2Dim<MPType, Context> tl2d;
+  if (!std::is_same<T, phi::dtype::float16>::value) {
+    transpose_inverse_A = tl2d(
         dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
   } else {
-    transpose_inverse_A =
-        phi::TransposeLast2Dim<T, Context>(dev_ctx, inverse_A);
+    transpose_inverse_A = tl2d(dev_ctx, inverse_A);
   }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
@@ -168,7 +170,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
   DenseTensor res;
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (!std::is_same<T, phi::dtype::float16>::value) {
     res = phi::Multiply<T, Context>(
         dev_ctx,
         unsqueeze2,
