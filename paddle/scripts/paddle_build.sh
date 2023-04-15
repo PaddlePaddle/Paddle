@@ -1490,7 +1490,7 @@ set +x
                 if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
                     will_test="false"
                     for case in $precision_cases; do
-                        if [[ testcase == $case ]]; then
+                        if [[ $testcase == $case ]]; then
                             will_test="true"
                             break
                         fi
