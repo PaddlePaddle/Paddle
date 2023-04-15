@@ -15,12 +15,18 @@
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/index_select_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
@@ -43,9 +49,9 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
       out_values_data[j + index_i * dense_dim] = 0;
     }
 
-    int64_t index_j =
+    int64_t _index_j_ =
         static_cast<int64_t>(blockIdx.y) * blockDim.y + threadIdx.y;
-    for (; index_j < x_nnz;
+    for (auto index_j = _index_j_; index_j < x_nnz;
          index_j += static_cast<int64_t>(blockDim.y) * gridDim.y) {
       bool same = true;
       for (int j = 0; j < sparse_dim + !keep_dim; ++j) {
@@ -57,12 +63,14 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
       }
       if (same) {
         for (int j = 0; j < dense_dim; ++j) {
-          out_values_data[j + index_i * dense_dim] +=
-              x_values_data[j + index_j * dense_dim];
+          phi::CudaAtomicAdd(&out_values_data[j + index_i * dense_dim],
+                             x_values_data[j + index_j * dense_dim]);
         }
       }
     }
-
+    if (_index_j_ != 0) {
+      return;
+    }
     if (keep_dim) {
       for (int j = 0; j < sparse_dim; ++j) {
         out_indices_data[index_i + j * x_nnz] =
@@ -123,6 +131,7 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
                                    const int64_t x_dim1,
                                    int64_t* out_crows_data,
                                    int64_t* out_cols_data,
+                                   int64_t* batch_nnz_data,
                                    T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1), int64_t) {
     int64_t batch = index / (x_dim1 + 1);
@@ -131,14 +140,17 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
     out_cols_data[index] = 0;
 
     if (number != x_dim1) {
-      int64_t batch_nnz = 0;
-      for (int64_t b = 1; b <= batch; ++b) {
-        batch_nnz += x_crows_data[b * (x_dim1 + 1) - 1];
-      }
-
       T sum_value = 0;
+      if (batch == 0) {
+        for (int64_t j = x_crows_data[index]; j < x_crows_data[index + 1];
+             ++j) {
+          sum_value += x_values_data[j];
+        }
+        out_values_data[index] = sum_value;
+        return;
+      }
       for (int64_t j = x_crows_data[index]; j < x_crows_data[index + 1]; ++j) {
-        sum_value += x_values_data[j + batch_nnz];
+        sum_value += x_values_data[j + batch_nnz_data[batch - 1]];
       }
       out_values_data[index - batch] = sum_value;
     }
@@ -252,6 +264,8 @@ void SumCsrKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCsrTensor* out) {
   size_t n_dim = axis.size();
+  auto x_dim0 = x.dims()[0];
+  auto x_dim1 = x.dims()[1];
   const auto& x_crows = x.crows();
   const auto& x_values = x.values();
   const auto* x_crows_data = x_crows.data<int64_t>();
@@ -287,33 +301,49 @@ void SumCsrKernel(const Context& dev_ctx,
     auto* out_crows_data = out_crows.data<int64_t>();
 
     if (x.dims().size() == 2) {
-      out_cols = Empty<int64_t, Context>(dev_ctx, {x.dims()[0]});
-      out_values = Empty<T, Context>(dev_ctx, {x.dims()[0]});
+      out_cols = Empty<int64_t, Context>(dev_ctx, {x_dim0});
+      out_values = Empty<T, Context>(dev_ctx, {x_dim0});
       auto* out_cols_data = out_cols.data<int64_t>();
       auto* out_values_data = out_values.data<T>();
-      out_dims = make_ddim({x.dims()[0], 1});
+      out_dims = make_ddim({x_dim0, 1});
       auto config =
-          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.dims()[0] + 1, 1);
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_dim0 + 1, 1);
       SumCsr2DCudaKernel<T><<<config.block_per_grid.x,
                               config.thread_per_block.x,
                               0,
                               dev_ctx.stream()>>>(x_crows_data,
                                                   x_values_data,
-                                                  x.dims()[0],
+                                                  x_dim0,
                                                   out_crows_data,
                                                   out_cols_data,
                                                   out_values_data);
 
     } else {
-      out_cols = Empty<int64_t, Context>(dev_ctx, {x.dims()[0] * x.dims()[1]});
-      out_values = Empty<T, Context>(dev_ctx, {x.dims()[0] * x.dims()[1]});
+      out_cols = Empty<int64_t, Context>(dev_ctx, {x_dim0 * x_dim1});
+      out_values = Empty<T, Context>(dev_ctx, {x_dim0 * x_dim1});
       auto* out_cols_data = out_cols.data<int64_t>();
       auto* out_values_data = out_values.data<T>();
       if (keep_dim) {
-        out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+        out_dims = make_ddim({x_dim0, x_dim1, 1});
       } else {
-        out_dims = make_ddim({x.dims()[0], x.dims()[1]});
+        out_dims = make_ddim({x_dim0, x_dim1});
       }
+
+      DenseTensor x_crows_reshape =
+          Reshape<int64_t, Context>(dev_ctx, x_crows, {x_dim0, x_dim1 + 1});
+      DenseTensor last_indices = Empty<int64_t, Context>(dev_ctx, {1});
+      phi::funcs::SetConstant<Context, int64_t> set_constant;
+      set_constant(dev_ctx, &last_indices, x_dim1);
+
+      DenseTensor x_crows_last = Empty<int64_t, Context>(dev_ctx, {x_dim0, 1});
+      IndexSelectKernel<int64_t, Context>(
+          dev_ctx, x_crows_reshape, last_indices, 1, &x_crows_last);
+
+      DenseTensor batch_nnz = Empty<int64_t, Context>(dev_ctx, {x_dim0, 1});
+      CumsumKernel<int64_t, Context>(
+          dev_ctx, x_crows_last, Scalar(0), false, false, false, &batch_nnz);
+      auto* batch_nnz_data = batch_nnz.data<int64_t>();
+
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
           dev_ctx, x.dims()[0] * (x.dims()[1] + 1), 1);
       SumCsr3DCudaKernel<T><<<config.block_per_grid.x,
@@ -321,10 +351,11 @@ void SumCsrKernel(const Context& dev_ctx,
                               0,
                               dev_ctx.stream()>>>(x_crows_data,
                                                   x_values_data,
-                                                  x.dims()[0],
-                                                  x.dims()[1],
+                                                  x_dim0,
+                                                  x_dim1,
                                                   out_crows_data,
                                                   out_cols_data,
+                                                  batch_nnz_data,
                                                   out_values_data);
     }
     if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
@@ -355,10 +386,8 @@ PD_REGISTER_KERNEL(sum_coo,
                    phi::sparse::SumCooKernel,
                    float,
                    double,
-                   int16_t,
                    int,
-                   int64_t,
-                   bool) {
+                   int64_t) {
   kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
 }
 
@@ -368,9 +397,7 @@ PD_REGISTER_KERNEL(sum_csr,
                    phi::sparse::SumCsrKernel,
                    float,
                    double,
-                   int16_t,
                    int,
-                   int64_t,
-                   bool) {
+                   int64_t) {
   kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
 }
