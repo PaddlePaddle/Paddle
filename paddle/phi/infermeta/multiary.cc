@@ -2045,14 +2045,12 @@ void LambInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_NOT_NULL(
       beta2_pow_out,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
+  param_out->set_dims(param_dims);
 
   phi::DataType dtype = param.dtype();
   if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
     dtype = phi::DataType::FLOAT32;
   }
-
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(dtype);
 
   moment1_out->set_dims(param_dims);
   moment1_out->set_dtype(dtype);

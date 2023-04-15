@@ -230,4 +230,5 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
 }
