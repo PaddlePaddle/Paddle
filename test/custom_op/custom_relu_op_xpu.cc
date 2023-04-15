@@ -36,7 +36,9 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
                               const data_t* out_data,
                               data_t* grad_x_data,
                               int64_t out_numel) {
+  std::cout << "DEBUG kernel begin" << std::endl;
   for (int64_t i = 0; i < out_numel; ++i) {
+    std::cout << "DEBUG kernel iterate" << std::endl;
     grad_x_data[i] =
         grad_out_data[i] * (out_data[i] > static_cast<data_t>(0) ? 1. : 0.);
   }
@@ -72,12 +74,16 @@ std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
   auto grad_x = paddle::empty_like(x);
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
+                               std::cout << "DEBUG data() begin" << std::endl;
+                               grad_out.data<data_t>();
+                               std::cout << "DEBUG data() end" << std::endl;
                                relu_cpu_backward_kernel<data_t>(
                                    grad_out.data<data_t>(),
                                    out.data<data_t>(),
                                    grad_x.data<data_t>(),
                                    out.size());
                              }));
+  std::cout << "DEBUG kernel end" << std::endl;
 
   return {grad_x};
 }
