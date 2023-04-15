@@ -397,16 +397,8 @@ def create_test_fp16_class(
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and check_grad:
-                # First use the default max_relative_error, and then use the specified value
-                try:
-                    self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
-                except:
-                    self.check_grad_with_place(
-                        place,
-                        ['X', 'Alpha'],
-                        'Out',
-                        max_relative_error=max_relative_error,
-                    )
+                # Use the default max_relative_error, not use max_relative_error
+                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
@@ -439,16 +431,8 @@ def create_test_bf16_class(
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if check_grad:
-                # First use the default max_relative_error, and then use the specified value
-                try:
-                    self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
-                except:
-                    self.check_grad_with_place(
-                        place,
-                        ['X', 'Alpha'],
-                        'Out',
-                        max_relative_error=max_relative_error,
-                    )
+                # Use the default max_relative_error, not use max_relative_error
+                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestPReluBF16Op.__name__ = cls_name
