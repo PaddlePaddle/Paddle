@@ -107,7 +107,7 @@ class DotOpEmptyInput(unittest.TestCase):
         y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
         pd_out = paddle.dot(x, y)
 
-        self.assertEqual(pd_out.shape, (0, 1))
+        self.assertEqual(pd_out.shape, (0,))
 
     def test_3d_input_error(self):
         data = np.array([], dtype=np.float32)
@@ -180,7 +180,7 @@ class TestDygraph(unittest.TestCase):
                 np.array([[2, 5], [6, 8]]).astype(np.float32)
             )
             np.testing.assert_array_equal(
-                paddle.dot(x1, y1).numpy(), np.array([[17], [58]])
+                paddle.dot(x1, y1).numpy(), np.array([75])
             )
 
 

@@ -144,7 +144,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (tensor_dout->dims().size() <=1) {
+    if (tensor_dout->dims().size() <= 1) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
       if (tensor_dx) {
         auto y = EigenVector<T>::Flatten(*tensor_y);

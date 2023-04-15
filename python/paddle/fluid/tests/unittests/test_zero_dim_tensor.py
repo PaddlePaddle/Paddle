@@ -1065,8 +1065,8 @@ class TestSundryAPI(unittest.TestCase):
         out1.retain_grads()
         out1.backward()
 
-        self.assertEqual(out1.shape, [2])
-        self.assertEqual(out1.grad.shape, [2])
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.grad.shape, [])
 
     def test_inner(self):
         # 0) input is 0D
@@ -2651,8 +2651,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[out1, out1.grad_name],
         )
 
-        self.assertEqual(res[0].shape, (2,))
-        self.assertEqual(res[1].shape, (2,))
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
     @prog_scope()
     def test_inner(self):
