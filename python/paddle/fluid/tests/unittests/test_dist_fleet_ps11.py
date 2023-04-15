@@ -19,7 +19,7 @@ import paddle
 from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 paddle.enable_static()
 

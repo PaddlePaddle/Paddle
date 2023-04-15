@@ -21,7 +21,7 @@ paddle.enable_static()
 from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 # For Net
 base_lr = 0.2

@@ -25,7 +25,7 @@ from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
 from paddle import fluid
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")

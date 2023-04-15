@@ -29,7 +29,6 @@ from .tensor import segment_max
 from .tensor import segment_min
 from .tensor import _npu_identity
 from .passes import fuse_resnet_unit_pass
-from .layers import ctr_metric_bundle  # noqa: F401
 
 from . import autograd  # noqa: F401
 from . import autotune  # noqa: F401
@@ -56,5 +55,4 @@ __all__ = [
     'segment_max',
     'segment_min',
     'identity_loss',
-    'ctr_metric_bundle',
 ]

@@ -39,6 +39,7 @@ from .common import layer_norm  # noqa: F401
 
 
 from .common import embedding  # noqa: F401
+from .common import sparse_embedding  # noqa: F401
 from ...fluid.layers import StaticRNN  # noqa: F401
 
 from .sequence_lod import sequence_conv  # noqa: F401
@@ -82,7 +83,7 @@ __all__ = [  # noqa
     'spectral_norm',
     'switch_case',
     'while_loop',
-    'sequence_conv',
+    'sparse_embedding' 'sequence_conv',
     'sequence_softmax',
     'sequence_pool',
     'sequence_concat',

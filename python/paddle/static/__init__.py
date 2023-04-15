@@ -76,6 +76,7 @@ from ..fluid.layers import learning_rate_scheduler  # noqa: F401
 
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
+from .nn.metric import ctr_metric_bundle  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
@@ -123,5 +124,6 @@ __all__ = [  # noqa
     'device_guard',
     'create_parameter',
     'set_ipu_shard',
+    'ctr_metric_bundle',
     'exponential_decay',
 ]

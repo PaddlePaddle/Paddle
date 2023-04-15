@@ -22,7 +22,7 @@ from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 from paddle import fluid
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 
 def fake_ctr_reader():

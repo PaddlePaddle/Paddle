@@ -17,7 +17,7 @@ import unittest
 
 import paddle
 from paddle import fluid
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 paddle.enable_static()
 

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 
 class TestSparseEmbeddingAPIError(unittest.TestCase):

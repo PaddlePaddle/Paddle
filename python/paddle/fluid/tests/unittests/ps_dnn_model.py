@@ -16,7 +16,7 @@ import math
 
 import paddle
 from paddle import nn
-from paddle.incubate.layers.nn import sparse_embedding
+from paddle.static.nn import sparse_embedding
 
 
 class DNNLayer(nn.Layer):
