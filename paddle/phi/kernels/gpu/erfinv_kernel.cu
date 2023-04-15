@@ -26,6 +26,14 @@ struct ErfinvFunctor {
   HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
 };
 
+template <>
+struct ErfinvFunctor<platform::float16> {
+  HOSTDEVICE inline platform::float16 operator()(
+      const platform::float16 x) const {
+    return erfinv(static_cast<float>(x));
+  }
+};
+
 template <typename T, typename Context>
 void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
@@ -36,4 +44,11 @@ void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(erfinv,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ErfinvKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
