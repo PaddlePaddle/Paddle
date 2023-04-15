@@ -79,6 +79,7 @@ struct DeterminantFunctor {
                   int64_t rank,
                   int64_t batch_count,
                   DenseTensor* output) {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
@@ -93,7 +94,8 @@ struct DeterminantFunctor {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
-      output_vec.push_back(matrix.template cast<T>().determinant());
+      output_vec.push_back(
+          static_cast<T>(matrix.template cast<MPType>().determinant()));
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }
@@ -103,7 +105,6 @@ template <typename T, typename Context>
 void DeterminantKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
@@ -119,7 +120,7 @@ void DeterminantKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
-  DeterminantFunctor<MT, Context>()(dev_ctx, x, rank, batch_count, out);
+  DeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
   auto output_dims = phi::slice_ddim(x.dims(), 0, input_dim_size - 2);
   if (input_dim_size > 2) {
     out->Resize(output_dims);

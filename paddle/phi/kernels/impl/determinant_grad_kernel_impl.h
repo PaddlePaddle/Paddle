@@ -125,19 +125,40 @@ void DeterminantGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&inverse_A);
 
   phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-  mat_inv(dev_ctx, x, &inverse_A);
+  if (std::is_same<T, phi::dtype::float16>::value) {
+    mat_inv(dev_ctx,
+            phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
+            &inverse_A);
+  } else {
+    mat_inv(dev_ctx, x, &inverse_A);
+  }
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
   // Second: inverse(A).transpose(-2, -1)
-  DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<T, Context>(dev_ctx, inverse_A);
+  DenseTensor transpose_inverse_A;
+  if (std::is_same<T, phi::dtype::float16>::value) {
+    transpose_inverse_A = phi::TransposeLast2Dim<T, Context>(
+        dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
+  } else {
+    transpose_inverse_A =
+        phi::TransposeLast2Dim<T, Context>(dev_ctx, inverse_A);
+  }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
   // Third: dA * |A|
-  auto mul_dA_detA = phi::Multiply<T, Context>(dev_ctx, out_grad, out);
+  DenseTensor out_grad_tmp =
+      out_grad.dtype() == DataType::FLOAT32
+          ? out_grad
+          : phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+  DenseTensor out_tmp =
+      out.dtype() == DataType::FLOAT32
+          ? out
+          : phi::Cast<T, Context>(dev_ctx, out, DataType::FLOAT32);
+
+  auto mul_dA_detA = phi::Multiply<T, Context>(dev_ctx, out_grad_tmp, out_tmp);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
@@ -146,8 +167,15 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  auto res =
-      phi::Multiply<T, Context>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  DenseTensor res;
+  if (std::is_same<T, phi::dtype::float16>::value) {
+    res = phi::Multiply<T, Context>(
+        dev_ctx,
+        unsqueeze2,
+        phi::Cast<T, Context>(dev_ctx, transpose_inverse_A, DataType::FLOAT32));
+  } else {
+    res = phi::Multiply<T, Context>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  }
 
   VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
