@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import shlex
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -1612,7 +1613,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:
