@@ -189,7 +189,7 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
   }
 };
 
-// Common broadcast data loader.
+// FastBroadcastDataLoader with redundant fast divmod computation removed
 using DivModT = kps::details::FastDivMod::DivModT;
 template <int Index, int VecSize, bool IsBoundary, int LoadType>
 struct FastBroadcastDataLoader {
