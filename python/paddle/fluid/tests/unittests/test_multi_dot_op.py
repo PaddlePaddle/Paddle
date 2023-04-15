@@ -89,12 +89,12 @@ class TestMultiDotBF16Op(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        try:
-            self.check_grad_with_place(self.place, ['x0'], 'Out')
-            self.check_grad_with_place(self.place, ['x1'], 'Out')
-        except:
-            self.check_grad_with_place(self.place, ['x0'], 'Out', atol=0.2)
-            self.check_grad_with_place(self.place, ['x1'], 'Out', atol=0.2)
+        self.check_grad_with_place(
+            self.place, ['x0'], 'Out', numeric_grad_delta=0.01
+        )
+        self.check_grad_with_place(
+            self.place, ['x1'], 'Out', numeric_grad_delta=0.01
+        )
 
 
 # (A*B)*C
