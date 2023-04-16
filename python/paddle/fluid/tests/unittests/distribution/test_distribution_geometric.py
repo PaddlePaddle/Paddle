@@ -263,13 +263,13 @@ class TestGeometricPMF(unittest.TestCase):
             )
 
     def test_pmf_error(self):
-        self.assertRaises(TypeError, self._paddle_geom.pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.pmf, [1,2])
 
     def test_log_pmf_error(self):
-        self.assertRaises(TypeError, self._paddle_geom.log_pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.log_pmf, [1,2])
 
     def test_cdf_error(self):
-        self.assertRaises(TypeError, self._paddle_geom.cdf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.cdf, [1,2])
 
 
 @place(DEVICES)
@@ -329,13 +329,15 @@ class TestGeometricKL(unittest.TestCase):
     def test_kl1_error(self):
         self.assertRaises(
             TypeError,
-            self._geometric1.kl_divergence,paddle.distribution.beta.Beta
+            self._geometric1.kl_divergence,
+            paddle.distribution.beta.Beta
         )
 
     def test_kl2_error(self):
         self.assertRaises(
             TypeError,
-            self._geometric2.kl_divergence,paddle.distribution.beta.Beta
+            self._geometric2.kl_divergence,
+            paddle.distribution.beta.Beta
         )
 
     def _kl(self):
