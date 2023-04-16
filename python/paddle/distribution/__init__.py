@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.distribution import transform
+from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
@@ -31,6 +32,7 @@ from paddle.distribution.laplace import Laplace
 from paddle.distribution.geometric import Geometric
 
 __all__ = [  # noqa
+    'Bernoulli',
     'Beta',
     'Categorical',
     'Dirichlet',

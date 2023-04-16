@@ -25,7 +25,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -33,7 +33,7 @@ class PullSparseV2CPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

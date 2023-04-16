@@ -1013,70 +1013,6 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
-  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
-      m, "CustomOpKernelContext", R"DOC()DOC");
-  g_custom_op_kernel_ctx_pytype =
-      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
-  custom_op_kernel_ctx.def(py::init<>())
-      .def("add_inputs",
-           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
-             PyObject *obj = input.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackInputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else if (obj == Py_None) {
-               // Check optional Tensor, use one un-initialized tensor to
-               // indicate both Tensor and vector<Tensor> inputs
-               self.EmplaceBackInput(std::move(paddle::Tensor()));
-             } else {
-               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_outputs",
-           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
-             PyObject *obj = outputs.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackOutputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else {
-               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, bool attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, float attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int64_t attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<std::string> &attr) {
-             self.EmplaceBackAttr(attr);
-           });
-
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -2023,17 +1959,6 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetGPUComputeCapability(place.device) >= 53;
-  });
-  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
-    return platform::GetGPUComputeCapability(place.device) >= 80;
-  });
-#endif
 
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
