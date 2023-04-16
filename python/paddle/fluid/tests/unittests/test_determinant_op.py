@@ -65,7 +65,7 @@ class TestDeterminantOpCase2(TestDeterminantOp):
 class TestDeterminantFP16Op(OpTest):
     def init_args(self):
         np.random.seed(0)
-        self.input_data = np.ones([4, 2, 4, 4])
+        self.input_data = np.random.rand(3, 3, 3, 5, 5)
         self.dtype = np.float16
 
     def setUp(self):
