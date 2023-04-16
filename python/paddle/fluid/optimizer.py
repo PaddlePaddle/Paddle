@@ -1553,8 +1553,8 @@ class SGDOptimizer(Optimizer):
         assert learning_rate is not None
         super().__init__(
             learning_rate=learning_rate,
-            parameter_list=parameter_list,
-            regularization=regularization,
+            parameters=parameter_list,
+            weight_decay=regularization,
             grad_clip=grad_clip,
             name=name,
         )
