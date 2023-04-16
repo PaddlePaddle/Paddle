@@ -2429,13 +2429,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(xt_1_out.grad.shape, [3, 3])
 
     def test_linalg_norm(self):
-        def test_case(x, p='fro', axis=None):
-            out = paddle.linalg.norm(x, p=p, axis=axis)
-            out.retain_grads()
-            out.backward()
-            self.assertEqual(out.shape, [])
-            self.assertEqual(x.grad.shape, [24])
-
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         x_1 = paddle.arange(24, dtype="float32") - 12
         x_1.stop_gradient = False
@@ -4379,13 +4372,6 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope
     def test_linalg_norm(self):
-        def test_case(x, p='fro', axis=None):
-            out = paddle.linalg.norm(x, p=p, axis=axis)
-            out.retain_grads()
-            out.backward()
-            self.assertEqual(out.shape, [])
-            self.assertEqual(x.grad.shape, [24])
-
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         # using frobenius_norm, depends on reduce inferMeta support 0d output
         # x_1 = paddle.arange(24, dtype="float32") - 12
