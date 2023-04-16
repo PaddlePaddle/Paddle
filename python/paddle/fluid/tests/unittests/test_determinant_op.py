@@ -59,14 +59,25 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
-class TestDeterminantFP16Op(TestDeterminantOp):
-    def init_data(self):
+class TestDeterminantFP16Op(OpTest):
+    def init_args(self):
         np.random.seed(0)
-        # not invertible matrix
+        self.input_data = np.ones([4, 2, 4, 4])
         self.dtype = np.float16
-        self.case = np.ones([4, 2, 4, 4]).astype(self.dtype)
-        self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(self.case.astype('float32'))
+
+    def setUp(self):
+        self.op_type = "determinant"
+        self.python_api = paddle.linalg.det
+        self.init_args()
+        self.inputs = {'X': self.input_data.astype(self.dtype)}
+        output = np.linalg.det(self.input_data)
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad({'X'}, 'Out')
 
 
 class TestDeterminantAPI(unittest.TestCase):
