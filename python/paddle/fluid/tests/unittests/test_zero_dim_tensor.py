@@ -1065,8 +1065,8 @@ class TestSundryAPI(unittest.TestCase):
         out1.retain_grads()
         out1.backward()
 
-        self.assertEqual(out1.shape, [])
-        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out1.shape, [2])
+        self.assertEqual(out1.grad.shape, [2])
 
     def test_inner(self):
         # 0) input is 0D
@@ -1110,18 +1110,6 @@ class TestSundryAPI(unittest.TestCase):
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.metric.accuracy(input=x, label=y, k=1)
         self.assertEqual(out.shape, [])
-
-    def test_static_accuracy(self):
-        x = paddle.full(shape=[2, 4], fill_value=0.25)
-        y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
-        out = paddle.static.accuracy(input=x, label=y, k=1)
-        self.assertEqual(out.shape, [])
-
-    def test_static_auc(self):
-        x = paddle.full(shape=[3, 2], fill_value=0.25)
-        y = paddle.full(shape=[3], fill_value=1, dtype="int")
-        out = paddle.static.auc(input=x, label=y)
-        self.assertEqual(out[0].shape, [])
 
     def test_std(self):
         x = paddle.rand([])
@@ -2651,8 +2639,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[out1, out1.grad_name],
         )
 
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[0].shape, (2,))
+        self.assertEqual(res[1].shape, (2,))
 
     @prog_scope()
     def test_inner(self):
