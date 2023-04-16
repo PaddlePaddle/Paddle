@@ -67,7 +67,7 @@ import signal
 import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
-QUEUE_GET_TIMEOUT = 60
+QUEUE_GET_TIMEOUT = None
 
 __all__ = ['PyReader', 'DataLoader', 'default_collate_fn']
 
