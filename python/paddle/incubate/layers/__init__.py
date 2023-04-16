@@ -34,9 +34,6 @@ from .nn import (
     _pull_box_sparse,
 )
 
-from . import metric_op
-from .metric_op import ctr_metric_bundle
-
 __all__ = [
     'ctr_metric_bundle',
     'fused_embedding_seq_pool',
