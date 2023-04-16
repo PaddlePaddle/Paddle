@@ -3630,7 +3630,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
 
-    @prog_scope
+    @prog_scope()
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
