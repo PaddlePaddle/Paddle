@@ -1129,8 +1129,11 @@ void MultiClassNMSKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    multiclass_nms3, GPU, ALL_LAYOUT, phi::MultiClassNMSKernel, float) {
+PD_REGISTER_KERNEL(multiclass_nms3,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultiClassNMSKernel,
+                   float) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }
