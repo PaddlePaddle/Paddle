@@ -47,34 +47,21 @@ class Geometric(distribution.Distribution):
         .. code-block:: python
 
             import paddle
+            from paddle.distribution import Geometric
 
-            # probability input
-            probs = paddle.full([1], fill_value=0.2, dtype=paddle.float32)
-            dist = paddle.distribution.Geometric(probs)
+            geom = Geometric(0.5)
 
-            dist.mean
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[5.])
-            dist.variance
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[20.])
-            dist.stddev
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[4.47213602])
-            dist.sample((2, 2))
-            # Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[2.09490776],[0.00561932]],[[0.17222938],[5.50346899]]])
-            dist.rsample((2, 2))
-            # Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[6.05133677],[9.59971237]],[[1.72454977],[0.30767119]]])
-            dist.pmf(2)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[0.16000001])
-            dist.log_pmf(2)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[-1.83258140])
-            dist.cdf(4)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.59039998])
-            dist.entropy()
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[2.50201201])
-            other_probs = paddle.full([1], fill_value=0.3, dtype=paddle.float32)
-            other_dist = paddle.distribution.Geometric(other_probs)
-            dist.kl_divergence(other_dist)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.08109304])
+            geom.mean
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2.])
 
+            geom.variance
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2.])
+
+            geom.stddev
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1.41421354])
     """
 
     def __init__(self, probs=None):
@@ -122,7 +109,7 @@ class Geometric(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of geometric distribution"""
+        """Variance of geometric distribution."""
         return paddle.to_tensor(
             (1.0 / self.probs - 1.0) / self.probs,
             dtype=self.probs.dtype,
@@ -130,17 +117,33 @@ class Geometric(distribution.Distribution):
 
     @property
     def stddev(self):
-        """Standard deviation of Geometric distribution"""
+        """Standard deviation of Geometric distribution."""
         return paddle.sqrt(self.variance)
 
     def pmf(self, k):
-        """Probability mass funciotn evaluated at k
+        r"""Probability mass funciotn evaluated at k.
+
+        .. math::
+
+            P(X=k) = (1-p)^{k-1} p, \quad k=1,2,3,\ldots
 
         Args:
             k (int): Value to be evaluated.
 
         Returns:
             Tensor: Probability.
+
+        Examples:
+
+            .. code-block:: python
+
+            import paddle
+            from paddle.distribution import Geometric
+
+            geom = Geometric(0.5)
+            geom.pmf(2)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.25000000])
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
@@ -150,13 +153,28 @@ class Geometric(distribution.Distribution):
             )
 
     def log_pmf(self, k):
-        """Log probability mass function evaluated at k
+        r"""Log probability mass function evaluated at k.
+
+        .. math::
+            \log P(X = k) = \log(1-p)^k p
 
         Args:
-            k (int): Value to be evaluated
+            k (int): Value to be evaluated.
 
         Returns:
             Tensor: Log probability.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+
+                geom = Geometric(0.5)
+                geom.log_pmf(2)
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [-1.38629436])
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
@@ -173,6 +191,21 @@ class Geometric(distribution.Distribution):
 
         Returns:
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+
+                geom = Geometric(0.5)
+                geom.sample((2,2))
+                # Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [[[4.28128004],
+                #         [0.53546447]],
+                #         [[0.88012987],
+                #         [0.54070371]]])
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -185,6 +218,21 @@ class Geometric(distribution.Distribution):
 
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+                geom = Geometric(0.5)
+                geom.rsample((2,2))
+                # Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [[[2.90974379],
+                #         [1.28049409]],
+                #         [[4.60141420],
+                #         [2.98836184]]])
+
         """
         shape = distribution.Distribution._extend_shape(
             self, sample_shape=shape
@@ -197,10 +245,26 @@ class Geometric(distribution.Distribution):
         return paddle.log(new_t) / paddle.log1p(-(self.probs))
 
     def entropy(self):
-        """Entropy of dirichlet distribution
+        r"""Entropy of dirichlet distribution.
+
+        .. math::
+
+            H(X) = -\left[\frac{1}{p} \log p + \frac{1-p}{p^2} \log (1-p) \right]
 
         Returns:
             Tensor: Entropy.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+
+                geom = Geometric(0.5)
+                geom.entropy()
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [1.38629436])
         """
         x = (1.0 - self.probs) * paddle.log(1.0 - self.probs)
         y = self.probs * paddle.log(self.probs)
@@ -208,13 +272,29 @@ class Geometric(distribution.Distribution):
         return -(x + y) / self.probs
 
     def cdf(self, k):
-        """Cdf of geometric distribution
+        r"""Cdf of geometric distribution.
+
+        .. math::
+
+            F(X \leq k) = 1 - (1-p)^k, \quad k=0,1,2,\ldots
 
         Args:
             k: The number of trials performed.
 
         Returns:
             Tensor: Entropy.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+
+                geom = Geometric(0.5)
+                geom.cdf(4)
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [0.93750000])
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k)
@@ -224,13 +304,30 @@ class Geometric(distribution.Distribution):
             )
 
     def kl_divergence(self, other):
-        """Calculate the KL divergence KL(self || other) with two Geometric instances.
+        r"""Calculate the KL divergence KL(self || other) with two Geometric instances.
+
+        .. math::
+
+            KL(P \| Q) = \frac{p}{q} \log \frac{p}{q} + \log (1-p) - \log (1-q)
 
         Args:
             other (Geometric): An instance of Geometric.
 
         Returns:
             Tensor: The kl-divergence between two geometric distributions.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                from paddle.distribution import Geometric
+
+                geom_p = Geometric(0.5)
+                geom_q = Geometric(0.1)
+                geom_p.kl_divergence(geom_q)
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [0.51082563])
         """
         if isinstance(other, Geometric):
             p, q = self.probs, other.probs
