@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle import static
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
