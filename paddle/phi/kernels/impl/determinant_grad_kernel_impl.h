@@ -170,11 +170,11 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Finally: unsqueeze(dA * |A|) * inverse(A)
   DenseTensor res;
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    res = phi::Multiply<T>(
-        dev_ctx,
-        unsqueeze2,
-        phi::Cast<Context, MPType>(
-            dev_ctx, transpose_inverse_A, phi::dtype::float16));
+    res =
+        phi::Multiply<T>(dev_ctx,
+                         unsqueeze2,
+                         phi::Cast<Context, MPType>(
+                             dev_ctx, transpose_inverse_A, DataType::FLOAT16));
   } else {
     res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
   }
