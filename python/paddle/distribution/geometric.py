@@ -17,12 +17,12 @@ import numbers
 import numpy as np
 
 import paddle
-from paddle.distribution import Distribution
-from paddle.distribution.uniform import Uniform as Un
+from paddle.distribution import distribution
+from paddle.distribution import uniform
 from paddle.fluid import framework
 
 
-class Geometric(Distribution):
+class Geometric(distribution.Distribution):
     r"""
     Geometric distribution parameterized by probs.
 
@@ -40,7 +40,7 @@ class Geometric(Distribution):
     where k is number of trials performed and p is probability of success for each trial and k=0,1,2,3,4..., p belong to (0,1].
 
     Args:
-        probs (float|Tensor): Probability parameter.
+        probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
 
     Examples:
@@ -79,13 +79,12 @@ class Geometric(Distribution):
     """
 
     def __init__(self, probs=None):
-        if probs is None:
-            raise ValueError("`Probs` must be specified.")
-        if isinstance(probs, numbers.Real):
-            probs = paddle.full(
-                shape=(1,), fill_value=probs, dtype=paddle.float32
-            )
-        if isinstance(probs, (paddle.Tensor, framework.Variable)):
+        if isinstance(probs, (numbers.Real, paddle.Tensor, framework.Variable)):
+            if isinstance(probs, numbers.Real):
+                probs = paddle.full(
+                    shape=(1,), fill_value=probs, dtype=paddle.float32
+                )
+
             all_ones = paddle.full(
                 shape=probs.shape, fill_value=1, dtype=probs.dtype
             )
@@ -99,36 +98,34 @@ class Geometric(Distribution):
             lessthen_0 = probs <= all_zeros
             morethen_1 = probs > all_ones
 
-            if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
-                morethen_1, all_false
-            ):
-                batch_shape = tuple(probs.shape)
-            else:
-                raise ValueError(
-                    "Expected parameter probs of distribution Geometric to satisfy the"
-                    "constraint Interval(lower_bound=0.0, upper_bound=1.0)"
-                )
         else:
             raise TypeError(
-                f"Expected type of probs is Number|List|Tensor, but got {type(probs)}"
+                f"Expected type of probs is Number.Real|Tensor|framework.Variable, but got {type(probs)}"
+            )
+
+        if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
+                morethen_1, all_false
+        ):
+            batch_shape = tuple(probs.shape)
+        else:
+            raise ValueError(
+                "Expected parameter probs of distribution Geometric to satisfy the"
+                "constraint Interval(lower_bound=0.0, upper_bound=1.0)"
             )
 
         self.probs = probs
-        self.one_tensor = paddle.full(
-            self.probs.shape, fill_value=1, dtype=self.probs.dtype
-        )
         super(Geometric, self).__init__(batch_shape)
 
     @property
     def mean(self):
         """Mean of geometric distribution."""
-        return self.one_tensor / self.probs
+        return 1.0 / self.probs
 
     @property
     def variance(self):
         """Variance of geometric distribution"""
         return paddle.to_tensor(
-            (self.one_tensor / self.probs - self.one_tensor) / self.probs,
+            (1.0 / self.probs - 1.0) / self.probs,
             dtype=self.probs.dtype,
         )
 
@@ -138,7 +135,7 @@ class Geometric(Distribution):
         return paddle.sqrt(self.variance)
 
     def pmf(self, k):
-        """probability mass funciotn evaluated at k
+        """Probability mass funciotn evaluated at k
 
         Args:
             k (int): Value to be evaluated.
@@ -147,7 +144,9 @@ class Geometric(Distribution):
             Tensor: Probability.
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
-            return paddle.pow((1 - self.probs), k - 1) * self.probs
+            return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
+        else:
+            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
 
     def log_pmf(self, k):
         """Log probability mass function evaluated at k
@@ -160,6 +159,8 @@ class Geometric(Distribution):
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
+        else:
+            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
 
     def sample(self, shape=()):
         """Sample from Geometric distribution with sample shape.
@@ -182,10 +183,10 @@ class Geometric(Distribution):
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
         """
-        shape = Distribution._extend_shape(self, sample_shape=shape)
+        shape = distribution.Distribution._extend_shape(self, sample_shape=shape)
         tiny = np.finfo(dtype='float32').tiny
 
-        sample_uniform = Un(low=float(tiny), high=float(1))
+        sample_uniform = uniform.Uniform(low=float(tiny), high=float(1))
 
         new_t = sample_uniform.sample(list(shape))
         return paddle.log(new_t) / paddle.log1p(-(self.probs))
@@ -196,8 +197,8 @@ class Geometric(Distribution):
         Returns:
             Tensor: Entropy.
         """
-        x = (self.one_tensor - self.probs) * paddle.log(
-            self.one_tensor - self.probs
+        x = (1.0 - self.probs) * paddle.log(
+            1.0 - self.probs
         )
         y = self.probs * paddle.log(self.probs)
 
@@ -214,6 +215,8 @@ class Geometric(Distribution):
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k)
+        else:
+            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
 
     def kl_divergence(self, other):
         """Calculate the KL divergence KL(self || other) with two Geometric instances.
@@ -224,6 +227,8 @@ class Geometric(Distribution):
         Returns:
             Tensor: The kl-divergence between two geometric distributions.
         """
-        temp = paddle.log(self.probs / other.probs)
-        kl_diff = self.probs * paddle.abs(temp)
-        return paddle.sum(kl_diff, axis=-1)
+        if isinstance(other, Geometric):
+            p, q = self.probs, other.probs
+            return p * paddle.log(p / q) + (1.0 - p) * paddle.log((1.0 - p) / (1.0 - q))
+        else:
+            raise TypeError(f"Exected type of other is geometric.Geometric, but got {type(other)}")

@@ -19,7 +19,7 @@ from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 import paddle
-from paddle.distribution.geometric import Geometric
+from paddle.distribution import geometric
 
 np.random.seed(2023)
 
@@ -60,7 +60,7 @@ class TestGeometric(unittest.TestCase):
                 'probs', self.probs.shape, self.probs.dtype
             )
 
-            self._paddle_geometric = Geometric(probs)
+            self._paddle_geometric = geometric.Geometric(probs)
             self.feeds = {'probs': self.probs}
 
     def test_mean(self):
@@ -141,6 +141,10 @@ class TestGeometric(unittest.TestCase):
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
+    def test_init_prob_type_error(self):
+        with self.assertRaises(TypeError):
+            paddle.distribution.geometric.Geometric([0.5])
+
 
 @place(DEVICES)
 @parameterize_cls(
@@ -187,7 +191,7 @@ class TestGeometricPMF(unittest.TestCase):
                 'probs', self.probs.shape, self.probs.dtype
             )
 
-            self._paddle_geometric = Geometric(probs)
+            self._paddle_geometric = geometric.Geometric(probs)
             self.feeds = {'probs': self.probs, 'value': self.value}
 
     def test_pmf(self):
@@ -232,6 +236,14 @@ class TestGeometricPMF(unittest.TestCase):
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
+    def test_pmf_error(self):
+        self.assertRaises(TypeError,self._paddle_geometric.pmf,[1,2])
+
+    def test_log_pmf_error(self):
+        self.assertRaises(TypeError,self._paddle_geometric.log_pmf,[1,2])
+
+    def test_cdf_error(self):
+        self.assertRaises(TypeError,self._paddle_geometric.cdf,[1,2])
 
 @place(DEVICES)
 @parameterize_cls(
@@ -283,8 +295,8 @@ class TestGeometricKL(unittest.TestCase):
                 'probs2', self.probs2.shape, self.probs2.dtype
             )
 
-            self._paddle_geomP = Geometric(probs_p)
-            self._paddle_geomQ = Geometric(probs_q)
+            self._paddle_geomP = geometric.Geometric(probs_p)
+            self._paddle_geomQ = geometric.Geometric(probs_q)
 
             self.feeds = {
                 'probs1': self.probs1,
@@ -308,8 +320,11 @@ class TestGeometricKL(unittest.TestCase):
                 atol=ATOL.get(str(self.probs1.dtype)),
             )
 
-    def _kl(self):
-        temp = np.log(self.probs1 / self.probs2)
-        kl_diff = self.probs1 * np.abs(temp)
+    def test_kl1_error(self):
+        self.assertRaises(TypeError,self._paddle_geomP.kl_divergence,paddle.distribution.beta.Beta)
 
-        return np.sum(kl_diff, axis=-1)
+    def test_kl2_error(self):
+        self.assertRaises(TypeError,self._paddle_geomQ.kl_divergence,paddle.distribution.beta.Beta)
+
+    def _kl(self):
+        return self.probs1 * np.log(self.probs1 / self.probs2) + (1.0 - self.probs1) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))

@@ -20,8 +20,9 @@ from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 import paddle
-from paddle.distribution.geometric import Geometric
-from paddle.distribution.kl import kl_divergence
+from paddle.distribution import kl
+from paddle.distribution import geometric
+from paddle.nn.functional import log_softmax
 
 np.random.seed(2023)
 
@@ -56,7 +57,7 @@ class TestGeometric(unittest.TestCase):
         if not isinstance(self.probs, numbers.Real):
             probs = paddle.to_tensor(self.probs, dtype=paddle.float32)
 
-        self._paddle_geom = paddle.distribution.geometric.Geometric(probs)
+        self._paddle_geom = geometric.Geometric(probs)
 
     def test_mean(self):
         with paddle.fluid.dygraph.guard(self.place):
@@ -93,6 +94,14 @@ class TestGeometric(unittest.TestCase):
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
+
+    def test_init_prob_value_error(self):
+        with self.assertRaises(ValueError):
+            paddle.distribution.geometric.Geometric(2)
+
+    def test_init_prob_type_error(self):
+        with self.assertRaises(TypeError):
+            paddle.distribution.geometric.Geometric([2])
 
     def test_sample_shape(self):
         cases = [
@@ -152,8 +161,7 @@ class TestGeometric(unittest.TestCase):
             )
 
     def test_rsample(self):
-
-        sample_shape = (80000,)
+        sample_shape = (100000,)
         samples = self._paddle_geom.rsample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.probs.dtype)
@@ -170,6 +178,20 @@ class TestGeometric(unittest.TestCase):
             rtol=0.7,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
+
+    def test_back_rsample(self):
+        sample_shape = (100000,)
+
+        with paddle.fluid.dygraph.guard(self.place):
+            self._paddle_geom.probs.stop_gradient = False
+
+            rs_value = self._paddle_geom.rsample(sample_shape)
+            softmax_rs = log_softmax(rs_value)
+            grads = paddle.grad([softmax_rs], [self._paddle_geom.probs])
+
+            self.assertEqual(len(grads), 1)
+            self.assertEqual(grads[0].dtype, self._paddle_geom.probs.dtype)
+            self.assertEqual(grads[0].shape, self._paddle_geom.probs.shape)
 
 
 @place(DEVICES)
@@ -208,9 +230,9 @@ class TestGeometric(unittest.TestCase):
         ),
     ],
 )
-class TestGumbelPMF(unittest.TestCase):
+class TestGeometricPMF(unittest.TestCase):
     def setUp(self):
-        self._paddle_geom = paddle.distribution.geometric.Geometric(
+        self._paddle_geom = geometric.Geometric(
             probs=paddle.to_tensor(self.probs)
         )
 
@@ -240,6 +262,15 @@ class TestGumbelPMF(unittest.TestCase):
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
+
+    def test_pmf_error(self):
+        self.assertRaises(TypeError,self._paddle_geom.pmf,[1,2])
+
+    def test_log_pmf_error(self):
+        self.assertRaises(TypeError,self._paddle_geom.log_pmf,[1,2])
+
+    def test_cdf_error(self):
+        self.assertRaises(TypeError,self._paddle_geom.cdf,[1,2])
 
 
 @place(DEVICES)
@@ -281,22 +312,25 @@ class TestGumbelPMF(unittest.TestCase):
 class TestGeometricKL(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self._geometric1 = Geometric(probs=paddle.to_tensor(self.probs1))
-        self._geometric2 = Geometric(probs=paddle.to_tensor(self.probs2))
+        self._geometric1 = geometric.Geometric(probs=paddle.to_tensor(self.probs1))
+        self._geometric2 = geometric.Geometric(probs=paddle.to_tensor(self.probs2))
 
     def test_kl_divergence(self):
         np.testing.assert_allclose(
-            kl_divergence(self._geometric1, self._geometric2),
+            kl.kl_divergence(self._geometric1, self._geometric2),
             self._kl(),
             rtol=RTOL.get(str(self._geometric1.probs.numpy().dtype)),
             atol=ATOL.get(str(self._geometric1.probs.numpy().dtype)),
         )
 
-    def _kl(self):
-        temp = np.log(self.probs1 / self.probs2)
-        kl_diff = self.probs1 * np.abs(temp)
+    def test_kl1_error(self):
+        self.assertRaises(TypeError,self._geometric1.kl_divergence,paddle.distribution.beta.Beta)
 
-        return np.sum(kl_diff, axis=-1)
+    def test_kl2_error(self):
+        self.assertRaises(TypeError,self._geometric2.kl_divergence,paddle.distribution.beta.Beta)
+
+    def _kl(self):
+        return self.probs1 * np.log(self.probs1 / self.probs2) + (1.0 - self.probs1) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
 
 
 if __name__ == '__main__':
