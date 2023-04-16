@@ -67,21 +67,39 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.dtype = np.float32
 
 
-class TestDeterminantFP16Op(TestDeterminantOp):
-    def init_data(self):
-        np.random.seed(0)
-        self.x = np.random.rand(10, 10).astype(self.dtype)
-        self.out = np.linalg.det(self.x)
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
         self.x = np.random.random(self.shape).astype(np.float32)
+        self.place = paddle.CPUPlace()
+
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.shape)
+            out = paddle.linalg.det(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+        out_ref = np.linalg.det(self.x)
+
+        for out in res:
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.linalg.det(x_tensor)
+        out_ref = np.linalg.det(self.x)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
+
+
+class TestDeterminantFP16OpAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [3, 3, 5, 5]
+        self.x = np.random.random(self.shape).astype(np.float16)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
@@ -117,12 +135,12 @@ class TestSlogDeterminantOp(OpTest):
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['X'], 'Out', max_relative_error=0.1)
+        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(4, 5, 5).astype('float64')
-        self.inputs = {'X': self.case}
+        self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
@@ -130,7 +148,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
-        self.inputs = {'X': self.case}
+        self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
