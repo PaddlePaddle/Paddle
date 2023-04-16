@@ -18,12 +18,10 @@ import unittest
 from google.protobuf import text_format  # noqa: F401
 
 sys.path.append("../distributed_passes")
+from ps_pass_test_base import PsPassTestBase, remove_path_if_exists
+
 import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2  # noqa: F401
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-from ps_pass_test_base import (
-    PsPassTestBase,
-    remove_path_if_exists,
-)
 
 
 class TestTheOnePs(PsPassTestBase):

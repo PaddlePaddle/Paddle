@@ -21,6 +21,7 @@ import sys
 
 import numpy as np
 import yaml
+from ps_dnn_model import StaticModel
 
 import paddle
 from paddle.distributed import fleet
@@ -31,8 +32,6 @@ from paddle.distributed.ps.utils.ps_program_builder import (
     new_pass,
     ps_log_root_dir,
 )
-
-from ps_dnn_model import StaticModel
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))

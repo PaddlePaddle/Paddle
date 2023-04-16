@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import logging
 import random
+import sys
 import unittest
 
 import numpy as np
+
 sys.path.append("../legacy_test")
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 

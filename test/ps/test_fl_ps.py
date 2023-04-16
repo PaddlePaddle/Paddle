@@ -15,14 +15,12 @@
 # limitations under the License.
 
 import os
-import sys
 import shlex  # noqa: F401
+import sys
 import unittest
 
 sys.path.append("../distributed_passes")
-from dist_pass_test_base import (  # noqa: F401
-    remove_path_if_exists,
-)
+from dist_pass_test_base import remove_path_if_exists  # noqa: F401
 
 
 class FlPsTest(unittest.TestCase):
