@@ -171,7 +171,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
-            if self.dims == 1 or (
+            if (self.dims == 1 and not dynamic_shape) or (
                 self.op_type == "sign"
                 and (
                     not dynamic_shape
