@@ -28,7 +28,6 @@ from paddle.static import (
     Executor,
 )
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
 from paddle.distributed.transpiler.distribute_transpiler import (
@@ -40,6 +39,9 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
+    DistributedAdam,
+)
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
@@ -72,7 +74,7 @@ from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
 )
 from paddle.incubate.distributed.fleet.parameter_server.ir import (
-    public as public,
+    public,
 )
 
 
@@ -417,6 +419,7 @@ class FleetTranspiler(Fleet):
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for inference,
@@ -425,11 +428,6 @@ class FleetTranspiler(Fleet):
 
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(
@@ -456,6 +454,7 @@ class FleetTranspiler(Fleet):
                 None,
                 None,
                 export_for_deployment,
+                legacy_format=legacy_format,
             )
         else:
             paddle.static.save_inference_model(
@@ -468,6 +467,7 @@ class FleetTranspiler(Fleet):
                 None,
                 export_for_deployment,
                 True,
+                legacy_format=legacy_format,
             )
 
             model_basename = "__model__"
@@ -637,9 +637,7 @@ class FleetTranspiler(Fleet):
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append(
-                        "{}.block{}".format(reshaped_varname, i)
-                    )
+                    slice_varnames.append(f"{reshaped_varname}.block{i}")
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -762,11 +760,6 @@ class FleetTranspiler(Fleet):
 
         if self._inner_mode == PSMode.PSLIB:
             raise NotImplementedError("add implement later")
-
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
-            )
 
         if not isinstance(executor, Executor):
             raise TypeError(

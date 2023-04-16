@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -627,7 +629,6 @@ void ConvCudnnGradKernel(const Context& ctx,
       compute_format == phi::backends::gpu::DataLayout::kNHWC
           ? phi::backends::gpu::DataLayout::kNHWC
           : phi::backends::gpu::DataLayout::kNCHW;
-  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
   if (transformed_input.dims().size() == 5) {
     layout = compute_format == phi::backends::gpu::DataLayout::kNHWC
                  ? phi::backends::gpu::DataLayout::kNDHWC
@@ -1474,7 +1475,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    phi::DepthwiseConvCudnnGradKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
@@ -1513,7 +1514,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
@@ -1556,7 +1557,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    double,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(conv2d_grad_grad,
+PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,

@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -43,7 +44,7 @@ extern __global__ void SetVariance(T* out,
                                    const int num);
 #endif
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

@@ -84,5 +84,5 @@ void OneHotRawKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     one_hot_raw, CPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

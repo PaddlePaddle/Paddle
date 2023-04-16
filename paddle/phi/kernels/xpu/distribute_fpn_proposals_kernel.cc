@@ -32,11 +32,11 @@ static void Sort(const XPUContext& dev_ctx,
   scores_slice_cpu.Resize({value.numel()});
   T* scores_slice_cpu_data = dev_ctx.template HostAlloc<T>(&scores_slice_cpu);
 
-  paddle::memory::Copy(cpu_place,
-                       scores_slice_cpu_data,
-                       place,
-                       value_data,
-                       sizeof(T) * value.numel());
+  memory_utils::Copy(cpu_place,
+                     scores_slice_cpu_data,
+                     place,
+                     value_data,
+                     sizeof(T) * value.numel());
   // Sort index
   DenseTensor index_t;
   index_t.Resize({value.numel()});
@@ -49,10 +49,10 @@ static void Sort(const XPUContext& dev_ctx,
     return scores_slice_cpu_data[i] < scores_slice_cpu_data[j];
   };
 
-  std::sort(index, index + value.numel(), compare);
+  std::stable_sort(index, index + value.numel(), compare);
   index_out->Resize({index_t.numel()});
   int* idx_out = dev_ctx.template Alloc<int>(index_out);
-  paddle::memory::Copy(
+  memory_utils::Copy(
       place, idx_out, cpu_place, index, sizeof(T) * index_t.numel());
 }
 
@@ -108,7 +108,7 @@ void DistributeFpnProposalsKernel(
   xpu::VectorParam<int> rois_lod = {
       rois_lod_vec.data(), static_cast<int>(rois_lod_vec.size()), nullptr};
 
-  int r = xpu::distribute_fpn_proposals_helper<XPUType, int, int>(
+  int r = xpu::distribute_fpn_proposals_helper<XPUType, int>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(fpn_rois.data<T>()),
       rois_lod,
@@ -158,7 +158,7 @@ void DistributeFpnProposalsKernel(
           fpn_rois_shape,
           sub_idx.numel(),
           0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "distribute_fpn_proposals_helper");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "gather");
     } else {
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
@@ -180,4 +180,7 @@ PD_REGISTER_KERNEL(distribute_fpn_proposals,
                    XPU,
                    ALL_LAYOUT,
                    phi::DistributeFpnProposalsKernel,
-                   float) {}
+                   float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

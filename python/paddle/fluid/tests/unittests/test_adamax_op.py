@@ -27,9 +27,11 @@ def adamx_wrapper(
     moment,
     inf_norm,
     beta1_pow=None,
+    master_weight=None,
     beta1=0.78,
     beta2=0.899,
     epsilon=1e-5,
+    find_master=False,
 ):
     return paddle._C_ops.adamax_(
         param,
@@ -38,12 +40,12 @@ def adamx_wrapper(
         moment,
         inf_norm,
         beta1_pow,
+        master_weight,
         beta1,
         beta2,
         epsilon,
+        find_master,
     )
-
-import paddle
 
 
 class TestAdamaxOp1(OpTest):

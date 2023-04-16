@@ -14,6 +14,7 @@
 
 import math
 import warnings
+import numpy as np
 
 import paddle
 from .. import unique_name
@@ -92,12 +93,12 @@ class LearningRateDecay:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Variable):
-                assert value.shape == [
-                    1
-                ], "shape of Variable in state_dict must be [1] {}".format(
-                    value.shape
+                assert (
+                    value.size == 1
+                ), "the size of Variable in state_dict must be 1, but its size is {} with shape {}".format(
+                    value.size, value.shape
                 )
-                value = value.numpy()[0]
+                value = value.item()
             state_dict[key] = value
 
         return state_dict
@@ -857,7 +858,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 # adjust learning rate according to avg_loss
                 reduce_lr.step(avg_loss)
                 lr = adam.current_step_lr()
-                print("current avg_loss is %s, current lr is %s" % (avg_loss.numpy()[0], lr))
+                print("current avg_loss is %s, current lr is %s" % (float(avg_loss), lr))
 
     """
 
@@ -953,10 +954,9 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
-        assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-            "the loss.shape "
-            "should be (1L,), but the current loss.shape is {}. Maybe that "
-            "you should call paddle.mean to process it first.".format(
+        assert np.prod(loss.shape) == 1, (
+            "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
+            "Maybe that you should call paddle.mean to process it first.".format(
                 loss.shape
             )
         )
@@ -979,14 +979,11 @@ class ReduceLROnPlateau(LearningRateDecay):
                 )
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
-                        old_lr = (
-                            self.learning_rate.numpy()[0]
-                            if isinstance(self.learning_rate, Variable)
-                            else self.learning_rate
-                        )
                         print(
                             'Epoch {}: reducing learning rate from {} to {}.'.format(
-                                self.epoch_num, old_lr, new_lr.numpy()[0]
+                                self.epoch_num,
+                                float(self.learning_rate),
+                                float(new_lr),
                             )
                         )
                     self.learning_rate = new_lr

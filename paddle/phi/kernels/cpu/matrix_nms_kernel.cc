@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/matrix_nms_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -255,7 +257,7 @@ void MatrixNMSKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* index,
                      DenseTensor* roisnum) {
-  auto score_dims = scores.dims();
+  auto score_dims = phi::vectorize<int>(scores.dims());
   auto batch_size = score_dims[0];
   auto num_boxes = score_dims[2];
   auto box_dim = bboxes.dims()[2];

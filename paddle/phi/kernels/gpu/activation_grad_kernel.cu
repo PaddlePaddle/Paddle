@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -196,12 +198,14 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, CudaExpm1GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, CudaReciprocalGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, CudaSqrtGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, CudaRsqrtGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, CudaRelu6GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, CudaSoftsignGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, CudaLogSigmoidGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, CudaLogGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log2, CudaLog2GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log10, CudaLog10GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log1p, CudaLog1pGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, CudaSwishGradFunctor);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                CudaLeakyReluGradFunctor,
@@ -215,9 +219,6 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink,
                                                CudaHardShrinkGradFunctor,
                                                threshold);
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
-                                               CudaSwishGradFunctor,
-                                               beta);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                CudaMishGradFunctor,
@@ -225,9 +226,9 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu,
                                                CudaCELUGradFunctor,
                                                alpha);
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(Relu6,
-                                                 CudaRelu6GradFunctor,
-                                                 threshold);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(LogitCUDA,
+                                                 CudaLogitGradFunctor,
+                                                 eps);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh,
                                                CudaHardTanhGradFunctor,
@@ -274,11 +275,11 @@ template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
                          DenseTensor* dx) {
   funcs::CudaHardSwishGradFunctor<T> functor;
+  float threshold = 6;
+  float scale = 6;
+  float offset = 3;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
@@ -358,6 +359,8 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(stanh_grad, STanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_double_grad,
+                                   SoftplusDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_double_grad, SqrtDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(rsqrt_grad, RsqrtGradKernel)
@@ -380,20 +383,12 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_shrink_grad, TanhShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(silu_grad, SiluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_double_grad, EluDoubleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(logit_grad, LogitCUDAGradKernel)
 
 PD_REGISTER_KERNEL(expm1_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::Expm1GradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(logit_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LogitGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -428,7 +423,8 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(sin_triple_grad,
                    GPU,
@@ -438,7 +434,8 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(cos_double_grad,
                    GPU,
@@ -448,7 +445,8 @@ PD_REGISTER_KERNEL(cos_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(cos_triple_grad,
                    GPU,
@@ -458,7 +456,8 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
@@ -476,7 +475,8 @@ PD_REGISTER_KERNEL(log_double_grad,
                    phi::LogDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)

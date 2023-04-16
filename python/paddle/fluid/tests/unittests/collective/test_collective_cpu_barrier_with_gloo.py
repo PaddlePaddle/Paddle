@@ -19,7 +19,7 @@ import unittest
 from contextlib import closing
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 port_set = set()
 paddle.enable_static()

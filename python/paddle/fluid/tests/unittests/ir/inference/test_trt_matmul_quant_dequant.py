@@ -18,9 +18,9 @@ import numpy as np
 from quant_dequant_test import QuantDequantTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -29,10 +29,12 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,
@@ -76,6 +78,14 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulQuantDequantDims3Test.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTMatMulQuantDequantDims3Test.DynamicShapeParam(
+                {'data': [1, 28, 28]},
+                {'data': [4, 28, 28]},
+                {'data': [3, 28, 28]},
+                False,
+            )
         )
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
@@ -129,11 +139,13 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            reshape_out = paddle.reshape(self.data, shape=[1, 4, 14, 14])
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
+            reshape_out = paddle.reshape(self.data, shape=[0, 4, 14, 14])
             matmul_out = paddle.matmul(
                 x=reshape_out,
                 y=reshape_out,
@@ -178,6 +190,14 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulQuantDequantDims4Test.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTMatMulQuantDequantDims4Test.DynamicShapeParam(
+                {'data': [1, 28, 28]},
+                {'data': [4, 28, 28]},
+                {'data': [3, 28, 28]},
+                False,
+            )
         )
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
@@ -231,10 +251,12 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
+            self.data = paddle.static.data(
                 name='data', shape=[-1, 28, 28], dtype='float32'
             )
-            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            self.label = paddle.static.data(
+                name='label', shape=[1, 1], dtype='int64'
+            )
             matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,

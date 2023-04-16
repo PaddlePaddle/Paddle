@@ -16,10 +16,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def get_outputs(DOut, X, Y):
@@ -62,7 +62,9 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -121,7 +123,9 @@ class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -180,7 +184,9 @@ class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -235,7 +241,9 @@ class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")

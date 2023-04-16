@@ -14,13 +14,11 @@
 
 import warnings
 
-import paddle
 from paddle import _C_ops
 
-from ..fluid import core, framework, unique_name
+from ..fluid import core, framework
 from ..fluid.dygraph import no_grad
 from ..fluid.framework import name_scope
-from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
 
 __all__ = []
@@ -191,95 +189,44 @@ class Adamax(Optimizer):
             shape=[1],
         )
 
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
-
     def _create_accumulators(self, block, parameters):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if p.name in self._already_create_accumulater:
+                continue
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            param.dtype
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
-        inf_norm = self._get_accumulator(
+        moment = self._get_accumulator_master(
+            self._moment_acc_str, param_and_grad[0]
+        )
+        inf_norm = self._get_accumulator_master(
             self._inf_norm_acc_str, param_and_grad[0]
         )
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -287,7 +234,7 @@ class Adamax(Optimizer):
             else None
         )
 
-        beta1_pow_acc = self._get_accumulator(
+        beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
         if framework.in_dygraph_mode():
@@ -347,7 +294,7 @@ class Adamax(Optimizer):
                 if grad is None or param.stop_gradient is True:
                     continue
                 if framework.in_dygraph_mode():
-                    beta1_pow_acc = self._get_accumulator(
+                    beta1_pow_acc = self._get_accumulator_master(
                         self._beta1_pow_acc_str, param
                     )
                     with no_grad():
@@ -359,7 +306,7 @@ class Adamax(Optimizer):
                     with param.block.program._optimized_guard(
                         [param, grad]
                     ), name_scope('adamax'):
-                        beta1_pow_acc = self._get_accumulator(
+                        beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
                         block.append_op(
@@ -374,7 +321,7 @@ class Adamax(Optimizer):
                 if grad is None or param.stop_gradient is True:
                     continue
                 if framework.in_dygraph_mode():
-                    beta1_pow_acc = self._get_accumulator(
+                    beta1_pow_acc = self._get_accumulator_master(
                         self._beta1_pow_acc_str, param
                     )
                     self._beta1 = parameters_and_grads.get(
@@ -389,7 +336,7 @@ class Adamax(Optimizer):
                     with param.block.program._optimized_guard(
                         [param, grad]
                     ), name_scope('adamax'):
-                        beta1_pow_acc = self._get_accumulator(
+                        beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
                         self._beta1 = parameters_and_grads.get(

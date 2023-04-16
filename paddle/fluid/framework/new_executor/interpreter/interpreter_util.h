@@ -65,8 +65,6 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
-
 bool IsCommunicationOp(const std::string& op_name);
 
 bool IsCommunicationOp(const Instruction& instr);
@@ -99,18 +97,10 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
 
-void FakeInitializeOutputsForFunctionKernel(
-    const phi::Kernel& phi_kernel,
-    const phi::KernelSignature& kernel_sig,
-    const RuntimeContext& ctx,
-    const platform::DeviceContext& dev_ctx);
-
-void FakeInitializeOutputsForStructureKernel(
-    const framework::OpKernelType& op_kernel_type,
-    ExecutionContext* execution_context);
-
 void LogDeviceMemoryStats(const platform::Place& place);
 
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

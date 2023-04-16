@@ -50,4 +50,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(ascend_trigger,
                   ops::AscendTriggerOp,
                   ops::AscendTriggerOpMaker);
-REGISTER_OP_CPU_KERNEL(ascend_trigger, ops::AscendTriggerCPUKernel<float>)
+
+PD_REGISTER_STRUCT_KERNEL(
+    ascend_trigger, CPU, ALL_LAYOUT, ops::AscendTriggerCPUKernel, float) {}

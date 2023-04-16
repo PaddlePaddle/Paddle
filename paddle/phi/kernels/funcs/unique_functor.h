@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <set>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -82,9 +84,9 @@ struct UniqueOpFunctor {
                         phi::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
-                            phi::DataTypeToString(index_type),
-                            phi::DataTypeToString(DataType::INT32),
-                            phi::DataTypeToString(DataType::INT64)));
+                            DataTypeToString(index_type),
+                            DataTypeToString(DataType::INT32),
+                            DataTypeToString(DataType::INT64)));
 
       if (index_type == DataType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
