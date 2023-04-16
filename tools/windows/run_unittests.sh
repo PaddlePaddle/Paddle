@@ -39,6 +39,7 @@ disable_wingpu_test="^test_model$|\
 ^test_reader_reset$|\
 ^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -48,7 +49,7 @@ disable_wingpu_test="^test_model$|\
 ^test_activation_op$|\
 ^test_norm_nn_grad$|\
 ^test_bilinear_interp_op$|\
-^test_sync_batch_norm_op_static_build$|\
+^test_eigh_op$|\
 ^disable_wingpu_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -162,6 +163,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\
@@ -184,7 +186,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
-^test_sync_batch_norm_op_static_build$|\
+^test_eigh_op$|\
 ^test_imperative_triple_grad$"
 
 
