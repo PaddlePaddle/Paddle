@@ -523,14 +523,14 @@ class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'argsort'
         self.dtype = np.uint16
-        x = np.random.randn(11, 17).astype('float32')
+        x = np.random.random((2, 8)).astype('float32')
         out = np.argsort(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=0.05)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -538,7 +538,6 @@ class TestArgsortBF16OP(OpTest):
             place,
             ['X'],
             'Out',
-            max_relative_error=0.05,
         )
 
 
