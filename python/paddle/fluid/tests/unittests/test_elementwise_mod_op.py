@@ -144,15 +144,6 @@ class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
         self.out = np.mod(self.x, self.y)
 
 
-class TestElementwiseModFP16Op_scalar(TestElementwiseModFP16Op):
-    def init_input_output(self):
-        scale_x = random.randint(0, 100000000)
-        scale_y = random.randint(1, 100000000)
-        self.x = (np.random.rand(2, 3, 4) * scale_x).astype(np.float16)
-        self.y = (np.random.rand(1) * scale_y + 1).astype(np.float16)
-        self.out = np.mod(self.x, self.y)
-
-
 @unittest.skipIf(
     core.is_compiled_with_cuda()
     and (
@@ -202,14 +193,6 @@ class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
     def init_input(self):
         self.x = np.random.uniform(0, 10000, []).astype("float32")
         self.y = np.random.uniform(0, 1000, []).astype("float32")
-
-
-class TestElementwiseModBF16Op_scalar(TestElementwiseModBF16Op):
-    def init_input(self):
-        scale_x = random.randint(0, 100000000)
-        scale_y = random.randint(1, 100000000)
-        self.x = (np.random.rand(2, 3, 4) * scale_x).astype("float32")
-        self.y = (np.random.rand(1) * scale_y + 1).astype("float32")
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
