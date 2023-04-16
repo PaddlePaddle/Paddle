@@ -67,6 +67,17 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.dtype = np.float32
 
 
+class TestDeterminantFP16Op(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.x = np.random.rand(10, 10).astype(self.dtype)
+        self.input = (self.x).astype('float32')
+        self.out = np.linalg.det(self.input)
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -95,7 +106,7 @@ class TestDeterminantAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestDeterminantFP16OpAPI(unittest.TestCase):
+class TestDeterminantAPIFP16Op(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
