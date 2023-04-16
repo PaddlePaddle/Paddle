@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.eager_op_test import (
+from test.legacy_test.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,

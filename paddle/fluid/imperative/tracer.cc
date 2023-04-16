@@ -135,15 +135,10 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc.reset(new framework::CPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      gc.reset(new framework::NPUUnsafeFastGarbageCollector(place, 0));
-      VLOG(10) << "Created GarbageCollector at " << place;
-#else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
-#endif
+
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
       gc.reset(new framework::IPUGarbageCollector(place, 0));
@@ -152,15 +147,6 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#if defined(PADDLE_WITH_MLU)
-      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
-      VLOG(10) << "Created GarbageCollector at " << place;
-#else
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use MLU device since it's not compiled with MLU,"
-          "Please recompile or reinstall Paddle with MLU support."));
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -303,19 +289,8 @@ void Tracer::TraceOpImpl(const std::string& type,
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (platform::is_npu_place(place)) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      platform::SetNPUDeviceId(place.device);
-#else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-      platform::SetMLUDeviceId(place.device);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with MLU if use MLUPlace."));
-#endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
