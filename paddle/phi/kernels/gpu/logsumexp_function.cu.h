@@ -137,10 +137,10 @@ struct Load {
 // input size: (num_row, num_col)
 // VecSize: size of vectorized read and write.
 // ColsPerThread: how many cols each thread calculates.
-// ThreadGroupWidth: 32 or 16 or 8, according to num_col.
+// ThreadGroupWidth: 32, 16, 8, 4, 2, 1 according to num_col.
 // RowsPerThread: how many rows thread_group calculate at one time.
 //    at most time, it will be 1. but if num_col is too small,
-//    ThreadGroupWidth 16 or 8, each thread_group will calculate 2 rows at one
+//    each thread_group will calculate 2 rows at one
 //    time.
 // isPadded: whether padding num_col to intergal multiple of warpsize
 template <typename T,

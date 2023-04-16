@@ -147,6 +147,7 @@ void LogsumexpKernel(const Context& dev_ctx,
   if (x_dim.size() == 2 && axis.size() == 1 && axis[0] == 1 &&
       x_dim[1] <= 1024) {
     using compute_type = typename ComputeType<T>::type;
+    dev_ctx.template Alloc<T>(out);
     int64_t num_col = x_dim[1], num_row = x_dim[0];
     phi::funcs::Load<T, compute_type> load(x.data<T>(), num_col);
     cudaError_t err =
