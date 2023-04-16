@@ -3626,7 +3626,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
 
-    @prog_scope
+    @prog_scope()
     def test_multi_dot(self):
         a = paddle.randn([4])
         a.stop_gradient = False
