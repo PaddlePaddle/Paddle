@@ -21,6 +21,10 @@ from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionLayer,
+    MixPrecisionOptimizer,
+)
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -60,6 +64,9 @@ class TestDistPPTraning(unittest.TestCase):
         )
         return scheduler, optimizer
 
+    def wrapper_mix_precision(self, model, optimizer):
+        return model, optimizer
+
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
@@ -81,6 +88,7 @@ class TestDistPPTraning(unittest.TestCase):
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
         scheduler_b, optimizer_b = self.build_optimizer(model_b)
+        model_b, optimizer_b = self.wrapper_mix_precision(model_b, optimizer_b)
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
@@ -144,6 +152,24 @@ class TestDistPPDelayScaleLoss(TestDistPPTraning):
             "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
+
+
+class TestDistPPMainGrad(TestDistPPTraning):
+    def wrapper_mix_precision(self, model, optimizer):
+        model = MixPrecisionLayer(model, dtype="float16")
+        optimizer = MixPrecisionOptimizer(optimizer)
+        return model._layers, optimizer
+
+    def build_optimizer(self, model):
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=scheduler,
+            parameters=model.parameters(),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+        )
+        return scheduler, optimizer
 
 
 if __name__ == "__main__":
