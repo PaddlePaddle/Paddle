@@ -237,13 +237,14 @@ class TestGeometricPMF(unittest.TestCase):
             )
 
     def test_pmf_error(self):
-        self.assertRaises(TypeError,self._paddle_geometric.pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geometric.pmf,[1,2])
 
     def test_log_pmf_error(self):
-        self.assertRaises(TypeError,self._paddle_geometric.log_pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geometric.log_pmf,[1,2])
 
     def test_cdf_error(self):
-        self.assertRaises(TypeError,self._paddle_geometric.cdf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geometric.cdf,[1,2])
+
 
 @place(DEVICES)
 @parameterize_cls(
@@ -321,10 +322,18 @@ class TestGeometricKL(unittest.TestCase):
             )
 
     def test_kl1_error(self):
-        self.assertRaises(TypeError,self._paddle_geomP.kl_divergence,paddle.distribution.beta.Beta)
+        self.assertRaises(
+            TypeError,
+            self._paddle_geomP.kl_divergence,paddle.distribution.beta.Beta
+        )
 
     def test_kl2_error(self):
-        self.assertRaises(TypeError,self._paddle_geomQ.kl_divergence,paddle.distribution.beta.Beta)
+        self.assertRaises(
+            TypeError,
+            self._paddle_geomQ.kl_divergence,paddle.distribution.beta.Beta
+        )
 
     def _kl(self):
-        return self.probs1 * np.log(self.probs1 / self.probs2) + (1.0 - self.probs1) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
+        return self.probs1 * np.log(self.probs1 / self.probs2) + (
+            1.0 - self.probs1
+        ) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))

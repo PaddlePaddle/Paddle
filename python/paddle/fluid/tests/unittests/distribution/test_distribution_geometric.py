@@ -20,8 +20,7 @@ from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 import paddle
-from paddle.distribution import kl
-from paddle.distribution import geometric
+from paddle.distribution import geometric, kl
 from paddle.nn.functional import log_softmax
 
 np.random.seed(2023)
@@ -264,13 +263,13 @@ class TestGeometricPMF(unittest.TestCase):
             )
 
     def test_pmf_error(self):
-        self.assertRaises(TypeError,self._paddle_geom.pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.pmf,[1,2])
 
     def test_log_pmf_error(self):
-        self.assertRaises(TypeError,self._paddle_geom.log_pmf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.log_pmf,[1,2])
 
     def test_cdf_error(self):
-        self.assertRaises(TypeError,self._paddle_geom.cdf,[1,2])
+        self.assertRaises(TypeError, self._paddle_geom.cdf,[1,2])
 
 
 @place(DEVICES)
@@ -312,8 +311,12 @@ class TestGeometricPMF(unittest.TestCase):
 class TestGeometricKL(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self._geometric1 = geometric.Geometric(probs=paddle.to_tensor(self.probs1))
-        self._geometric2 = geometric.Geometric(probs=paddle.to_tensor(self.probs2))
+        self._geometric1 = geometric.Geometric(
+            probs=paddle.to_tensor(self.probs1)
+        )
+        self._geometric2 = geometric.Geometric(
+            probs=paddle.to_tensor(self.probs2)
+        )
 
     def test_kl_divergence(self):
         np.testing.assert_allclose(
@@ -324,13 +327,21 @@ class TestGeometricKL(unittest.TestCase):
         )
 
     def test_kl1_error(self):
-        self.assertRaises(TypeError,self._geometric1.kl_divergence,paddle.distribution.beta.Beta)
+        self.assertRaises(
+            TypeError,
+            self._geometric1.kl_divergence,paddle.distribution.beta.Beta
+        )
 
     def test_kl2_error(self):
-        self.assertRaises(TypeError,self._geometric2.kl_divergence,paddle.distribution.beta.Beta)
+        self.assertRaises(
+            TypeError,
+            self._geometric2.kl_divergence,paddle.distribution.beta.Beta
+        )
 
     def _kl(self):
-        return self.probs1 * np.log(self.probs1 / self.probs2) + (1.0 - self.probs1) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
+        return self.probs1 * np.log(self.probs1 / self.probs2) + (
+            1.0 - self.probs1
+        ) * np.log((1.0 - self.probs1) / (1.0 - self.probs2))
 
 
 if __name__ == '__main__':

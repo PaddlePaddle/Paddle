@@ -104,7 +104,7 @@ class Geometric(distribution.Distribution):
             )
 
         if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
-                morethen_1, all_false
+            morethen_1, all_false
         ):
             batch_shape = tuple(probs.shape)
         else:
@@ -114,7 +114,7 @@ class Geometric(distribution.Distribution):
             )
 
         self.probs = probs
-        super(Geometric, self).__init__(batch_shape)
+        super().__init__(batch_shape)
 
     @property
     def mean(self):
@@ -146,7 +146,9 @@ class Geometric(distribution.Distribution):
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
         else:
-            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
+            raise TypeError(
+                f"Expected type of k is number.Real|framework.Variable, but got {type(k)}"
+            )
 
     def log_pmf(self, k):
         """Log probability mass function evaluated at k
@@ -160,7 +162,9 @@ class Geometric(distribution.Distribution):
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
         else:
-            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
+            raise TypeError(
+                f"Expected type of k is number.Real|framework.Variable, but got {type(k)}"
+            )
 
     def sample(self, shape=()):
         """Sample from Geometric distribution with sample shape.
@@ -183,7 +187,9 @@ class Geometric(distribution.Distribution):
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
         """
-        shape = distribution.Distribution._extend_shape(self, sample_shape=shape)
+        shape = distribution.Distribution._extend_shape(
+            self, sample_shape=shape
+        )
         tiny = np.finfo(dtype='float32').tiny
 
         sample_uniform = uniform.Uniform(low=float(tiny), high=float(1))
@@ -197,9 +203,7 @@ class Geometric(distribution.Distribution):
         Returns:
             Tensor: Entropy.
         """
-        x = (1.0 - self.probs) * paddle.log(
-            1.0 - self.probs
-        )
+        x = (1.0 - self.probs) * paddle.log(1.0 - self.probs)
         y = self.probs * paddle.log(self.probs)
 
         return -(x + y) / self.probs
@@ -216,7 +220,9 @@ class Geometric(distribution.Distribution):
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k)
         else:
-            raise TypeError(f"Expected type of k is number.Real|framework.Variable, but got {type(k)}")
+            raise TypeError(
+                f"Expected type of k is number.Real|framework.Variable, but got {type(k)}"
+            )
 
     def kl_divergence(self, other):
         """Calculate the KL divergence KL(self || other) with two Geometric instances.
@@ -229,6 +235,10 @@ class Geometric(distribution.Distribution):
         """
         if isinstance(other, Geometric):
             p, q = self.probs, other.probs
-            return p * paddle.log(p / q) + (1.0 - p) * paddle.log((1.0 - p) / (1.0 - q))
+            return p * paddle.log(p / q) + (1.0 - p) * paddle.log(
+                (1.0 - p) / (1.0 - q)
+            )
         else:
-            raise TypeError(f"Exected type of other is geometric.Geometric, but got {type(other)}")
+            raise TypeError(
+                f"Exected type of other is geometric.Geometric, but got {type(other)}"
+            )
