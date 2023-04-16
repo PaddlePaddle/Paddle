@@ -952,12 +952,26 @@ struct PD_INFER_DECL AnalysisConfig {
   /// If not turned on, no profiling report will be generated.
   ///
   void EnableProfile();
+
+  ///
+  /// \brief Turn on new profiler.
+  /// If not turned on, no profiler data will be generated.
+  ///
+  void EnableNewProfile();
+
   ///
   /// \brief A boolean state telling whether the profiler is activated.
   ///
   /// \return bool Whether the profiler is activated.
   ///
   bool profile_enabled() const { return with_profile_; }
+
+  ///
+  /// \brief A boolean state telling whether the new profiler is activated.
+  ///
+  /// \return bool Whether the profiler is activated.
+  ///
+  bool new_profile_enabled() const { return with_new_profile_; }
 
   ///
   /// \brief Mute all logs in Paddle inference.
@@ -1153,6 +1167,8 @@ struct PD_INFER_DECL AnalysisConfig {
   int cpu_math_library_num_threads_{1};
 
   bool with_profile_{false};
+
+  bool with_new_profile_{false};
 
   bool with_glog_info_{true};
 

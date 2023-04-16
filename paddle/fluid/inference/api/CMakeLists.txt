@@ -87,7 +87,8 @@ if(WITH_ONNXRUNTIME)
          infer_io_utils
          model_utils
          onnxruntime
-         paddle2onnx)
+         paddle2onnx
+         new_profiler)
 else()
   cc_library(
     analysis_predictor

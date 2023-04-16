@@ -499,6 +499,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // profile related.
   CP_MEMBER(with_profile_);
+  CP_MEMBER(with_new_profile_);
 
   // cinn compiler related.
   CP_MEMBER(use_cinn_compiler_);
@@ -1071,6 +1072,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << model_from_memory_;
 
   ss << with_profile_;
+  ss << with_new_profile_;
 
   ss << with_glog_info_;
 
@@ -1184,6 +1186,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 
 void AnalysisConfig::EnableProfile() {
   with_profile_ = true;
+  Update();
+}
+
+void AnalysisConfig::EnableNewProfile() {
+  with_new_profile_ = true;
   Update();
 }
 
@@ -1345,6 +1352,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
   os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
+  os.InsertRow({"enable_new_profile", with_new_profile_ ? "true" : "false"});
   os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
   os.InsertRow({"collect_shape_range_info",
                 collect_shape_range_info_ ? shape_range_info_path_ : "false"});

@@ -31,7 +31,10 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
@@ -552,6 +555,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<Argument> argument_;
   Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
+  std::unique_ptr<platform::Profiler> profiler_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
@@ -563,6 +567,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  phi::RecordEvent *step_event = nullptr;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 

@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <bitset>
 #include <cstdlib>
 #include <fstream>
 #include <memory>
@@ -56,6 +57,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -280,6 +282,23 @@ bool AnalysisPredictor::Init(
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else if (config_.with_new_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
+    platform::ProfilerOptions options;
+    constexpr uint32_t kProfileCPUOptionBit = 0;
+    constexpr uint32_t kProfileGPUOptionBit = 1;
+    std::bitset<32> trace_switch;
+    trace_switch.set(kProfileCPUOptionBit);
+    if (config_.use_gpu()) {
+      trace_switch.set(kProfileGPUOptionBit);
+    }
+    options.trace_switch = trace_switch.to_ulong();
+    profiler_ = platform::Profiler::Create(options);
+    platform::EnableHostEventRecorder();
+    profiler_->Prepare();
+    profiler_->Start();
+    step_event = new phi::RecordEvent(
+        "ProfileStep#0", phi::TracerEventType::ProfileStep, 0);
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
@@ -2382,6 +2401,13 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
+  } else if (config_.with_new_profile_) {
+    delete step_event;
+    step_event = nullptr;
+    platform::DisableHostEventRecorder();
+    std::unique_ptr<platform::ProfilerResult> profiler_result =
+        profiler_->Stop();
+    profiler_result->Save(std::string(""));
   }
   if (sub_scope_) {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
