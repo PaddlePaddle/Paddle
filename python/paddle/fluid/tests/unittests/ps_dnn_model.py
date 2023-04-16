@@ -16,7 +16,6 @@ import math
 
 import paddle
 from paddle import nn
-from paddle.static.nn import sparse_embedding
 
 
 class DNNLayer(nn.Layer):
@@ -76,7 +75,7 @@ class DNNLayer(nn.Layer):
         sparse_embs = []
         for s_input in sparse_inputs:
             if self.sync_mode == "gpubox":
-                emb = sparse_embedding(
+                emb = paddle.static.sparse_embedding(
                     input=s_input,
                     size=[self.sparse_feature_number, self.sparse_feature_dim],
                     param_attr=paddle.ParamAttr(name="embedding"),

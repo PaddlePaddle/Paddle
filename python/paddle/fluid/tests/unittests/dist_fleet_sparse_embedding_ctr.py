@@ -22,7 +22,6 @@ from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 from paddle import fluid
-from paddle.static.nn import sparse_embedding
 
 
 def fake_ctr_reader():
@@ -97,7 +96,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
-        dnn_embedding = sparse_embedding(
+        dnn_embedding = paddle.static.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
@@ -121,7 +120,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embbding = sparse_embedding(
+        lr_embbding = paddle.static.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,

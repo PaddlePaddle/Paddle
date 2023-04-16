@@ -35,7 +35,6 @@ from .nn import (
 )
 
 __all__ = [
-    'ctr_metric_bundle',
     'fused_embedding_seq_pool',
     'multiclass_nms2',
     'search_pyramid_hash',
