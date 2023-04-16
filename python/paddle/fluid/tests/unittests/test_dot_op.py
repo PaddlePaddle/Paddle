@@ -127,7 +127,7 @@ class DotOpBatch(DotOp):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11])
+        self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -379,7 +379,7 @@ class DotFP16OpBatch(TestDotFP16Op):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+        self.out = np.sum(self.x * self.y, axis=1)
 
 
 @unittest.skipIf(
@@ -466,7 +466,7 @@ class DotBF16OpBatch(TestDotBF16Op):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(np.float32).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+        self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
