@@ -3660,7 +3660,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
 
-    @prog_scope
+    @prog_scope()
     def test_linalg_norm(self):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         # using frobenius_norm, depends on reduce inferMeta support 0d output
