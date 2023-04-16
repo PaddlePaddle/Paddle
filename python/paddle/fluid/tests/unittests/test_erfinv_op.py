@@ -115,36 +115,5 @@ class TestErfinvFP16OP(TestErfinv):
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not paddle.fluid.core.is_compiled_with_cuda()
-    or not paddle.fluid.core.is_bfloat16_supported(
-        paddle.fluid.core.CUDAPlace(0)
-    ),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestErfinvBF16OP(OpTest):
-    def setUp(self):
-        self.op_type = "erfinv"
-        self.python_api = paddle.erfinv
-        self.dtype = np.uint16
-        self.shape = [11, 17]
-        self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
-        self.res_ref = erfinv(self.x).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': convert_float_to_uint16(self.res_ref)}
-
-    def test_check_output(self):
-        place = paddle.fluid.core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        place = paddle.fluid.core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
-
-
 if __name__ == "__main__":
     unittest.main()

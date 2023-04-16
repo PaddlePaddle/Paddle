@@ -33,20 +33,4 @@ void ErfinvGradKernel(const Context& ctx,
   eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
 }
 
-template <>
-void ErfinvGradKernel<phi::dtype::float16, platform::GPUDeviceContext>(
-    const platform::GPUDeviceContext& ctx,
-    const DenseTensor& out,
-    const DenseTensor& out_grad,
-    DenseTensor* x_grad) {
-  ctx.template Alloc<phi::dtype::float16>(x_grad);
-  auto eigen_out = EigenVector<phi::dtype::float16>::Flatten(out);
-  auto eigen_dout = EigenVector<phi::dtype::float16>::Flatten(out_grad);
-  auto eigen_dx = EigenVector<phi::dtype::float16>::Flatten(*x_grad);
-  auto& place = *ctx.eigen_device();
-  constexpr phi::dtype::float16 half_sqrt_pi =
-      static_cast<phi::dtype::float16>(1 / M_2_SQRTPI);
-  eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
-}
-
 }  // namespace phi
