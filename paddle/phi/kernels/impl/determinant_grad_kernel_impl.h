@@ -140,26 +140,17 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A;
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(
+    transpose_inverse_A = phi::TransposeLast2Dim<T>(
         dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
   } else {
-    transpose_inverse_A = phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
+    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
   }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
   // Third: dA * |A|
-  DenseTensor out_grad_tmp =
-      out_grad.dtype() == DataType::FLOAT32
-          ? out_grad
-          : phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
-  DenseTensor out_tmp =
-      out.dtype() == DataType::FLOAT32
-          ? out
-          : phi::Cast<T, Context>(dev_ctx, out, DataType::FLOAT32);
-
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad_tmp, out_tmp);
+  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, out);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])

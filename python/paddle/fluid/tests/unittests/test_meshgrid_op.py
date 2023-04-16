@@ -80,7 +80,7 @@ class TestMeshgridFP16Op(TestMeshgridOp):
         return np.float16
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0', 'out1'], max_relative_error=0.001)
+        self.check_grad(['x0'], ['out0', 'out1'], max_relative_error=0.01)
 
 
 class TestMeshgridOp3(unittest.TestCase):

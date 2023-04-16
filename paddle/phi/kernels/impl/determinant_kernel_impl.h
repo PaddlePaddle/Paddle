@@ -45,10 +45,8 @@ class EigenMatrix<double> {
 template <>
 class EigenMatrix<phi::dtype::float16> {
  public:
-  using MatrixType = Eigen::Matrix<phi::dtype::float16,
-                                   Eigen::Dynamic,
-                                   Eigen::Dynamic,
-                                   Eigen::RowMajor>;
+  using MatrixType =
+      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 inline int64_t GetBatchCount(const DDim dims) {
