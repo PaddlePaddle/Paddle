@@ -32,7 +32,6 @@ from paddle.distributed.ps.utils.ps_program_builder import (
     ps_log_root_dir,
 )
 
-sys.path.append("..")
 from ps_dnn_model import StaticModel
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
