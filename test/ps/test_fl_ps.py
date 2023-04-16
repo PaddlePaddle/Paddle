@@ -15,10 +15,12 @@
 # limitations under the License.
 
 import os
+import sys
 import shlex  # noqa: F401
 import unittest
 
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (  # noqa: F401
+sys.path.append("../distributed_passes")
+from dist_pass_test_base import (  # noqa: F401
     remove_path_if_exists,
 )
 
