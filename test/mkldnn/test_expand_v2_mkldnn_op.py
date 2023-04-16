@@ -65,6 +65,20 @@ class TestExpandV2ExpandDimOneDNNOp(TestExpandV2OneDNNOp):
         self.expand_times = [2, 1]
 
 
+class TestExpandV2ExpandDimOneDNNOp_ZeroDim(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [10, 10]
+        self.expand_times = [10, 10]
+
+
+class TestExpandV2ExpandDimOneDNNOp_ZeroDim2(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = []
+        self.expand_times = []
+
+
 class TestExpandV2CopyScenarioOneDNNOp(TestExpandV2OneDNNOp):
     def init_data(self):
         self.ori_shape = (2, 10, 5)

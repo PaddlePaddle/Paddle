@@ -1790,6 +1790,12 @@
       support_tensor : true
   manual_signature : [reverse]
 
+- op : rmsprop_
+  inputs :
+    {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -2343,6 +2349,13 @@
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: temporal_shift
+  backward: temporal_shift_grad
   inputs :
     x : X
   outputs :

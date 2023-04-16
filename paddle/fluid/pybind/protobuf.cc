@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_version_proto.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
@@ -50,6 +53,33 @@ static pybind11::bytes SerializeMessage(
   // Check IsInitialized in Python
   std::string retv;
   PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Failed to serialize input Desc to string."));
+  return retv;
+}
+
+pybind11::bytes SerializeProgramDesc(
+    pd::ProgramDesc &self,  // NOLINT due to pybind11 convention.
+    bool legacy_format = false) {
+  // Check IsInitialized in Python
+  std::string retv;
+  pd::ProgramDesc copy = self;
+  framework::compatible::pb::OpVersionMap op_version_map(copy.OpVersionMap());
+
+  if (legacy_format) {
+    pd::no_scalar::ConvertProgram(&copy);
+    copy.SetVersion(pd::kLegacyProgramVersion);
+    paddle::framework::compatible::SaveOpVersions(
+        paddle::framework::compatible::pb::GetLegacyOpVersions(),
+        &op_version_map);
+  } else {
+    copy.SetVersion(pd::kCurProgramVersion);
+    paddle::framework::compatible::SaveOpVersions(
+        framework::compatible::get_op_version_map(), &op_version_map);
+  }
+
+  PADDLE_ENFORCE_EQ(copy.Proto()->SerializePartialToString(&retv),
                     true,
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
@@ -88,7 +118,9 @@ void BindProgramDesc(pybind11::module *m) {
       .def("flush", &pd::ProgramDesc::Flush)
       .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
       .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
-      .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)
+      .def("serialize_to_string",
+           &SerializeProgramDesc,
+           pybind11::arg("legacy_format") = false)
       .def("need_update", &pd::ProgramDesc::NeedUpdate)
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
