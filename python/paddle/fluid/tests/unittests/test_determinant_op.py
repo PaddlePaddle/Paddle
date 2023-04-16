@@ -24,10 +24,12 @@ paddle.enable_static()
 
 class TestDeterminantOp(OpTest):
     def setUp(self):
-        self.python_api = paddle.linalg.det
-        self.init_data()
         self.op_type = "determinant"
-        self.outputs = {'Out': self.target}
+        self.python_api = paddle.linalg.det
+        self.init_dtype()
+        self.init_data()
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
 
     def test_check_output(self):
         self.check_output()
@@ -37,50 +39,42 @@ class TestDeterminantOp(OpTest):
 
     def init_data(self):
         np.random.seed(0)
+        self.x = np.random.rand(3, 3, 3, 5, 5).astype(self.dtype)
+        self.out = np.linalg.det(self.x)
+
+    def init_dtype(self):
         self.dtype = np.float64
-        self.case = np.random.rand(3, 3, 3, 5, 5).astype(self.dtype)
-        self.inputs = {'X': self.case}
-        self.target = np.linalg.det(self.case)
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
+        self.x = np.random.rand(10, 10).astype(self.dtype)
+        self.out = np.linalg.det(self.x)
+
+    def init_dtype(self):
         self.dtype = np.float32
-        self.case = np.random.rand(10, 10).astype(self.dtype)
-        self.inputs = {'X': self.case}
-        self.target = np.linalg.det(self.case)
 
 
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
-        self.dtype = np.float64
         # not invertible matrix
-        self.case = np.ones([4, 2, 4, 4]).astype(self.dtype)
-        self.inputs = {'X': self.case}
-        self.target = np.linalg.det(self.case)
+        self.x = np.ones([4, 2, 4, 4]).astype(self.dtype)
+        self.out = np.linalg.det(self.x)
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
-class TestDeterminantFP16Op(OpTest):
-    def init_args(self):
+class TestDeterminantFP16Op(TestDeterminantOp):
+    def init_data(self):
         np.random.seed(0)
-        self.input_data = np.random.rand(3, 3, 3, 5, 5)
+        self.x = np.random.rand(10, 10).astype(self.dtype)
+        self.out = np.linalg.det(self.x)
+
+    def init_dtype(self):
         self.dtype = np.float16
-
-    def setUp(self):
-        self.op_type = "determinant"
-        self.python_api = paddle.linalg.det
-        self.init_args()
-        self.inputs = {'X': self.input_data.astype(self.dtype)}
-        output = np.linalg.det(self.input_data)
-        self.outputs = {'Out': output}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestDeterminantAPI(unittest.TestCase):
