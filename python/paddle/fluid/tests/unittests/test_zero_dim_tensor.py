@@ -3626,6 +3626,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
 
+    @prog_scope
     def test_multi_dot(self):
         a = paddle.randn([4])
         a.stop_gradient = False
@@ -3829,6 +3830,20 @@ class TestNoBackwardAPI(unittest.TestCase):
             self.assertEqual(index.shape, [1])
             self.assertEqual(inverse.shape, [1])
             self.assertEqual(counts.shape, [1])
+
+    def test_matrix_rank(self):
+        x = paddle.eye(10)
+        x.stop_gradient = False
+        out = paddle.linalg.matrix_rank(x)
+
+        self.assertEqual(out.shape, ())
+        np.testing.assert_equal(out, np.array(10))
+
+        c = paddle.ones(shape=[3, 4, 5])
+        c.stop_gradient = False
+        out_c = paddle.linalg.matrix_rank(c)
+        self.assertEqual(out_c.shape, (3,))
+        np.testing.assert_equal(out_c, np.array([1, 1, 1]))
 
 
 class TestNoBackwardAPIStatic(unittest.TestCase):
@@ -4063,20 +4078,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
         self.assertEqual(res[3].shape, (1,))
-
-    def test_matrix_rank(self):
-        x = paddle.eye(10)
-        x.stop_gradient = False
-        out = paddle.linalg.matrix_rank(x)
-
-        self.assertEqual(out.shape, ())
-        np.testing.assert_equal(out, np.array(10))
-
-        c = paddle.ones(shape=[3, 4, 5])
-        c.stop_gradient = False
-        out_c = paddle.linalg.matrix_rank(c)
-        self.assertEqual(out_c.shape, (3,))
-        np.testing.assert_equal(out_c, np.array([1, 1, 1]))
 
     def test_static_matrix_rank(self):
         # 2D : OUTPUT 0D
