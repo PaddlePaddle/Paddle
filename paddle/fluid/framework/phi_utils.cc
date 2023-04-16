@@ -92,6 +92,8 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     case LibraryType::kKP:
       backend = phi::Backend::KPS;
       break;
+    case LibraryType::kCUTLASS:
+      backend = phi::Backend::CUTLASS;
     default:
       break;
   }

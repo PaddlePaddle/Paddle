@@ -206,7 +206,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *op_desc = op_node->Op();
       op_desc->SetAttr("data_format", std::string{"NHWC"});
       if (cutlass_enable && CutlassIsValid(op_node)) {
-        op_desc->SetType("conv2d_fusion_cutlass");
+        op_desc->SetAttr("use_cutlass", true);
+        // op_desc->SetType("conv2d_fusion_cutlass");
         // conv2d_fusion_cutlass must have this attribute because of signature.
         if (!op_desc->HasAttr("fuse_alpha")) {
           op_desc->SetAttr("fuse_alpha", 0.f);

@@ -30,9 +30,12 @@ KernelSignature ConvFusionOpArgumentMapping(const ArgumentMappingContext& ctx) {
                              "exhaustive_search",
                              "split_channels",
                              "workspace_size_MB",
+                             "fuse_alpha",
                          },
                          {"Output", "Outputs"});
 }
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion, phi::ConvFusionOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
+                           phi::ConvFusionOpArgumentMapping);
