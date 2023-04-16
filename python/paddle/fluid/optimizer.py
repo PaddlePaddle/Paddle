@@ -49,6 +49,7 @@ from .dygraph.learning_rate_scheduler import (
 )
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
+from paddle.optimizer import Optimizer as Optimizer_test
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
@@ -1484,7 +1485,7 @@ class Optimizer:
         return optimize_ops, params_grads
 
 
-class SGDOptimizer(Optimizer):
+class SGDOptimizer(Optimizer_test):
     r"""
     Optimizer of the stochastic gradient descent algorithm.
 
