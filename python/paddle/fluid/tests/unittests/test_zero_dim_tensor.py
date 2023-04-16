@@ -3641,6 +3641,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out1.shape, (2, 3))
         self.assertEqual(out2.shape, (2, 3))
 
+    @prog_scope()
     def test_cov(self):
         xt_1 = paddle.randn((12,))
         xt_1.stop_gradient = False
@@ -3651,6 +3652,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0].shape, ())
 
+    @prog_scope()
     def test_det(self):
         xt_1 = paddle.randn((12,))
         xt_1.stop_gradient = False
