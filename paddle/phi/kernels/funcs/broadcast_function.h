@@ -189,43 +189,29 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
   }
 };
 
-// FastBroadcastDataLoader with redundant fast divmod computation removed
-using DivModT = kps::details::FastDivMod::DivModT;
-template <int Index, int VecSize, bool IsBoundary, int LoadType>
-struct FastBroadcastDataLoader {
-  template <typename Array1, typename Array2, typename Array3, typename ArgsT>
-  static __device__ __forceinline__ void Apply(
-      const Array1 &ins,
-      ArgsT *args,
-      const Array2 &configs,
-      const Array3 &use_broadcast,
-      const int block_offset,
-      const int num,
-      const uint32_t numel,
-      DivModT fast_divmoder[VecSize][phi::DDim::kMaxRank]) {
+template <int Index, int VecSize>
+struct BroadcastDataInit {
+  template <typename ArgsT>
+  static __device__ __forceinline__ void Apply(ArgsT *args) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    uint32_t index_bc[VecSize] = {0};
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
       std::get<Index>(args[k]) = static_cast<Type>(1);
     }
+  }
+};
 
-    uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
-#pragma unroll
-    for (int k = 0; k < VecSize; ++k) {
-      uint32_t idx = thread_offset + k;
-      if (IsBoundary && idx == numel) break;
-#pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i == configs[0].rank) break;
-        index_bc[k] += fast_divmoder[k][i].val[1] * configs[Index].strides[i];
-      }
-    }
-
+template <int Index, int VecSize>
+struct BroadcastDataSetter {
+  template <typename Array, typename ArgsT>
+  static __device__ __forceinline__ void Apply(const Array &ins,
+                                               ArgsT *args,
+                                               uint32_t index_bc[][VecSize]) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
       std::get<Index>(args[k]) =
-          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[k]];
+          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][k]];
     }
   }
 };
@@ -284,28 +270,25 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
   if constexpr (LoadType == kBroadcast) {
-    using DivModT = kps::details::FastDivMod::DivModT;
-    DivModT fast_divmoder[VecSize][phi::DDim::kMaxRank];
+    uint32_t index_bc[Arity][VecSize] = {0};
+    Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
+    uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      uint32_t idx = block_offset + threadIdx.x * VecSize + k;
+      uint32_t idx = thread_offset + k;
       if (IsBoundary && idx == numel) break;
 #pragma unroll
       for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
         if (i == configs[0].rank) break;
-        fast_divmoder[k][i] = configs[0].divmoders[i].Divmod(idx);
-        idx = fast_divmoder[k][i].val[0];
+        auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
+        idx = fast_divmoder.val[0];
+#pragma unroll
+        for (int j = 0; j < Arity; ++j) {
+          index_bc[j][k] += fast_divmoder.val[1] * configs[j].strides[i];
+        }
       }
     }
-    BcUnroller<FastBroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::
-        step(ins,
-             args,
-             configs,
-             use_broadcast,
-             block_offset,
-             num,
-             numel,
-             fast_divmoder);
+    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
   } else {
     BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
         ins, args, configs, use_broadcast, block_offset, num, numel);
