@@ -172,7 +172,7 @@ class Planner:
             else:
                 self._completer.complete_forward_annotation()
 
-        if os.getenv("PADDLE_AUTO_PARALLEL_STAGE", None) != "run":
+        if os.getenv("PADDLE_AUTO_PARALLEL_STAGE", "run") != "run":
             quit()
 
         # parse forward sub block

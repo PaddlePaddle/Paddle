@@ -85,6 +85,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 20)
   py_test_modules(test_fuse_adamw_pass MODULES test_fuse_adamw_pass)
   set_tests_properties(test_fuse_adamw_pass PROPERTIES TIMEOUT 20)
+  py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
+  set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
   # End of unittests WITH single card and timeout
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
@@ -133,7 +135,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
-  py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
