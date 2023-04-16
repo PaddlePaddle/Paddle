@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.fluid import Program
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -78,19 +79,12 @@ def gen_indices_np(x_shape, indices_shapes, index_type):
 class TestIndexPutAPIBase(unittest.TestCase):
     def setUp(self):
         self.init_dtype_type()
+        self.setPlace()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
         self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
         self.indices_np = gen_indices_np(
             self.x_shape, self.indices_shapes, self.index_type_np
         )
-
-        self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
-        self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
-        self.indices_pd = [
-            paddle.to_tensor(indice, dtype=self.index_type_pd)
-            for indice in self.indices_np
-        ]
-        self.indices_pd = tuple(self.indices_pd)
 
     def init_dtype_type(self):
         self.dtype_np = np.float64
@@ -102,27 +96,79 @@ class TestIndexPutAPIBase(unittest.TestCase):
         self.index_type_pd = paddle.int64
         self.accumulate = False
 
+    def setPlace(self):
+        self.place = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
+            self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
+            self.indices_pd = [
+                paddle.to_tensor(indice, dtype=self.index_type_pd)
+                for indice in self.indices_np
+            ]
+            self.indices_pd = tuple(self.indices_pd)
+            ref_res = compute_index_put_ref(
+                self.x_np, self.indices_np, self.value_np, self.accumulate
+            )
+            pd_res = paddle.index_put(
+                self.x_pd, self.indices_pd, self.value_pd, self.accumulate
+            )
+            np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
+
+    def test_static_forward(self):
+        paddle.enable_static()
+        for place in self.place:
+            with paddle.static.program_guard(Program()):
+                x = paddle.static.data(
+                    name="x", shape=self.x_shape, dtype=self.dtype_pd
+                )
+                indices = tuple(
+                    [
+                        paddle.static.data(
+                            name="indice" + str(i),
+                            shape=self.indices_shapes[i],
+                            dtype=self.index_type_pd,
+                        )
+                        for i in range(len(self.indices_shapes))
+                    ]
+                )
+                value = paddle.static.data(
+                    name="value", shape=self.value_shape, dtype=self.dtype_pd
+                )
+
+                out = paddle.index_put(x, indices, value, self.accumulate)
+                exe = paddle.static.Executor(place=place)
+                feed_list = {}
+                feed_list.update({"x": self.x_np})
+                for i in range(len(indices)):
+                    feed_list.update({"indice" + str(i): self.indices_np[i]})
+                feed_list.update({"value": self.value_np})
+                pd_res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed=feed_list,
+                    fetch_list=[out],
+                )[0]
+                ref_res = compute_index_put_ref(
+                    self.x_np, self.indices_np, self.value_np, self.accumulate
+                )
+                np.testing.assert_allclose(ref_res, pd_res, atol=1e-7)
+
 
 class TestIndexPutAPI0(TestIndexPutAPIBase):
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
         self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
 class TestIndexPutAPI1(TestIndexPutAPIBase):
@@ -136,60 +182,44 @@ class TestIndexPutAPI1(TestIndexPutAPIBase):
         self.index_type_pd = paddle.int64
         self.accumulate = False
 
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
-        self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
 
 class TestIndexPutAPI2(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16), (1, 16))
+        self.value_shape = (16, 16)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = True
+
+
+class TestIndexPutAPI3(TestIndexPutAPIBase):
     def init_dtype_type(self):
         self.dtype_np = np.float64
         self.index_type_np = np.bool_
         self.x_shape = (110, 94)
         self.indices_shapes = [(110, 94)]
-        self.value_shape = 5170
+        self.value_shape = (5170,)
         self.dtype_pd = paddle.float64
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
-    def test_forward1(self):
+class TestIndexPutAPI4(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.bool_
+        self.x_shape = (110, 94)
+        self.indices_shapes = [(110, 94)]
+        self.value_shape = (5170,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.bool
         self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
-class TestIndexPutAPI3(TestIndexPutAPIBase):
+class TestIndexPutAPI5(TestIndexPutAPIBase):
     def init_dtype_type(self):
         self.dtype_np = np.float64
         self.index_type_np = np.int64
@@ -200,189 +230,142 @@ class TestIndexPutAPI3(TestIndexPutAPIBase):
         self.index_type_pd = paddle.int64
         self.accumulate = False
 
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
-        self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-
-class TestIndexPutAPI4(TestIndexPutAPIBase):
-    def init_dtype_type(self):
-        self.dtype_np = np.float64
-        self.index_type_np = np.bool_
-        self.x_shape = (110, 94)
-        self.indices_shapes = [(110)]
-        self.value_shape = (55, 94)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.bool
-        self.accumulate = False
-
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
-        self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-
-class TestIndexPutAPI5(TestIndexPutAPIBase):
-    def init_dtype_type(self):
-        self.dtype_np = np.float64
-        self.index_type_np = np.int64
-        self.x_shape = (24, 100, 110, 98)
-        self.indices_shapes = ((21, 21), (1, 21), (1, 21))
-        self.value_shape = 98
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
-        self.accumulate = False
-
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
-        self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
 
 class TestIndexPutAPI6(TestIndexPutAPIBase):
     def init_dtype_type(self):
         self.dtype_np = np.float64
         self.index_type_np = np.int64
-        self.x_shape = (24, 100, 110, 98)
-        self.indices_shapes = ((21, 21), (1, 21), (1, 21))
-        self.value_shape = 1
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (16, 16, 56)
         self.dtype_pd = paddle.float64
         self.index_type_pd = paddle.int64
-        self.accumulate = False
-
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
         self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
 class TestIndexPutAPI7(TestIndexPutAPIBase):
     def init_dtype_type(self):
         self.dtype_np = np.float64
         self.index_type_np = np.bool_
-        self.x_shape = (44, 94)
-        self.indices_shapes = [(44)]
-        self.value_shape = 94
+        self.x_shape = (110, 94)
+        self.indices_shapes = [(110,)]
+        self.value_shape = (55, 94)
         self.dtype_pd = paddle.float64
         self.index_type_pd = paddle.bool
         self.accumulate = False
-
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
-
-    def test_forward1(self):
-        self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
 class TestIndexPutAPI8(TestIndexPutAPIBase):
     def init_dtype_type(self):
         self.dtype_np = np.float64
         self.index_type_np = np.bool_
+        self.x_shape = (110, 94)
+        self.indices_shapes = [(110,)]
+        self.value_shape = (55, 94)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.bool
+        self.accumulate = True
+
+
+class TestIndexPutAPI9(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (56,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = False
+
+
+class TestIndexPutAPI10(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (56,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = True
+
+
+class TestIndexPutAPI11(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (1,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = False
+
+
+class TestIndexPutAPI12(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (1,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = True
+
+
+class TestIndexPutAPI13(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.bool_
         self.x_shape = (44, 94)
-        self.indices_shapes = [(44)]
-        self.value_shape = 1
+        self.indices_shapes = [(44,)]
+        self.value_shape = (94,)
         self.dtype_pd = paddle.float64
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
-    def test_forward(self):
-        self.accumulate = False
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
-    def test_forward1(self):
+class TestIndexPutAPI14(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.bool_
+        self.x_shape = (44, 94)
+        self.indices_shapes = [(44,)]
+        self.value_shape = (94,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.bool
         self.accumulate = True
-        ref_res = compute_index_put_ref(
-            self.x_np, self.indices_np, self.value_np, self.accumulate
-        )
-        pd_res = paddle.index_put(
-            self.x_pd, self.indices_pd, self.value_pd, self.accumulate
-        )
-        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
+
+
+class TestIndexPutAPI15(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.bool_
+        self.x_shape = (44, 94)
+        self.indices_shapes = [(44,)]
+        self.value_shape = (1,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.bool
+        self.accumulate = False
+
+
+class TestIndexPutAPI16(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.bool_
+        self.x_shape = (44, 94)
+        self.indices_shapes = [(44,)]
+        self.value_shape = (1,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.bool
+        self.accumulate = True
 
 
 class TestIndexPutAPIBackward(unittest.TestCase):
     def test_backward(self):
+        paddle.disable_static()
         value = paddle.ones(shape=[4], dtype=paddle.float64)
         x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
         ix1 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
@@ -425,6 +408,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         )
 
     def test_backwardScalarVal(self):
+        paddle.disable_static()
         value = paddle.ones(shape=[1], dtype=paddle.float64)
         x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
         ix1 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
@@ -463,6 +447,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         )
 
     def test_backwardBroadCastValue(self):
+        paddle.disable_static()
         value = paddle.ones(shape=[2], dtype=paddle.float64)
         x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
         ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
@@ -485,7 +470,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
             np.array([2.0, 2.0], dtype=np.float64), dvalue.numpy(), atol=1e-7
         )
 
-        out = paddle.index_put(x, (ix1, ix2), value, False)
+        out = paddle.index_put(x, (ix1, ix2), value, True)
 
         dx, dvalue = paddle.grad(
             outputs=[out],

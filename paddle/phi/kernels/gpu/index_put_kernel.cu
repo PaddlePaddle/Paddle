@@ -167,10 +167,6 @@ void IndexPutKernel(const Context& dev_ctx,
       }
     }
 
-    for (auto dim : res_dim_v) {
-      std::cout << dim << std::endl;
-    }
-
     for (size_t i = len_bd_dim; i < res_dim_v.size(); ++i) {
       reshaped_indices_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
           dev_ctx, res_dim_v[i], phi::DataType::INT64));

@@ -239,25 +239,31 @@ void LaunchIndexPutGradCudaKernel(
       std::vector<int64_t> before_dims = phi::vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
-      size_t i = after_dims.size();
-      size_t j = before_dims.size();
+      int i = static_cast<int>(after_dims.size()) - 1;
+      int j = static_cast<int>(before_dims.size()) - 1;
       if (i < j) {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "shape of value can't not be broadcast to shape of x[indices]"));
       }
-      while ((i--) && (j--)) {
+
+      while ((i >= 0) && (j >= 0)) {
         if (after_dims[i] == before_dims[j]) {
           dims_without_1.push_back(before_dims[j]);
+          i--;
+          j--;
           continue;
         } else if (before_dims[j] == 1) {
           compress_dims.push_back(i);
+          i--;
+          j--;
         } else {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "shape of value can't not be broadcast to shape of x[indices]"));
         }
       }
-      while (i--) {
+      while (i >= 0) {
         compress_dims.push_back(i);
+        i--;
       }
 
       phi::DenseTensor value_grad_dims_without1(value_grad->dtype());

@@ -45,10 +45,6 @@ static phi::DenseTensor GetReshapeAndExpandTensor(
   } else {
     mid_dims[index] = before_dims[0];
   }
-  std::cout << "this is mid_dim" << std::endl;
-  for (auto dim : mid_dims) {
-    std::cout << dim << std::endl;
-  }
 
   phi::DenseTensor mid_tensor(tensor.dtype());
   mid_tensor.Resize(phi::make_ddim(mid_dims));
