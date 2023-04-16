@@ -619,6 +619,10 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar:
+    p :
+      data_type: float
+      support_tensor: true
 
 - op : dropout_nd
   backward : dropout_nd_grad

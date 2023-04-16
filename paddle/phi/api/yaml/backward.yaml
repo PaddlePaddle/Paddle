@@ -455,6 +455,16 @@
     func : dot_grad
     data_type : out_grad
 
+- backward_op : dropout_grad
+  forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
+  args : (Tensor mask, Tensor out_grad, Scalar p, bool is_test, str mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : dropout_grad
+
 - backward_op : eig_grad
   forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
   args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
