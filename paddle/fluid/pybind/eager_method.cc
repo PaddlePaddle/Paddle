@@ -1284,8 +1284,31 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
         }
       }
+      phi::DenseTensor* tensor_src =
+          static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
+
+      if (tensor_src) {
+        auto tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+        tensor->can_not_uses = tensor_src->can_not_uses;
+        if (*tensor->canNotUse == false) {
+          *tensor->canNotUse = *tensor_src->canNotUse;
+        }
+        tensor_src->can_not_uses->insert(tensor->canNotUse);
+        tensor_src->can_not_uses->insert(tensor_src->canNotUse);
+      }
+
+      if (self_tensor->can_not_uses->size() > 0) {
+        for (auto it = self_tensor->can_not_uses->begin();
+             it != self_tensor->can_not_uses->end();
+             it++) {
+          if (*it != self_tensor->canNotUse) {
+            **it = true;
+          }
+        }
+      }
     }
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
