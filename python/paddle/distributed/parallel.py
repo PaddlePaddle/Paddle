@@ -886,7 +886,7 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'heter', 'cncl']
+        backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
 
