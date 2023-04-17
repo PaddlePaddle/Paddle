@@ -4361,10 +4361,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         xt_1.stop_gradient = False
 
         out = paddle.linalg.cov(xt_1)
+        paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (12,))
 
     @prog_scope()
     def test_det(self):
@@ -4372,10 +4375,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         xt_1.stop_gradient = False
 
         out = paddle.linalg.det(xt_1)
+        paddle.static.append_backward(out.sum())
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 3))
 
     @prog_scope()
     def test_linalg_norm(self):
