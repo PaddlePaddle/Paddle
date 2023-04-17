@@ -980,9 +980,13 @@ void group_norm_grad(const Tensor& x,
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
 
+  std::cout << "*****************x.dtype " << x.dtype() << " scale.dtype "
+            << scale.get().dtype() << " bias.dtype " << bias.get().dtype()
+            << std::endl;
   if (x.dtype() == phi::DataType::FLOAT16) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
   }
+
   if (out_grad.dtype() == phi::DataType::FLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
@@ -1016,6 +1020,9 @@ void group_norm_grad(const Tensor& x,
     Tensor p1;
     if (scale_ptr) {
       auto scale_data = scale.get();
+      if (scale_data.dtype() == phi::DataType::FLOAT16) {
+        scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
+      }
       d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
                .sum(std::vector<int64_t>({2}), dtype, false);
       d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
