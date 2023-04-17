@@ -745,6 +745,10 @@ def _lower_composite(
             del block.vars[var_name]
         block._sync_with_cpp()
 
+        for op in block.ops:
+            if op._has_kernel(op.desc.type()):
+                op.desc.infer_var_type(block.desc)
+                op.desc.infer_shape(block.desc)
         # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
             _lower_composite(

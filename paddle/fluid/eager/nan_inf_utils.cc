@@ -124,6 +124,11 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
+                            const paddle::optional<Tensor>& tensor) {
+  CheckTensorHasNanOrInf(api_name, tensor.get());
+}
+
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTwoTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
@@ -167,6 +172,14 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors) {
   for (auto& tensor : tensors) {
     CheckTensorHasNanOrInf(api_name, tensor);
+  }
+}
+
+void CheckTensorHasNanOrInf(
+    const std::string& api_name,
+    const paddle::optional<std::vector<Tensor>>& tensors) {
+  if (tensors) {
+    CheckTensorHasNanOrInf(api_name, tensors.get());
   }
 }
 

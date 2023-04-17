@@ -20,6 +20,8 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/profiler/common_event.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/api/profiler/host_event_recorder.h"

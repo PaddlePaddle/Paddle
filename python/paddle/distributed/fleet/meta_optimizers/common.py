@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle.framework import core
@@ -193,31 +192,6 @@ class CollectiveHelper:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
-                    OP_ROLE_KEY: OpRole.Forward,
-                },
-            )
-        elif core.is_compiled_with_custom_device('npu'):
-            block.append_op(
-                type='c_gen_hccl_id',
-                inputs={},
-                outputs={'Out': comm_id_var},
-                attrs={
-                    'rank': rank,
-                    'endpoint': current_endpoint,
-                    'other_endpoints': other_endpoints,
-                    'ring_id': ring_id,
-                    OP_ROLE_KEY: OpRole.Forward,
-                },
-            )
-            block.append_op(
-                type='c_comm_init_hccl',
-                inputs={'X': comm_id_var},
-                outputs={},
-                attrs={
-                    'rank': rank,
-                    'ring_id': ring_id,
-                    'device_id': int(os.getenv("FLAGS_selected_npus")),
-                    'rank_ids': nranks,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
