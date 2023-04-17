@@ -1434,7 +1434,7 @@ class Switch:
         '''
         import paddle
         import paddle.fluid as fluid
-        with paddle.static.nn.control_flow.Switch() as switch:
+        with fluid.layers.Switch() as switch:
             with switch.case(cond1):
                 i = paddle.full(shape=[1], dtype='int64', fill_value=1)
             with switch.case(cond2):
@@ -1461,7 +1461,7 @@ class Switch:
             two_var = paddle.full(
                 shape=[1], dtype='float32', fill_value=2.0)
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
-            with paddle.static.nn.control_flow.Switch() as switch:
+            with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
                     paddle.assign(input=one_var, output=lr)
                 with switch.default():
