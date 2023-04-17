@@ -2414,14 +2414,18 @@ if (dtype ==  framework::proto::VarType::BOOL)
         return false;
       }
       auto* block = desc.Block();
-      return false;
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
-      auto update_name = desc.Input("ValueTensor")[0];
-      auto* update_desc = block->FindVar(update_name);
-      const auto update_shape = update_desc->GetShape();
-      if (update_shape.size() != input_shape.size()) return false;
+      if (desc.Input("ValueTensor").size() > 0)
+      {
+        auto update_name = desc.Input("ValueTensor")[0];
+        auto* update_desc = block->FindVar(update_name);
+        const auto update_shape = update_desc->GetShape();
+        if (update_shape.size() != input_shape.size()) return false;
+      } else {
+        return false;
+      }
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {

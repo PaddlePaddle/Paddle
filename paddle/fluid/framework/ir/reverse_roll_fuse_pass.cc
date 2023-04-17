@@ -158,7 +158,8 @@ int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
 
 if(reshaep2_50_out->Name() == "reshape2_419.tmp_0")
 {
-  return;
+  // need return!,因为这个pattern进不了TRT
+return;
 }
 
     auto shift_size = 0;
