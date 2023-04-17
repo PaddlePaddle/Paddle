@@ -968,10 +968,40 @@ void group_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  std::cout << "gn_vjp===============" << std::endl;
-
-  // scale.shape=[C]
-  // mean.shape=[N, groups]
+  // x.shape=[n,c,h,w]
+  // y.shape=[n,c,h,w]
+  // g_size = c/g
+  // scale.shape=[c]
+  // mean, var: shape=[n, g]
+  // inv_std = rsqrt(var + epsilon)
+  // ds = sum(dy * x, axes=(2,3))
+  // db = sum(dy, axes=(2,3))
+  //
+  // cal d_x:
+  // s = g / (h*w*c)
+  // if scale:
+  //  ds_val = sum((ds * scale).reshape(n, g, g_size), axes=2)
+  //  db_val = sum((db * scale).reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (scale.reshape(1, g, g_size))
+  // else:
+  //  ds_val = sum(ds.reshape(n, g, g_size), axes=2)
+  //  db_val = sum(db.reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (ones(1, g, g_size))
+  // p2 = (db_val * mean - ds_val) * inv_std * inv_std * inv_std * s
+  // p3 = -p2 * mean - db_val * inv_std * s
+  // p1.reshape(n, g, g_size, 1)
+  // p2.reshape(n, g, 1, 1)
+  // p3.reshape(n, g, 1, 1)
+  // d_x = dy.reshape(n, g, g_size, h*w) * p1 + x.reshape(n, g, g_size, h*w)* p2
+  // + p3
+  //
+  // cal d_scale:
+  // temp = ds.reshape(n, g, g_size) - db.reshape(n, g, g_size) *
+  // mean.reshape(n, g, 1)
+  // d_scale = sum(temp * inv_std.reshape(n, g, 1), axes=0).reshape(c)
+  //
+  // cal d_bias:
+  // d_bias = sum(dy, axes=(0,2,3))
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
   if (data_layout_ != DataLayout::kNCHW) {
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
@@ -980,9 +1010,6 @@ void group_norm_grad(const Tensor& x,
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
 
-  std::cout << "*****************x.dtype " << x.dtype() << " scale.dtype "
-            << scale.get().dtype() << " bias.dtype " << bias.get().dtype()
-            << std::endl;
   if (x.dtype() == phi::DataType::FLOAT16) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
   }
@@ -991,7 +1018,6 @@ void group_norm_grad(const Tensor& x,
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
 
-  // auto x_dims = y.dims();
   std::vector<int64_t> x_dims = phi::vectorize<int64_t>(x.dims());
   auto add_axis = std::vector<int64_t>({-1});
   const int N = x_dims[0];
@@ -999,8 +1025,6 @@ void group_norm_grad(const Tensor& x,
 
   const int hw = x_dims[2] * x_dims[3];
   const int g_num = C / groups;
-
-  // const float s = 1.0 / (hw * g_num);
 
   auto reduce_axis = IntArray(std::vector<int64_t>({2, 3}));
   auto shape_group = IntArray(std::vector<int64_t>({N, groups, g_num}));
@@ -1038,10 +1062,6 @@ void group_norm_grad(const Tensor& x,
       p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})))
                .expand(IntArray(shape_group));
     }
-
-    // d1, d2 [N, G]
-    // p1 [N, G, g_num]
-    // p2 [N, G]
 
     auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
