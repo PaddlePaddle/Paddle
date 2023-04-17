@@ -73,7 +73,6 @@ prim_white_list = [
 # bacward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
-    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
 
@@ -276,6 +275,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   // Before log info
 {}
   // Forward API Call
+{}
+  // Check NaN and Inf if needed
 {}
   // Get Outputs
 {}
@@ -1678,6 +1679,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
                     check_inplace_str,

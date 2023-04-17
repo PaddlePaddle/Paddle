@@ -374,7 +374,16 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #endif
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 53 support float16
+    return platform::GetGPUComputeCapability(place.device) >= 53;
+  });
+  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 80 support bfloat16
+    return platform::GetGPUComputeCapability(place.device) >= 80;
+  });
+#endif
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
     **Note**:
     Examples:
@@ -493,7 +502,18 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
       .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
-
+  m.def("is_float16_supported",
+        [](const platform::CPUPlace &place) -> bool { return false; });
+  m.def("is_bfloat16_supported", [](const platform::CPUPlace &place) -> bool {
+#ifndef PADDLE_WITH_MKLDNN
+    return false;
+#else
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
+      return true;
+    else
+      return false;
+#endif
+  });
   py::class_<paddle::platform::CUDAPinnedPlace> cudapinnedplace(
       m, "CUDAPinnedPlace", R"DOC(
     CUDAPinnedPlace is a descriptor of a device.

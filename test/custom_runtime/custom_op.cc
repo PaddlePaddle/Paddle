@@ -199,7 +199,7 @@ std::vector<paddle::Tensor> StreamForward(const paddle::Tensor& x) {
   auto dev_ctx =
       paddle::experimental::DeviceContextPool::Instance().Get(x.place());
   auto custom_ctx = static_cast<const phi::CustomContext*>(dev_ctx);
-  void* stream = custom_ctx->stream();
+  std::shared_ptr<phi::stream::Stream> stream = custom_ctx->GetStream();
 
   PD_CHECK(stream != nullptr);
   std::cout << "Check stream != nullptr successfully" << std::endl;

@@ -20,15 +20,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
-#if defined(PADDLE_WITH_CNCL)
-#include <cncl.h>
-#endif
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -58,9 +55,6 @@ class CCommInitOp : public framework::OperatorBase {
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
     using CommContext = platform::BKCLCommContext;
-#elif defined(PADDLE_WITH_CNCL)
-    using UniqueId = cnclCliqueId;
-    using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with GPU or XPU or MLU."));
@@ -74,7 +68,7 @@ class CCommInitOp : public framework::OperatorBase {
             "CCommInitOp can run on gpu or xpu or mlu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_XPU_BKCL)
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));

@@ -21,6 +21,8 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 OneDNNContextThreadLocals::Body::Body()

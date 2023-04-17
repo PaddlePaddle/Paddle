@@ -19,6 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 def test_static_layer(
@@ -249,11 +250,12 @@ def bce_wrapper(x, label):
 
 class TestBceLossOp(OpTest):
     def setUp(self):
+        self.init_test_dtype()
         self.init_test_case()
         self.op_type = "bce_loss"
         self.python_api = bce_wrapper
-        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
-        label_np = np.random.randint(0, 2, self.shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.shape).astype(self.dtype)
+        label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
         output_np = bce_loss(input_np, label_np)
 
         self.inputs = {'X': input_np, 'Label': label_np}
@@ -268,6 +270,9 @@ class TestBceLossOp(OpTest):
     def init_test_case(self):
         self.shape = [10, 10]
 
+    def init_test_dtype(self):
+        self.dtype = "float64"
+
 
 class TestBceLossOpCase1(OpTest):
     def init_test_cast(self):
@@ -277,6 +282,39 @@ class TestBceLossOpCase1(OpTest):
 class TestBceLossOpCase2(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 20]
+
+
+class TestBceLossOpFP16(TestBceLossOp):
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def init_test_dtype(self):
+        self.dtype = np.float16
+
+
+class TestBceLossOpStaticFP16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        shape = [2, 3, 20]
+        x_data = np.random.uniform(0.1, 0.8, shape).astype("float16")
+        y_data = np.random.randint(0, 2, shape).astype("float16")
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=shape, name='x', dtype='float16')
+            y = paddle.static.data(shape=shape, name='y', dtype='float16')
+            out = paddle.nn.functional.binary_cross_entropy(
+                x, y, reduction="none"
+            )
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                output_pd = exe.run(
+                    feed={'x': x_data, 'y': y_data}, fetch_list=[out]
+                )[0]
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

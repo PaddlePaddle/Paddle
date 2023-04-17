@@ -27,17 +27,6 @@ std::set<std::string> OperatorBasesMustRunInStaticBuild = {
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
 
-// These Op needs set output dtype when register phi kernel, but they didn't
-std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "eig_grad",
-    "eigh",
-    "lamb",
-    "sync_batch_norm_grad",
-    "update_loss_scaling",
-    "unique",
-    "unique_consecutive_flattened_tensor",
-    "unique_raw"};
-
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
 std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
@@ -73,7 +62,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
   // need_move_to_phi = (kernelCode >> 1) & 1
-  // need_set_dtype =  KernelCode & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -98,18 +86,16 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
     bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel) &&
                             OpsWithFluidKernelNeedMoveToPhi.count(op_type);
-    bool need_set_dtype =
-        OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type);
 
     KernelCode kernel_code =
         (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
         (use_mkldnn << 4) + (has_fluid_kernel << 3) +
-        (has_structured_kernel << 2) + (need_move_to_phi << 1) + need_set_dtype;
+        (has_structured_kernel << 2) + (need_move_to_phi << 1);
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || need_move_to_phi || need_set_dtype) {
+          is_custom_op || use_mkldnn || need_move_to_phi) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -125,8 +111,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", use_mkldnn = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
-         << ", need_move_to_phi = " << (item.second >> 1 & 1)
-         << ", need_set_dtype = " << (item.second & 1) << "]\n";
+         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -454,18 +439,23 @@ void FakeInitializeOutputsForFunctionKernel(
 
         // analyze dtype
         phi::DataType dtype = tensor_arg_def.dtype;
-        if (dtype == DataType::UNDEFINED ||
-            OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
-                std::string(op_type))) {
+        if (dtype == DataType::UNDEFINED) {
           // Some OP's InferMeta is sensitive to DDim, so we cannot get their
           // output dtype from InferMeta
           if (op_type == "adam" || op_type == "adamw") {
             dtype = InferMPDType(runtime_ctx, "Param");
           } else if (op_type == "arg_min" || op_type == "arg_max" ||
-                     op_type == "coalesce_tensor" || op_type == "one_hot_v2") {
+                     op_type == "coalesce_tensor" || op_type == "one_hot_v2" ||
+                     op_type == "unique") {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
+          } else if (op_type == "lamb") {
+            bool multi_precision = op.Attr<bool>("multi_precision");
+            dtype = GetInputDType(runtime_ctx, "Moment1");
+            if (multi_precision && dtype == phi::DataType::FLOAT16) {
+              dtype = phi::DataType::FLOAT32;
+            }
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
