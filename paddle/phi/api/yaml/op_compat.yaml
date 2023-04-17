@@ -2264,6 +2264,13 @@
         support_tensor : true
   manual_signature : [uniform]
 
+- op : uniform_inplace (uniform_random_inplace)
+  backward : uniform_inplace_grad(uniform_random_inplace_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : unique
   inputs :
     {x : X}
