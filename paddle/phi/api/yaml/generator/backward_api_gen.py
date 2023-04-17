@@ -300,9 +300,8 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
            2、support inputs/outputs of which the type is vector of tensor
            3、support inplace
            4、support view
-           5、support intermediate
-           6、support invoke
-           7、add sharding inference and re-sharding logic
+           5、support invoke
+           6、add sharding inference and re-sharding logic
         """
         if inplace_flag:
             return ""

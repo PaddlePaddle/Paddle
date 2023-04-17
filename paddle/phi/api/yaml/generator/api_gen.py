@@ -353,16 +353,22 @@ class ForwardAPI(BaseAPI):
     auto {var}_unwrapped = DistTensorHijackHelper::UnWrap({var});"""
         return unwrap_code
 
+    def get_output_names_without_intermediate(self):
+        return [
+            e for e in self.outputs["names"] if e not in self.intermediate_outs
+        ]
+
     def gen_local_tensor_call(self):
         inputs = [f"""{var}_unwrapped""" for var in self.inputs["names"]]
         inputs.extend(self.attrs["names"])
         args = ",".join(inputs)
         local_call = """  // gen_local_tensor_call
 """
-        for output in self.outputs["names"]:
+        output_names = self.get_output_names_without_intermediate()
+        for output in output_names:
             local_call += f"""    Tensor {output}_local;
 """
-        outputs = [e + "_local" for e in self.outputs["names"]]
+        outputs = [e + "_local" for e in output_names]
         output_arg = (
             f"""std::tie({",".join(outputs)})"""
             if len(outputs) > 1
@@ -374,10 +380,11 @@ class ForwardAPI(BaseAPI):
     def gen_dist_tensor_wrap_code(self):
         wrap_code = """   // gen_dist_tensor_wrap_code
 """
-        for output in self.outputs["names"]:
+        output_names = self.get_output_names_without_intermediate()
+        for output in output_names:
             wrap_code += f"""    Tensor {output}_wrapped = DistTensorHijackHelper::Wrap({output}_local);
 """
-        outputs = [e + "_wrapped" for e in self.outputs["names"]]
+        outputs = [e + "_wrapped" for e in output_names]
         if len(outputs) > 1:
             wrap_code += f"""    return std::make_tuple({",".join(outputs)});"""
         else:
@@ -392,13 +399,12 @@ class ForwardAPI(BaseAPI):
            2、support inputs/outputs of which the type is vector of tensor
            3、support inplace
            4、support view
-           5、support intermediate
-           6、support invoke
-           7、add sharding inference and re-sharding logic
+           5、support invoke
+           6、add sharding inference and re-sharding logic
         """
         if inplace_flag:
             return ""
-        if self.api not in ["accuracy", "add", "abs"]:
+        if self.api not in ["accuracy", "add", "abs", "flatten"]:
             return ""
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}
