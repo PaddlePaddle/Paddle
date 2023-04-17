@@ -217,6 +217,18 @@
   data_transform :
     skip_transform : start, stop, number
 
+- op : matrix_rank
+  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankStaticInferMeta
+    param : [x, tol_tensor, hermitian, use_default_tol]
+  optional : tol_tensor
+  kernel :
+    func : matrix_rank {dense -> dense},
+           matrix_rank_tol {dense, dense -> dense}
+    data_type : x
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
