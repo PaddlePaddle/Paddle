@@ -16,9 +16,9 @@
 
 #include <functional>
 
-namespace ir {
-class OpInfoImpl;
+#include "paddle/ir/op_info_impl.h"
 
+namespace ir {
 ///
 /// \brief OpInfo class.
 ///
@@ -32,15 +32,15 @@ class OpInfo {
 
   OpInfo &operator=(const OpInfo &other) = default;
 
-  bool operator==(OpInfo other) const;
+  bool operator==(OpInfo other) const { return impl_ == other.impl_; }
 
-  bool operator!=(OpInfo other) const;
+  bool operator!=(OpInfo other) const { return impl_ != other.impl_; }
 
-  explicit operator bool() const;
+  explicit operator bool() const { return impl_; }
 
-  bool operator!() const;
+  bool operator!() const { return impl_ == nullptr; }
 
-  const OpInfoImpl *impl() const;
+  const OpInfoImpl *impl() const { return impl_; }
 
   friend struct std::hash<OpInfo>;
 

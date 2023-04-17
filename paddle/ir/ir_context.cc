@@ -20,6 +20,7 @@
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
+#include "paddle/ir/op_info_impl.h"
 #include "paddle/ir/spin_lock.h"
 #include "paddle/ir/type_base.h"
 
@@ -46,6 +47,11 @@ class IrContextImpl {
       delete dialect_map.second;
     }
     registed_dialect_.clear();
+
+    for (auto &op_map : registed_operations_) {
+      op_map.second->destroy();
+    }
+    registed_operations_.clear();
   }
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
@@ -112,6 +118,28 @@ class IrContextImpl {
     return nullptr;
   }
 
+  void RegisterOperation(ir::TypeId type_id, OpInfoImpl *opinfo) {
+    std::lock_guard<ir::SpinLock> guard(registed_operations_lock_);
+    VLOG(4) << "Register an operation of: [TypeId_hash="
+            << std::hash<ir::TypeId>()(type_id) << ", OpInfoImpl ptr=" << opinfo
+            << "].";
+    registed_operations_.emplace(type_id, opinfo);
+  }
+
+  OpInfoImpl *GetOperation(ir::TypeId type_id) {
+    std::lock_guard<ir::SpinLock> guard(registed_operations_lock_);
+    auto iter = registed_operations_.find(type_id);
+    if (iter != registed_operations_.end()) {
+      VLOG(4) << "Fonund a cached operation of: [TypeId_hash="
+              << std::hash<ir::TypeId>()(type_id)
+              << ", OpInfoImpl ptr=" << iter->second << "].";
+      return iter->second;
+    }
+    LOG(WARNING) << "No cache found operation of: [TypeId_hash="
+                 << std::hash<ir::TypeId>()(type_id) << "].";
+    return nullptr;
+  }
+
   // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
   ir::SpinLock registed_abstract_types_lock_;
@@ -134,6 +162,10 @@ class IrContextImpl {
   // The dialcet registered in the context.
   std::unordered_map<std::string, Dialect *> registed_dialect_;
   ir::SpinLock registed_dialect_lock_;
+
+  // The Op registered in the context.
+  std::unordered_map<TypeId, OpInfoImpl *> registed_operations_;
+  ir::SpinLock registed_operations_lock_;
 
   ir::SpinLock destructor_lock_;
 };
@@ -214,6 +246,16 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   }
   LOG(WARNING) << "No dialect registered for " << dialect_name;
   return nullptr;
+}
+
+std::unordered_map<TypeId, OpInfoImpl *> &IrContext::registed_operation() {
+  return impl().registed_operations_;
+}
+
+void IrContext::RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo) {
+  if (impl().GetOperation(id) == nullptr) {
+    impl().RegisterOperation(id, opinfo);
+  }
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {

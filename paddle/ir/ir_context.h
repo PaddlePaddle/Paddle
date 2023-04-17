@@ -19,6 +19,8 @@
 #include <memory>
 #include <unordered_map>
 
+// #include "paddle/ir/op_info_impl.h"
+
 namespace ir {
 class IrContextImpl;
 class StorageManager;
@@ -26,6 +28,8 @@ class AbstractType;
 class AbstractAttribute;
 class TypeId;
 class Dialect;
+class OpInfoImpl;
+class OpInfo;
 
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
@@ -156,6 +160,25 @@ class IrContext {
   T *GetRegisteredDialect() {
     return static_cast<T *>(GetRegisteredDialect(T::name()));
   }
+
+  ///
+  /// \brief Get or register operaiton.
+  ///
+  std::unordered_map<TypeId, OpInfoImpl *> &registed_operation();
+
+  void RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo);
+
+  // template <typename ConcertOp>
+  // void RegisterOperation() {
+  //   RegisterOperation(ir::TypeId::get<ConcertOp>(),
+  //   OpInfoImpl::create<ConcertOp>());
+  // }
+
+  // template <typename ConcertOp>
+  // OpInfo GetOrRegisterOperation() {
+  //   RegisterOperation(ir::TypeId::get<ConcertOp>(),
+  //   OpInfoImpl::create<ConcertOp>());
+  // }
 
   IrContext(const IrContext &) = delete;
 

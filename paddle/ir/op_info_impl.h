@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/op_info.h"
+#pragma once
+
 #include <cstring>
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/ir_context.h"
@@ -255,15 +256,5 @@ class OpInfoImpl {
   /// The name of this Op.
   const char *op_name_;
 };
-
-bool OpInfo::operator==(OpInfo other) const { return impl_ == other.impl_; }
-
-bool OpInfo::operator!=(OpInfo other) const { return impl_ != other.impl_; }
-
-OpInfo::operator bool() const { return impl_; }
-
-bool OpInfo::operator!() const { return impl_ == nullptr; }
-
-const OpInfoImpl *OpInfo::impl() const { return impl_; }
 
 }  // namespace ir
