@@ -1326,33 +1326,6 @@ bool OperatorWithKernel::SupportGPU() const {
   }
 }
 
-bool OperatorWithKernel::SupportNPU() const {
-  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-      phi::TransToPhiKernelName(type_));
-  auto has_phi_kernel =
-      std::any_of(phi_kernels.begin(),
-                  phi_kernels.end(),
-                  [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::NPU;
-                  });
-  if (has_phi_kernel) {
-    return true;
-  } else {
-    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-      return false;
-    } else {
-      auto& op_kernels = kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_npu_place(kern_pair.first.place_);
-          });
-    }
-  }
-}
-
 bool OperatorWithKernel::SupportXPU() const {
 #ifdef PADDLE_WITH_XPU
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(

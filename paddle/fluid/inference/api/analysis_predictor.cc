@@ -1241,8 +1241,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];
     auto &t = framework::GetVariableTensor(*scope, name);
-    (*outputs)[i] =
-        std::move(paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name));
+    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
   }
   return true;
 }
@@ -2553,13 +2552,11 @@ USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
-USE_TRT_CONVERTER(matmul);
-USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(matrix_multiply);
 USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
@@ -2685,9 +2682,11 @@ USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+USE_TRT_CONVERTER(cumsum)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
