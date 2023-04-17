@@ -46,7 +46,7 @@ class TestSparseSum(unittest.TestCase):
             mask = paddle.randint(0, 2, x_shape)
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
         # or the backward checks may fail.
-        origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+        origin_x = (paddle.rand(x_shape, dtype='float64') + 1) * mask
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
         dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
