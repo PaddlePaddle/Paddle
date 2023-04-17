@@ -963,6 +963,7 @@ class Executor:
         self.ctx_caches = dict()
         self.trainer_caches = dict()
         self.scope_caches = dict()
+        self.micro_scope_cache = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
         p = core.Place()
@@ -1473,6 +1474,7 @@ class Executor:
                     feed=feed,
                     fetch_list=fetch_list,
                     with_standalone_executor=self._fleet_executor_with_standalone,
+                    return_numpy=return_numpy,
                 )
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -2442,7 +2444,7 @@ class Executor:
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
+                micro_scope_list=micro_cached_scopes,
                 with_standalone_executor=with_standalone_executor,
             )
 
