@@ -17,6 +17,7 @@ import struct
 import unittest
 
 import numpy as np
+from amp_base_models import build_add_model, build_embedding_model
 
 import paddle
 from paddle import fluid
@@ -24,6 +25,21 @@ from paddle.fluid import core
 from paddle.static import amp
 
 paddle.enable_static()
+
+
+def copy_bits_from_float_to_uint16(f):
+    return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
+
+
+def convert_float_to_uint16(in_list):
+    if in_list.dtype == np.float32:
+        new_output = []
+        for x in np.nditer(in_list):
+            new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+        new_output = np.reshape(new_output, in_list.shape).view(np.uint16)
+        return new_output
+    else:
+        return in_list
 
 
 def convert_uint16_to_float(in_list):
@@ -202,6 +218,124 @@ class TestModelCastBF16(unittest.TestCase):
             ),
             startup_prog=fluid.default_startup_program(),
         )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestProgramBF16(unittest.TestCase):
+    def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].bf16_calls,
+                value,
+                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+            )
+
+    def test_amp_bf16_o1(self):
+        main_program, startup_program = build_embedding_model(
+            True, "bfloat16", "O1"
+        )
+        self.assertEqual(main_program.num_blocks, 1)
+
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_bf16_calls = {
+            "matmul_v2": 1,
+            "elementwise_add": 1,
+            "dropout": 1,
+            "lookup_table_v2": 0,
+            "squared_l2_norm": 0,
+            "adamw": 0,
+        }
+        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
+
+    def test_amp_bf16_o2(self):
+        main_program, startup_program = build_embedding_model(
+            True, "bfloat16", "O2"
+        )
+        self.assertEqual(main_program.num_blocks, 1)
+
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_bf16_calls = {
+            "matmul_v2": 1,
+            "elementwise_add": 1,
+            "dropout": 1,
+            "lookup_table_v2": 0,
+            "squared_l2_norm": 2,
+            "adamw": 2,
+        }
+        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestStaticBF16(unittest.TestCase):
+    def _generate_feed_x(self):
+        x = np.random.random(size=[16, 16]).astype("float32")
+        x_bf16 = convert_float_to_uint16(x)
+        x_fp32 = convert_uint16_to_float(x_bf16)
+        return x_fp32, x_bf16
+
+    def test_compare_o1_o2(self):
+        def _run_o1(exe, x_np, max_iters):
+            (
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+            ) = build_add_model(True, "bfloat16", "O1")
+
+            losses = []
+            scope = paddle.static.Scope()
+            with paddle.static.scope_guard(scope):
+                exe.run(startup_program)
+                for iter_id in range(max_iters):
+                    results = exe.run(
+                        program=main_program,
+                        feed={feed_vars[0].name: x_np},
+                        fetch_list=fetch_vars,
+                    )
+                    print(f"-- [BF16 O1] iter={iter_id}, loss={results[0]}")
+                    losses.append(results[0])
+            return losses
+
+        def _run_o2(exe, x_np, max_iters):
+            (
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+            ) = build_add_model(True, "bfloat16", "O2")
+
+            losses = []
+            scope = paddle.static.Scope()
+            with paddle.static.scope_guard(scope):
+                exe.run(startup_program)
+                optimizer.amp_init(place)
+                for iter_id in range(max_iters):
+                    results = exe.run(
+                        program=main_program,
+                        feed={feed_vars[0].name: x_np},
+                        fetch_list=fetch_vars,
+                    )
+                    print(f"-- [BF16 O2] iter={iter_id}, loss={results[0]}")
+                    losses.append(results[0])
+            return losses
+
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+
+        max_iters = 2
+        x_fp32, x_bf16 = self._generate_feed_x()
+        losses_o1 = _run_o1(exe, x_fp32, max_iters)
+        losses_o2 = _run_o2(exe, x_bf16, max_iters)
 
 
 if __name__ == '__main__':
