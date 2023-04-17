@@ -353,6 +353,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         MetaTensor* roisnum,
                         MetaConfig config = MetaConfig());
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out);
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
