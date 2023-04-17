@@ -74,6 +74,7 @@ set(COMMON_KERNEL_DEPS
     phi_dynload_warpctc
     phi_dynload_warprnnt
     sequence_padding
+    sequence_pooling
     sequence_scale
     fft
     phi_data_layout_transform

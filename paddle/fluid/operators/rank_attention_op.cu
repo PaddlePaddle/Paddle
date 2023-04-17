@@ -242,7 +242,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = phi::GPUContext;
+
 PD_REGISTER_STRUCT_KERNEL(rank_attention,
                           GPU,
                           ALL_LAYOUT,

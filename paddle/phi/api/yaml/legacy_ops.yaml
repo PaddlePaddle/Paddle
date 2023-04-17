@@ -1312,17 +1312,6 @@
     data_type : dtype
     backend : place
 
-- op : uniform_inplace
-  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output: Tensor(out)
-  infer_meta:
-    func: UniformRandomInplaceInferMeta
-  kernel:
-    func: uniform_inplace
-    data_type: x
-  inplace: (x -> out)
-  backward: uniform_inplace_grad
-
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique
   args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
