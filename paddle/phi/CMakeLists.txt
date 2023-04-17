@@ -92,29 +92,36 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+set(PHI_BUILD_TYPE SHARED)
+if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+  set(BUILD_PHI_SHARED "-DBUILD_PHI_SHARED")
+endif()
+
 if(WITH_GPU)
   add_definitions(-DCUDA_REAL_ARCHS=${NVCC_FLAGS_EXTRA_real_archs}
   )# for backends/gpu/gpu_resources.cc
   nv_library(
-    phi SHARED
+    phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 elseif(WITH_ROCM)
   hip_library(
-    phi SHARED
+    phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 elseif(WITH_XPU_KP)
   xpu_library(
-    phi SHARED
+    phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 else()
   cc_library(
-    phi SHARED
+    phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 endif()
+
+set_target_properties(phi PROPERTIES COMPILE_OPTIONS ${BUILD_PHI_SHARED})
 
 if(WIN32)
   set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
