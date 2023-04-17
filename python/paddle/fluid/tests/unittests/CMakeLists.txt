@@ -768,7 +768,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
 add_subdirectory(distribution)
 
 # dist xpu tests:
