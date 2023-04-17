@@ -44,8 +44,8 @@ def _build_optimizer(
         multi_precision=True,
     )
     if use_amp:
-        optimizer = paddle.static.amp.amp_decorate(
-            optimizer, amp_lists=amp_lists, level=amp_level, dtype=amp_dtype
+        optimizer = paddle.static.amp.decorate(
+            optimizer, amp_lists, level=amp_level, dtype=amp_dtype
         )
     return optimizer
 
