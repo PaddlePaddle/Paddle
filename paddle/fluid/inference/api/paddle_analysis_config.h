@@ -644,8 +644,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// mode.
   /// \param allow_build_at_runtime allow build trt engine at runtime.
   ///
-  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
-                                       bool allow_build_at_runtime = true);
+  void EnableTunedTensorRtDynamicShape(
+      const std::string& shape_range_info_path = "",
+      bool allow_build_at_runtime = true);
 
   ///
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic

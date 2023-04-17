@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/backends/dynload/rocsparse.h"
 
 namespace phi {
+namespace dynload {
+std::once_flag rocsparse_dso_flag;
+void *rocsparse_dso_handle = nullptr;
 
-template <typename T, typename Context>
-void LogsumexpKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keepdim,
-                     bool reduce_all,
-                     DenseTensor* out);
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
+#ifdef ROCSPARSE_ROUTINE_EACH
+ROCSPARSE_ROUTINE_EACH(DEFINE_WRAP)
+#endif
+
+#ifdef ROCSPARSE_ROUTINE_EACH_R2
+ROCSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
+#endif
+
+#ifdef ROCSPARSE_ROUTINE_EACH_R3
+ROCSPARSE_ROUTINE_EACH_R3(DEFINE_WRAP);
+#endif
+
+}  // namespace dynload
 }  // namespace phi
