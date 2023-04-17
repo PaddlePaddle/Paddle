@@ -48,7 +48,7 @@ from codegen_utils import (
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
-inplace_check_blacklist = set(["assign_out_"])
+inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
@@ -57,19 +57,22 @@ black_ops_list = [
     "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
+    "sync_batch_norm_",
 ]
 
 
 # white ops list whose kernel can be deleted after performance analysis
 # original kernel and its derivative kernel can be deleted when composite_grad
 # kernel performs same to it.
-prim_white_list = ["matmul_double_grad"]
+prim_white_list = [
+    "matmul_double_grad",
+    "tanh_double_grad",
+]
 
 # dict of special api that forward api's output will affect bacward api's output
 # bacward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
-    "multiply_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
 
@@ -273,6 +276,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {}
   // Forward API Call
 {}
+  // Check NaN and Inf if needed
+{}
   // Get Outputs
 {}
   VLOG(4) << \"Finish AD API: {}";
@@ -336,6 +341,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "glog/logging.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/fused_backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -1670,6 +1676,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
                     check_inplace_str,

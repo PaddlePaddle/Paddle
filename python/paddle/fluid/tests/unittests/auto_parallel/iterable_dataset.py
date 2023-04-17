@@ -18,8 +18,8 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()

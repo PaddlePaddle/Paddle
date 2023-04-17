@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def np_masked_select(x, mask):
@@ -40,10 +41,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y')
 
     def init(self):
         self.shape = (50, 3)
@@ -55,6 +56,75 @@ class TestMaskedSelectOp1(TestMaskedSelectOp):
 
 
 class TestMaskedSelectOp2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (168,)
+
+
+class TestMaskedSelectFP16Op(OpTest):
+    def setUp(self):
+        self.init()
+        self.op_type = "masked_select"
+        self.dtype = np.float16
+        self.python_api = paddle.masked_select
+        x = np.random.random(self.shape).astype("float16")
+        mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
+        out = np_masked_select(x, mask)
+        self.inputs = {'X': x, 'Mask': mask}
+        self.outputs = {'Y': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y')
+
+    def init(self):
+        self.shape = (50, 3)
+
+
+class TestMaskedSelectFP16Op1(TestMaskedSelectFP16Op):
+    def init(self):
+        self.shape = (6, 8, 9, 18)
+
+
+class TestMaskedSelectFP16Op2(TestMaskedSelectFP16Op):
+    def init(self):
+        self.shape = (168,)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMaskedSelectBF16Op(OpTest):
+    def setUp(self):
+        self.init()
+        self.op_type = "masked_select"
+        self.dtype = np.uint16
+        self.python_api = paddle.masked_select
+        x = np.random.random(self.shape).astype("float32")
+        mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
+        out = np_masked_select(x, mask)
+        self.inputs = {'X': convert_float_to_uint16(x), 'Mask': mask}
+        self.outputs = {'Y': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Y')
+
+    def init(self):
+        self.shape = (50, 3)
+
+
+class TestMaskedSelectBF16Op1(TestMaskedSelectBF16Op):
+    def init(self):
+        self.shape = (6, 8, 9, 2)
+
+
+class TestMaskedSelectBF16Op2(TestMaskedSelectBF16Op):
     def init(self):
         self.shape = (168,)
 

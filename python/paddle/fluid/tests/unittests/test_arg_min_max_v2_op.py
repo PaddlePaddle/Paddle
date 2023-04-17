@@ -18,9 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def create_kernel_case(op_type, numpy_op_type):
@@ -291,7 +290,7 @@ def create_test_case(op_type):
                 self.run_static(place)
                 self.run_dygraph(place)
 
-    cls_name = "ArgMaxMinTestCase_{}".format(op_type)
+    cls_name = f"ArgMaxMinTestCase_{op_type}"
     ArgMaxMinTestCase.__name__ = cls_name
     globals()[cls_name] = ArgMaxMinTestCase
 

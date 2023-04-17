@@ -24,7 +24,7 @@ class LayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
+    VLOG(4) << "convert a layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());

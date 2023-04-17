@@ -17,6 +17,17 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature UniqueOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("unique_raw",
+                           {"X"},
+                           {"return_index",
+                            "return_inverse",
+                            "return_counts",
+                            "axis",
+                            "dtype",
+                            "is_sorted"},
+                           {"Out", "Indices", "Index", "Counts"});
+  }
   bool is_sorted = paddle::any_cast<bool>(ctx.Attr("is_sorted"));
   if (is_sorted) {
     return KernelSignature(

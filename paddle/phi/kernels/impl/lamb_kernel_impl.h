@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
@@ -240,7 +242,7 @@ void ComputeImpl(const Context& dev_ctx,
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
+  memory_utils::Buffer buffer(dev_ctx.GetPlace());
   phi::funcs::SquaredL2Norm(
       dev_ctx,
       reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr

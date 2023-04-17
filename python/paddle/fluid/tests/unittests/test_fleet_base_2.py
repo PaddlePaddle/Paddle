@@ -21,7 +21,7 @@ paddle.enable_static()
 
 import os
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestFleetBase(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestFleetBase(unittest.TestCase):
 
     def test_ps_minimize(self):
         import paddle
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "1"

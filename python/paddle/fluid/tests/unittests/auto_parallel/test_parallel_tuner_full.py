@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import paddle
-import paddle.static as static
+from paddle import static
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.dist_context import (
@@ -153,7 +153,7 @@ class TestParallelTunerFull(unittest.TestCase):
         cluster = Cluster()
         cluster.gen_default_config_cluster(node_count=1, device_count=8)
         strategy = Strategy()
-        strategy.auto_mode = "full"
+        strategy.auto_mode = "full_random"
         dist_context = DistributedContext(
             train_program,
             start_program,

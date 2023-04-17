@@ -1137,14 +1137,32 @@ void ReduceKernel(const KPDevice& dev_ctx,
       is_mean);
 }
 
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp>
+void TensorReduceImpl(const phi::GPUContext& dev_ctx,
+                      const phi::DenseTensor& x,
+                      phi::DenseTensor* y,
+                      const TransformOp& transform,
+                      const std::vector<int>& origin_reduce_dims,
+                      gpuStream_t stream,
+                      bool is_mean = false) {
+  dev_ctx.template Alloc<Ty>(y);
+  ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+      static_cast<const phi::GPUContext&>(dev_ctx),
+      x,
+      y,
+      transform,
+      origin_reduce_dims,
+      is_mean);
+}
+
 #endif
 
-template <typename DeviceContext,
-          typename T,
-          size_t D,
-          size_t R_D,
-          typename Functor>
-void ReduceFunctor(const DeviceContext& context,
+template <typename Context, typename T, size_t D, size_t R_D, typename Functor>
+void ReduceFunctor(const Context& context,
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
                    const std::vector<int64_t>& dims,
@@ -1181,10 +1199,10 @@ void ReduceFunctor(const DeviceContext& context,
   }
 }
 
-#define HANDLE_REDUCE_DIM(NDIM, RDIM)                        \
-  if (ndim == NDIM && rdim == RDIM) {                        \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, Functor>( \
-        dev_ctx, input, output, dims, keep_dim);             \
+#define HANDLE_REDUCE_DIM(NDIM, RDIM)                  \
+  if (ndim == NDIM && rdim == RDIM) {                  \
+    ReduceFunctor<Context, OutT, NDIM, RDIM, Functor>( \
+        dev_ctx, input, output, dims, keep_dim);       \
   }
 //////////////// HandleLargeDim
 
@@ -1220,8 +1238,8 @@ inline void GetShuffledDim(const DDim& src_dims,
   }
 }
 
-template <typename DeviceContext, typename OutT>
-void GetShuffledInput(const DeviceContext& dev_ctx,
+template <typename Context, typename OutT>
+void GetShuffledInput(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
@@ -1232,19 +1250,19 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   shuffled_input->Resize(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
+  phi::funcs::TransposeNormal<Context, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
-template <typename DeviceContext, typename OutT, typename Functor>
-void HandleLargeDim(const DeviceContext& dev_ctx,
+template <typename Context, typename OutT, typename Functor>
+void HandleLargeDim(const Context& dev_ctx,
                     const phi::DenseTensor& input,
                     phi::DenseTensor* output,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
   phi::DenseTensor shuffled_input;
-  GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
+  GetShuffledInput<Context, OutT>(dev_ctx, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
@@ -1266,15 +1284,15 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 
   DDim output_dim = output->dims();
   output->ResizeAndAllocate({unreduced});
-  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+  ReduceFunctor<Context, OutT, 2, 1, Functor>(
       dev_ctx, shuffled_input, output, {1}, keep_dim);
   output->ResizeAndAllocate(output_dim);
 }
 
 ////////////// ReduceKernel
 
-template <typename DeviceContext, typename T, typename OutT, typename Functor>
-void ReduceKernelImpl(const DeviceContext& dev_ctx,
+template <typename Context, typename T, typename OutT, typename Functor>
+void ReduceKernelImpl(const Context& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* output,
                       const std::vector<int64_t>& dims,
@@ -1295,7 +1313,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
     int ndim = input.dims().size();
     int rdim = dims.size();
     if (ndim > 6) {
-      HandleLargeDim<DeviceContext, OutT, Functor>(
+      HandleLargeDim<Context, OutT, Functor>(
           dev_ctx, input, output, dims, keep_dim);
 
     } else {

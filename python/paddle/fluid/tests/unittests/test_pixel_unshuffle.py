@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
@@ -68,6 +68,12 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         return npresult
 
 
+def pixel_unshuffle_wrapper(x, downscale_factor, data_format):
+    return paddle._legacy_C_ops.pixel_unshuffle(
+        x, "downscale_factor", downscale_factor, "data_format", data_format
+    )
+
+
 class TestPixelUnshuffleOp(OpTest):
     '''TestPixelUnshuffleOp'''
 
@@ -75,6 +81,8 @@ class TestPixelUnshuffleOp(OpTest):
         '''setUp'''
 
         self.op_type = "pixel_unshuffle"
+        self.python_api = pixel_unshuffle_wrapper
+        self.init_dtype()
         self.init_data_format()
         n, c, h, w = 2, 1, 12, 12
 
@@ -85,7 +93,7 @@ class TestPixelUnshuffleOp(OpTest):
 
         down_factor = 3
 
-        x = np.random.random(shape).astype("float64")
+        x = np.random.random(shape).astype(self.dtype)
         npresult = pixel_unshuffle_np(x, down_factor, self.format)
 
         self.inputs = {"X": x}
@@ -94,6 +102,9 @@ class TestPixelUnshuffleOp(OpTest):
             "downscale_factor": down_factor,
             "data_format": self.format,
         }
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_data_format(self):
         '''init_data_format'''
@@ -118,6 +129,65 @@ class TestChannelLast(TestPixelUnshuffleOp):
         '''init_data_format'''
 
         self.format = "NHWC"
+
+
+class TestPixelUnshuffleFP16Op(TestPixelUnshuffleOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestPixelUnshuffleBP16Op(OpTest):
+    '''TestPixelUnshuffleBP16Op'''
+
+    def setUp(self):
+        self.op_type = "pixel_unshuffle"
+        self.python_api = pixel_unshuffle_wrapper
+        self.init_dtype()
+        self.init_data_format()
+        n, c, h, w = 2, 1, 12, 12
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
+        down_factor = 3
+
+        x = np.random.random(shape).astype(self.np_dtype)
+        npresult = pixel_unshuffle_np(x, down_factor, self.format)
+
+        self.inputs = {"X": x}
+        self.outputs = {"Out": npresult}
+        self.attrs = {
+            "downscale_factor": down_factor,
+            "data_format": self.format,
+        }
+
+        self.place = core.CUDAPlace(0)
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def init_data_format(self):
+        self.format = "NCHW"
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+        )
 
 
 class TestPixelUnshuffleAPI(unittest.TestCase):
@@ -244,9 +314,9 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            pixel_unshuffle_str = 'downscale_factor={}'.format(down_factor)
+            pixel_unshuffle_str = f'downscale_factor={down_factor}'
             if data_format != 'NCHW':
-                pixel_unshuffle_str += ', data_format={}'.format(data_format)
+                pixel_unshuffle_str += f', data_format={data_format}'
             self.assertEqual(pixel_unshuffle.extra_repr(), pixel_unshuffle_str)
 
     def test_dygraph1(self):

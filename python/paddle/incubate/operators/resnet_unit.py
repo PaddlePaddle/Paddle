@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer

@@ -22,7 +22,7 @@
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed.utils.moe_utils import global_gather, global_scatter
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p

@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 from paddle.nn import Layer, Sequential

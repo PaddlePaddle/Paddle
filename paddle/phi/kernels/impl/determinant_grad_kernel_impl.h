@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/common/amp_type_traits.h"
+
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"

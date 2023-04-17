@@ -57,7 +57,7 @@ class ReLU(Layer):
         return F.relu(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -127,7 +127,7 @@ class Softmax(Layer):
         return F.softmax(x, self._axis, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -168,7 +168,7 @@ class ReLU6(Layer):
         return F.relu6(x, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str
 
 
@@ -218,5 +218,5 @@ class LeakyReLU(Layer):
         return F.leaky_relu(x, self._negative_slope, self._name)
 
     def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
+        name_str = f'name={self._name}' if self._name else ''
         return name_str

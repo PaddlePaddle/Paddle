@@ -144,7 +144,9 @@ class BaseAPI:
             ')'
         ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
-        args_list = args_str.split(',')
+        patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+        args_list = re.split(patten, args_str.strip())
+        args_list = [x.strip() for x in args_list]
         input_types_map = {
             'Tensor': 'const Tensor&',
             'Tensor[]': 'const std::vector<Tensor>&',
@@ -1335,4 +1337,5 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             else:
                 invoke_code = self.invoke
                 params_code = self.get_define_args()
+
             return self.gene_invoke_code(invoke_code, params_code)
