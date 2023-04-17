@@ -40,7 +40,7 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
                                  const int64_t dense_dim,
                                  const int64_t sparse_dim,
                                  const int64_t axis,
-                                 const int64_t keep_dim,
+                                 const bool keep_dim,
                                  IntT* out_indices_data,
                                  T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index_i, x_nnz, int64_t) {
@@ -83,13 +83,14 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
     }
     for (int j = 0; j < sparse_dim; ++j) {
       // out_indices_data [sparse_dim, x.nnz()]
+      int64_t x_indices_data_offset;
       if (j < axis) {
-        out_indices_data[index_i + j * x_nnz] =
-            x_indices_data[index_i + j * x_nnz];
+        x_indices_data_offset = index_i + j * x_nnz;
       } else {
-        out_indices_data[index_i + j * x_nnz] =
-            x_indices_data[index_i + (j + 1) * x_nnz];
+        x_indices_data_offset = index_i + (j + 1) * x_nnz;
       }
+      out_indices_data[index_i + j * x_nnz] =
+          x_indices_data[x_indices_data_offset];
     }
   }
 }
@@ -141,16 +142,14 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
 
     if (number != x_dim1) {
       T sum_value = 0;
+      int64_t x_values_data_offset;
       if (batch == 0) {
-        for (int64_t j = x_crows_data[index]; j < x_crows_data[index + 1];
-             ++j) {
-          sum_value += x_values_data[j];
-        }
-        out_values_data[index] = sum_value;
-        return;
+        x_values_data_offset = 0;
+      } else {
+        x_values_data_offset = batch_nnz_data[batch - 1];
       }
       for (int64_t j = x_crows_data[index]; j < x_crows_data[index + 1]; ++j) {
-        sum_value += x_values_data[j + batch_nnz_data[batch - 1]];
+        sum_value += x_values_data[j + x_values_data_offset];
       }
       out_values_data[index - batch] = sum_value;
     }
