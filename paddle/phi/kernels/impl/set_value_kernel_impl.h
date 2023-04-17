@@ -189,11 +189,17 @@ void SetValueImpl(const Context& dev_ctx,
 
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   if (is_gpu_place || slice_tensor.dims().size() >= value.dims().size()) {
-    // ElementwiseComputeEx can do broadcasting in two cases:
-    // 1. The place is GPU.
-    // 2. The place is CPU, and the 'x' does not need broadcast.
-    // Please see the note in
-    // paddle/fluid/operators/elementwise/elementwise_op_function.h
+    // [Why here we confirm running device]
+    //    ElementwiseComputeEx can do broadcasting in two cases:
+    //    1. The place is GPU.
+    //    2. The place is CPU, and the 'x' does not need broadcast.
+    //    Please see the note in
+    //    paddle/fluid/operators/elementwise/elementwise_op_function.h
+    // So, here we choose different logic depending on the device to avoid
+    // numerical problems, temporarily.
+    //
+    // TODO(zoooo0820): Reimplement logic of set_value to avoid using
+    // elementwise-sub.
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
         dev_ctx,
         slice_tensor,
