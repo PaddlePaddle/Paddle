@@ -1041,8 +1041,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : lu_grad
-  forward : lu (Tensor x, bool pivots = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
-  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivots)
+  forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
+  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
   output : Tensor(x_grad)
   infer_meta :
     func : LUGradInferMeta
