@@ -769,7 +769,6 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(rnn)
 add_subdirectory(distribution)
 
 # dist xpu tests:
@@ -789,8 +788,6 @@ if(WIN32)
     SRCS cc_imp_py_test.cc
     DEPS python)
 endif()
-
-add_subdirectory(ir)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass

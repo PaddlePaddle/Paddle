@@ -253,7 +253,7 @@ REGISTER_OPERATOR(run_program,
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(run_program,
-                       ops::RunProgramOpKernel<phi::CPUContext, float>)
-REGISTER_OP_CPU_KERNEL(run_program_grad,
-                       ops::RunProgramGradOpKernel<phi::CPUContext, float>)
+PD_REGISTER_STRUCT_KERNEL(
+    run_program, CPU, ALL_LAYOUT, ops::RunProgramOpKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    run_program_grad, CPU, ALL_LAYOUT, ops::RunProgramGradOpKernel, float) {}
