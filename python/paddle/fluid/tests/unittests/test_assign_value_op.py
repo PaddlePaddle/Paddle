@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import framework
+from paddle.fluid import core, framework
 
 
 def assign_value_wrapper(
@@ -72,6 +72,9 @@ class TestAssignValueOp4(TestAssignValueOp):
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAssignValueOpFp16(TestAssignValueOp):
     def init_data(self):
         self.dtype = np.float16
