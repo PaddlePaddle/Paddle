@@ -78,7 +78,7 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
@@ -108,7 +108,7 @@ function(kernel_declare TARGET_LIST)
       string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" "" kernel_msg
                      "${first_registry}")
       string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
-      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
+      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
                      "${kernel_msg}")
       string(REPLACE "," ";" kernel_msg "${kernel_msg}")
       string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")

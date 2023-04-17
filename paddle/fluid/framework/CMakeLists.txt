@@ -514,7 +514,7 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -524,7 +524,9 @@ cc_library(
        version
        xxhash
        dist_attr
-       phi)
+       phi
+       op_version_proto
+       op_version_registry)
 
 cc_library(
   op_registry

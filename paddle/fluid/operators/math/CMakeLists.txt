@@ -15,7 +15,6 @@ math_library(sampler DEPS phi)
 
 # math_library(phi DEPS phi tensor)
 
-math_library(sequence_pooling DEPS phi)
 if(WITH_XPU)
   math_library(beam_search DEPS phi beam_search_xpu)
 else()

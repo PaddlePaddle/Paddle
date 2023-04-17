@@ -127,7 +127,7 @@ class TestSupportedTypeInfo(unittest.TestCase):
         res = paddle.amp.is_float16_supported('cpu')
         self.assertEqual(res, False)
         res = paddle.amp.is_bfloat16_supported('cpu')
-        self.assertEqual(res, True)
+        self.assertEqual(res, core.supports_bfloat16())
 
     def test_gpu_fp16_supported(self):
         res = paddle.amp.is_float16_supported()

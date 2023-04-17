@@ -1403,7 +1403,6 @@ def get_setup_parameters():
         'paddle.distributed.fleet.elastic',
         'paddle.distributed.fleet.meta_optimizers',
         'paddle.distributed.fleet.meta_optimizers.sharding',
-        'paddle.distributed.fleet.meta_optimizers.ascend',
         'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
         'paddle.distributed.fleet.runtime',
         'paddle.distributed.rpc',

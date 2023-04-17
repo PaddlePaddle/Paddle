@@ -14,6 +14,10 @@
 
 import unittest
 
+import numpy as np
+
+import paddle
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 from paddle.fluid.tests.unittests.test_gaussian_random_op import (
     TestGaussianRandomOp,
 )
@@ -35,6 +39,37 @@ class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
             "seed": 10,
             "use_mkldnn": self.use_mkldnn,
         }
+
+
+class TestGaussianRandomOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.__class__.op_type = "gaussian_random"
+        self.python_api = paddle.normal
+        self.set_attrs()
+        self.inputs = {}
+        self.use_mkldnn = True
+        self.attrs = {
+            "shape": [],
+            "mean": self.mean,
+            "std": self.std,
+            "seed": 10,
+            "use_mkldnn": self.use_mkldnn,
+        }
+        paddle.seed(10)
+
+        self.outputs = {'Out': np.random.normal(self.mean, self.std, ())}
+
+    def set_attrs(self):
+        self.mean = 1.0
+        self.std = 2.0
+
+    # TODO(qun) find a way to check a random scalar
+    def test_check_output(self):
+        pass
+
+    def test_check_grad(self):
+        pass
 
 
 if __name__ == '__main__':
