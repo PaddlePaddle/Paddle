@@ -201,7 +201,12 @@ def _is_gpu_bfloat16_supported():
 
 def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
-    if isinstance(
+    # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
+    # here we provide a option to keep fp32 param.
+    if not layer._cast_to_low_precison:
+        need_keep_fp32 = True
+    # The BN layers will keep fp32
+    elif isinstance(
         layer,
         (
             paddle.nn.BatchNorm,
@@ -212,24 +217,61 @@ def need_keep_fp32(layer, dtype):
         ),
     ):
         need_keep_fp32 = True
-    elif (layer._dtype == 'float16') or isinstance(
-        layer,
-        (
-            paddle.nn.LayerNorm,
-            paddle.nn.InstanceNorm1D,
-            paddle.nn.InstanceNorm2D,
-            paddle.nn.InstanceNorm3D,
-        ),
+    # layer._dtype is used to set params dtype. BF16 will use bf16 params.
+    elif (layer._dtype == 'float16') or (
+        (dtype == 'float16')
+        and isinstance(
+            layer,
+            (
+                paddle.nn.LayerNorm,
+                paddle.nn.InstanceNorm1D,
+                paddle.nn.InstanceNorm2D,
+                paddle.nn.InstanceNorm3D,
+            ),
+        )
     ):
-        need_keep_fp32 = True
-    elif not layer._cast_to_low_precison_amp:
         need_keep_fp32 = True
 
     return need_keep_fp32
 
 
+def set_excluded_layers(models, excluded_layers):
+    excluded_layers_instances = []
+    excluded_layers_types = []
+    error_message = "excluded_layers must be either a nn.Layer instance/type or a list of nn.Layer instances/types."
+    if excluded_layers is None:
+        excluded_layers = []
+    elif isinstance(excluded_layers, paddle.nn.Layer):
+        excluded_layers_instances = [excluded_layers]
+    elif isinstance(excluded_layers, type) and issubclass(
+        excluded_layers, paddle.nn.Layer
+    ):
+        excluded_layers_types = [excluded_layers]
+    elif isinstance(excluded_layers, list):
+        for item in excluded_layers:
+            if isinstance(item, paddle.nn.Layer):
+                excluded_layers_instances.append(item)
+            elif issubclass(item, paddle.nn.Layer):
+                excluded_layers_types.append(item)
+            else:
+                raise TypeError(error_message)
+    else:
+        raise TypeError(error_message)
+
+    for idx in range(len(excluded_layers_instances)):
+        for layer in excluded_layers_instances[idx].sublayers(
+            include_self=True
+        ):
+            layer._cast_to_low_precison = False
+    for idx in range(len(models)):
+        for layer in models[idx].sublayers(include_self=True):
+            if type(layer) in excluded_layers_types:
+                layer._cast_to_low_precison = False
+
+
 @dygraph_only
-def amp_initialize(models, dtype):
+def amp_initialize(models, dtype, excluded_layers):
+    set_excluded_layers(models, excluded_layers)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if need_keep_fp32(layer, dtype):
@@ -619,22 +661,8 @@ def amp_decorate(
             "models must be either a single model or a list of models."
         )
 
-    if excluded_layers is None:
-        excluded_layers = []
-    elif isinstance(excluded_layers, paddle.nn.Layer):
-        excluded_layers = [excluded_layers]
-        check_models(excluded_layers)
-    elif isinstance(excluded_layers, list):
-        check_models(excluded_layers)
-    else:
-        raise TypeError(
-            "excluded_layers must be either a nn.Layer instance or a list of nn.Layer instances."
-        )
-    # initialize parameters of the model
-    for idx in range(len(excluded_layers)):
-        for layer in excluded_layers[idx].sublayers(include_self=True):
-            layer._cast_to_low_precison_amp = False
-    amp_initialize(models=models, dtype=dtype)
+    # initialize parameters of the model.
+    amp_initialize(models=models, dtype=dtype, excluded_layers=excluded_layers)
 
     if optimizers is not None:
         # check optimizers
@@ -780,7 +808,8 @@ def decorate(
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
              gradients will be float32 dtype after the backpropagation. Default is False.
-        excluded_layers(Layer|list of Layer, optional): Specifies the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
+        excluded_layers(Layer|list of Layer, optional): Specifies the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
+             an Layer instance/type or a list of Layer instances/tpyes. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
     Examples:
 

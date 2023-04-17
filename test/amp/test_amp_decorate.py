@@ -50,7 +50,9 @@ class ConvBNLayer(paddle.nn.Layer):
 
 
 class Model(paddle.nn.Layer):
-    def __init__(self, input_channel, hidden_size, fp32_layers=False):
+    def __init__(
+        self, input_channel, hidden_size, fp16_conv=True, fp16_linear=True
+    ):
         super().__init__()
         self.conv = ConvBNLayer(input_channel, 8, 3)
         self.linear = paddle.nn.Linear(8, hidden_size)
@@ -58,66 +60,92 @@ class Model(paddle.nn.Layer):
             paddle.nn.LayerNorm(hidden_size),
             paddle.nn.LayerNorm(hidden_size),
         )
-        self.fp32_layers = fp32_layers
+        self.fp16_conv = fp16_conv
+        self.fp16_linear = fp16_linear
 
     def forward(self, inputs):
-        with paddle.amp.auto_cast(enable=self.fp32_layers):
+        with paddle.amp.auto_cast(enable=self.fp16_conv):
+            if not self.fp16_conv:
+                inputs = inputs.astype('float32')
             x = self.conv(inputs)
-        x = self.linear(x)
+        with paddle.amp.auto_cast(enable=self.fp16_linear):
+            if not self.fp16_linear:
+                x = x.astype('float32')
+            x = self.linear(x)
         x = F.relu(x)
         x = self.layernorm(x)
         return x
 
 
 class TestAMPDecorate(unittest.TestCase):
-    def check_results(self, model, dtype=paddle.float32):
-        self.assertEqual(model.conv._conv.weight.dtype, dtype)
-        self.assertEqual(model.conv._conv.bias.dtype, dtype)
-        self.assertEqual(model.conv._batch_norm.weight.dtype, paddle.float32)
-        self.assertEqual(model.conv._batch_norm.weight.dtype, paddle.float32)
-        self.assertEqual(model.linear.weight.dtype, paddle.float16)
-        self.assertEqual(model.linear.bias.dtype, paddle.float16)
-        self.assertEqual(model.layernorm[0].weight.dtype, paddle.float32)
-        self.assertEqual(model.layernorm[0].bias.dtype, paddle.float32)
-        self.assertEqual(model.layernorm[1].weight.dtype, paddle.float32)
-        self.assertEqual(model.layernorm[1].bias.dtype, paddle.float32)
+    def check_results(self, fp32_layers=[], fp16_layers=[]):
+        for idx in range(len(fp32_layers)):
+            for layer in fp32_layers[idx].sublayers(include_self=False):
+                self.assertEqual(layer.weight.dtype, paddle.float32)
+                self.assertEqual(layer.bias.dtype, paddle.float32)
+
+        for idx in range(len(fp16_layers)):
+            for layer in fp16_layers[idx].sublayers(include_self=False):
+                self.assertEqual(layer.weight.dtype, paddle.float16)
+                self.assertEqual(layer.bias.dtype, paddle.float16)
 
     def test_excluded_layers(self):
-        if not paddle.amp.is_float16_supported:
+        if not paddle.amp.is_float16_supported():
             return
-        model = Model(4, 8, fp32_layers=True)
+        model = Model(4, 8, fp16_conv=False)
         model = paddle.amp.decorate(
             models=model,
             level='O2',
             dtype='float16',
             excluded_layers=model.conv,
         )
-
         with paddle.amp.auto_cast(level='O2'):
             out = model(paddle.rand(shape=[2, 4, 8, 8], dtype='float32'))
-
-        self.check_results(model, dtype=paddle.float32)
+        self.check_results(
+            fp32_layers=[model.conv, model.layernorm],
+            fp16_layers=[model.linear],
+        )
 
     def test_excluded_layers_attr_list(self):
-        if not paddle.amp.is_float16_supported:
+        if not paddle.amp.is_float16_supported():
             return
-        model = Model(4, 8, fp32_layers=True)
+        model = Model(4, 8, fp16_conv=False, fp16_linear=False)
         model = paddle.amp.decorate(
             models=model,
             level='O2',
             dtype='float16',
-            excluded_layers=[model.conv],
+            excluded_layers=[model.conv, model.linear],
         )
 
         with paddle.amp.auto_cast(level='O2'):
             out = model(paddle.rand(shape=[2, 4, 8, 8], dtype='float32'))
 
-        self.check_results(model)
+        self.check_results(
+            fp32_layers=[model.conv, model.linear, model.layernorm]
+        )
+
+    def test_excluded_layers_attr_types(self):
+        if not paddle.amp.is_float16_supported():
+            return
+        model = Model(4, 8)
+        model = paddle.amp.decorate(
+            models=model,
+            level='O2',
+            dtype='float16',
+            excluded_layers=[paddle.nn.Conv2D, model.linear],
+        )
+
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(paddle.rand(shape=[2, 4, 8, 8], dtype='float16'))
+
+        self.check_results(
+            fp32_layers=[model.conv, model.linear, model.layernorm]
+        )
 
     def test_excluded_layers_attr_none(self):
-        if not paddle.amp.is_float16_supported:
+        if not paddle.amp.is_float16_supported():
             return
-        model = Model(4, 8, fp32_layers=False)
+        model = Model(4, 8)
         model = paddle.amp.decorate(
             models=model,
             level='O2',
@@ -128,7 +156,10 @@ class TestAMPDecorate(unittest.TestCase):
         with paddle.amp.auto_cast(level='O2'):
             out = model(paddle.rand(shape=[2, 4, 8, 8], dtype='float16'))
 
-        self.check_results(model, dtype=paddle.float16)
+        self.check_results(
+            fp32_layers=[model.layernorm, model.conv._batch_norm],
+            fp16_layers=[model.conv._conv, model.linear],
+        )
 
 
 if __name__ == '__main__':
