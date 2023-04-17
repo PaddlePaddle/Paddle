@@ -27,6 +27,7 @@ from paddle.fluid.framework import (  # noqa: F401
     _dygraph_tracer,
     _non_static_mode,
     convert_np_dtype_to_dtype_,
+    create_tensor,
     default_main_program,
     device_guard,
     dygraph_only,
