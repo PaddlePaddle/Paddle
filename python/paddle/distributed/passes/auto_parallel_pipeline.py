@@ -470,8 +470,6 @@ class PipelinePass(PassBase):
         }
 
     def _task_stream(self):
-        #
-        # print(self._program)
         num_of_functionality = 5
         start_prog = Program()
         cond_prog = Program()
@@ -480,6 +478,7 @@ class PipelinePass(PassBase):
         recv_prog = Program()
 
         cond_var_name = None
+        # record the varnames related to the while cond vars and communicate by nccl
         send_vars_name = set()
         recv_vars_name = dict()
         for ib, src_block in enumerate(self._program.blocks):
@@ -504,6 +503,15 @@ class PipelinePass(PassBase):
                             src_block, end_block, op, force_create=True
                         )
             elif ib == 1:
+                # NOTE: The while block will be split to two separate blocks.
+                # The send_block:
+                #     include all ops about tansformer generation
+                #     execlude the nccl op about the while cond var
+                # The recv_block:
+                #     include all ops about the while cond var
+                #     execlude the nccl op about the while cond var
+                # the nccl op about cond var:
+                #     put these varnames in the task node and do communication by brpc
                 send_block = send_prog.block(0)
                 recv_block = recv_prog.block(0)
 
@@ -522,6 +530,7 @@ class PipelinePass(PassBase):
 
                     if not is_after_send_op or not is_after_recv_op:
                         if self._cur_pp_stage == self._pp_stages - 1:
+                            # the c_sync_calc_stream about c_allgather cannot be removed
                             if (
                                 op.type == "c_sync_calc_stream"
                                 and src_block.ops[i + 1].type == "send_v2"
@@ -529,6 +538,7 @@ class PipelinePass(PassBase):
                                 continue
                             if op.type == "nop":
                                 continue
+                            # HACKCODE: the varname of send_v2 op, cast op should be recorded for brpc comm
                             if (
                                 op.type
                                 not in ["recv_2", "assign", "c_allgather"]
@@ -553,11 +563,13 @@ class PipelinePass(PassBase):
                         continue
 
                     if is_after_send_op and is_after_recv_op:
+                        # HACKCODE: the varname of recv_v2 op, assign op should be recorded for brpc comm
                         if op.has_attr(
                             'op_namescope'
                         ) and "/auto_parallel/reshard" in op.attr(
                             'op_namescope'
                         ):
+                            # remove the suffix of "@RESHARD"
                             var_name = op.desc.output_arg_names()[0]
                             index = var_name.find("@")
                             if index > 0:
