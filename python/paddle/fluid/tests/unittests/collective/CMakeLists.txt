@@ -215,7 +215,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_scatter_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_reduce_scatter_api
-                       PROPERTIES TIMEOUT "150" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -368,7 +368,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" LABELS
                                                       "RUN_TYPE=DIST")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
+if((WITH_GPU
+    OR WITH_ROCM
+    OR WITH_ASCEND
+    OR WITH_ASCEND_CL
+   )
+   AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH
@@ -430,5 +435,16 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=21958;http_proxy=;https_proxy=")
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
+endif()
+if((WITH_ROCM OR WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_rpc_call_result
+    START_BASH
+    test_rpc_call_result.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22074;http_proxy=;https_proxy=")
+  set_tests_properties(test_rpc_call_result PROPERTIES TIMEOUT "120")
 endif()
 add_subdirectory(fleet)
