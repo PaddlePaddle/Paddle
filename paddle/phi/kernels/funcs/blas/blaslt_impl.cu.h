@@ -16,6 +16,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
+#include "glog/logging.h"
+
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
