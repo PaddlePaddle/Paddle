@@ -224,11 +224,6 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
 
 void FusedDropoutAddInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
-                              const Scalar& p,
-                              bool is_test,
-                              const std::string& mode,
-                              int seed,
-                              bool fix_seed,
                               MetaTensor* out,
                               MetaTensor* seed_offset);
 

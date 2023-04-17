@@ -408,6 +408,8 @@ void DropoutFwGPUKernelDriver(
                                          main_offset);
 #undef PD_DROPOUT_KERNEL_NAME
     }
+    VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
+            << ", seed_data:" << seed_data;
   } else {
     if (upscale_in_train) {
       // y = x
