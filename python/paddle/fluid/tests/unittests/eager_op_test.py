@@ -2657,7 +2657,7 @@ class OpTest(unittest.TestCase):
                     user_defined_grad_outputs = [user_defined_grad_outputs]
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
-                    grad_outputs.append(paddle.to_tensor(grad_out_value))
+                    grad_outputs.append(paddle.to_tensor([grad_out_value]))
                 # delete the inputs which no need to calculate grad
                 for no_grad_val in no_grad_set:
                     del inputs[no_grad_val]

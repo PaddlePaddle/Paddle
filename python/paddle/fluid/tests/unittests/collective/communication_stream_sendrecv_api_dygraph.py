@@ -50,7 +50,7 @@ class StreamSendRecvTestCase:
         dst_rank = 1
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor(test_data_list[rank])
+        tensor = paddle.to_tensor([test_data_list[rank]])
         if rank == 0:
             task = dist.stream.send(
                 tensor,

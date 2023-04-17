@@ -47,7 +47,7 @@ class StreamReduceTestCase:
             )
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor(test_data_list[rank])
+        tensor = paddle.to_tensor([test_data_list[rank]])
         task = dist.stream.reduce(
             tensor,
             dst=1,
