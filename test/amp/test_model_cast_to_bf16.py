@@ -274,7 +274,7 @@ class TestStaticBF16(AmpTestBase):
         return x_fp32, x_bf16
 
     def test_compare_o1_o2(self):
-        def _run_o1(exe, x_np, max_iters):
+        def _run_o1(place, exe, x_np, max_iters):
             (
                 main_program,
                 startup_program,
@@ -297,7 +297,7 @@ class TestStaticBF16(AmpTestBase):
                     losses.append(results[0])
             return losses
 
-        def _run_o2(exe, x_np, max_iters):
+        def _run_o2(place, exe, x_np, max_iters):
             (
                 main_program,
                 startup_program,
@@ -326,8 +326,8 @@ class TestStaticBF16(AmpTestBase):
 
         max_iters = 2
         x_fp32, x_bf16 = self._generate_feed_x()
-        losses_o1 = _run_o1(exe, x_fp32, max_iters)
-        losses_o2 = _run_o2(exe, x_bf16, max_iters)
+        losses_o1 = _run_o1(place, exe, x_fp32, max_iters)
+        losses_o2 = _run_o2(place, exe, x_bf16, max_iters)
 
 
 if __name__ == '__main__':
