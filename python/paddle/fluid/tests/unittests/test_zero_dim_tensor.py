@@ -3691,7 +3691,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         np.testing.assert_array_equal(res[0], np.array(1))
 
-    @prog_scope
+    @prog_scope()
     def test_trace(self):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
         x.stop_gradient = False
@@ -3703,7 +3703,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertTrue(res[0].shape, ())
         np.testing.assert_allclose(out, np.array(12))
 
-    @prog_scope
+    @prog_scope()
     def test_cond(self):
         pass
         # use paddle.sum, paddle.max, paddle.min
