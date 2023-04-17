@@ -17,6 +17,7 @@ import unittest
 
 import numpy
 import numpy as np
+
 sys.path.append("../../../../../test/rnn")
 from rnn_numpy import LSTMCell
 from rnn_numpy import rnn as numpy_rnn
