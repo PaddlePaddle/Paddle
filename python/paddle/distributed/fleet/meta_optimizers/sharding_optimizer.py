@@ -596,7 +596,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         rings = [self.mp_ring_id, self.pp_ring_id]
         # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             rings += [self.dp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
@@ -721,7 +721,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._dump_program_for_debug()
 
         # GPU need to wait server ready, GPU and NPU is Layered connection
-        if not core.is_compiled_with_npu():
+        if not core.is_compiled_with_custom_device('npu'):
             self._wait()
         return optimize_ops, params_grads
 
@@ -743,7 +743,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             )
 
     def _init_npu_pipeline_comm(self, startup_block):
-        # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
         assert (self.pp_degree % 2) == 0
 
         max_ring_id = -1
@@ -839,7 +838,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 sync=False,
             )
 
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             self._init_npu_pipeline_comm(startup_block)
             return
 

@@ -63,7 +63,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'bkcl']
+_valid_backend_list = ['nccl', 'gloo', 'heter', 'xccl', 'bkcl']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -172,16 +172,6 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _destroy_process_group_id_map():
-    """
-
-    Destroy the custom process group. Designed for CustomDevice.
-
-
-    """
-    core.ProcessGroupIdMap.destroy()
-
-
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -286,11 +276,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_npu():
-                place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             elif core.is_compiled_with_xpu():

@@ -129,4 +129,9 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}

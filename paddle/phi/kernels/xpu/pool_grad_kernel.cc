@@ -114,8 +114,6 @@ void Pool2dGradKernel(const Context& ctx,
     } else if (pooling_type == "avg") {
       // When output dim is 1 * 1 (1 * 1 * 1 in pool_3d), use scale
       // and broadcast kernels to get same output, but better performance.
-      // Since the dim is special in particular models,
-      // use 'export XPU_POOLING_GRAD_SPECIAL=1' to open this path
       if (out_h == 1 && out_w == 1 && std::is_same<T, float>::value) {
         xpu::ctx_guard RAII_GUARD(ctx.x_context());
         float scale = 1.0 / (in_h * in_w);

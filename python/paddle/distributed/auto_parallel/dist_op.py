@@ -29,8 +29,6 @@ class DistributedOperator:
     def __init__(self, serial_op, dist_attr=None):
         self._serial_op = serial_op
         if dist_attr is not None and isinstance(dist_attr, OperatorDistAttr):
-            pass
-
             # TODO: remove this deepcopy after we fix the issue
             self._dist_attr = copy.deepcopy(dist_attr)
             # self._dist_attr = dist_attr
@@ -56,21 +54,6 @@ class DistributedOperator:
         self._dist_attr = dist_attr
         # TODO: Do we really need to write back to serial op？
         self._serial_op.dist_attr = dist_attr
-        # if self._dist_attr is None:
-        #     self._dist_attr = OperatorDistAttr()
-        # # Create new dist_attr related to current serial_op
-        # dist_attr = self._filter_dist_attr(dist_attr)
-        # # Append suffix to mark the inputs or outputs
-        # if isinstance(dist_attr, dict):
-        #     # Copy the keys since we may add new ones
-        #     for key in list(dist_attr.keys()):
-        #         if isinstance(key, Variable):
-        #             if key.name in self._serial_op.input_arg_names:
-        #                 dist_attr[append_op_input_suffix(key.name)] = True
-        #             if key.name in self._serial_op.output_arg_names:
-        #                 dist_attr[append_op_output_suffix(key.name)] = True
-        # self._dist_attr.init(dist_attr)
-        # self._init_default_dist_attr()
 
     def get_serial_input(self, name):
         if self._serial_op.type == "create_py_reader":
@@ -82,81 +65,6 @@ class DistributedOperator:
     def get_serial_output(self, name):
         tensor = self._serial_op.block._var_recursive(name)
         return tensor
-
-    # def _init_default_dist_attr(self):
-    #     for tensor_name in self._serial_op.input_arg_names:
-    #         if self._serial_op.type == "create_py_reader":
-    #             tensor = None
-    #         else:
-    #             tensor = self._serial_op.block._var_recursive(tensor_name)
-    #         self._serial_inputs[tensor_name] = tensor
-    #         if tensor is None:
-    #             tensor_shape = []
-    #         else:
-    #             if tensor.type in __no_shape_var_type__:
-    #                 tensor_shape = []
-    #             else:
-    #                 tensor_shape = tensor.shape
-    #         if self._dist_attr.get_input_dims_mapping(tensor_name) is None:
-    #             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-    #             self._dist_attr.set_input_dims_mapping(
-    #                 tensor_name, tensor_dims_mapping
-    #             )
-    #     for tensor_name in self._serial_op.output_arg_names:
-    #         tensor = self._serial_op.block._var_recursive(tensor_name)
-    #         if tensor.type in __no_shape_var_type__:
-    #             tensor_shape = []
-    #         else:
-    #             tensor_shape = tensor.shape
-    #         self._serial_outputs[tensor_name] = tensor
-    #         if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
-    #             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-    #             self._dist_attr.set_output_dims_mapping(
-    #                 tensor_name, tensor_dims_mapping
-    #             )
-    #     if self._dist_attr.op_type is None:
-    #         self._dist_attr.op_type = self.serial_op.type
-    #     if self._dist_attr.impl_type is None:
-    #         self._dist_attr.impl_type = "default"
-    #     if self._dist_attr.impl_idx is None:
-    #         self._dist_attr.impl_idx = 0
-    #     if self._dist_attr.is_recompute is None:
-    #         self._dist_attr.is_recompute = False
-
-    # def _filter_dist_attr(self, dist_attr):
-    #     if dist_attr is None:
-    #         return None
-    #     new_dist_attr = None
-    #     if isinstance(dist_attr, dict):
-    #         new_dist_attr = {}
-    #         for key, value in dist_attr.items():
-    #             if isinstance(key, Variable):
-    #                 if (
-    #                     key.name in self._serial_op.input_arg_names
-    #                     or key.name in self._serial_op.output_arg_names
-    #                 ):
-    #                     new_dist_attr[key] = value
-    #             else:
-    #                 new_dist_attr[key] = value
-    #     elif isinstance(dist_attr, OperatorDistAttr):
-    #         new_dist_attr = copy.deepcopy(dist_attr)
-    #         new_dist_attr._inputs_dist_attrs.clear()
-    #         new_dist_attr._outputs_dist_attrs.clear()
-    #         for tensor_name in self._serial_op.input_arg_names:
-    #             tensor_dist_attr = dist_attr.get_input_dist_attr(tensor_name)
-    #             if tensor_dist_attr:
-    #                 new_dist_attr.set_input_dist_attr(
-    #                     tensor_name, tensor_dist_attr
-    #                 )
-    #         for tensor_name in self._serial_op.output_arg_names:
-    #             tensor_dist_attr = dist_attr.get_output_dist_attr(tensor_name)
-    #             if tensor_dist_attr:
-    #                 new_dist_attr.set_output_dist_attr(
-    #                     tensor_name, tensor_dist_attr
-    #                 )
-    #     else:
-    #         assert False, "Cannot recognize the {} parameter.".format(dist_attr)
-    #     return new_dist_attr
 
     def validate_dist_attr(self):
         if "read" in self.serial_op.type or "while" == self.serial_op.type:
@@ -402,5 +310,6 @@ class DistributedOperatorHelper:
             if self._process_mesh is not None:
                 dist_op.dist_attr.mark_annotated("process_mesh")
             default_dist_ctx.add_dist_op_for_program(dist_op)
+            default_dist_ctx.add_process_mesh(self._process_mesh)
 
         return output

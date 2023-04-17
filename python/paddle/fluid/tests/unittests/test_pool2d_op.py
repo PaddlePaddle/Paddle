@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -366,7 +367,11 @@ class TestPool2D_Op_Mixin:
         self.init_data_format()
         self.init_shape()
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        if self.is_bfloat16_op():
+            input = np.random.random(self.shape).astype(np.float32)
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
         output = pool2D_forward_naive(
             input,
             self.ksize,
@@ -379,8 +384,14 @@ class TestPool2D_Op_Mixin:
             self.data_format,
             self.pool_type,
             self.padding_algorithm,
-        ).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        )
+
+        if self.is_bfloat16_op():
+            output = convert_float_to_uint16(output)
+            self.inputs = {'X': convert_float_to_uint16(input)}
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -427,7 +438,6 @@ class TestPool2D_Op_Mixin:
                 place,
                 {'X'},
                 'Out',
-                max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
             )
         elif self.pool_type != "max":
@@ -577,7 +587,6 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
-                        atol=1e-3,
                         check_dygraph=(not self.use_mkldnn),
                     )
 
@@ -593,7 +602,6 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     place,
                     {'X'},
                     'Out',
-                    max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
@@ -618,7 +626,6 @@ def create_test_fp16_class(parent, check_grad=True):
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
-                        atol=1e-3,
                         check_dygraph=(not self.use_mkldnn),
                     )
 
@@ -634,7 +641,6 @@ def create_test_fp16_class(parent, check_grad=True):
                     place,
                     {'X'},
                     'Out',
-                    max_relative_error=0.07,
                     check_dygraph=(not self.use_mkldnn),
                 )
 
@@ -643,20 +649,58 @@ def create_test_fp16_class(parent, check_grad=True):
     globals()[cls_name] = TestFp16Case
 
 
+def create_test_bf16_class(parent, check_grad=True):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestBf16Case(parent):
+        def init_kernel_type(self):
+            self.use_cuda = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(
+                    place,
+                    check_dygraph=(not self.use_mkldnn),
+                )
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if self.pool_type != "max" and check_grad:
+                self.check_grad_with_place(
+                    place,
+                    {'X'},
+                    'Out',
+                    check_dygraph=(not self.use_mkldnn),
+                )
+
+    cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
+    TestBf16Case.__name__ = cls_name
+    globals()[cls_name] = TestBf16Case
+
+
 create_test_cudnn_fp16_class(TestPool2D_Op)
-create_test_cudnn_fp16_class(TestCase1, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
 create_test_cudnn_fp16_class(TestCase5)
 
 create_test_fp16_class(TestPool2D_Op)
-create_test_fp16_class(TestCase1, check_grad=False)
+create_test_fp16_class(TestCase1)
 create_test_fp16_class(TestCase2)
 create_test_fp16_class(TestCase3)
 create_test_fp16_class(TestCase4)
 create_test_fp16_class(TestCase5)
 
+create_test_bf16_class(TestPool2D_Op)
+create_test_bf16_class(TestCase1)
+create_test_bf16_class(TestCase2)
+create_test_bf16_class(TestCase3)
+create_test_bf16_class(TestCase4)
+create_test_bf16_class(TestCase5)
 # --------------------test pool2d use ceil mode--------------------
 
 
@@ -796,11 +840,25 @@ create_test_cudnn_class(TestCase4_AsyPadding)
 create_test_cudnn_class(TestCase5_AsyPadding)
 
 create_test_cudnn_fp16_class(TestPool2D_AsyPadding)
-create_test_cudnn_fp16_class(TestCase1_AsyPadding, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding)
 create_test_cudnn_fp16_class(TestCase2_AsyPadding)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding)
 create_test_cudnn_fp16_class(TestCase5_AsyPadding)
+
+create_test_fp16_class(TestPool2D_AsyPadding)
+create_test_fp16_class(TestCase1_AsyPadding)
+create_test_fp16_class(TestCase2_AsyPadding)
+create_test_fp16_class(TestCase3_AsyPadding)
+create_test_fp16_class(TestCase4_AsyPadding)
+create_test_fp16_class(TestCase5_AsyPadding)
+
+create_test_bf16_class(TestPool2D_AsyPadding)
+create_test_bf16_class(TestCase1_AsyPadding)
+create_test_bf16_class(TestCase2_AsyPadding)
+create_test_bf16_class(TestCase3_AsyPadding)
+create_test_bf16_class(TestCase4_AsyPadding)
+create_test_bf16_class(TestCase5_AsyPadding)
 
 create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding)
 create_test_cudnn_use_ceil_class(TestCase1_AsyPadding)
@@ -908,11 +966,25 @@ create_test_cudnn_class(TestCase4_channel_last)
 create_test_cudnn_class(TestCase5_channel_last)
 
 create_test_cudnn_fp16_class(TestPool2D_channel_last)
-create_test_cudnn_fp16_class(TestCase1_channel_last, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1_channel_last)
 create_test_cudnn_fp16_class(TestCase2_channel_last)
 create_test_cudnn_fp16_class(TestCase3_channel_last)
 create_test_cudnn_fp16_class(TestCase4_channel_last)
 create_test_cudnn_fp16_class(TestCase5_channel_last)
+
+create_test_fp16_class(TestPool2D_channel_last)
+create_test_fp16_class(TestCase1_channel_last)
+create_test_fp16_class(TestCase2_channel_last)
+create_test_fp16_class(TestCase3_channel_last)
+create_test_fp16_class(TestCase4_channel_last)
+create_test_fp16_class(TestCase5_channel_last)
+
+create_test_bf16_class(TestPool2D_channel_last)
+create_test_bf16_class(TestCase1_channel_last)
+create_test_bf16_class(TestCase2_channel_last)
+create_test_bf16_class(TestCase3_channel_last)
+create_test_bf16_class(TestCase4_channel_last)
+create_test_bf16_class(TestCase5_channel_last)
 
 create_test_cudnn_use_ceil_class(TestPool2D_channel_last)
 create_test_cudnn_use_ceil_class(TestCase1_channel_last)
@@ -1023,13 +1095,25 @@ create_test_cudnn_class(TestCase4_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase5_AsyPadding_channel_last)
 
 create_test_cudnn_fp16_class(TestPool2D_AsyPadding_channel_last)
-create_test_cudnn_fp16_class(
-    TestCase1_AsyPadding_channel_last, check_grad=False
-)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase2_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase5_AsyPadding_channel_last)
+
+create_test_fp16_class(TestPool2D_AsyPadding_channel_last)
+create_test_fp16_class(TestCase1_AsyPadding_channel_last)
+create_test_fp16_class(TestCase2_AsyPadding_channel_last)
+create_test_fp16_class(TestCase3_AsyPadding_channel_last)
+create_test_fp16_class(TestCase4_AsyPadding_channel_last)
+create_test_fp16_class(TestCase5_AsyPadding_channel_last)
+
+create_test_bf16_class(TestPool2D_AsyPadding_channel_last)
+create_test_bf16_class(TestCase1_AsyPadding_channel_last)
+create_test_bf16_class(TestCase2_AsyPadding_channel_last)
+create_test_bf16_class(TestCase3_AsyPadding_channel_last)
+create_test_bf16_class(TestCase4_AsyPadding_channel_last)
+create_test_bf16_class(TestCase5_AsyPadding_channel_last)
 
 create_test_cudnn_use_ceil_class(TestPool2D_AsyPadding_channel_last)
 create_test_cudnn_use_ceil_class(TestCase1_AsyPadding_channel_last)
