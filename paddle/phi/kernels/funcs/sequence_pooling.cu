@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/fluid/operators/math/sequence_pooling.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 struct MaxPoolFunctor {
@@ -213,7 +213,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<T, AvgPoolFunctor<T>>
@@ -224,7 +224,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_kernel<T, SumPoolFunctor<T>>
@@ -235,7 +235,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_kernel<T, SqrtPoolFunctor<T>>
@@ -246,7 +246,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_kernel<T, LastPoolFunctor<T>>
@@ -257,7 +257,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_kernel<T, FirstPoolFunctor<T>>
@@ -268,10 +268,10 @@ class SequencePoolFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              output->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(output),
               nullptr);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(errors::InvalidArgument(
           "unsupported pooling pooltype: %s. Only support \"MAX\", "
           "\"AVERAGE\", \"SUM\", \"SQRT\", \"LAST\" and \"FIRST\"",
           pooltype));
@@ -430,7 +430,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<T, AvgPoolGradFunctor<T>>
@@ -440,7 +440,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_grad_kernel<T, SumPoolGradFunctor<T>>
@@ -450,7 +450,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_grad_kernel<T, SqrtPoolGradFunctor<T>>
@@ -460,7 +460,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_grad_kernel<T, LastPoolGradFunctor<T>>
@@ -470,7 +470,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_grad_kernel<T, FirstPoolGradFunctor<T>>
@@ -480,11 +480,11 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
               mix_vector.CUDAData(context.GetPlace()),
               lod.size(),
               item_dim,
-              in_grad->mutable_data<T>(context.GetPlace()),
+              context.template Alloc<T>(in_grad),
               nullptr);
 
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(errors::InvalidArgument(
           "unsupported pooling pooltype: %s. Only support \"MAX\", "
           "\"AVERAGE\", \"SUM\", \"SQRT\", \"LAST\" and \"FIRST\"",
           pooltype));
@@ -498,6 +498,5 @@ template class SequencePoolFunctor<phi::GPUContext, double>;
 template class SequencePoolGradFunctor<phi::GPUContext, float>;
 template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

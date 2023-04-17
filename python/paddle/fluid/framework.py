@@ -2759,7 +2759,6 @@ class Operator:
         'c_wait_comm',
         'c_wait_compute',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(
@@ -5735,6 +5734,22 @@ class Program:
             res_str = ""
             for block in self.blocks:
                 res_str += block.to_string(throw_on_error, with_details)
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
+            res_str += (
+                "version {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.version, throw_on_error), "  "
+                )
+                + "}\n"
+            )
+            res_str += (
+                "op_version_map {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.op_version_map, throw_on_error), "  "
+                )
+                + "}\n"
+            )
         else:
             protostr = self.desc.serialize_to_string()
             proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
@@ -7450,7 +7465,7 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', '', None]:
+    if device not in ['cpu', 'gpu', 'xpu', 'npu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
