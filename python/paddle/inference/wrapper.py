@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Set
 
 import numpy as np
@@ -93,12 +92,6 @@ def convert_to_mixed_precision(
         keep_io_types: Whether the model input and output dtype remains unchanged.
         black_list: Operators that do not convert precision.
     '''
-    mixed_model_dirname = os.path.dirname(mixed_model_file)
-    mixed_params_dirname = os.path.dirname(mixed_params_file)
-    if not os.path.exists(mixed_model_dirname):
-        os.makedirs(mixed_model_dirname)
-    if not os.path.exists(mixed_params_dirname):
-        os.makedirs(mixed_params_dirname)
     convert_to_mixed_precision_bind(
         model_file,
         params_file,
