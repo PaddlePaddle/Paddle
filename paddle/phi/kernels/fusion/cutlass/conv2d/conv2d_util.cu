@@ -240,6 +240,8 @@ std::string OpType2String(OpType op_type) {
       return "conv2d_depthwise_bias";
     case CONV2D_DEPTHWISE_BIAS_RELU:
       return "conv2d_depthwise_bias_relu";
+    case CONV2D_DEPTHWISE_BIAS_SILU:
+      return "conv2d_depthwise_bias_silu";
     default:
       break;
   }
