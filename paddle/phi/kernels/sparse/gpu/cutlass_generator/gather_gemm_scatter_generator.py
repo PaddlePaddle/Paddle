@@ -531,8 +531,6 @@ def GenerateSM75_TensorOp_1688(manifest, cuda_version, debug=False):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
-        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
-        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -541,6 +539,14 @@ def GenerateSM75_TensorOp_1688(manifest, cuda_version, debug=False):
             DataType.f16,
             DataType.f16,
             DataType.f32,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        ),
+        MathInstruction(
+            [16, 8, 8],
+            DataType.f16,
+            DataType.f16,
+            DataType.f16,
             OpcodeClass.TensorOp,
             MathOperation.multiply_add,
         ),
@@ -599,8 +605,8 @@ def GenerateSM75_TensorOp_1688(manifest, cuda_version, debug=False):
         )
 
 
-def GenerateSM75(manifest, cuda_version):
-    GenerateSM75_TensorOp_1688(manifest, cuda_version)
+def GenerateSM75(manifest, cuda_version, debug=False):
+    GenerateSM75_TensorOp_1688(manifest, cuda_version, debug)
 
 
 def GenerateSM80(manifest, cuda_version, debug=False):
@@ -645,7 +651,7 @@ class KernelCfg:
 if __name__ == "__main__":
 
     args = KernelCfg(
-        architectures='75',
+        architectures='80',
         build_dir=sys.argv[2],
         cuda_version=sys.argv[3],
         curr_build_dir=sys.argv[2],

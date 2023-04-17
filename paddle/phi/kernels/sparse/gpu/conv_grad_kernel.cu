@@ -205,38 +205,40 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       // (in_channels, n) * (n, out_channels)
       static cutlass::device_memory::allocation<uint8_t> workspace(
           workspace_size);
-      GatherGemmScatterDriver<true, false>(dev_ctx,
-                                           key,
-                                           x.values().data<T>(),
-                                           out_grad.values().data<T>(),
-                                           tmp_d_kernel_ptr,
-                                           tmp_d_kernel_ptr,
-                                           in_channels,
-                                           out_channels,
-                                           counter_ptr[i],
-                                           gather_x_indices,
-                                           gather_out_indices,
-                                           static_cast<const IntT*>(nullptr),
-                                           static_cast<const T>(1.0),
-                                           static_cast<const T>(0.0),
-                                           &workspace);
+      GatherGemmScatterDriver<80, true, false>(
+          dev_ctx,
+          key,
+          x.values().data<T>(),
+          out_grad.values().data<T>(),
+          tmp_d_kernel_ptr,
+          tmp_d_kernel_ptr,
+          in_channels,
+          out_channels,
+          counter_ptr[i],
+          gather_x_indices,
+          gather_out_indices,
+          static_cast<const IntT*>(nullptr),
+          static_cast<const T>(1.0),
+          static_cast<const T>(0.0),
+          &workspace);
       // call gemm: d_x = out_grad * transpose(kernel)
       // (n, out_channels) * (out_channels, in_channels)
-      GatherGemmScatterDriver<false, true>(dev_ctx,
-                                           key,
-                                           out_grad.values().data<T>(),
-                                           tmp_kernel_ptr,
-                                           x_grad_values_ptr,
-                                           x_grad_values_ptr,
-                                           counter_ptr[i],
-                                           in_channels,
-                                           out_channels,
-                                           gather_out_indices,
-                                           static_cast<const IntT*>(nullptr),
-                                           scatter_x_indices,
-                                           static_cast<const T>(1.0),
-                                           static_cast<const T>(1.0),
-                                           nullptr);
+      GatherGemmScatterDriver<80, false, true>(
+          dev_ctx,
+          key,
+          out_grad.values().data<T>(),
+          tmp_kernel_ptr,
+          x_grad_values_ptr,
+          x_grad_values_ptr,
+          counter_ptr[i],
+          in_channels,
+          out_channels,
+          gather_out_indices,
+          static_cast<const IntT*>(nullptr),
+          scatter_x_indices,
+          static_cast<const T>(1.0),
+          static_cast<const T>(1.0),
+          nullptr);
     } else {
 #endif
       // call gemm: d_kernel = transpose(x) * out_grad

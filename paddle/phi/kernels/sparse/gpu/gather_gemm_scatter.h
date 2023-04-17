@@ -27,7 +27,8 @@ namespace sparse {
 // that shapes within this range share the same key.
 constexpr int features_num_range = 10000;
 
-template <bool TransposeA,
+template <int ComputeCapability,
+          bool TransposeA,
           bool TransposeB,
           typename Input,
           typename Output,
@@ -54,9 +55,10 @@ void GatherGemmScatterDriver(
 }
 
 #define EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(                       \
-    transpose_a, transpose_b, in_type, out_type, kernels)                     \
+    compute_capability, transpose_a, transpose_b, in_type, out_type, kernels) \
   template <>                                                                 \
-  inline void GatherGemmScatterDriver<transpose_a,                            \
+  inline void GatherGemmScatterDriver<compute_capability,                     \
+                                      transpose_a,                            \
                                       transpose_b,                            \
                                       in_type,                                \
                                       out_type,                               \
@@ -98,14 +100,26 @@ void GatherGemmScatterDriver(
                workspace_ptr);                                                \
   }
 
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(75,
+                                               false,
+                                               false,
+                                               phi::dtype::float16,
+                                               phi::dtype::float16,
+                                               sm75_fp16_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    false, false, phi::dtype::float16, phi::dtype::float16, fp16_nn_kernels)
+    75, false, false, void, float, sm75_fp32_nn_kernels)
+EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(80,
+                                               false,
+                                               false,
+                                               phi::dtype::float16,
+                                               phi::dtype::float16,
+                                               sm80_fp16_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    false, false, void, float, fp32_nn_kernels)
+    80, false, false, void, float, sm80_fp32_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    false, true, float, float, fp32_nt_kernels)
+    80, false, true, float, float, sm80_fp32_nt_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    true, false, float, float, fp32_tn_kernels)
+    80, true, false, float, float, sm80_fp32_tn_kernels)
 
 }  // namespace sparse
 }  // namespace phi
