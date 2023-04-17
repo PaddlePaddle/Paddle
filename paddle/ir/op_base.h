@@ -110,10 +110,14 @@ class Op : public OpBase {
 
 class FakeConvOp : Op<FakeConvOp, ReadOnlyTrait, InferShapeInterface> {
  public:
-  // Op name.
+  ///
+  /// \brief Op name.
+  ///
   static const char *name() { return "fake_conv"; }
 
-  // Op attributes name.
+  ///
+  /// \brief Op attributes name.
+  ///
   static std::vector<std::string> attributes_name_ = {"strides",
                                                       "paddings",
                                                       "padding_algorithm",
@@ -121,9 +125,10 @@ class FakeConvOp : Op<FakeConvOp, ReadOnlyTrait, InferShapeInterface> {
                                                       "groups",
                                                       "data_format"};
 
-  // ConvOp 包含了 InferShapeInterface, 因此，必须定义 InferShape 成员函数.
-  // 在该算子注册的时候，会实例化InferShapeInterface::Strategy<ConvOp>,
-  // 如果没有定义inferShape函数，会在编译时报错
+  ///
+  /// \brief This Op definition template parameter contains InterfaceInterface,
+  /// therefore it must define the InferShape function.
+  ///
   static void InferShape() {
     std::cout << "this is a fake conv op interface" << std::endl;
   }

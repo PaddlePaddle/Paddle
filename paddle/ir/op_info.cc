@@ -84,17 +84,6 @@ class OpInfoImpl {
   ///
   template <typename ConcreteOp>
   static OpInfoImpl *create() {
-    // todo: First malloc memroy by ConcreteOp's InterfaceList and TraitList,
-    // then placement new them.
-    // (1) 先malloc，得到 p_first_interface_ 和 p_first_trait_
-    // (2) 调用 ConstructInterfaces 和 ConstructTraits 构建:
-    // ConstructInterfacesOrTraits<ConcreteOp,
-    // ConcreteOp::InterfaceList>::interface(p_first_interface_);
-    // ConstructInterfacesOrTraits<ConcreteOp,
-    // ConcreteOp::TraitList>::trait(p_first_trait_); (3) placement new opinfo
-    // (4) sort interface and trait
-    // (5) placement new attributes name
-
     // (1) Malloc memory for interfaces, traits, opinfo_impl and StrAttribues.
     size_t interfaces_num = std::tuple_size<ConcreteOp::InterfaceList>::value;
     size_t traits_num = std::tuple_size<ConcreteOp::TraitList>::value;
@@ -112,14 +101,17 @@ class OpInfoImpl {
                                        sizeof(ir::TypeId) * traits_num);
     ir::StrAttribute *p_first_attribute = reinterpret_cast<ir::StrAttribute *>(
         reinterpret_cast<void *>(p_opinfo_impl) + sizeof(OpInfoImpl));
+
     // (2) Construct interfaces and sort by TypeId.
     ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::InterfaceList>::
         interface(p_first_interface);
     std::sort(p_first_interface, p_first_interface + interfaces_num);
+
     // (3) Construct traits and sort by TypeId.
     ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::TraitList>::trait(
         p_first_trait);
     std::sort(p_first_trait, p_first_trait + traits_num);
+
     // (4) Construct opinfo_impl.
     OpInfoImpl *op_info =
         new (p_opinfo_impl) OpInfoImpl(p_first_interface,
@@ -127,6 +119,7 @@ class OpInfoImpl {
                                        attributes_num,
                                        ir::TypeId::get<ConcreteOp>(),
                                        ConcreteOp::name());
+
     // (5) Construct StrAttributes.
     ir::StrAttribute *p_attribute = p_first_attribute;
     ir::IrContext *ctx = ir::IrContext::Instance();
@@ -138,16 +131,40 @@ class OpInfoImpl {
   }
 
   void destroy() {
-    // desctrctor and free memory
-    // (1) interface中 {TypeId, void*}，void* 需要手动 free，其他的可以直接删除
+    // (1) free interfaces
+    size_t interfaces_num = std::distance(
+        p_first_interface_,
+        reinterpret_cast<std::pair<ir::TypeId, void *> *>(p_first_trait_));
+    for (size_t i = 0; i < interfaces_num; i++) {
+      free((p_first_interface_ + i)->second);
+    }
+
     // (2) free memeory
+    free(reinterpret_cast<void *>(p_first_interface_));
   }
 
   ///
   /// \brief Search methods for Trait or Interface.
   ///
   bool HasTrait(TypeId trait_id) {
-    // Todo: 从p_first_trait_开始二分法搜索
+    size_t traits_num =
+        std::distance(p_first_trait_, reinterpret_cast<TypeId *>(this));
+    if (traits_num > 0) {
+      int left = 0;
+      int right = traits_num - 1;
+      int mid = 0;
+      while (left <= right) {
+        mid = (left + right) / 2;
+        if (*(p_first_trait_ + mid) == trait_id) {
+          return true;
+        } else if (*(p_first_trait_ + mid) < trait_id) {
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+    }
+    return false;
   }
 
   template <typename Trait>
@@ -156,7 +173,25 @@ class OpInfoImpl {
   }
 
   bool HasInterface(TypeId interface_id) {
-    // Todo: 从p_first_interface_开始二分法搜索
+    size_t interfaces_num = std::distance(
+        p_first_interface_,
+        reinterpret_cast<std::pair<ir::TypeId, void *> *>(p_first_trait_));
+    if (interfaces_num > 0) {
+      int left = 0;
+      int right = interfaces_num - 1;
+      int mid = 0;
+      while (left <= right) {
+        mid = (left + right) / 2;
+        if ((p_first_interface_ + mid)->first == interface_id) {
+          return true;
+        } else if ((p_first_interface_ + mid)->first < interface_id) {
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+    }
+    return false;
   }
 
   template <typename Interface>
@@ -166,7 +201,27 @@ class OpInfoImpl {
 
   template <typename Interface>
   Interface::Concept *GetInterfaceImpl() {
-    // Todo: 根据 Interface 的 TypeId, 二分查找
+    ir::TypeId interface_id = ir::TypeId::get<Interface>();
+    size_t interfaces_num = std::distance(
+        p_first_interface_,
+        reinterpret_cast<std::pair<ir::TypeId, void *> *>(p_first_trait_));
+    if (interfaces_num > 0) {
+      int left = 0;
+      int right = interfaces_num - 1;
+      int mid = 0;
+      while (left <= right) {
+        mid = (left + right) / 2;
+        if ((p_first_interface_ + mid)->first == interface_id) {
+          return reinterpret_cast<Interface::Concept *>(
+              (p_first_interface_ + mid)->second);
+        } else if ((p_first_interface_ + mid)->first < interface_id) {
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+    }
+    return false;
   }
 
  private:
