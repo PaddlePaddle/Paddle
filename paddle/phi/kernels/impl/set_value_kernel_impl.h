@@ -187,8 +187,8 @@ void SetValueImpl(const Context& dev_ctx,
 
   CheckIsDimsMatch(slice_dims_for_assign, value.dims());
 
-  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) ||
-      slice_tensor.dims().size() >= value.dims().size()) {
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  if (is_gpu_place || slice_tensor.dims().size() >= value.dims().size()) {
     // ElementwiseComputeEx can do broadcasting in two cases:
     // 1. The place is GPU.
     // 2. The place is CPU, and the 'x' does not need broadcast.
