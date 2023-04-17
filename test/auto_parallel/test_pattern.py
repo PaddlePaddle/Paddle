@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import sys
+import unittest
 
 import numpy as np
 
 import paddle
 from paddle import static
-from paddle.distributed import fleet
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -32,7 +32,6 @@ from auto_parallel_gpt_model import (
 def get_gpt_model(
     train_program, start_program, place, batch_size, sequence_len, vocab_size
 ):
-    modeling.init_global()
     with static.program_guard(train_program, start_program):
         tokens = paddle.static.data(
             name="tokens", shape=[batch_size, sequence_len], dtype='int64'
@@ -51,7 +50,6 @@ def get_gpt_model(
         loss_mask = paddle.static.data(
             name="loss_mask", shape=[batch_size, sequence_len], dtype='float32'
         )
-        data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
         gpt = GPTModel(
             vocab_size=1000,
@@ -97,74 +95,46 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-def train():
-    dist_strategy = fleet.DistributedStrategy()
-    # init parallel optimizer
-    dist_strategy.auto_search = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
-    train_program = static.Program()
-    start_program = static.Program()
-    place = paddle.set_device("gpu")
-    gpus = [0, 1]
-    batch_size = 8
-    sequence_len = 512
-    vocab_size = 1000
-    train_program, start_program, loss, gen_data = get_gpt_model(
-        train_program,
-        start_program,
-        place,
-        batch_size,
-        sequence_len,
-        vocab_size,
-    )
+class TestGroupOperatorsAndPatterns(unittest.TestCase):
+    def test_gpt(self):
+        modeling.init_global()
+        train_program = static.Program()
+        start_program = static.Program()
+        place = paddle.set_device("gpu")
+        batch_size = 8
+        sequence_len = 512
+        vocab_size = 1000
+        train_program, start_program, loss, gen_data = get_gpt_model(
+            train_program,
+            start_program,
+            place,
+            batch_size,
+            sequence_len,
+            vocab_size,
+        )
+        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+            _PATTERNS,
+            GraphUtil,
+        )
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
-        learning_rate=0.00001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        grad_clip=None,
-    )
-    optimizer = fleet.distributed_optimizer(optimizer)
-    (
-        _,
-        _,
-        distributed_startup_program,
-        distributed_main_program,
-    ) = optimizer.minimize(loss, start_program)
-
-    places = static.cuda_places()
-    exe = paddle.static.Executor(places[0])
-    exe.run(distributed_startup_program)
-
-    for step in range(10):
-        tokens, position_ids, attention_mask, labels, loss_mask = gen_data()
-        if loss.name in distributed_main_program.global_block().vars:
-            (loss_print,) = exe.run(
-                distributed_main_program,
-                feed={
-                    "tokens": tokens,
-                    "position_ids": position_ids,
-                    "attention_mask": attention_mask,
-                    "labels": labels,
-                    "loss_mask": loss_mask,
-                },
-                fetch_list=[loss],
-            )
-            print(f"step: {step}, loss: {loss_print[0]:f}")
-        else:
-            exe.run(
-                distributed_main_program,
-                feed={
-                    "tokens": tokens,
-                    "position_ids": position_ids,
-                    "attention_mask": attention_mask,
-                    "labels": labels,
-                    "loss_mask": loss_mask,
-                },
-            )
-            print("step: {}, loss: {}".format(step, "None"))
+        graph = GraphUtil.convert_to_graph(train_program.global_block())
+        print("graph: ", graph)
+        print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
+        print("row_matmul: ", _PATTERNS["row_matmul"].attrs["shard_spec"])
+        print("ffn: ", _PATTERNS["ffn"].attrs["shard_spec"])
+        print(
+            "shared_word_embedding: ",
+            _PATTERNS["shared_word_embedding"].attrs["shard_spec"],
+        )
+        print(
+            "position_embedding: ",
+            _PATTERNS["position_embedding"].attrs["shard_spec"],
+        )
+        print(
+            "unsqueeze_data: ", _PATTERNS["unsqueeze_data"].attrs["shard_spec"]
+        )
+        print("reshape_data: ", _PATTERNS["reshape_data"].attrs["shard_spec"])
 
 
 if __name__ == "__main__":
-    train()
+    unittest.main()

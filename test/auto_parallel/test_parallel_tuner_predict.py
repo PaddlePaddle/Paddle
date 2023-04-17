@@ -23,12 +23,10 @@ from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.planner_v2 import Planner
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.strategy import Strategy
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -137,8 +135,8 @@ def get_program_v3():
     )
 
 
-class TestParallelTunerFull(unittest.TestCase):
-    def test_tune_with_planner(self):
+class TestParallelTunerPredict(unittest.TestCase):
+    def test_tune_predict(self):
         flag = False
         set_default_distributed_context(DistributedContext())
         (
@@ -152,8 +150,6 @@ class TestParallelTunerFull(unittest.TestCase):
         ) = get_program_v3()
         cluster = Cluster()
         cluster.gen_default_config_cluster(node_count=1, device_count=8)
-        strategy = Strategy()
-        strategy.auto_mode = "full"
         dist_context = DistributedContext(
             train_program,
             start_program,
@@ -162,15 +158,15 @@ class TestParallelTunerFull(unittest.TestCase):
             feed_vars,
             fetch_vars,
             cluster,
-            strategy,
         )
         dist_context.initialize()
-        planner = Planner("train", dist_context)
-        planner._parallel_tuner = ParallelTuner(
-            planner._dist_context, mode=planner._mode, max_trials=3
+
+        parallel_tuner = ParallelTuner(
+            dist_context, max_trials=3, mode="predict"
         )
-        planner.plan()
+        parallel_tuner.tune()
         flag = True
+
         self.assertTrue(flag)
 
 
