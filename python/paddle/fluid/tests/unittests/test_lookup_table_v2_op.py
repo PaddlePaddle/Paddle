@@ -108,7 +108,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
-        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.outputs['Out'][ids == padding_idx] = np.zeros(32)
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
