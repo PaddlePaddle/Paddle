@@ -68,7 +68,7 @@ class Geometric(distribution.Distribution):
         if isinstance(probs, (numbers.Real, paddle.Tensor, framework.Variable)):
             if isinstance(probs, numbers.Real):
                 probs = paddle.full(
-                    shape=(1,), fill_value=probs, dtype=paddle.float32
+                    shape=(), fill_value=probs, dtype=paddle.float32
                 )
 
             all_ones = paddle.full(
