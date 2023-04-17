@@ -518,6 +518,13 @@
   outputs :
     out : Out
 
+- op : deformable_conv
+  backward : deformable_conv_grad
+  inputs :
+    {x : Input, offset : Offset, filter : Filter, mask : Mask}
+  outputs :
+    out : Output
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -1384,6 +1391,13 @@
   outputs :
     out : Out
 
+- op : matrix_rank
+  inputs :
+    {x : X, tol_tensor : TolTensor}
+  outputs :
+    out : Out
+  manual_signature : [matrix_rank]
+
 - op : max (reduce_max)
   backward : max_grad (reduce_max_grad)
   inputs:
@@ -2050,6 +2064,11 @@
   outputs :
     out : Out
 
+- op : split
+  int_array:
+      sections :
+          data_type : int
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -2268,6 +2287,13 @@
         data_type : float
         support_tensor : true
   manual_signature : [uniform]
+
+- op : uniform_inplace (uniform_random_inplace)
+  backward : uniform_inplace_grad(uniform_random_inplace_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : unique
   inputs :
