@@ -3922,7 +3922,7 @@ def sparse_embedding(
 
             input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = paddle.incubate.layers.nn.sparse_embedding(
+            emb = paddle.static.nn.sparse_embedding(
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
