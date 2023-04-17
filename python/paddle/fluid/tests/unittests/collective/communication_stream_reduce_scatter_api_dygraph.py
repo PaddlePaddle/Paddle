@@ -53,7 +53,7 @@ class StreamReduceScatterTestCase:
         result2 = reduce_result[reduce_result.shape[0] // 2 :]
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor(test_data_list[rank])
+        tensor = paddle.to_tensor([test_data_list[rank]])
 
         # case 1: pass a pre-sized tensor list
         t1, t2 = paddle.split(tensor, 2, axis=0)

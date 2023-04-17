@@ -54,7 +54,7 @@ class StreamScatterTestCase:
         rank = dist.get_rank()
 
         # case 1: pass a pre-sized tensor list
-        tensor = paddle.to_tensor(test_data_list[rank])
+        tensor = paddle.to_tensor([test_data_list[rank]])
         t1, t2 = paddle.split(tensor, 2, axis=0)
         task = dist.stream.scatter(
             t1,
@@ -71,7 +71,7 @@ class StreamScatterTestCase:
             np.testing.assert_allclose(t1, result1, rtol=1e-05, atol=1e-05)
 
         # case 2: pass a pre-sized tensor
-        tensor = paddle.to_tensor(src_data)
+        tensor = paddle.to_tensor([src_data])
         t1 = paddle.empty_like(t1)
         task = dist.stream.scatter(
             t1,
