@@ -305,8 +305,13 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         """
         if inplace_flag:
             return ""
-
-        if self.api not in ["add_grad", "abs_grad", "addmm_grad"]:
+        # not supported yet
+        if (
+            not self.inputs_plain_tensor()
+            or not self.outputs_plain_tensor()
+            or self.inplace_map
+            or self.view_map
+        ):
             return ""
 
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{

@@ -404,7 +404,13 @@ class ForwardAPI(BaseAPI):
         """
         if inplace_flag:
             return ""
-        if self.api not in ["accuracy", "add", "abs", "flatten"]:
+        # not supported yet
+        if (
+            not self.inputs_plain_tensor()
+            or not self.outputs_plain_tensor()
+            or self.inplace_map
+            or self.view_map
+        ):
             return ""
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}
