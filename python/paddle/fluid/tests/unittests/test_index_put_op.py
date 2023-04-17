@@ -486,5 +486,64 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         )
 
 
+class TestIndexPutInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype_type()
+        self.setPlace()
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
+        self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
+        self.indices_np = gen_indices_np(
+            self.x_shape, self.indices_shapes, self.index_type_np
+        )
+
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = False
+
+    def setPlace(self):
+        self.place = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
+            self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
+            self.indices_pd = [
+                paddle.to_tensor(indice, dtype=self.index_type_pd)
+                for indice in self.indices_np
+            ]
+            self.indices_pd = tuple(self.indices_pd)
+            ref_res = compute_index_put_ref(
+                self.x_np, self.indices_np, self.value_np, self.accumulate
+            )
+            x_pd_bk = self.x_pd.clone()
+            pd_res = paddle.index_put_(
+                x_pd_bk, self.indices_pd, self.value_pd, self.accumulate
+            )
+            np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
+            np.testing.assert_allclose(ref_res, x_pd_bk.numpy(), atol=1e-7)
+
+
+class TestIndexPutInplaceAPI1(TestIndexPutInplaceAPI):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int64
+        self.accumulate = True
+
+
 if __name__ == '__main__':
     unittest.main()
