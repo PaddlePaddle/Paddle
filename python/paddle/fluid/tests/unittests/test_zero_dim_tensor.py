@@ -3836,13 +3836,13 @@ class TestNoBackwardAPI(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.linalg.matrix_rank(x)
 
-        self.assertEqual(out.shape, ())
+        self.assertEqual(out.shape, [])
         np.testing.assert_equal(out, np.array(10))
 
         c = paddle.ones(shape=[3, 4, 5])
         c.stop_gradient = False
         out_c = paddle.linalg.matrix_rank(c)
-        self.assertEqual(out_c.shape, (3,))
+        self.assertEqual(out_c.shape, [3])
         np.testing.assert_equal(out_c, np.array([1, 1, 1]))
 
 
