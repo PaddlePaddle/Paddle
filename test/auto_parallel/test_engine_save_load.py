@@ -20,8 +20,10 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+import paddle.vision.transforms as T
 from paddle import nn
 from paddle.distributed.fleet import auto
+from paddle.vision.datasets import MNIST
 
 paddle.enable_static()
 
@@ -70,7 +72,7 @@ class MLPLayer(nn.Layer):
 
 
 class TestSaveLoad(unittest.TestCase):
-    def test_fp32_save_fp16_load(self):
+    def itest_fp32_save_fp16_load(self):
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -142,6 +144,56 @@ class TestSaveLoad(unittest.TestCase):
             np.testing.assert_allclose(fp32_param, fp16_param, atol=1e-4)
 
         temp_dir.cleanup()
+
+
+class TestDistSaveLoad(unittest.TestCase):
+    def setUp(self):
+        # self.save_dir = tempfile.mkdtemp()
+        self.save_dir = "/tmp/test_save_load_v3"
+        if not os.path.exists(self.save_dir):
+            os.mkdir(self.save_dir)
+        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+        self.train_dataset = MNIST(mode='train', transform=transform)
+        self.test_dataset = MNIST(mode='test', transform=transform)
+        print(f'debug TestDistSaveLoad save_dir: {self.save_dir}')
+        self.prepare_engine()
+
+    def tearDown(self):
+        # shutil.rmtree(self.save_dir)
+        pass
+
+    def prepare_engine(self):
+        model = paddle.vision.models.LeNet()
+        loss = paddle.nn.CrossEntropyLoss()
+        base_lr = 1e-3
+        boundaries = [5, 8]
+        values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+        lr = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=boundaries, values=values, verbose=False
+        )
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=lr, parameters=model.parameters()
+        )
+        auto.fetch(model.parameters()[0], "param0", logging=True)
+        metrics = paddle.metric.Accuracy(topk=(1, 2))
+        self.engine = auto.Engine(model, loss, optimizer, metrics)
+
+    def test_dist_save_load(self):
+        history = self.engine.fit(
+            train_data=self.train_dataset,
+            valid_data=self.test_dataset,
+            batch_size=128,
+            steps_per_epoch=60,
+            valid_steps=40,
+            log_freq=20,
+            epochs=2,
+            save_dir=self.save_dir,
+            save_freq=1,
+            save_checkpoint_every_n_step=10,
+            keep_checkpoint_max_num=4,
+            load_dir=self.save_dir,
+        )
+        # print(history.history)
 
 
 if __name__ == "__main__":

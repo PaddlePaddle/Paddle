@@ -81,6 +81,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         self.acc_steps = acc_steps
 
         if isinstance(dataset, IterableDataset):
+            print(f"debug engine fit data_size isinstance IterableDataset")
             self.dataset_kind = _DatasetKind.ITER
         else:
             self.dataset_kind = _DatasetKind.MAP

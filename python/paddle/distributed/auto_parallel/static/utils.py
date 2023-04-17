@@ -15,6 +15,7 @@
 import copy
 import logging
 import os
+import shutil
 import threading
 import warnings
 from functools import reduce
@@ -2373,3 +2374,92 @@ def _dygraph_guard_(func):
 
 
 dygraph_guard = wrap_decorator(_dygraph_guard_)
+
+
+def is_complete_checkpoint(file_list, rank_size, file_prefix="default"):
+    for rank in range(rank_size):
+        if f"{file_prefix}_serial.pdmodel" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdmodel" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdparams" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdattr" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdopt" not in file_list:
+            return False
+    return True
+
+
+def get_latest_checkpoint_prefix(file_list, max_epoch, max_step, rank_size):
+    file_prefix = None
+    final_prefix = "final"
+    succ, rank = is_complete_checkpoint(file_list, rank_size, final_prefix)
+    if succ:
+        return final_prefix, None, f"dist{rank}"
+    for e in range(max_epoch - 1, -1, -1):
+        epoch_prefix = f"epoch{e}"
+        for s in range(max_step - 1, -1, -1):
+            step_prefix = f"step{s}"
+            file_prefix = f"{epoch_prefix}_{step_prefix}"
+            if is_complete_checkpoint(file_list, rank_size, file_prefix):
+                return file_prefix
+            else:
+                file_prefix = None
+    return file_prefix
+
+
+def _get_checkpoint_directory(file_dir):
+    checkpoint_dir_list = os.listdir(file_dir)
+    checkpoint_dir_list = list(
+        filter(lambda x: x != "latest_checkpoint.txt", checkpoint_dir_list)
+    )
+    if len(checkpoint_dir_list) == 0:
+        return None
+    return checkpoint_dir_list
+
+
+def _get_checkpoint_prefix(file_dir):
+    file_list = os.listdir(file_dir)
+    file_prefix_map = {}
+    for file_name in file_list:
+        if file_name in ["rank_mapping.csv"]:
+            continue
+        file_name_split = file_name.split("_")
+        file_name_prefix = "_".join(file_name_split[:-1])
+        if file_name_prefix not in file_prefix_map:
+            file_prefix_map[file_name_prefix] = []
+        file_prefix_map[file_name_prefix].append(file_name)
+    return file_prefix_map
+
+
+def get_latest_checkpoint_timestamp(file_dir, rank_size):
+    checkpoint_dir_list = _get_checkpoint_directory(file_dir)
+    if checkpoint_dir_list is None:
+        return None
+    checkpoint_dir_list.sort(reverse=True)
+    for checkpoint_dir in checkpoint_dir_list:
+        checkpoint_dir_path = os.path.join(file_dir, checkpoint_dir)
+        checkpoint_prefix_map = _get_checkpoint_prefix(checkpoint_dir_path)
+        for prefix, files in checkpoint_prefix_map.items():
+            if is_complete_checkpoint(files, rank_size, "default"):
+                return os.path.join(checkpoint_dir_path, prefix)
+    return None
+
+
+def update_checkpoint_filelist(file_dir, keep_checkpoint_max_num):
+    checkpoint_dir_list = _get_checkpoint_directory(file_dir)
+    if (
+        checkpoint_dir_list is None
+        or len(checkpoint_dir_list) <= keep_checkpoint_max_num
+    ):
+        return None
+    checkpoint_dir_list.sort(reverse=True)
+    print(
+        f"debug current checkpoint num: {len(checkpoint_dir_list)}, prefix: {file_dir}, directory: {checkpoint_dir_list}, keep_checkpoint_max_num: {keep_checkpoint_max_num}"
+    )
+    for checkpoint_dir in checkpoint_dir_list[keep_checkpoint_max_num:]:
+        rmdir = os.path.join(file_dir, checkpoint_dir)
+        shutil.rmtree(rmdir)
+        print(f"remove older directory: {rmdir}")
+    return True
