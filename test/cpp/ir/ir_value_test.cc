@@ -40,21 +40,30 @@ TEST(value_test, value_test) {
   // 1. Construct OP1: a = OP1()
   std::vector<ir::OpResult> op1_inputs = {};
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op1 = ir::Operation::create(
-      op1_inputs, op1_output_types, CreateAttribute("op1_name", "op1_attr"));
+  ir::Operation *op1 =
+      ir::Operation::create(op1_inputs,
+                            op1_output_types,
+                            CreateAttribute("op1_name", "op1_attr"),
+                            nullptr);
   std::cout << op1->print() << std::endl;
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op2 = ir::Operation::create(
-      op2_inputs, op2_output_types, CreateAttribute("op2_name", "op2_attr"));
+  ir::Operation *op2 =
+      ir::Operation::create(op2_inputs,
+                            op2_output_types,
+                            CreateAttribute("op2_name", "op2_attr"),
+                            nullptr);
   std::cout << op2->print() << std::endl;
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op3 = ir::Operation::create(
-      op3_inputs, op3_output_types, CreateAttribute("op3_name", "op3_attr"));
+  ir::Operation *op3 =
+      ir::Operation::create(op3_inputs,
+                            op3_output_types,
+                            CreateAttribute("op3_name", "op3_attr"),
+                            nullptr);
   std::cout << op3->print() << std::endl;
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
@@ -63,8 +72,11 @@ TEST(value_test, value_test) {
   for (size_t i = 0; i < 7; i++) {
     op4_output_types.push_back(ir::Float32Type::get(ctx));
   }
-  ir::Operation *op4 = ir::Operation::create(
-      op4_inputs, op4_output_types, CreateAttribute("op4_name", "op4_attr"));
+  ir::Operation *op4 =
+      ir::Operation::create(op4_inputs,
+                            op4_output_types,
+                            CreateAttribute("op4_name", "op4_attr"),
+                            nullptr);
   std::cout << op4->print() << std::endl;
 
   // Test 1:

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/op_info.h"
-#include <string.h>
+#include <cstring>
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type.h"
@@ -42,16 +42,17 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   void PlacementConstrctInterface(
       std::pair<TypeId, void *> *&p_interface) {  // NOLINT
-    void *ptmp = malloc(sizeof(T::Model<ConcreteOp>));
-    new (ptmp) T::Model<ConcreteOp>();
-    std::pair<TypeId, void *> pair_tmp = make_pair(TypeId::get<T>(), ptmp);
-    memcpy(p_interface, &pair_tmp, sizeof(std::pair<TypeId, void *>));
+    void *ptmp = malloc(sizeof(typename T::template Model<ConcreteOp>));
+    new (ptmp) typename T::template Model<ConcreteOp>();
+    std::pair<ir::TypeId, void *> pair_tmp =
+        make_pair(ir::TypeId::get<T>(), ptmp);
+    memcpy(p_interface, &pair_tmp, sizeof(std::pair<ir::TypeId, void *>));
     p_interface += 1;
   }
   /// Placement new trait.
   template <typename T>
-  void PlacementConstrctTrait(TypeId *&p_trait) {  // NOLINT
-    new (p_trait) TypeId(TypeId::get<T>());
+  void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
+    new (p_trait) TypeId(ir::TypeId::get<T>());
     p_trait += 1;
   }
 };
@@ -85,8 +86,9 @@ class OpInfoImpl {
   template <typename ConcreteOp>
   static OpInfoImpl *create() {
     // (1) Malloc memory for interfaces, traits, opinfo_impl and StrAttribues.
-    size_t interfaces_num = std::tuple_size<ConcreteOp::InterfaceList>::value;
-    size_t traits_num = std::tuple_size<ConcreteOp::TraitList>::value;
+    size_t interfaces_num =
+        std::tuple_size<typename ConcreteOp::InterfaceList>::value;
+    size_t traits_num = std::tuple_size<typename ConcreteOp::TraitList>::value;
     size_t attributes_num = ConcreteOp::attributes_name_.size();
     size_t base_size = sizeof(std::pair<ir::TypeId, void *>) * interfaces_num +
                        sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl) +
@@ -103,13 +105,14 @@ class OpInfoImpl {
         reinterpret_cast<void *>(p_opinfo_impl) + sizeof(OpInfoImpl));
 
     // (2) Construct interfaces and sort by TypeId.
-    ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::InterfaceList>::
-        interface(p_first_interface);
+    ConstructInterfacesOrTraits<
+        ConcreteOp,
+        typename ConcreteOp::InterfaceList>::interface(p_first_interface);
     std::sort(p_first_interface, p_first_interface + interfaces_num);
 
     // (3) Construct traits and sort by TypeId.
-    ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::TraitList>::trait(
-        p_first_trait);
+    ConstructInterfacesOrTraits<ConcreteOp, typename ConcreteOp::TraitList>::
+        trait(p_first_trait);
     std::sort(p_first_trait, p_first_trait + traits_num);
 
     // (4) Construct opinfo_impl.
@@ -128,6 +131,7 @@ class OpInfoImpl {
           ir::StrAttribute::get(ctx, ConcreteOp::attributes_name_[i]));
       p_attribute += 1;
     }
+    return op_info;
   }
 
   void destroy() {
@@ -200,7 +204,7 @@ class OpInfoImpl {
   }
 
   template <typename Interface>
-  Interface::Concept *GetInterfaceImpl() {
+  typename Interface::Concept *GetInterfaceImpl() {
     ir::TypeId interface_id = ir::TypeId::get<Interface>();
     size_t interfaces_num = std::distance(
         p_first_interface_,
@@ -212,7 +216,7 @@ class OpInfoImpl {
       while (left <= right) {
         mid = (left + right) / 2;
         if ((p_first_interface_ + mid)->first == interface_id) {
-          return reinterpret_cast<Interface::Concept *>(
+          return reinterpret_cast<typename Interface::Concept *>(
               (p_first_interface_ + mid)->second);
         } else if ((p_first_interface_ + mid)->first < interface_id) {
           left = mid + 1;
