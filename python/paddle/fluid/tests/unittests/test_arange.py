@@ -151,6 +151,7 @@ class TestArangeAPI(unittest.TestCase):
 
         expected_data = np.arange(0, 5, 1).astype(np.float32)
         self.assertEqual((out == expected_data).all(), True)
+        self.assertListEqual(list(x1.shape), [5])
 
 
 class TestArangeImperative(unittest.TestCase):

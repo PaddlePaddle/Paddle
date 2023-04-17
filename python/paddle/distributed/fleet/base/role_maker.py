@@ -1076,6 +1076,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
+        auto_tuner = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG", None)
+        if auto_tuner is not None:
+            trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
+            self._trainers_num = int(trainers_num)
         self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
         self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
         self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")

@@ -328,7 +328,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
   return res;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -533,5 +533,9 @@ REGISTER_OPERATOR(
     ops::GenerateMaskLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(generate_mask_labels,
-                       ops::GenerateMaskLabelsKernel<float>);
+
+PD_REGISTER_STRUCT_KERNEL(generate_mask_labels,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GenerateMaskLabelsKernel,
+                          float) {}

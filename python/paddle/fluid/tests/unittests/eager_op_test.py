@@ -494,6 +494,28 @@ class OpTest(unittest.TestCase):
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
 
+    def _enable_check_cinn_test(self, place, inputs, outputs):
+        # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
+        if (
+            core.is_compiled_with_cinn()
+            and core.is_compiled_with_cuda()
+            and isinstance(place, fluid.CUDAPlace)
+        ):
+            return False
+        # CINN not support bfloat16 now, skip cinn test
+        if self.is_bfloat16_op():
+            return False
+        # CINN not support 0D-tensor now, skip cinn test
+        for var in inputs.values():
+            if len(var.shape()) == 0:
+                return False
+        for var in outputs.values():
+            if len(var.shape) == 0:
+                return False
+        # CINN not support dynamic shape now, skip cinn test
+        # TODO(thisjiang): cannot check dynamic shape op automatic, should do manually now
+        return True
+
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -1044,6 +1066,7 @@ class OpTest(unittest.TestCase):
         loss=None,
         enable_inplace=None,
         for_inplace_test=None,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             program = Program()
@@ -1087,9 +1110,21 @@ class OpTest(unittest.TestCase):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                     fetch_list.append(str(out_name))
 
-            if enable_inplace is not None:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_map, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
-                build_strategy.enable_inplace = enable_inplace
+                if enable_inplace is not None:
+                    build_strategy.enable_inplace = enable_inplace
+                if enable_cinn_test:
+                    build_strategy.build_cinn_pass = check_cinn
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
@@ -1518,6 +1553,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -1626,7 +1662,7 @@ class OpTest(unittest.TestCase):
                     np.testing.assert_allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
@@ -1645,7 +1681,7 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
@@ -1721,7 +1757,7 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
-                    place, no_check_set=no_check_set
+                    place, no_check_set=no_check_set, check_cinn=check_cinn
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
@@ -2077,6 +2113,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
 
         self.__class__.op_type = self.op_type
@@ -2100,6 +2137,7 @@ class OpTest(unittest.TestCase):
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
                 inplace_atol=inplace_atol,
+                check_cinn=check_cinn,
             )
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
@@ -2257,6 +2295,7 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         atol=1e-5,
+        check_cinn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2278,6 +2317,7 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
                 atol=atol,
+                check_cinn=check_cinn,
             )
 
     def check_grad_with_place(
@@ -2296,6 +2336,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
+        check_cinn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2427,6 +2468,7 @@ class OpTest(unittest.TestCase):
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
+            check_cinn=check_cinn,
         )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
@@ -2655,6 +2697,7 @@ class OpTest(unittest.TestCase):
         no_grad_set,
         user_defined_grad_outputs=None,
         parallel=False,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             prog = Program()
@@ -2721,11 +2764,26 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = grad_inputs
 
-            if parallel:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_dict, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if parallel or enable_cinn_test:
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog)
+
+                build_strategy = None
+                if enable_cinn_test:
+                    build_strategy = fluid.BuildStrategy()
+                    build_strategy.build_cinn_pass = check_cinn
+
+                compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(

@@ -288,6 +288,7 @@ PD_REGISTER_KERNEL(multinomial,  // cuda_only
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
