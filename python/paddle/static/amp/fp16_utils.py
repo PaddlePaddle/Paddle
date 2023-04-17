@@ -572,7 +572,9 @@ def cast_model_to_fp16(
             need_process = False
         else:
             for attr_name in ['out_dtype', 'dtype']:
-                if op.has_attr(attr_name):
+                if op.has_attr(attr_name) and is_float_dtype(
+                    op.attr(attr_name)
+                ):
                     need_process = False
 
         return need_process
@@ -587,6 +589,9 @@ def cast_model_to_fp16(
                 continue
             if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
                 keep_fp32_ops.add(op)
+                process_op_input_and_outputs(
+                    op, block, global_block, core.VarDesc.VarType.FP32
+                )
                 _logger.debug(
                     "---- Add into keep_fp32_ops because the op needs to be kept fp32 ----"
                 )
@@ -614,6 +619,9 @@ def cast_model_to_fp16(
                     )
                 else:
                     keep_fp32_ops.add(op)
+                    process_op_input_and_outputs(
+                        op, block, global_block, core.VarDesc.VarType.FP32
+                    )
                     _logger.debug(
                         "----  Add into keep_fp32_ops because it should be promoted to fp32 ----"
                     )
