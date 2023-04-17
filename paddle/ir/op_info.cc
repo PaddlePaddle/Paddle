@@ -14,6 +14,8 @@
 
 #include "paddle/ir/op_info.h"
 #include <string.h>
+#include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/ir_context.h"
 #include "paddle/ir/type.h"
 
 namespace ir {
@@ -77,8 +79,8 @@ class OpInfoImpl {
  public:
   ///
   /// \brief Construct and Deconstruct OpInfoImpl. The memory layout of
-  /// OpInfoImpl is: interface_n ... interface_0 | trait_n ... trait_0 |
-  /// OpInfoImpl | StrAttribute_0 ... StrAttribute_n
+  /// OpInfoImpl is: std::pair<TypeId, void *>... | TypeId... | OpInfoImpl |
+  /// StrAttribute_0 ... StrAttribute_n
   ///
   template <typename ConcreteOp>
   static OpInfoImpl *create() {
@@ -92,6 +94,47 @@ class OpInfoImpl {
     // ConcreteOp::TraitList>::trait(p_first_trait_); (3) placement new opinfo
     // (4) sort interface and trait
     // (5) placement new attributes name
+
+    // (1) Malloc memory for interfaces, traits, opinfo_impl and StrAttribues.
+    size_t interfaces_num = std::tuple_size<ConcreteOp::InterfaceList>::value;
+    size_t traits_num = std::tuple_size<ConcreteOp::TraitList>::value;
+    size_t attributes_num = ConcreteOp::attributes_name_.size();
+    size_t base_size = sizeof(std::pair<ir::TypeId, void *>) * interfaces_num +
+                       sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl) +
+                       sizeof(ir::StrAttribute) * attributes_num;
+    void *base_ptr = malloc(base_size);
+    std::pair<ir::TypeId, void *> *p_first_interface =
+        reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
+    ir::TypeId *p_first_trait = reinterpret_cast<ir::TypeId *>(
+        base_ptr + sizeof(std::pair<ir::TypeId, void *>) * interfaces_num);
+    OpInfoImpl *p_opinfo_impl =
+        reinterpret_cast<OpInfoImpl *>(reinterpret_cast<void *>(p_first_trait) +
+                                       sizeof(ir::TypeId) * traits_num);
+    ir::StrAttribute *p_first_attribute = reinterpret_cast<ir::StrAttribute *>(
+        reinterpret_cast<void *>(p_opinfo_impl) + sizeof(OpInfoImpl));
+    // (2) Construct interfaces and sort by TypeId.
+    ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::InterfaceList>::
+        interface(p_first_interface);
+    std::sort(p_first_interface, p_first_interface + interfaces_num);
+    // (3) Construct traits and sort by TypeId.
+    ConstructInterfacesOrTraits<ConcreteOp, ConcreteOp::TraitList>::trait(
+        p_first_trait);
+    std::sort(p_first_trait, p_first_trait + traits_num);
+    // (4) Construct opinfo_impl.
+    OpInfoImpl *op_info =
+        new (p_opinfo_impl) OpInfoImpl(p_first_interface,
+                                       p_first_trait,
+                                       attributes_num,
+                                       ir::TypeId::get<ConcreteOp>(),
+                                       ConcreteOp::name());
+    // (5) Construct StrAttributes.
+    ir::StrAttribute *p_attribute = p_first_attribute;
+    ir::IrContext *ctx = ir::IrContext::Instance();
+    for (size_t i = 0; i < attributes_num; i++) {
+      new (p_attribute) ir::StrAttribute(
+          ir::StrAttribute::get(ctx, ConcreteOp::attributes_name_[i]));
+      p_attribute += 1;
+    }
   }
 
   void destroy() {
@@ -154,8 +197,6 @@ class OpInfoImpl {
   const char *op_name_;
 };
 
-const OpInfoImpl *OpInfo::impl() const { return impl_; }
-
 bool OpInfo::operator==(OpInfo other) const { return impl_ == other.impl_; }
 
 bool OpInfo::operator!=(OpInfo other) const { return impl_ != other.impl_; }
@@ -163,5 +204,7 @@ bool OpInfo::operator!=(OpInfo other) const { return impl_ != other.impl_; }
 OpInfo::operator bool() const { return impl_; }
 
 bool OpInfo::operator!() const { return impl_ == nullptr; }
+
+const OpInfoImpl *OpInfo::impl() const { return impl_; }
 
 }  // namespace ir

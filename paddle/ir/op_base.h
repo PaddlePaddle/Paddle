@@ -108,23 +108,25 @@ class Op : public OpBase {
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 };
 
-class ConvOp : Op<ConvOp, ReadOnlyTrait, InferShapeInterface> {
+class FakeConvOp : Op<FakeConvOp, ReadOnlyTrait, InferShapeInterface> {
  public:
   // Op name.
-  const char *name() { return "conv_2d"; }
+  static const char *name() { return "fake_conv"; }
 
   // Op attributes name.
-  std::vector<std::string> attributes_name = {"strides",
-                                              "paddings",
-                                              "padding_algorithm",
-                                              "dilations",
-                                              "groups",
-                                              "data_format"};
+  static std::vector<std::string> attributes_name_ = {"strides",
+                                                      "paddings",
+                                                      "padding_algorithm",
+                                                      "dilations",
+                                                      "groups",
+                                                      "data_format"};
 
   // ConvOp 包含了 InferShapeInterface, 因此，必须定义 InferShape 成员函数.
   // 在该算子注册的时候，会实例化InferShapeInterface::Strategy<ConvOp>,
   // 如果没有定义inferShape函数，会在编译时报错
-  static void InferShape();
+  static void InferShape() {
+    std::cout << "this is a fake conv op interface" << std::endl;
+  }
 }
 
 }  // namespace ir
