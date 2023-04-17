@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_pooling.h"
+#include "paddle/phi/kernels/funcs/sequence_pooling.h"
 
 #include <string>
 
@@ -21,9 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -47,13 +46,13 @@ class MaxSeqPoolFunctor {
     auto idx_dims = index->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of input shall be greater than 1, but got "
                           "the rank is %ld. Please check the input value",
                           in_dims.size()));
     PADDLE_ENFORCE_GT(out_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of output shall be greater than 1, but got "
                           "the rank is %ld. Please check the input value",
                           out_dims.size()));
@@ -61,7 +60,7 @@ class MaxSeqPoolFunctor {
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           out_dims[i],
-          platform::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The dimension of input and output shall be same. Expected %ld "
               "== %ld, but got %ld != %ld. Please check the input value.",
               in_dims[i],
@@ -72,7 +71,7 @@ class MaxSeqPoolFunctor {
     PADDLE_ENFORCE_EQ(
         idx_dims,
         out_dims,
-        platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The dimension of index and output shall be same. Expected %ld == "
             "%ld, but got %ld != %ld. Please check the input value.",
             idx_dims,
@@ -125,13 +124,13 @@ class MaxSeqPoolFunctor<T, true> {
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of input shall be greater than 1, but got "
                           "%ld <= 1. Please check the input value.",
                           in_dims.size()));
     PADDLE_ENFORCE_GT(out_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of output shall be greater than 1, but got "
                           "%ld <= 1. Please check the input value.",
                           out_dims.size()));
@@ -139,7 +138,7 @@ class MaxSeqPoolFunctor<T, true> {
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           out_dims[i],
-          platform::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The dimension of input and output shall be same. Expected %ld "
               "== %ld, but got %ld != %ld. Please check the input value.",
               in_dims[i],
@@ -186,20 +185,20 @@ class MaxSeqPoolGradFunctor {
     auto idx_dims = index.dims();
     PADDLE_ENFORCE_GT(og_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of output@Grad shall be greater than 1, "
                           "but got %ld <= 1. Please check the input value.",
                           og_dims.size()));
     PADDLE_ENFORCE_GT(ig_dims.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The rank of input@Grad shall be greater than 1, but "
                           "got %ld <= 1. Please check the input value.",
                           ig_dims.size()));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i],
                         ig_dims[i],
-                        platform::errors::InvalidArgument(
+                        errors::InvalidArgument(
                             "The dimension of input@Grad and output@Grad shall "
                             "be same. Expected %ld == %ld, but got %ld != %ld. "
                             "Please check the input value.",
@@ -211,7 +210,7 @@ class MaxSeqPoolGradFunctor {
     PADDLE_ENFORCE_EQ(
         idx_dims,
         og_dims,
-        platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The dimension of index and output@Grad shall be same. Expected "
             "%ld == %ld, but got %ld != %ld. Please check the input value.",
             idx_dims,
@@ -317,7 +316,7 @@ class SumSeqPoolGradFunctor {
     int64_t in_w = in_grad->numel() / in_grad->dims()[0];
     PADDLE_ENFORCE_EQ(in_w,
                       out_w,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The feature size of input@Grad and output@Grad "
                           "shall be same. Expected %ld == %ld, but got %ld != "
                           "%ld. Please check the input value.",
@@ -326,7 +325,7 @@ class SumSeqPoolGradFunctor {
                           in_w,
                           out_w));
     const T* out_g_data = out_grad.data<T>();
-    T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
+    T* in_g_data = context.template Alloc<T>(in_grad);
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
@@ -354,21 +353,21 @@ class SequencePoolFunctor<phi::CPUContext, T> {
                   phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
-        math::MaxSeqPoolFunctor<T, true> max_pool;
+        phi::funcs::MaxSeqPoolFunctor<T, true> max_pool;
         max_pool(context, input, pad_value, output, index);
       } else {
-        math::MaxSeqPoolFunctor<T, false> max_pool;
+        phi::funcs::MaxSeqPoolFunctor<T, false> max_pool;
         max_pool(context, input, pad_value, output, index);
       }
       return;
     }
     if (pooltype == "LAST") {
-      math::LastSeqPoolFunctor<T> last_pool;
+      phi::funcs::LastSeqPoolFunctor<T> last_pool;
       last_pool(context, input, pad_value, output);
       return;
     }
     if (pooltype == "FIRST") {
-      math::FirstSeqPoolFunctor<T> first_pool;
+      phi::funcs::FirstSeqPoolFunctor<T> first_pool;
       first_pool(context, input, pad_value, output);
       return;
     }
@@ -377,17 +376,17 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     if (pooltype == "SUM") {
       auto place = context.GetPlace();
       PADDLE_ENFORCE_EQ(
-          platform::is_cpu_place(place),
+          place == phi::CPUPlace(),
           true,
-          platform::errors::InvalidArgument(
+          errors::InvalidArgument(
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
-      T* dst = output->mutable_data<T>(place);
+      T* dst = context.template Alloc<T>(output);
       phi::jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
           phi::jit::SeqPoolType::kSum);
       auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                           platform::CPUPlace>::Cache()
+                                           phi::CPUPlace>::Cache()
                          .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
@@ -424,7 +423,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(errors::InvalidArgument(
             "unsupported pooling pooltype: %s. Only support \"AVERAGE\" and "
             "\"SQRT\"",
             pooltype));
@@ -443,7 +442,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
                   /* max pool has index */
                   const phi::DenseTensor* index = nullptr) {
     if (pooltype == "MAX") {
-      math::MaxSeqPoolGradFunctor<T> max_pool_grad;
+      phi::funcs::MaxSeqPoolGradFunctor<T> max_pool_grad;
       max_pool_grad(context, out_grad, *index, in_grad);
       return;
     }
@@ -455,7 +454,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
     }
 
     if (pooltype == "SUM") {
-      math::SumSeqPoolGradFunctor<T> sum_pool_grad;
+      phi::funcs::SumSeqPoolGradFunctor<T> sum_pool_grad;
       sum_pool_grad(context, out_grad, in_grad);
       return;
     }
@@ -485,7 +484,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
       } else if (pooltype == "FIRST") {
         in_g_e.chip(0, 0).device(place) = out_g_e_v;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(errors::InvalidArgument(
             "unsupported pooling pooltype: %s. Only support \"AVERAGE\", "
             "\"SQRT\", \"LAST\" and \"FIRST\"",
             pooltype));
@@ -499,6 +498,5 @@ template class SequencePoolFunctor<phi::CPUContext, double>;
 template class SequencePoolGradFunctor<phi::CPUContext, float>;
 template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
