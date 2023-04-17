@@ -125,9 +125,9 @@ class Namespace:
         if len(satisfied_function_keys) == 1:
             key = list(satisfied_function_keys)[0]
         elif len(args) >= 3 and isinstance(args[2], float):
-            key = FunctionType.FP16
+            key = FunctionType.FP16_ONLY
         else:
-            key = FunctionType.BOTH
+            key = FunctionType.COMMON
         return self.function_map.get(key)
 
 
