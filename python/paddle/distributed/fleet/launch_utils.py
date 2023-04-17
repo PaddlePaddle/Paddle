@@ -1986,7 +1986,6 @@ def check_backend(backend):
         'nccl',
         'gloo',
         'bkcl',
-        'cncl',
         'auto',
         'heter',
         'xccl',
