@@ -246,6 +246,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     val,
                     name,
                     [
+                        'uint16',
                         'float16',
                         'float32',
                         'float64',

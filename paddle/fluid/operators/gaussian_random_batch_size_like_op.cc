@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -99,7 +99,10 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    gaussian_random_batch_size_like,
-    paddle::operators::CPUGaussianRandomBatchSizeLikeKernel<float>,
-    paddle::operators::CPUGaussianRandomBatchSizeLikeKernel<double>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(gaussian_random_batch_size_like,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUGaussianRandomBatchSizeLikeKernel,
+                          float,
+                          double) {}

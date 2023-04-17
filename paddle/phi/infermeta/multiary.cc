@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
@@ -2043,19 +2045,26 @@ void LambInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_NOT_NULL(
       beta2_pow_out,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
-
   param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
+
+  phi::DataType dtype = param.dtype();
+  if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
+    dtype = phi::DataType::FLOAT32;
+  }
 
   moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(moment1.dtype());
+  moment1_out->set_dtype(dtype);
   moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(moment2.dtype());
+  moment2_out->set_dtype(dtype);
 
   beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta1_pow_out->set_dtype(dtype);
   beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  beta2_pow_out->set_dtype(dtype);
+
+  if (master_param_outs) {
+    master_param_outs->set_dtype(dtype);
+  }
 }
 
 void LogspaceInferMeta(const MetaTensor& start,
