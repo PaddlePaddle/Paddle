@@ -199,7 +199,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
