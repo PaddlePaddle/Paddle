@@ -1173,7 +1173,9 @@ class QuantizationFreezePass:
                     # Quantize weight and restore
                     if self._round_type == 'round':
                         param_v = self._load_var(input_arg_name)
-                        quant_axis = op_node.op().attr('quant_axis')
+                        quant_axis = 0
+                        if op_node.op().has_attr('quant_axis'):
+                            quant_axis = op_node.op().attr('quant_axis')
                         if input_arg_name not in self._quantized_ops:
                             self._quantized_ops.add(input_arg_name)
                             quantized_param_v = utils.quant_tensor(
