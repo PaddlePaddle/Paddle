@@ -2404,14 +2404,16 @@ class TestSundryAPI(unittest.TestCase):
         xt_1.stop_gradient = False
 
         xt_out = paddle.linalg.cov(xt)
+        xt_out.retain_grads()
         xt_out.backward()
-        self.assertTrue(xt_out.shape, [3, 3])
-        self.assertTrue(xt.grad.shape, [3, 4])
+        self.assertEqual(xt_out.shape, [3, 3])
+        self.assertEqual(xt.grad.shape, [3, 4])
 
         xt_1_out = paddle.linalg.cov(xt_1)
+        xt_1.retain_grads()
         xt_1_out.backward()
-        self.assertTrue(xt_1_out.shape, [])
-        self.assertTrue(xt_1_out.grad.shape, [12])
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [12])
 
     def test_det(self):
         xt = paddle.randn([3, 3, 3])
@@ -2420,14 +2422,16 @@ class TestSundryAPI(unittest.TestCase):
         xt_1.stop_gradient = False
 
         xt_out = paddle.linalg.det(xt)
+        xt.retain_grads()
         xt_out.backward()
-        self.assertTrue(xt_out.shape, [3])
-        self.assertTrue(xt.grad.shape, [3, 3, 3])
+        self.assertEqual(xt_out.shape, [3])
+        self.assertEqual(xt.grad.shape, [3, 3, 3])
 
         xt_1_out = paddle.linalg.det(xt_1)
+        xt_1.retain_grads()
         xt_1_out.backward()
-        self.assertTrue(xt_1_out.shape, [])
-        self.assertTrue(xt_1_out.grad.shape, [3, 3])
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [3, 3])
 
     def test_linalg_norm(self):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
@@ -4364,7 +4368,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_det(self):
-        xt_1 = paddle.randn((12,))
+        xt_1 = paddle.randn((3, 3))
         xt_1.stop_gradient = False
 
         out = paddle.linalg.det(xt_1)

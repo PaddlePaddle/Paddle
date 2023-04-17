@@ -116,7 +116,7 @@ void DeterminantKernel(const Context& dev_ctx,
     out->Resize(output_dims);
   } else {
     // when input is a two-dimension matrix, The det value is a number.
-    out->Resize({});
+    out->Resize(phi::make_ddim({}));
   }
   VLOG(10) << "output dim:" << out->dims();
 }
