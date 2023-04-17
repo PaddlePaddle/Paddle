@@ -17,40 +17,44 @@ import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../legacy_test")
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
-sys.path.append("..")
 
-
-class TestShardingPass(AutoPallelPassTestBase):
+class TestPF16Pass(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
         self.rtol = 1e-5
         self.atol = 1e-8
 
-        rank = paddle.distributed.get_rank()
-        paddle.seed(rank + 2021)
-        random.seed(rank + 2021)
-        np.random.seed(rank + 2021)
+        paddle.seed(2021)
+        random.seed(2021)
+        np.random.seed(2021)
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.semi_auto = True
-        dist_strategy.sharding = True
-        dist_strategy.sharding_configs = {
-            "sharding_degree": 2,
-            "stage": 2,
+        dist_strategy.amp = True
+        dist_strategy.amp_configs = {
+            "custom_white_list": [
+                'softmax',
+                'layer_norm',
+                'gelu',
+            ],
+            "custom_black_list": [
+                'c_softmax_with_cross_entropy',
+                'elementwise_div',
+                'reduce_sum',
+            ],
+            "init_loss_scaling": 32768,
+            "use_dynamic_loss_scaling": True,
+            "use_pure_fp16": True,
+            "use_fp16_guard": False,
         }
-        fleet.init(is_collective=True, strategy=dist_strategy)
-
-    def apply_no_passes(self):
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.pipeline = False
-        dist_strategy.recompute = False
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -61,7 +65,7 @@ class TestShardingPass(AutoPallelPassTestBase):
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
-            'dp', place, batch_size, sequence_len, vocab_size
+            "mp", place, batch_size, sequence_len, vocab_size
         )
 
 
