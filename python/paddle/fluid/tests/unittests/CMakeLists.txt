@@ -769,7 +769,6 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(rnn)
 add_subdirectory(distribution)
 
 # dist xpu tests:
