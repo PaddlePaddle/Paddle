@@ -15,16 +15,12 @@
  */
 #pragma once
 
-#ifdef __NVCC__
+#ifdef PADDLE_WITH_CUDA
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_scan.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/util_ptx.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
+#include <cub/util_type.cuh>
 
 namespace paddle {
 namespace framework {
@@ -350,3 +346,4 @@ class BlockRadixTopKRegister {
 
 };  // end namespace framework
 };  // end namespace paddle
+#endif

@@ -19,15 +19,10 @@
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
 
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#include <hiprand_kernel.h>
-#include <hipcub/hipcub.hpp>
-#else
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include "cub/cub.cuh"
-#endif
 
 #include "math.h"  // NOLINT
 #include "paddle/fluid/memory/memory.h"
@@ -120,9 +115,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
       weight_keys_local_buff[j] =
           static_cast<float>(GenKeyFromWeight(thread_weight, rng));
     }
-#ifdef PADDLE_WITH_CUDA
     __syncthreads();
-#endif
 
     float topk_val;
     bool topk_is_unique;
@@ -142,9 +135,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     if (threadIdx.x == 0) {
       cnt = 0;
     }
-#ifdef PADDLE_WITH_CUDA
     __syncthreads();
-#endif
 
     // We use atomicAdd 1 operations instead of binaryScan to calculate the
     // write index, since we do not need to keep the relative positions of
@@ -176,9 +167,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
           }
         }
       }
-#ifdef PADDLE_WITH_CUDA
       __syncthreads();
-#endif
 
       for (int j = threadIdx.x; j < neighbor_count; j += BLOCK_SIZE) {
         float key = weight_keys_local_buff[j];
@@ -278,9 +267,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
                                 : (BLOCK_SIZE * ITEMS_PER_THREAD);
     BlockRadixTopKT{sort_tmp_storage}.radixTopKToStriped(
         weight_keys, neighbor_idxs, max_sample_count, valid_count);
-#ifdef PADDLE_WITH_CUDA
     __syncthreads();
-#endif
     const int stride = BLOCK_SIZE * ITEMS_PER_THREAD - max_sample_count;
 
     for (int idx_offset = ITEMS_PER_THREAD * BLOCK_SIZE;
@@ -302,9 +289,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
               : (max_sample_count + neighbor_count - idx_offset);
       BlockRadixTopKT{sort_tmp_storage}.radixTopKToStriped(
           weight_keys, neighbor_idxs, max_sample_count, iter_valid_count);
-#ifdef PADDLE_WITH_CUDA
       __syncthreads();
-#endif
     }
 #pragma unroll
     for (int j = 0; j < ITEMS_PER_THREAD; j++) {
@@ -377,11 +362,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
             col_ptr_data, x_data, sample_count_ptr, nullptr, sample_size, bs);
   }
 
-#ifdef PADDLE_WITH_CUDA
   const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-#else
-  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
-#endif
 
   auto sample_offset = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
@@ -394,7 +375,6 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                          sample_count_ptr + bs + 1,
                          sample_offset_ptr);
   int total_sample_size = 0;
-#ifdef PADDLE_WITH_CUDA
   cudaMemcpyAsync(&total_sample_size,
                   sample_offset_ptr + bs,
                   sizeof(int),
@@ -406,19 +386,6 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                   cudaMemcpyDeviceToDevice,
                   dev_ctx.stream());
   cudaStreamSynchronize(dev_ctx.stream());
-#else
-  hipMemcpyAsync(&total_sample_size,
-                 sample_offset_ptr + bs,
-                 sizeof(int),
-                 hipMemcpyDeviceToHost,
-                 dev_ctx.stream());
-  hipMemcpyAsync(out_count_data,
-                 sample_count_ptr,
-                 sizeof(int) * bs,
-                 hipMemcpyDeviceToDevice,
-                 dev_ctx.stream());
-  hipStreamSynchronize(dev_ctx.stream());
-#endif
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -436,21 +403,12 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                            neighbor_count_ptr);
     int* neighbor_offset = neighbor_count_ptr;
     int target_neighbor_counts;
-#ifdef PADDLE_WITH_CUDA
     cudaMemcpyAsync(&target_neighbor_counts,
                     neighbor_offset + bs,
                     sizeof(int),
                     cudaMemcpyDeviceToHost,
                     dev_ctx.stream());
     cudaStreamSynchronize(dev_ctx.stream());
-#else
-    hipMemcpyAsync(&target_neighbor_counts,
-                   neighbor_offset + bs,
-                   sizeof(int),
-                   hipMemcpyDeviceToHost,
-                   dev_ctx.stream());
-    hipStreamSynchronize(dev_ctx.stream());
-#endif
 
     auto tmh_weights = paddle::memory::Alloc(
         dev_ctx.GetPlace(),
@@ -542,6 +500,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+#endif
 
 PD_REGISTER_KERNEL(weighted_sample_neighbors,
                    GPU,
