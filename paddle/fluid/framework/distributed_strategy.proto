@@ -57,12 +57,18 @@ message MpConfig {
     optional bool sync_moment= 3 [ default = false ];
 }
 
+message PpConfig {
+    optional bool dp_comm_overlap = 1 [ default = false ];
+    optional bool delay_scale_loss = 2 [ default = false ];
+}
+
 message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
   optional int32 sharding_degree = 4 [ default = 1 ];
   optional MpConfig mp_configs = 5;
+  optional PpConfig pp_configs = 6;
 }
 
 message AMPConfig {

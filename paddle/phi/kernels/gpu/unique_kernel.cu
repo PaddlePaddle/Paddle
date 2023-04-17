@@ -216,7 +216,6 @@ UniqueFlattendCUDATensor(const Context& context,
                          bool return_inverse,
                          bool return_counts,
                          int64_t num_input) {
-  printf("-----------new\n");
   // 1. Sort indices
   auto in_flat_dims = phi::flatten_to_1d(in.dims());
   DenseTensor in_resize;
@@ -644,7 +643,11 @@ PD_REGISTER_KERNEL(unique,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    int64_t,
-                   int) {}
+                   int) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(unique_raw,
                    GPU,
@@ -655,4 +658,8 @@ PD_REGISTER_KERNEL(unique_raw,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    int64_t,
-                   int) {}
+                   int) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+}

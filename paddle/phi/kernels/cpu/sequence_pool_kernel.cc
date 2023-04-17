@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/run_program_op.h"
+#include "paddle/phi/kernels/sequence_pool_kernel.h"
 
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/sequence_pool_kernel_impl.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-/* see [Why use single type kernel] */
-REGISTER_OP_CUDA_KERNEL(run_program,
-                        ops::RunProgramOpKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(run_program_grad,
-                        ops::RunProgramGradOpKernel<phi::GPUContext, float>);
+PD_REGISTER_KERNEL(
+    sequence_pool, CPU, ALL_LAYOUT, phi::SequencePoolKernel, float, double) {}
