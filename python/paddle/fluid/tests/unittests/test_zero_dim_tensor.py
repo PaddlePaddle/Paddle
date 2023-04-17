@@ -4322,11 +4322,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
         out = paddle.dist(x, y)
+        paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
 
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 2))
+        self.assertEqual(res[1].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
 
     @prog_scope()
@@ -4334,11 +4337,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
         x.stop_gradient = False
         out = paddle.trace(x)
+        paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
 
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 2))
         np.testing.assert_allclose(res[0], np.array(12))
 
     @prog_scope()
@@ -4348,11 +4353,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         # x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
         # x.stop_gradient = False
         # out = paddle.linalg.cond(x)
+        # paddle.static.append_backward(out)
 
         # prog = paddle.static.default_main_program()
-        # res = self.exe.run(prog, fetch_list=[out])
+        # res = self.exe.run(prog, fetch_list=[out, x.grad_name])
 
         # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
         # np.testing.assert_allclose(out, np.array(1.41421342))
 
     @prog_scope()
