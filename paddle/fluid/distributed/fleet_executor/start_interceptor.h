@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <chrono>
 #include <utility>
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
@@ -34,8 +33,6 @@ class StartInterceptor final : public ComputeInterceptor {
   int64_t batch_size_{0};
   int64_t finish_count_{0};
   int64_t step_{0};
-  std::chrono::time_point<std::chrono::system_clock> start_time_{
-      std::chrono::system_clock::now()};
 };
 
 }  // namespace distributed
