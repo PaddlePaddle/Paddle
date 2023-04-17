@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 class TestShape3DFP32OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "shape"
+        self.python_api = paddle.tensor.shape
         self.config()
         self.attrs = {'use_mkldnn': True}
         self.inputs = {'Input': np.zeros(self.shape).astype(self.dtype)}
