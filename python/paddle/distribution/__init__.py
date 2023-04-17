@@ -16,6 +16,7 @@ from paddle.distribution import transform
 from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
+from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.gumbel import Gumbel
@@ -34,6 +35,7 @@ __all__ = [  # noqa
     'Bernoulli',
     'Beta',
     'Categorical',
+    'Cauchy',
     'Dirichlet',
     'Distribution',
     'ExponentialFamily',

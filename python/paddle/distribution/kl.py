@@ -18,6 +18,7 @@ import paddle
 from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
+from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
@@ -182,6 +183,11 @@ def _kl_dirichlet_dirichlet(p, q):
 
 @register_kl(Categorical, Categorical)
 def _kl_categorical_categorical(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Cauchy, Cauchy)
+def _kl_cauchy_cauchy(p, q):
     return p.kl_divergence(q)
 
 
