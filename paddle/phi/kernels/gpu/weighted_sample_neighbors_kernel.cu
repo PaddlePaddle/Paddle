@@ -23,6 +23,7 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include "cub/cub.cuh"
+#endif
 
 #include "math.h"  // NOLINT
 #include "paddle/fluid/memory/memory.h"
@@ -36,6 +37,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_CUDA
 __device__ __forceinline__ float GenKeyFromWeight(
     const float weight,
     RandomNumGen& rng) {  // NOLINT
@@ -52,6 +54,7 @@ __device__ __forceinline__ float GenKeyFromWeight(
   float logk = (log1pf(u) / logf(2.0)) * (1 / weight);
   return logk;
 }
+#endif
 
 template <typename T, bool NeedNeighbor = false>
 __global__ void GetSampleCountAndNeighborCountKernel(const T* col_ptr,
@@ -75,6 +78,7 @@ __global__ void GetSampleCountAndNeighborCountKernel(const T* col_ptr,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T, unsigned int BLOCK_SIZE>
 __launch_bounds__(BLOCK_SIZE) __global__
     void WeightedSampleLargeKernel(T* sample_output,
@@ -186,6 +190,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     }
   }
 }
+#endif
 
 template <typename T>
 __global__ void SampleAllKernel(T* sample_output,
@@ -214,6 +219,7 @@ __global__ void SampleAllKernel(T* sample_output,
 }
 
 // A-RES algorithm
+#ifdef PADDLE_WITH_CUDA
 template <typename T, unsigned int ITEMS_PER_THREAD, unsigned int BLOCK_SIZE>
 __launch_bounds__(BLOCK_SIZE) __global__
     void WeightedSampleKernel(T* sample_output,
@@ -303,6 +309,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     }
   }
 }
+#endif
 
 template <typename T, typename Context>
 void WeightedSampleNeighborsKernel(const Context& dev_ctx,
@@ -362,19 +369,23 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
             col_ptr_data, x_data, sample_count_ptr, nullptr, sample_size, bs);
   }
 
-  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-
   auto sample_offset = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       (bs + 1) * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* sample_offset_ptr = reinterpret_cast<int*>(sample_offset->ptr());
 
+#ifdef PADDLE_WITH_CUDA
+  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
   thrust::exclusive_scan(exec_policy,
                          sample_count_ptr,
                          sample_count_ptr + bs + 1,
                          sample_offset_ptr);
   int total_sample_size = 0;
+#ifdef PADDLE_WITH_CUDA
   cudaMemcpyAsync(&total_sample_size,
                   sample_offset_ptr + bs,
                   sizeof(int),
@@ -386,6 +397,19 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                   cudaMemcpyDeviceToDevice,
                   dev_ctx.stream());
   cudaStreamSynchronize(dev_ctx.stream());
+#else
+  hipMemcpyAsync(&total_sample_size,
+                 sample_offset_ptr + bs,
+                 sizeof(int),
+                 hipMemcpyDeviceToHost,
+                 dev_ctx.stream());
+  hipMemcpyAsync(out_count_data,
+                 sample_count_ptr,
+                 sizeof(int) * bs,
+                 hipMemcpyDeviceToDevice,
+                 dev_ctx.stream());
+  hipStreamSynchronize(dev_ctx.stream());
+#endif
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -396,6 +420,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   }
 
   // large sample size
+#ifdef PADDLE_WITH_CUDA
   if (sample_size > SAMPLE_SIZE_THRESHOLD) {
     thrust::exclusive_scan(exec_policy,
                            neighbor_count_ptr,
@@ -497,10 +522,10 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
         return_eids);
     cudaStreamSynchronize(dev_ctx.stream());
   }
+#endif
 }
 
 }  // namespace phi
-#endif
 
 PD_REGISTER_KERNEL(weighted_sample_neighbors,
                    GPU,
