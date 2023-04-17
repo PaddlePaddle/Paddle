@@ -53,6 +53,8 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
         static_cast<int64_t>(blockIdx.y) * blockDim.y + threadIdx.y;
     for (auto index_j = _index_j_; index_j < x_nnz;
          index_j += static_cast<int64_t>(blockDim.y) * gridDim.y) {
+      // Determine whether the index_i and index_j elements have the same
+      // indices in all dimensions except for the specified axis dimension.
       bool same = true;
       for (int j = 0; j < sparse_dim + !keep_dim; ++j) {
         if (j != axis && x_indices_data[index_i + j * x_nnz] !=
@@ -156,7 +158,15 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
   }
 }
 
-template <typename T, typename IntT, typename Context>
+template <typename T, typename IntT, typename Context, size_t dim_size>
+void SumCooGPUKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const IntArray& axis,
+                     DataType dtype,
+                     bool keep_dim,
+                     SparseCooTensor* out);
+
+template <typename T, typename IntT, typename Context, size_t dim_size>
 void SumCooGPUKernel(const Context& dev_ctx,
                      const SparseCooTensor& x,
                      const IntArray& axis,
@@ -252,6 +262,34 @@ void SumCooGPUKernel(const Context& dev_ctx,
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
     out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
   }
+  out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+}
+
+template <typename T, typename IntT, typename Context>
+void SumCooGPUKernel<0>(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const IntArray& axis,
+                        DataType dtype,
+                        bool keep_dim,
+                        SparseCooTensor* out) {
+  auto sparse_dim = x.sparse_dim();
+  // create out sparse tensor
+  const auto& x_dims = x.dims();
+  const auto& x_indices = x.indices();
+  const auto& x_values = x.values();
+  DDim out_dims;
+  DenseTensor out_indices;
+  DenseTensor out_values;
+  if (keep_dim) {
+    out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
+    out_indices = Empty<IntT, Context>(dev_ctx, {sparse_dim, 1});
+  } else {
+    out_dims = make_ddim({1});
+    out_indices = Empty<IntT, Context>(dev_ctx, {1, 1});
+  }
+  phi::funcs::SetConstant<Context, IntT> set_out_indices;
+  set_out_indices(dev_ctx, &out_indices, static_cast<IntT>(0));
+  out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, keep_dim);
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
 
@@ -371,10 +409,18 @@ void SumCooKernel(const Context& dev_ctx,
                   DataType dtype,
                   bool keep_dim,
                   SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
-                                 SumCooGPUKernel<T, data_t, Context>(
-                                     dev_ctx, x, axis, dtype, keep_dim, out);
-                               }));
+  const size_t n_dim = axis.size();
+  if (n_dim == 0) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
+                                   SumCooGPUKernel<T, data_t, Context, 0>(
+                                       dev_ctx, x, axis, dtype, keep_dim, out);
+                                 }));
+  } else {
+    PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
+                                   SumCooGPUKernel<T, data_t, Context, 1>(
+                                       dev_ctx, x, axis, dtype, keep_dim, out);
+                                 }));
+  }
 }
 }  // namespace sparse
 }  // namespace phi
