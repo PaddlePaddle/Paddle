@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -87,29 +87,27 @@ def reindex_graph(
     )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.graph_reindex(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
-    check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
+    check_variable_and_dtype(x, "x", ("int32", "int64"), "graph_reindex")
     check_variable_and_dtype(
-        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
+        neighbors, "neighbors", ("int32", "int64"), "graph_reindex"
     )
-    check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
+    check_variable_and_dtype(count, "count", ("int32"), "graph_reindex")
 
     if use_buffer_hashtable:
         check_variable_and_dtype(
-            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
+            value_buffer, "hashTable_value", ("int32"), "graph_reindex"
         )
         check_variable_and_dtype(
-            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
+            index_buffer, "hashTable_index", ("int32"), "graph_reindex"
         )
 
     helper = LayerHelper("reindex_graph", **locals())
@@ -119,18 +117,17 @@ def reindex_graph(
     helper.append_op(
         type="graph_reindex",
         inputs={
-            "X": x,
-            "Neighbors": neighbors,
-            "Count": count,
-            "HashTable_Value": value_buffer if use_buffer_hashtable else None,
-            "HashTable_Index": index_buffer if use_buffer_hashtable else None,
+            "x": x,
+            "neighbors": neighbors,
+            "count": count,
+            "hashTable_value": value_buffer if use_buffer_hashtable else None,
+            "hashTable_index": index_buffer if use_buffer_hashtable else None,
         },
         outputs={
-            "Reindex_Src": reindex_src,
-            "Reindex_Dst": reindex_dst,
-            "Out_Nodes": out_nodes,
+            "reindex_src": reindex_src,
+            "reindex_dst": reindex_dst,
+            "out_nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes
 
@@ -211,14 +208,12 @@ def reindex_heter_graph(
     if _non_static_mode():
         neighbors = paddle.concat(neighbors, axis=0)
         count = paddle.concat(count, axis=0)
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.graph_reindex(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -232,16 +227,16 @@ def reindex_heter_graph(
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "heter_graph_reindex")
     check_variable_and_dtype(
-        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
+        neighbors, "neighbors", ("int32", "int64"), "graph_reindex"
     )
-    check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
+    check_variable_and_dtype(count, "count", ("int32"), "graph_reindex")
 
     if use_buffer_hashtable:
         check_variable_and_dtype(
-            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
+            value_buffer, "hashTable_value", ("int32"), "graph_reindex"
         )
         check_variable_and_dtype(
-            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
+            index_buffer, "hashTable_index", ("int32"), "graph_reindex"
         )
 
     helper = LayerHelper("reindex_heter_graph", **locals())
@@ -253,17 +248,16 @@ def reindex_heter_graph(
     helper.append_op(
         type="graph_reindex",
         inputs={
-            "X": x,
-            "Neighbors": neighbors,
-            "Count": count,
-            "HashTable_Value": value_buffer if use_buffer_hashtable else None,
-            "HashTable_Index": index_buffer if use_buffer_hashtable else None,
+            "x": x,
+            "neighbors": neighbors,
+            "count": count,
+            "hashTable_value": value_buffer if use_buffer_hashtable else None,
+            "hashTable_index": index_buffer if use_buffer_hashtable else None,
         },
         outputs={
-            "Reindex_Src": reindex_src,
-            "Reindex_Dst": reindex_dst,
-            "Out_Nodes": out_nodes,
+            "reindex_src": reindex_src,
+            "reindex_dst": reindex_dst,
+            "out_nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes

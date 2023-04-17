@@ -780,6 +780,16 @@
     func : gelu
   backward : gelu_grad
 
+- op : graph_reindex
+  args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
+  output : Tensor(reindex_src), Tensor(reindex_dst), Tensor(out_nodes)
+  infer_meta :
+    func : GraphReindexInferMeta
+  kernel :
+    func : graph_reindex
+    data_type : x
+  optional : hashtable_value, hashtable_index
+
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
   output : Tensor(out)
