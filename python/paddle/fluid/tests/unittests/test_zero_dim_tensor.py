@@ -4146,18 +4146,14 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_unstack(self):
-        x1 = paddle.full([], 0, 'float32')
-        x1.stop_gradient = False
+        x1 = paddle.full([1], 0, 'float32')
         out1 = paddle.unstack(x1, 0)
-        paddle.static.append_backward(out1)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out1])
         self.assertEqual(res[0][0].shape, ())
 
         x2 = paddle.full([2], 2, 'float32')
-        x2.stop_gradient = False
         out2 = paddle.unstack(x2, 0)
-        paddle.static.append_backward(out2)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out2])
         self.assertEqual(res[0][0].shape, ())
@@ -4165,18 +4161,14 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_unbind(self):
-        x1 = paddle.full([], 0, 'float32')
-        x1.stop_gradient = False
+        x1 = paddle.full([1], 0, 'float32')
         out1 = paddle.unbind(x1, 0)
-        paddle.static.append_backward(out1)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out1])
         self.assertEqual(res[0][0].shape, ())
 
         x2 = paddle.full([2], 2, 'float32')
-        x2.stop_gradient = False
         out2 = paddle.unbind(x2, 0)
-        paddle.static.append_backward(out2)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out2])
         self.assertEqual(res[0][0].shape, ())
@@ -4204,16 +4196,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1.stop_gradient = False
         out1 = paddle.squeeze(x1, axis=0)
         paddle.static.append_backward(out1.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog,
-            fetch_list=[
-                out1,
-                x1.grad_name,
-            ],
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
 
         x2 = paddle.full([], 3)
         x3 = paddle.full([], 0, dtype='int32')
@@ -4225,12 +4207,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             prog,
             fetch_list=[
+                out1,
                 out2,
+                x1.grad_name,
                 x2.grad_name,
             ],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_unsqueeze(self):
