@@ -219,7 +219,7 @@ class TestAmpScaler(unittest.TestCase):
                     stride=2,
                     act='relu',
                 )
-                optimizer = fluid.optimizer.SGDOptimizer(
+                optimizer = paddle.optimizer.SGDO(
                     learning_rate=0.01, parameter_list=model.parameters()
                 )
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
@@ -328,7 +328,7 @@ class TestAmpScaler(unittest.TestCase):
             params_init = {}
             for param in model.parameters():
                 params_init[param.name] = param.numpy()
-            optimizer = fluid.optimizer.SGDOptimizer(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, parameter_list=model.parameters()
             )
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)

@@ -300,7 +300,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
+    sgd = paddle.optimizer.SGD(
         learning_rate=0.01, parameter_list=layer.parameters()
     )
     # create data loader
@@ -328,7 +328,7 @@ def train(layer, input_size=784, label_size=1):
 
 def train_with_label(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
+    sgd = paddle.optimizer.SGD(
         learning_rate=0.01, parameter_list=layer.parameters()
     )
     # create data loader

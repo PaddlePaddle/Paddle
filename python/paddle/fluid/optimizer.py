@@ -49,7 +49,6 @@ from .dygraph.learning_rate_scheduler import (
 )
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
-from paddle.optimizer import Optimizer as Optimizer_test
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
@@ -1554,8 +1553,8 @@ class SGDOptimizer(Optimizer_test):
         assert learning_rate is not None
         super().__init__(
             learning_rate=learning_rate,
-            parameters=parameter_list,
-            weight_decay=regularization,
+            parameter_list=parameter_list,
+            regularization=regularization,
             grad_clip=grad_clip,
             name=name,
         )

@@ -62,7 +62,7 @@ class TestOptimizer(unittest.TestCase):
             block.append_op(
                 type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
             )
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             opts, _ = sgd_optimizer.minimize(mean_out, init_program)
             return opts
 
@@ -106,7 +106,7 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             block.append_op(
                 type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
             )
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             with framework.program_guard(program, init_program):
                 p_g = sgd_optimizer.backward(mean_out)
                 opts = sgd_optimizer.apply_gradients(p_g)

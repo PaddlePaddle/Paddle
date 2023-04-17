@@ -26,7 +26,7 @@ from paddle.distributed.io import (
     load_inference_model_distributed,
     save_persistables,
 )
-from paddle.fluid import core, executor, optimizer
+from paddle.fluid import core, executor
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import load_inference_model, save_inference_model
@@ -61,7 +61,7 @@ class TestBook(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
@@ -265,7 +265,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
@@ -444,7 +444,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
@@ -493,7 +493,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()

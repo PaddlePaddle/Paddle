@@ -132,7 +132,7 @@ def get_distributed_program():
         train_program, startup_program
     )
 
-    optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+    optimizer = paddle.optimizer.SGDO(learning_rate=0.01)
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
         loss, startup_program
