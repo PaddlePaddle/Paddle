@@ -60,9 +60,9 @@ void Conv2dBiasSilu(const ConvAllParams &params);
 void Conv2dBias(const ConvAllParams &params);
 void Conv2dBiasSigmoid(const ConvAllParams &params);
 
+void Conv2dDepthwiseBias(const ConvAllParams &params);
 void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
 void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
-void Conv2dDepthwiseBias(const ConvAllParams &params);
 void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
 
 }  // namespace cutlass_internal
