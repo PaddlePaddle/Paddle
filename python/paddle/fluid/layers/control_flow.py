@@ -1463,9 +1463,9 @@ class Switch:
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    paddle.assign(input=one_var, output=lr)
+                    paddle.assign(one_var, output=lr)
                 with switch.default():
-                    paddle.assign(input=two_var, output=lr)
+                    paddle.assign(two_var, output=lr)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[lr])
