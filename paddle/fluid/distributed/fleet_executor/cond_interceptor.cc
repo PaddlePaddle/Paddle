@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/cond_interceptor.h"
+#include <algorithm>
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -38,6 +39,8 @@ void CondInterceptor::PrepareDeps() {
   for (const auto& up : upstream) {
     if (id_to_dep_type.at(up.first) == DependType::NORMAL) {
       normal_in_id_.insert(up.first);
+    } else if (id_to_dep_type.at(up.first) == DependType::LOOP) {
+      loop_id_ = up.first;
     }
   }
 
@@ -90,6 +93,13 @@ void CondInterceptor::SendDataReady(int64_t down_id) {
   Send(down_id, ready_msg);
 }
 
+void CondInterceptor::SendStartLoop(int64_t down_id) {
+  InterceptorMessage ready_msg;
+  ready_msg.set_message_type(START_LOOP);
+  ready_msg.set_scope_idx(cur_scope_id_);
+  Send(down_id, ready_msg);
+}
+
 void CondInterceptor::ReplyDataIsUseless(int64_t up_id) {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_IS_USELESS);
@@ -104,18 +114,36 @@ void CondInterceptor::Compute() {
   if (cond) {
     VLOG(3) << "Loop again in scope " << cur_scope_id_;
     for (auto& down_id : normal_out_id_) {
-      SendDataReady(down_id);
+      SendStartLoop(down_id);
     }
+    ++num_of_scopes_;
   } else {
-    VLOG(0) << "Finish loop in scope " << cur_scope_id_;
+    VLOG(3) << "Finish loop in scope " << cur_scope_id_;
     SendDataReady(stop_loop_id_);
   }
 }
 
 void CondInterceptor::Run(const InterceptorMessage& msg) {
-  if (msg.message_type() == DATA_IS_READY) {
-    cur_scope_id_ = msg.scope_idx();
-    Compute();
+  if (msg.message_type() == DATA_IS_READY ||
+      msg.message_type() == DATA_WITH_VARS) {
+    if (msg.src_id() == loop_id_) {
+      --num_of_scopes_;
+      VLOG(3) << "Receving loop again message from " << msg.src_id()
+              << " waiting other " << num_of_scopes_ << " scopes ready";
+      ready_scope_id_.emplace_back(msg.scope_idx());
+      if (num_of_scopes_ == 0) {
+        std::sort(ready_scope_id_.begin(), ready_scope_id_.end());
+        for (auto scope_id : ready_scope_id_) {
+          VLOG(3) << "Start a new loop in scope " << scope_id;
+          cur_scope_id_ = scope_id;
+          Compute();
+        }
+        ready_scope_id_.clear();
+      }
+    } else {
+      cur_scope_id_ = msg.scope_idx();
+      Compute();
+    }
   } else if (msg.message_type() == DATA_IS_USELESS) {
     if (node_->id_to_dep_type().at(msg.src_id()) == DependType::STOP_LOOP) {
       for (auto& up_id : normal_in_id_) {
