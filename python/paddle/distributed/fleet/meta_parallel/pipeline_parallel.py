@@ -24,6 +24,7 @@ from ..utils.log_util import logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 from .pp_utils import p2p_communication as p2p
+from .pp_utils.utils import FusedAllReduceBuffer, assign_group_by_size
 
 __all__ = []
 
@@ -59,11 +60,20 @@ class PipelineParallel(MetaParallelBase):
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
         self.pp_group = self._hcg.get_pipe_parallel_group()
+        self.dp_group = self._hcg.get_data_parallel_group()
 
         self._virtual_pp_world_size = None
         self._virtual_pp_rank = None
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
+
+        self._delay_scale_loss = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].delay_scale_loss
+        self._dp_comm_overlap = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].dp_comm_overlap
+        self._dp_comm_buffers = []
 
         p2p.initialize_p2p_groups(
             hcg, self._using_cache, self._enable_partial_send_recv
@@ -92,6 +102,11 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
+        if self._dp_comm_overlap:
+            self.register_allreduce_overlap_hook(
+                self._layers, self.dp_group, self.accumulate_steps
+            )
+
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
             if self._virtual_pp_world_size is not None:
@@ -113,6 +128,27 @@ class PipelineParallel(MetaParallelBase):
 
     def set_virtual_pipeline_rank(self, rank):
         self._virtual_pp_rank = rank
+
+    def bw_hook_func(self, buffer, param):
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            buffer.add_grad(param)
+
+        return fused_allreduce
+
+    def register_allreduce_overlap_hook(self, model, comm_group, acc_steps):
+        parameter_list = [p for p in model.parameters() if not p.stop_gradient]
+        if len(parameter_list) < 1:
+            return
+
+        var_groups = assign_group_by_size(parameter_list)
+        for group_idx, parameters in var_groups.items():
+            buffer = FusedAllReduceBuffer(
+                group_idx, parameters, comm_group, acc_steps
+            )
+            self._dp_comm_buffers.append(buffer)
+            for param in parameters:
+                param._register_backward_hook(self.bw_hook_func(buffer, param))
 
     def forward_backward_pipeline(self, data, scaler=None):
         # use the 1f1b scheduling strategy.
@@ -191,6 +227,11 @@ class PipelineParallel(MetaParallelBase):
                 input_tensor, output_tensor, output_tensor_grad
             )
             p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
+
+        if self._dp_comm_overlap:
+            assert len(self._dp_comm_buffers) > 0
+            for buffer in self._dp_comm_buffers:
+                buffer.scale_and_split_grads()
 
         self._layers.allreduce_shared_weight_gradients()
         with paddle.amp.auto_cast(enable=False):
@@ -310,7 +351,7 @@ class PipelineParallel(MetaParallelBase):
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
-                    if self.accumulate_steps > 1:
+                    if self.accumulate_steps > 1 and not self._delay_scale_loss:
                         output_tensor = output_tensor / self.accumulate_steps
 
                     if self.total_loss is None:
@@ -413,7 +454,11 @@ class PipelineParallel(MetaParallelBase):
             assert (
                 self.total_loss is not None
             ), "train_batch() in last stage should obtain vaild loss"
-            loss = self.total_loss.detach()
+            loss = (
+                self.total_loss.detach()
+                if not self._delay_scale_loss
+                else self.total_loss / self.accumulate_steps
+            )
             is_fp32 = (
                 paddle.full([], 1, 'int64')
                 if loss.dtype == paddle.float32
@@ -447,6 +492,14 @@ class PipelineParallel(MetaParallelBase):
         return loss
 
     def _optimizer_step(self):
+        if self._delay_scale_loss:
+            for p in self._layers.parameters():
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
+                elif p.grad is not None:
+                    p.grad = p.grad.scale(1.0 / self.accumulate_steps)
+
         if self.scaler:
             self.scaler.step(self.optimizer)
             self.scaler.update()
@@ -745,6 +798,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         input_tensor_grad, recv_next=recv_next
                     )
                 )
+
+            if self._dp_comm_overlap:
+                assert len(self._dp_comm_buffers) > 0
+                for buffer in self._dp_comm_buffers:
+                    buffer.scale_and_split_grads()
 
             self._layers.allreduce_shared_weight_gradients()
 
