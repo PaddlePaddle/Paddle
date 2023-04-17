@@ -67,10 +67,10 @@ void AccuracyInferMeta(const MetaTensor& out,
   }
 
   accuracy->set_dims(phi::make_ddim({}));
-  accuracy->set_dtype(out.dtype());
   correct->set_dims(phi::make_ddim({}));
-  correct->set_dtype(out.dtype());
   total->set_dims(phi::make_ddim({}));
+  accuracy->set_dtype(out.dtype());
+  correct->set_dtype(out.dtype());
   total->set_dtype(out.dtype());
   accuracy->share_lod(out);
 }
