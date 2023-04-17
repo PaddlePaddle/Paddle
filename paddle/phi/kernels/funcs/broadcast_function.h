@@ -269,7 +269,7 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
-  if constexpr (LoadType == kBroadcast) {
+  if (LoadType == kBroadcast) {
     uint32_t index_bc[Arity][VecSize] = {0};
     Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
     uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
