@@ -523,7 +523,7 @@
   inputs :
     {x : Input, offset : Offset, filter : Filter, mask : Mask}
   outputs :
-    out : Out
+    out : Output
 
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
