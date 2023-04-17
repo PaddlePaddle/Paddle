@@ -18,8 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+import paddle.nn.functional as F
+from paddle import fluid, nn
+from paddle.fluid import Program, core, framework, program_guard
 
 
 class TestInstanceNorm(unittest.TestCase):
@@ -317,6 +318,65 @@ class TestInstanceNormBF16OP(OpTest):
             'Y',
             user_defined_grads=self.user_defined_grads,
         )
+
+
+class PrimNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
+        self.instance_norm = nn.InstanceNorm2D(4)
+
+    def forward(self, x):
+        y = self.conv(x)
+        out = self.instance_norm(y)
+        res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
+        return res
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimNet with @to_static + amp O2(with fp32)
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        paddle.disable_static()
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_amp, data_layout="NCHW"):
+        paddle.seed(2022)
+        net = PrimNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+        net = apply_to_static(net, False)
+        if use_amp:
+            net = paddle.amp.decorate(models=net, level='O2')
+        with paddle.amp.auto_cast(enable=use_amp, level='O2'):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+            return loss
+
+    def test_amp_nchw(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
 
 
 if __name__ == '__main__':

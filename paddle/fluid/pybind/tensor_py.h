@@ -24,6 +24,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -63,12 +64,19 @@ constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 
+template <typename T, typename S>
+struct casting_complex_to_non_complex {
+  static const bool value = pybind11::detail::is_complex<S>::value &&
+                            !pybind11::detail::is_complex<T>::value;
+};
+
 // cast numpy type form S to T, this may allocate new memory
-template <class T, class S>
+template <
+    class T,
+    class S,
+    std::enable_if_t<!std::is_same<T, S>::value &&
+                     !casting_complex_to_non_complex<T, S>::value> * = nullptr>
 static py::array_t<T> CastNumpyType(py::array_t<S> array) {
-  if (std::is_same<T, S>::value) {
-    return array;
-  }
   auto dim = array.ndim();
   std::vector<py::ssize_t> result_shape(dim);
   for (auto i = 0; i < dim; i++) {
@@ -78,6 +86,30 @@ static py::array_t<T> CastNumpyType(py::array_t<S> array) {
   py::array_t<T> result(result_shape);
 
   return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <
+    class T,
+    class S,
+    std::enable_if_t<(!std::is_same<T, S>::value) &&
+                     casting_complex_to_non_complex<T, S>::value> * = nullptr>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s.real()); })(array);
+}
+
+template <class T,
+          class S,
+          std::enable_if_t<std::is_same<T, S>::value> * = nullptr>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  return array;
 }
 
 template <class T>
@@ -92,10 +124,14 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
     return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else if (py::isinstance<py::array_t<std::complex<float>>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<std::complex<float>>>());
+  } else if (py::isinstance<py::array_t<std::complex<double>>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<std::complex<double>>>());
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Value type error. The assign numpy value allows integer, float, "
-        "double and bool, "
+        "double, complex64, complex128, and bool, "
         "but received %s.",
         Py_TYPE(array.ptr())->tp_name));
   }

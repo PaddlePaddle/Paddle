@@ -393,62 +393,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       return false;
 #endif
     }
-
-    if (op_type == "matmul_v2") {
-      if (!with_dynamic_shape) {
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      return true;
-    }
-
-    if (op_type == "matmul") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-
-      // not support broadcast
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
-      const auto x_shape = x_var_desc->GetShape();
-      const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() != y_shape.size()) {
-        VLOG(3)
-            << "matmul op not support broadcast, please check inputs'shape. ";
-        return false;
-      }
-      uint64_t dims = 2;
-      for (size_t i = 0; i < x_shape.size() - dims; ++i) {
-        if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
-          VLOG(3) << "matmul op not support broadcast, please check "
-                     "inputs'shape[i]. ";
-          return false;
-        }
-      }
-
-      for (auto& param_name : desc.Inputs()) {
-        for (auto& var_name : param_name.second) {
-          auto* var_desc = block->FindVar(var_name);
-          const auto shape = var_desc->GetShape();
-          if (shape.size() < 3) {
-            VLOG(3)
-                << "matmul op dims < 3 not supported in tensorrt, but got dims "
-                << shape.size() << ", so jump it.";
-            return false;
-          }
-        }
-      }
-    }
     if (op_type == "softmax") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -917,6 +861,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
+      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
+#if IS_TRT_VERSION_LT(7100)
+      return false;
+#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -2154,63 +2102,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "fc") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-
-      // y'shapes == 2
-      auto fc_inputs = desc.Inputs();
-      std::string fc_y = "";
-      if (fc_inputs.find("Y") != fc_inputs.end()) {
-        fc_y = "Y";
-      } else if (fc_inputs.find("W") != fc_inputs.end()) {
-        fc_y = "W";
-      } else {
-        VLOG(3) << " input_y(fc_op) must be Y or W ";
-        return false;
-      }
-
-      //  There is currently no input: Y(weight) more than two dimensions
-      /*
-      auto* y_var_desc = block->FindVar(desc.Input(fc_y)[0]);
-      const auto y_shape = y_var_desc->GetShape();
-      if (y_shape.size() != 2) {
-        VLOG(3)
-            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes =
-      "
-            << y_shape.size();
-        return false;
-      }
-      // y_num_col_dims ==1
-      if (desc.HasAttr("y_num_col_dims")) {
-        int y_num_col_dims =
-            PADDLE_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
-        if (y_num_col_dims != 1) {
-          VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
-                  << y_num_col_dims;
-          return false;
-        }
-      }
-      */
-      int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? PADDLE_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? PADDLE_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims < 1) {
-        VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
-                   "but x_num_col_dims = "
-                << x_num_col_dims;
-        return false;
-      }
-    }
-
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
@@ -2654,11 +2545,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "expand_v2") {
+    if (op_type == "expand_as_v2" || op_type == "expand_v2") {
       if (!with_dynamic_shape) {
+        VLOG(3) << "the " << op_type
+                << "does not support "
+                   "static shape yet";
         return false;
       }
-      if (!desc.HasAttr("shape")) {
+
+      auto inputs = desc.Inputs();
+      if (op_type == "expand_as_v2") {
+        if (!desc.HasAttr("target_shape") && inputs.find("Y") == inputs.end()) {
+          VLOG(3)
+              << "expand_as_v2 op need have input(Y) or attr(target_shape). ";
+          return false;
+        }
+      } else if (op_type == "expand_v2") {
+        if (!desc.HasAttr("shape") && inputs.find("Shape") == inputs.end() &&
+            inputs.find("expand_shapes_tensor") == inputs.end()) {
+          VLOG(3) << "expand_v2 op need have input(Shape) or "
+                     "input(expand_shapes_tensor) or attr(shape) . ";
+          return false;
+        }
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
         return false;
       }
     }
@@ -2703,6 +2618,25 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
 #endif
+    }
+
+    if (op_type == "cumsum") {
+#if !IS_TRT_VERSION_GE(7220)
+      VLOG(3) << "cumsum is not supported when TensorRT < 7.2.2";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the cumsum does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
     }
 
     if (op_type == "temporal_shift") {
@@ -2751,9 +2685,7 @@ struct SimpleOpTypeSetTeller : public Teller {
  private:
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
-      "mul",
-      "matmul",
-      "matmul_v2",
+      "matrix_multiply",
       "bmm",
       "range",
       "conv2d",
@@ -2822,7 +2754,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
-      "fc",
       "shuffle_channel",
       "where",
       "bitwise_not",
@@ -2902,16 +2833,16 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
       "temporal_shift",
-      "grid_sampler"};
+      "grid_sampler",
+      "cumsum"};
 
   std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "matmul_v2",
+      "matrix_multiply",
       "bmm",
       "range",
       "conv2d",
@@ -2980,7 +2911,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
-      "fc",
       "shuffle_channel",
       "where",
       "bitwise_not",
@@ -3060,11 +2990,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
       "temporal_shift",
-      "grid_sampler"};
+      "grid_sampler",
+      "cumsum"};
 };
 
 struct GenericPluginTeller : public Teller {
