@@ -4828,6 +4828,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
             #         [0., 1., 0.]])
     """
 
+    assert len(indices) != 0, "indices can't be empty"
     if in_dygraph_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
@@ -4840,7 +4841,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
     )
     check_variable_and_dtype(
         value,
-        'add_value',
+        'value',
         ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.tensor.manipulation.index_put',
     )

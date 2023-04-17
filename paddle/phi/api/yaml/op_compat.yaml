@@ -1061,6 +1061,14 @@
   outputs :
     out : Out
 
+- op : index_put
+  backward : index_put_grad
+  inputs :
+    {x : x, indices : indices, value : value}
+  outputs :
+    out : out
+  attrs : [accumulate = false]
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
