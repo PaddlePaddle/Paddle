@@ -269,10 +269,10 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         # input attr
         inputs.extend(self.attrs["names"])
         for output in self.outputs["names"]:
-            local_call += f"""    Tensor {output}_local;
+            local_call += f"""    std::unique_ptr<Tensor> {output}_local = {output} ? std::make_unique<Tensor>() : std::nullptr;
 """
         # output arg
-        inputs.extend(["&" + e + "_local" for e in self.outputs["names"]])
+        inputs.extend([f"{e}_local.get()" for e in self.outputs["names"]])
         args = ",".join(inputs)
         local_call += f"""    {self.api}({args});"""
         return local_call
@@ -288,7 +288,8 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         wrap_code = """   // gen_dist_tensor_wrap_code"""
         for output in self.outputs["names"]:
             wrap_code += f"""
-    *{output}= DistTensorHijackHelper::Wrap({output}_local);"""
+    if({output}) {{
+      *{output}= DistTensorHijackHelper::Wrap(*{output}_local);}}"""
         return wrap_code
 
     def gene_dist_tensor_hijack(self, inplace_flag):
@@ -306,7 +307,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         if inplace_flag:
             return ""
 
-        if self.api not in ["add_grad", "abs_grad"]:
+        if self.api not in ["add_grad", "abs_grad", "addmm_grad"]:
             return ""
 
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
