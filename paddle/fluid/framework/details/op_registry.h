@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -161,7 +162,7 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
+  OperatorRegistrarRecursive(const char* op_type UNUSED, OpInfo* info UNUSED) {}
 };
 
 template <typename T>
