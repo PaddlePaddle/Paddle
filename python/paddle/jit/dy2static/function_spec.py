@@ -286,7 +286,7 @@ def _replace_value_with_input_spec(args):
         if isinstance(input_var, np.ndarray):
             input_var = paddle.static.InputSpec.from_numpy(input_var)
             input_var.stop_gradient = True
-        elif isinstance(input_var, (core.VarBase, core.eager.Tensor)):
+        elif isinstance(input_var, core.eager.Tensor):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
@@ -341,7 +341,7 @@ def convert_to_input_spec(inputs, input_spec):
         # without specific InputSpec, raise warning.
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec) :]:
-                if isinstance(rest_input, (core.VarBase, np.ndarray)):
+                if isinstance(rest_input, (core.eager.Tensor, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(
@@ -433,7 +433,7 @@ def _replace_spec_name(name, input_spec):
     elif isinstance(input_spec, (list, tuple)):
         processed_specs = []
         for i, spec in enumerate(input_spec):
-            new_name = "{}_{}".format(name, i)
+            new_name = f"{name}_{i}"
             processed_specs.append(_replace_spec_name(new_name, spec))
         return processed_specs
     elif isinstance(input_spec, dict):

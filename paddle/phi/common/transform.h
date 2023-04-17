@@ -33,7 +33,7 @@ namespace phi {
 // range defined by a pair of iterators.
 //
 // - The specialization for CPU calls std::transform.
-// - The specialization for CUDA calls thrust::tranform.
+// - The specialization for CUDA calls thrust::transform.
 //
 // NOTE: We need to define InputIter and OutputIter defined as
 //       different types, because the InputIter points op's inputs and
@@ -41,7 +41,7 @@ namespace phi {
 //
 // NOTE: We don't assume that InputIter to be const InputType* and
 //       OutputIter to be OutputType*, because we might use a iterator
-//       class, paddle::fluid::operators::RowwiseTRansformIterator.
+//       class, paddle::fluid::operators::RowwiseTransformIterator.
 template <typename Context>
 struct Transform {
   // The unary version.
@@ -82,7 +82,7 @@ struct Transform<phi::CPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -94,7 +94,7 @@ struct Transform<phi::CPUContext> {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-// PointerToThrustDevicePtr has two speicalizations, one casts a (CUDA
+// PointerToThrustDevicePtr has two specializations, one casts a (CUDA
 // device) pointer into thrust::device_ptr, the other keeps rest types
 // un-casted.
 template <typename T, bool is_ptr>

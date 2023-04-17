@@ -15,7 +15,7 @@
 import argparse
 import json
 
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+from paddle.fluid.proto.profiler import profiler_pb2
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(

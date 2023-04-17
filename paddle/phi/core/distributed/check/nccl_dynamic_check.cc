@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -64,7 +66,7 @@ void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(dtype_device,
                                                          dtype_device,
-                                                         kSize,
+                                                         1,
                                                          ncclInt64,
                                                          root_rank,
                                                          comm,
@@ -106,7 +108,7 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBroadcast(shape_device,
                                                          shape_device,
-                                                         kSize,
+                                                         1,
                                                          ncclInt64,
                                                          root_rank,
                                                          comm,
@@ -141,10 +143,9 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&in_shape_device, kSize));
     PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
         in_shape_device, &in_shape_host, kSize, gpuMemcpyHostToDevice));
-
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(in_shape_device,
                                                         in_shape_device,
-                                                        kSize,
+                                                        1,
                                                         ncclInt64,
                                                         ncclSum,
                                                         rank,
@@ -157,6 +158,43 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
       CheckShape(out_tensor, in_shape_host);
     }
     PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));
+  }
+}
+
+void NCCLDynamicCheck::CheckGatherShape(
+    const phi::DenseTensor& in_tensor,
+    const std::vector<phi::DenseTensor>& out_tensors,
+    int root_rank,
+    int cur_rank,
+    int world_size,
+    ncclComm_t comm) {
+  std::vector<int64_t> shapes(world_size, 0);
+  shapes[cur_rank] = in_tensor.numel();
+  int64_t* in_shape_device;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      gpuMalloc(&in_shape_device, world_size * sizeof(int64_t)));
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(in_shape_device,
+                                       shapes.data(),
+                                       world_size * sizeof(int64_t),
+                                       gpuMemcpyHostToDevice));
+
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(in_shape_device,
+                                                         in_shape_device,
+                                                         world_size,
+                                                         ncclInt64,
+                                                         ncclSum,
+                                                         comm,
+                                                         kDefaultStream));
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(shapes.data(),
+                                       in_shape_device,
+                                       world_size * sizeof(int64_t),
+                                       gpuMemcpyDeviceToHost));
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));
+
+  if (cur_rank == root_rank) {
+    for (int i = 0; i < world_size; i++) {
+      CheckShape(out_tensors[i], shapes[i]);
+    }
   }
 }
 }  //  namespace distributed

@@ -16,8 +16,8 @@ import unittest
 import warnings
 
 import paddle
-import paddle.fluid as fluid
 import paddle.version as fluid_version
+from paddle import fluid
 
 
 class VersionTest(unittest.TestCase):

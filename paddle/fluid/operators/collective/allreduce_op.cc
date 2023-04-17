@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class AllReduceOp : public framework::OperatorWithKernel {
+class AllReduceDelOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -34,7 +34,7 @@ class AllReduceOp : public framework::OperatorWithKernel {
   }
 };
 
-class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllReduceDelOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
@@ -70,8 +70,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(allreduce,
-                             ops::AllReduceOp,
-                             ops::AllReduceOpMaker);
+                             ops::AllReduceDelOp,
+                             ops::AllReduceDelOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(allreduce,
                           CPU,

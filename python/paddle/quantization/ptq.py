@@ -14,7 +14,7 @@
 
 import copy
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.nn import Layer
 
 from .config import QuantConfig

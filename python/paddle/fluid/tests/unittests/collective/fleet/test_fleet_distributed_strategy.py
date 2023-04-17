@@ -84,6 +84,21 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
         self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
 
+    def test_hybrid_parallel_configs_order(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4,
+            "order": ['sharding', 'mp', 'dp', 'pp'],
+        }
+        self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
+        self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
+        self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
+        self.assertEqual(
+            strategy.hybrid_parallel_order, ['sharding', 'mp', 'dp', 'pp']
+        )
+
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True

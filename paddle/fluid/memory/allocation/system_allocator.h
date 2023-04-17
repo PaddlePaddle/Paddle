@@ -68,47 +68,6 @@ class CUDAPinnedAllocator : public SystemAllocator {
 };
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-
-class NPUAllocator : public SystemAllocator {
- public:
-  explicit NPUAllocator(int npu_id) : npu_id_(npu_id) {}
-
-  virtual void* Alloc(size_t* index, size_t size);
-  virtual void Free(void* p, size_t size, size_t index);
-  virtual bool UseGpu() const;
-
- private:
-  size_t npu_alloc_size_ = 0;
-  int npu_id_;
-};
-
-class NPUPinnedAllocator : public SystemAllocator {
- public:
-  virtual void* Alloc(size_t* index, size_t size);
-  virtual void Free(void* p, size_t size, size_t index);
-  virtual bool UseGpu() const;
-
- private:
-  size_t npu_pinnd_alloc_size_ = 0;
-};
-#endif
-
-#ifdef PADDLE_WITH_MLU
-class MLUAllocator : public SystemAllocator {
- public:
-  explicit MLUAllocator(int mlu_id) : mlu_id_(mlu_id) {}
-
-  virtual void* Alloc(size_t* index, size_t size);
-  virtual void Free(void* p, size_t size, size_t index);
-  virtual bool UseGpu() const;
-
- private:
-  size_t mlu_alloc_size_ = 0;
-  int mlu_id_;
-};
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 class CustomAllocator : public SystemAllocator {
  public:

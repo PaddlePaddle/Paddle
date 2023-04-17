@@ -15,9 +15,8 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import nn, static
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )

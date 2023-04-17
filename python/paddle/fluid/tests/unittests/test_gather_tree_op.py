@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid.framework import Program, program_guard
@@ -36,7 +36,7 @@ class TestGatherTreeOp(OpTest):
         self.outputs = {'Out': self.backtrace(ids, parents)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     @staticmethod
     def backtrace(ids, parents):

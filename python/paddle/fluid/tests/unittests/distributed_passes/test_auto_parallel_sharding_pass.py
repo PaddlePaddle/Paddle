@@ -20,7 +20,7 @@ import numpy as np
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 sys.path.append("..")
 

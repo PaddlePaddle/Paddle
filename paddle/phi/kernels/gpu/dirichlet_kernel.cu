@@ -112,5 +112,11 @@ struct DirichletSampler<GPUContext, T> {
 };
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    dirichlet, GPU, ALL_LAYOUT, phi::Dirichletkernel, float, double) {}
+PD_REGISTER_KERNEL(dirichlet,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Dirichletkernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

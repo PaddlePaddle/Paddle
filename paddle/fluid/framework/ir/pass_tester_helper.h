@@ -807,6 +807,20 @@ struct Layers {
     return unary_op("logical_not", input);
   }
 
+  VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("stack");
+    std::vector<std::string> input_names;
+    for (auto* input : inputs) {
+      input_names.push_back(input->Name());
+    }
+    op->SetInput("X", input_names);
+    op->SetAttr("axis", axis);
+    op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
  private:
   VarDesc* lod_tensor(std::string name,
                       std::vector<int64_t> shape = {},

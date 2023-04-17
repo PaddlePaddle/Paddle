@@ -924,12 +924,12 @@ def selu(
     """
     if scale <= 1.0:
         raise ValueError(
-            "The scale must be greater than 1.0. Received: {}.".format(scale)
+            f"The scale must be greater than 1.0. Received: {scale}."
         )
 
     if alpha < 0:
         raise ValueError(
-            "The alpha must be no less than zero. Received: {}.".format(alpha)
+            f"The alpha must be no less than zero. Received: {alpha}."
         )
 
     if in_dygraph_mode():
@@ -1065,12 +1065,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64.
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1110,15 +1110,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float16', 'bfloat16', 'float32', 'float64'],
+                ['uint16', 'float16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float16, bfloat16, float32 or float64.',
+                'If dtype is not None, it only support uint16, float16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())

@@ -22,8 +22,8 @@ from test_pool2d_op import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.functional import avg_pool2d, max_pool2d
 
 

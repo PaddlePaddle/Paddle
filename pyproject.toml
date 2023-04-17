@@ -14,8 +14,6 @@ extend_skip_glob = [
     "python/paddle/fluid/[!t]**",
     "python/paddle/fluid/tra**",
     "python/paddle/utils/gast/**",
-    "python/paddle/fluid/tests/unittests/npu/**",
-    "python/paddle/fluid/tests/unittests/mlu/**",
 ]
 
 [tool.ruff]
@@ -24,8 +22,6 @@ exclude = [
     "./python/paddle/fluid/[!t]**",
     "./python/paddle/fluid/tra**",
     "./python/paddle/utils/gast/**",
-    "./python/paddle/fluid/tests/unittests/npu/**",
-    "./python/paddle/fluid/tests/unittests/mlu/**",
 ]
 target-version = "py37"
 select = [
@@ -33,51 +29,67 @@ select = [
     "F401",
 
     # Comprehensions
-    "C400",
-    "C401",
-    "C402",
-    "C408",
-    "C409",
-    "C410",
-    
+    "C4",
+
     # Pyupgrade
-    "UP001",
-    "UP003",
-    "UP004",
-    "UP005",
-    "UP007",
-    "UP008",
-    "UP010",
-    "UP011",
-    "UP012",
-    "UP013",
-    "UP014",
-    "UP017",
-    "UP018",
-    "UP019",
-    "UP020",
-    "UP021",
-    "UP022",
-    "UP023",
-    "UP025",
-    "UP026",
-    "UP029",
-    "UP033",
-    "UP035",
-    "UP036",
+    "UP",
 
     # NumPy-specific rules
     "NPY001",
 
     # Bugbear
+    "B002",
+    "B003",
+    "B004",
     "B009",
     "B010",
     "B011",
+    "B012",
+    "B013",
+    "B014",
+    "B015",
+    "B016",
+    "B017",
+    "B018",
+    "B019",
+    "B020",
+    "B021",
+    "B022",
+    "B025",
+    "B029",
+    "B032",
+
+    # Pylint
+    "PLC0414",
+    "PLC3002",
+    "PLE0100",
+    "PLE0101",
+    "PLE0604",
+    "PLE0605",
+    "PLE1142",
+    "PLE1205",
+    "PLE1206",
+    "PLE1307",
+    "PLE2502",
+    "PLR0206",
+    "PLR0402",
 ]
 unfixable = [
     "NPY001"
 ]
+ignore = [
+    # It not met the "Explicit is better than implicit" rule
+    "UP015",
+    # It will cause the performance regression on python3.10
+    "UP038",
+]
 
 [tool.ruff.per-file-ignores]
+# Ignore unused imports in __init__.py
 "__init__.py" = ["F401"]
+# Ignore version check in setup.py
 "setup.py" = ["UP036"]
+# Ignore unnecessary comprehension in dy2st unittest test_loop
+"test/dygraph_to_static/test_loop.py" = ["C416"]
+# Ignore unnecessary lambda in dy2st unittest test_lambda
+"test/dygraph_to_static/test_lambda.py" = ["PLC3002"]

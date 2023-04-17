@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 BATCH_SIZE = 128
 CLIP_MAX = 2e-6
@@ -80,6 +82,6 @@ for data in train_reader():
         (out1.clip(min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all()
         and (out2 == out2_clip).all()
     ):
-        exit(1)
+        sys.exit(1)
 
-exit(0)
+sys.exit(0)
