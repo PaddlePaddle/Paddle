@@ -1816,8 +1816,6 @@
     { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
   outputs:
     { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
-  extra :
-    attrs : [bool is_test = false]
   drop_empty_grad : [pre_state_grad, weight_list_grad]
 
 - op : roll
