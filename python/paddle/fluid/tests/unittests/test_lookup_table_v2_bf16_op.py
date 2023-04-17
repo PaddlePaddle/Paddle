@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
+from paddle.fluid.tests.unittests.eager_op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
@@ -32,6 +32,7 @@ from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
     def init_test(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         self.ids_shape = 4
         self.mkldnn_data_type = "bfloat16"
 
@@ -39,6 +40,7 @@ class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
 class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
     def init_test(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         self.ids_shape = (2, 4, 5)
         self.mkldnn_data_type = "bfloat16"
 
@@ -48,6 +50,7 @@ class TestLookupTableV2BF16OpWIsSelectedRows(
 ):
     def init_test(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         self.ids_shape = 10
 
 
@@ -56,6 +59,7 @@ class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
 ):
     def init_test(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         self.ids_shape = (3, 4, 5)
 
 
@@ -88,6 +92,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         self.ids_shape = [4]
         self.w_shape = [10, 64]
         self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(

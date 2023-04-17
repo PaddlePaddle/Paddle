@@ -21,7 +21,7 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import guard
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import ParamBase, Variable, default_main_program
+from paddle.fluid.framework import Variable, default_main_program
 
 paddle.enable_static()
 main_program = default_main_program()
@@ -72,9 +72,6 @@ class ParameterChecks(unittest.TestCase):
 
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
-
-            zero_dim_param = ParamBase(shape=[], dtype='float32')
-            self.assertEqual(zero_dim_param.shape, [])
 
     def func_exception(self):
         b = main_program.global_block()

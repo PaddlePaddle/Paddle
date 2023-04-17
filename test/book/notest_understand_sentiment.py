@@ -112,9 +112,7 @@ def train(
                     return
                 if math.isnan(float(cost_val)):
                     sys.exit("got NaN loss, training failed.")
-        raise AssertionError(
-            "Cost is too large for {0}".format(net_method.__name__)
-        )
+        raise AssertionError(f"Cost is too large for {net_method.__name__}")
 
     if is_local:
         train_loop(fluid.default_main_program())

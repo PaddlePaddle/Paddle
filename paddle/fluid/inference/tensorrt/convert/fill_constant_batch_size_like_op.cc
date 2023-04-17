@@ -24,7 +24,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a fluid fill_constant_batch_size_like op to tensorrt "
+    VLOG(4) << "convert a fill_constant_batch_size_like op to tensorrt "
                "fill_constant_batch_size_like layer";
 
     framework::OpDesc op_desc(op, nullptr);

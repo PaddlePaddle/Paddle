@@ -121,14 +121,14 @@ def operator_equal(a, b):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(v.items()), key=lambda x: x[0])
-            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
+            v0 = sorted(v.items(), key=lambda x: x[0])
+            v1 = sorted(b.__dict__[k].items(), key=lambda x: x[0])
 
             if v0 != v1:
-                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+                raise ValueError(f"In operator_equal not equal:{k}\n")
 
         elif v != b.__dict__[k]:
-            raise ValueError("In operator_equal not equal:{0}\n".format(k))
+            raise ValueError(f"In operator_equal not equal:{k}\n")
 
     return True
 
@@ -143,15 +143,15 @@ def block_equal(a, b):
             assert len(a.ops) == len(b.ops)
             for i in range(0, len(a.ops)):
                 if not operator_equal(a.ops[i], b.ops[i]):
-                    raise ValueError("In block_equal not equal:{0}\n".format(k))
+                    raise ValueError(f"In block_equal not equal:{k}\n")
 
         elif isinstance(v, collections.OrderedDict):
             for key, value in v.items():
                 if str(value) != str(b.__dict__[k][key]):
-                    raise ValueError("In block_equal not equal:{0}\n".format(k))
+                    raise ValueError(f"In block_equal not equal:{k}\n")
 
         elif v != b.__dict__[k]:
-            raise ValueError("In block_equal not equal:{0}\n".format(k))
+            raise ValueError(f"In block_equal not equal:{k}\n")
 
     return True
 
@@ -164,15 +164,13 @@ def program_equal(a, b):
         elif k == 'blocks':
             for i in range(0, len(a.blocks)):
                 if not block_equal(a.blocks[i], b.blocks[i]):
-                    raise ValueError(
-                        "In operator_equal not equal:{0}\n".format(k)
-                    )
+                    raise ValueError(f"In operator_equal not equal:{k}\n")
                     return False
             assert len(a.blocks) == len(b.blocks)
         elif k == '_auto_checkpoint_name':
             continue
         elif v != b.__dict__[k]:
-            raise ValueError("In program_equal not equal:{0}\n".format(k))
+            raise ValueError(f"In program_equal not equal:{k}\n")
 
     return True
 

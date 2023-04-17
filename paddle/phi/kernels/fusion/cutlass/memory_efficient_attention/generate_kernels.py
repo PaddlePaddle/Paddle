@@ -44,7 +44,7 @@ def find_arch_range(min_arch, max_arch):
     assert min_arch <= max_arch
     n = len(DEFAULT_ARCH)
 
-    start_idx = 0
+    start_idx = n - 1
     for i in range(n - 1):
         if DEFAULT_ARCH[i] <= min_arch and min_arch < DEFAULT_ARCH[i + 1]:
             start_idx = i
@@ -54,11 +54,12 @@ def find_arch_range(min_arch, max_arch):
     for i in range(n - 1):
         if DEFAULT_ARCH[i] <= max_arch and max_arch < DEFAULT_ARCH[i + 1]:
             end_idx = i + 1
+
     return DEFAULT_ARCH[start_idx:end_idx]
 
 
 def find_max_arch(arch):
-    arch = list(sorted(arch))
+    arch = sorted(arch)
     idx = DEFAULT_ARCH.index(arch[-1])
     if idx == len(DEFAULT_ARCH) - 1:
         return MAX_ARCH
@@ -447,34 +448,34 @@ def write_main_header(forward_impl, backward_impl):
     main_header_content = '''
 #pragma once
 
-#ifdef %s
+#ifdef {}
 
-#include "%s"
-#include "%s"
+#include "{}"
+#include "{}"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
-namespace phi {
+namespace phi {{
 
 template <typename T>
-struct CutlassTrait {
+struct CutlassTrait {{
   using Type = T;
-};
+}};
 
 template <>
-struct CutlassTrait<dtype::float16> {
+struct CutlassTrait<dtype::float16> {{
   using Type = cutlass::half_t;
-};
+}};
 
 template <>
-struct CutlassTrait<dtype::bfloat16> {
+struct CutlassTrait<dtype::bfloat16> {{
   using Type = cutlass::bfloat16_t;
-};
+}};
 
 
 template <typename T>
-struct ToPhiDTypeTrait {
+struct ToPhiDTypeTrait {{
  private:
   using NonConstT = typename std::remove_const<T>::type;
   static constexpr bool kIsFP16 = std::is_same<NonConstT, cutlass::half_t>::value;
@@ -483,51 +484,51 @@ struct ToPhiDTypeTrait {
  public:
   using Type = typename std::conditional<kIsFP16, dtype::float16,
       typename std::conditional<kIsBF16, dtype::bfloat16, NonConstT>::type>::type;
-};
+}};
 
 
 template <typename T>
-T *SafeGetTensorPtr(const DenseTensor &t) {
+T *SafeGetTensorPtr(const DenseTensor &t) {{
   using PDT = typename ToPhiDTypeTrait<T>::Type;
   return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(t.template data<PDT>()));
-}
+}}
 
 template <typename T>
-T *SafeGetTensorPtr(const DenseTensor *t) {
+T *SafeGetTensorPtr(const DenseTensor *t) {{
   return t ? SafeGetTensorPtr<T>(*t) : nullptr;
-}
+}}
 
 template <typename T>
-T *SafeGetTensorPtr(const paddle::optional<DenseTensor> &t) {
+T *SafeGetTensorPtr(const paddle::optional<DenseTensor> &t) {{
   return t ? SafeGetTensorPtr<T>(t.get()) : nullptr;
-}
+}}
 
 template <typename T, typename Context>
-T *SafeAllocTensor(const Context &ctx, DenseTensor *t) {
+T *SafeAllocTensor(const Context &ctx, DenseTensor *t) {{
   using PDT = typename ToPhiDTypeTrait<T>::Type;
   void *ptr = ctx.template Alloc<PDT>(t);
   return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr));
-}
+}}
 
-inline int64_t DimStride(const phi::DDim &dims, int n) {
+inline int64_t DimStride(const phi::DDim &dims, int n) {{
   int rank = dims.size();
-  if (n < 0) {
+  if (n < 0) {{
     n += rank;
-  }
+  }}
   int64_t stride = 1;
-  for (int i = n+1; i < rank; ++i) {
+  for (int i = n+1; i < rank; ++i) {{
     stride *= dims[i];
-  }
+  }}
   return stride;
-}
+}}
 
-} // namespace phi
+}} // namespace phi
 
 #include "./cutlass_forward.h"
 #include "./cutlass_backward.h"
 
 #endif
-''' % (
+'''.format(
         ENABLE_MACRO,
         forward_impl,
         backward_impl,

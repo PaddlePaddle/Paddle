@@ -15,12 +15,96 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.nn.functional import interpolate
+
+
+def create_test_case0(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [2, 3, 5, 5]
+    self.out_h = 2
+    self.out_w = 2
+    self.scale = []
+    self.out_size = np.array([3, 3]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case1(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [4, 1, 7, 8]
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case2(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case3(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case4(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [4, 1, 7, 8]
+    self.out_h = 1
+    self.out_w = 1
+    self.scale = []
+    self.out_size = np.array([2, 2]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case5(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [3, 3, 9, 6]
+    self.out_h = 12
+    self.out_w = 12
+    self.scale = []
+    self.out_size = np.array([11, 11]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case6(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = []
+    self.out_size = np.array([65, 33]).astype("int32")
+    self.align_corners = True
+    self.align_mode = 1
+
+
+def create_test_case7(self):
+    self.interp_method = 'bilinear'
+    self.input_shape = [1, 1, 32, 64]
+    self.out_h = 64
+    self.out_w = 32
+    self.scale = [2.0, 0.5]
+    self.align_corners = False
+    self.align_mode = 1
 
 
 def bilinear_interp_test(
@@ -37,12 +121,12 @@ def bilinear_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, (float, int)):
+    if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, (list, tuple)):
+    elif isinstance(scale, list) or isinstance(scale, tuple):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -156,9 +240,10 @@ class TestBilinearInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.dtype = np.float64
         self.init_test_case()
         self.op_type = "bilinear_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -169,7 +254,7 @@ class TestBilinearInterpOp(OpTest):
         scale_h = 0
         scale_w = 0
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -210,7 +295,7 @@ class TestBilinearInterpOp(OpTest):
             'data_layout': self.data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -225,94 +310,42 @@ class TestBilinearInterpOp(OpTest):
         self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 5, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = []
-        self.out_size = np.array([3, 3]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case0(self)
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case1(self)
 
 
 class TestBilinearInterpCase2(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case2(self)
 
 
 class TestBilinearInterpCase3(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case3(self)
 
 
 class TestBilinearInterpCase4(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [4, 1, 7, 8]
-        self.out_h = 1
-        self.out_w = 1
-        self.scale = []
-        self.out_size = np.array([2, 2]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case4(self)
 
 
 class TestBilinearInterpCase5(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [3, 3, 9, 6]
-        self.out_h = 12
-        self.out_w = 12
-        self.scale = []
-        self.out_size = np.array([11, 11]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case5(self)
 
 
 class TestBilinearInterpCase6(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = []
-        self.out_size = np.array([65, 33]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
+        create_test_case6(self)
 
 
 class TestBilinearInterpCase7(TestBilinearInterpOp):
     def init_test_case(self):
-        self.interp_method = 'bilinear'
-        self.input_shape = [1, 1, 32, 64]
-        self.out_h = 64
-        self.out_w = 32
-        self.scale = [2.0, 0.5]
-        self.align_corners = False
-        self.align_mode = 1
+        create_test_case7(self)
 
 
 class TestBilinearInterpSame(TestBilinearInterpOp):
@@ -351,6 +384,214 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.data_layout = "NHWC"
 
 
+class TestBilinearInterpOpFP16(TestBilinearInterpOp):
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
+
+    def init_test_case(self):
+        create_test_case0(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase1FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case1(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase2FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case2(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase3FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case3(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase4FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case4(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase5FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case5(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase6FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case6(self)
+        self.dtype = np.float16
+
+
+class TestBilinearInterpCase7FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        create_test_case7(self)
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpOpBF16(OpTest):
+    def setUp(self):
+        self.python_api = bilinear_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "bilinear_interp_v2"
+        self.dtype = np.uint16
+        input_np = np.random.random(self.input_shape).astype("float32")
+
+        if self.data_layout == "NCHW":
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+        scale_h = 0
+        scale_w = 0
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0.0:
+                    scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = bilinear_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            0,
+            0,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
+        self.inputs = {'X': convert_float_to_uint16(input_np)}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+
+        self.attrs = {
+            'out_h': self.out_h,
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout,
+        }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0.0:
+                    self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': convert_float_to_uint16(output_np)}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True, max_relative_error=1e-2)
+
+    def init_test_case(self):
+        create_test_case0(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case1(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case2(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case3(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case4(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case5(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case6(self)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBilinearInterpCase7BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        create_test_case7(self)
+
+
 class TestBilinearInterpOpUint8(OpTest):
     def setUp(self):
         self.python_api = bilinear_interp_test
@@ -363,7 +604,7 @@ class TestBilinearInterpOpUint8(OpTest):
         ).astype("uint8")
 
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -400,7 +641,7 @@ class TestBilinearInterpOpUint8(OpTest):
             'align_mode': self.align_mode,
         }
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -537,7 +778,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0:
                     scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -557,14 +798,14 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
 
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         if self.scale:
-            if isinstance(self.scale, (float, int)):
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:

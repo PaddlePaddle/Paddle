@@ -14,9 +14,9 @@
 
 import unittest
 
+import eager_op_test
 import numpy
 import numpy as np
-import op_test
 
 import paddle
 from paddle import fluid
@@ -24,7 +24,7 @@ from paddle.fluid import Program, core, program_guard
 
 
 def create_test_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)
@@ -47,7 +47,7 @@ def create_test_class(op_type, typename, callback):
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
-    cls_name = "{0}_{1}".format(op_type, typename)
+    cls_name = f"{op_type}_{typename}"
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -332,7 +332,7 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
-                input_x = np.arange(0, 5).reshape((5)).astype(np.int32)
+                input_x = np.arange(0, 5).reshape(5).astype(np.int32)
                 input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(np.int32)
                 real_result = callback(input_x, input_y)
                 (res,) = exe.run(
@@ -429,7 +429,7 @@ def create_paddle_case(op_type, callback):
                 out = op(x=x, y=y, name="name_%s" % (self.op_type))
             self.assertEqual("name_%s" % (self.op_type) in out.name, True)
 
-    cls_name = "TestCase_{}".format(op_type)
+    cls_name = f"TestCase_{op_type}"
     PaddleCls.__name__ = cls_name
     globals()[cls_name] = PaddleCls
 
@@ -444,7 +444,7 @@ create_paddle_case('not_equal', lambda _a, _b: _a != _b)
 
 # add bf16 tests
 def create_bf16_case(op_type, callback):
-    class TestCompareOpBF16Op(op_test.OpTest):
+    class TestCompareOpBF16Op(eager_op_test.OpTest):
         def setUp(self):
             self.op_type = op_type
             self.dtype = np.uint16
@@ -454,15 +454,15 @@ def create_bf16_case(op_type, callback):
             y = np.random.uniform(0, 1, [5, 5]).astype(np.float32)
             real_result = callback(x, y)
             self.inputs = {
-                'X': op_test.convert_float_to_uint16(x),
-                'Y': op_test.convert_float_to_uint16(y),
+                'X': eager_op_test.convert_float_to_uint16(x),
+                'Y': eager_op_test.convert_float_to_uint16(y),
             }
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
             self.check_output()
 
-    cls_name = "BF16TestCase_{}".format(op_type)
+    cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name
     globals()[cls_name] = TestCompareOpBF16Op
 

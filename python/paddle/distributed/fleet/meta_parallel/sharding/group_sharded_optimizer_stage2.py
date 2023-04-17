@@ -438,7 +438,7 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         if self.offload:
             self._optim._master_weights = self._master_params
-            cpu_master_params = [p for p in self._master_params.values()]
+            cpu_master_params = list(self._master_params.values())
             for param in cpu_master_params:
                 size = param._numel() * align[Type.fp32.value]
                 remaining = size % alignment[self.offload_device]

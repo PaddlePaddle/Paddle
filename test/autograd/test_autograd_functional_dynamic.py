@@ -636,7 +636,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             np.array(expected),
             (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
         )
-        expected = [[n for n in row] for row in expected]
+        expected = [list(row) for row in expected]
         expected = utils._np_concat_matrix_sequence(expected)
 
         self.x.stop_gradient = False
@@ -662,7 +662,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             np.array(expected),
             (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
         )
-        expected = [[n for n in row] for row in expected]
+        expected = [list(row) for row in expected]
         expected = utils._np_concat_matrix_sequence(expected)
         expected = utils._np_transpose_matrix_format(
             expected, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM

@@ -348,7 +348,7 @@ class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
-        a = np.random.random((3)).astype('float32')
+        a = np.random.random(3).astype('float32')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
 

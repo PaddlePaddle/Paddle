@@ -81,12 +81,12 @@ class TestCustomKernelLoad(unittest.TestCase):
         )
 
     def tearDown(self):
-        cmd = 'rm -rf {}'.format(self.default_path)
+        cmd = f'rm -rf {self.default_path}'
         os.system(cmd)
 
 
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):
         # only support Linux now
-        exit()
+        sys.exit()
     unittest.main()

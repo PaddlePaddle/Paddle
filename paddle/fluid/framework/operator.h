@@ -224,6 +224,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void SetSkipLoD(bool skip);
 
+  std::vector<LoD> GetOutputsLod(const std::string& out) const;
+
+  std::vector<DDim> GetOutputsDim(const std::string& name) const;
+
  protected:
   DDim GetDim(Variable* var) const;
 
@@ -281,8 +285,6 @@ class OperatorBase {
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
-  virtual bool SupportNPU() const { return false; }
-  virtual bool SupportMLU() const { return false; }
   virtual bool SupportXPU() const { return false; }
 
   const std::string& Type() const { return type_; }
@@ -350,6 +352,8 @@ class OperatorBase {
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
+
+  virtual void SetIsRuntimeInferShape(bool x) {}
 
   virtual void RuntimeInferShape(const Scope& scope,
                                  const platform::Place& place,
@@ -740,18 +744,6 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportGPU() const override;
 
-  bool SupportNPU() const override;
-
-  bool SupportMLU() const override {
-    // TODO(zhiqiu): support phi if needed?
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(),
-                       op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_mlu_place(kern_pair.first.place_);
-                       });
-  }
-
   bool SupportXPU() const override;
 
   bool SupportsMKLDNN(phi::DataType data_type) const;
@@ -774,6 +766,10 @@ class OperatorWithKernel : public OperatorBase {
                       proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
+
+  void SetIsRuntimeInferShape(bool x) override {
+    all_kernels_must_compute_runtime_shape_ = x;
+  }
 
   void RuntimeInferShape(const Scope& scope,
                          const platform::Place& place,

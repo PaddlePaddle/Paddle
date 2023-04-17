@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
 
 np.random.seed(10)
 
