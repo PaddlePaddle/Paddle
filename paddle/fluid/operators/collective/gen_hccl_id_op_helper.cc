@@ -29,8 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_int32(get_host_by_name_time);
+PHI_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace operators {

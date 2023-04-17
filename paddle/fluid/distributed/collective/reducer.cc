@@ -15,9 +15,10 @@
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {

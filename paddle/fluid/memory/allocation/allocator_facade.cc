@@ -37,6 +37,7 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -92,8 +93,8 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "managed memory, only available for auto_growth "
                             "strategy");
 
-DECLARE_string(allocator_strategy);
-DECLARE_uint64(auto_growth_chunk_size_in_mb);
+PHI_DECLARE_string(allocator_strategy);
+PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
 
 namespace paddle {
 namespace memory {

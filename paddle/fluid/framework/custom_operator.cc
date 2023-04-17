@@ -44,11 +44,11 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {

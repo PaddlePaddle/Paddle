@@ -23,9 +23,10 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
