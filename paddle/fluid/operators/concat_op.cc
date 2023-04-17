@@ -168,8 +168,8 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::vector<paddle::Tensor> input_grad = this->GetMultiInputGrad("X");
 
     std::vector<paddle::Tensor *> input_grad_ptr;
-    for (auto sub_tensor : input_grad) {
-      input_grad_ptr.push_back(&sub_tensor);
+    for (auto i = 0; i < static_cast<int>(input_grad.size()); ++i) {
+      input_grad_ptr.push_back(&input_grad[i]);
     }
     int axis = static_cast<int>(this->Attr<int>("axis"));
     std::vector<paddle::Tensor *> dx_ptr = this->GetOutputPtr(input_grad_ptr);
