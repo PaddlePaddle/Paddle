@@ -2006,6 +2006,7 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
+                         float tol,
                          bool use_default_tol,
                          bool hermitian,
                          MetaTensor* out) {
