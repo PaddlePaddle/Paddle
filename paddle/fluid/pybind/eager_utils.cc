@@ -58,6 +58,7 @@ extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
 extern PyTypeObject* g_jit_function_pytype;
+extern PyTypeObject* g_cuda_graph_with_in_outs_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -770,6 +771,13 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
   }
 
   return result;
+}
+
+PyObject* ToPyObject(
+    const std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>& value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
 }
 
 PyObject* ToPyObject(const platform::Place& value) {
@@ -1498,6 +1506,103 @@ paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "PyObject can not be cast into framework::Scope"));
   }
+}
+
+std::shared_ptr<paddle::operators::CUDAGraphWithInOuts> CastPyArg2CUDAGraphPtr(
+    PyObject* obj) {
+  if (obj == Py_None ||
+      PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_cuda_graph_with_in_outs_pytype))) {
+    return ::pybind11::handle(obj)
+        .cast<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "PyObject can not be cast into CUDAGraphWithInOuts"));
+  }
+}
+
+void SetCUDAGraphPtrListToPyArg(
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+        cuda_graph,
+    PyObject* cuda_graph_pyobj) {
+  Py_ssize_t pyobj_len = PyList_Size(cuda_graph_pyobj);
+  if (pyobj_len == 0) {
+    for (Py_ssize_t i = 0; i < static_cast<Py_ssize_t>(cuda_graph.size());
+         i++) {
+      if (cuda_graph[i] != nullptr) {
+        PyList_Insert(cuda_graph_pyobj, i, ToPyObject(cuda_graph[i]));
+      } else {
+        Py_INCREF(Py_None);
+        PyList_Insert(cuda_graph_pyobj, i, Py_None);
+      }
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(pyobj_len),
+                      cuda_graph.size(),
+                      platform::errors::InvalidArgument(
+                          "PyObject of CUDA Graph needs to be the same length "
+                          "as the C++ object of CUDA Graph. "
+                          "But got pyobject length is [%d], and cuda graph "
+                          "vector length is [%d].",
+                          static_cast<size_t>(pyobj_len),
+                          cuda_graph.size()));
+    for (Py_ssize_t i = 0; i < pyobj_len; i++) {
+      if (cuda_graph[i] != nullptr) {
+        PyList_SET_ITEM(cuda_graph_pyobj, i, ToPyObject(cuda_graph[i]));
+      }
+    }
+  }
+}
+
+std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+GetCUDAGraphPtrListFromArgs(const std::string& op_type,
+                            const std::string& arg_name,
+                            PyObject* args,
+                            ssize_t arg_idx,
+                            bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of "
+          "CUDAGraphWithInOuts, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+  }
+
+  std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>> result;
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      return {};
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2CUDAGraphPtr(PyList_GetItem(list, i)));
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      return {};
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2CUDAGraphPtr(PyList_GetItem(list, i)));
+    }
+  } else if (list == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of "
+        "CUDAGraphWithInOuts, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+  return result;
 }
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(

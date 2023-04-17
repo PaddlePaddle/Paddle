@@ -198,6 +198,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -223,6 +224,7 @@ namespace pybind {
 PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
+PyTypeObject *g_cuda_graph_with_in_outs_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -821,6 +823,12 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+  py::class_<paddle::operators::CUDAGraphWithInOuts,
+             std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+      cuda_graph_with_in_outs(m, "CUDAGraphWithInOuts");
+  cuda_graph_with_in_outs.def(py::init<>());
+  g_cuda_graph_with_in_outs_pytype =
+      reinterpret_cast<PyTypeObject *>(cuda_graph_with_in_outs.ptr());
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {

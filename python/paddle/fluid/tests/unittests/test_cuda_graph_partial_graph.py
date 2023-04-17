@@ -41,7 +41,16 @@ class SimpleModel(nn.Layer):
 
 class TestSimpleModel(unittest.TestCase):
     def setUp(self):
-        paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})
+        paddle.set_flags(
+            {
+                'FLAGS_eager_delete_tensor_gb': 0.0,
+                'FLAGS_new_executor_use_cuda_graph': 1.0,
+                'FLAGS_allocator_strategy': 'auto_growth',
+                'FLAGS_sync_nccl_allreduce': False,
+                'FLAGS_cudnn_deterministic': True,
+                'FLAGS_use_stream_safe_cuda_allocator': True,
+            }
+        )
 
     def run_base(self, func, use_cuda_graph, memory_pool="default", seed=10):
         paddle.seed(seed)

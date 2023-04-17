@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
+#include "pybind11/pybind11.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -59,6 +60,9 @@ inline void run_program_ad_func(
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     std::vector<paddle::Tensor*>& dout,                  // NOLINT
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>&
+        cuda_graph,  // NOLINT
+    PyObject* cuda_graph_pyobj,
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
@@ -77,7 +81,15 @@ inline void run_program_ad_func(
           << require_any_grad;
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  RunProgramAPI(x,
+                params,
+                out,
+                step_scope,
+                dout,
+                cuda_graph,
+                cuda_graph_pyobj,
+                require_any_grad,
+                attrs);
   VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {
@@ -92,6 +104,8 @@ inline void run_program_ad_func(
 
     grad_node->SetFwdParams(params);
     grad_node->SetStepScope(step_scope);
+    grad_node->SetCUDAGraph(cuda_graph);
+    grad_node->SetCUDAGraphPyObject(cuda_graph_pyobj);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
