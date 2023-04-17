@@ -26,6 +26,7 @@ from ...utils.hybrid_parallel_util import (
     sharding_reduce_gradients,
 )
 from ...utils.log_util import logger
+from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
@@ -260,38 +261,41 @@ class HybridParallelOptimizer:
                 "or Sharding, the grad clip of original optimizer will be changed."
             )
 
-            if self._sharding_enable:
-                # change sharding inner_optimizer's _grad_clip
-                self._inner_opt._inner_optimizer._grad_clip = (
-                    HybridParallelClipGrad(self._inner_opt._grad_clip, hcg)
-                )
-            elif (
-                self._inner_opt._parameter_list
-                and not isinstance(self._inner_opt._parameter_list[0], dict)
+            inner_opt = (
+                self._inner_opt._inner_optimizer
+                if self._sharding_enable
+                else self._inner_opt
+            )
+
+            if isinstance(inner_opt, MixPrecisionOptimizer):
+                inner_opt = inner_opt._inner_opt
+
+            if (
+                inner_opt._parameter_list
+                and not isinstance(inner_opt._parameter_list[0], dict)
                 and len(
                     [
                         p
-                        for p in self._inner_opt._parameter_list
+                        for p in inner_opt._parameter_list
                         if hasattr(p, "main_grad")
                     ]
                 )
                 > 0
             ):
-
-                self._inner_opt._inner_opt._grad_clip = HybridParallelClipGrad(
-                    self._inner_opt._inner_opt._grad_clip, hcg
+                inner_opt._grad_clip = HybridParallelClipGrad(
+                    inner_opt._grad_clip, hcg
                 )
             else:
-                self._inner_opt._grad_clip = HybridParallelClipGrad(
-                    self._inner_opt._grad_clip, hcg
+                inner_opt._grad_clip = HybridParallelClipGrad(
+                    inner_opt._grad_clip, hcg
                 )
-                if self._inner_opt._parameter_list and isinstance(
-                    self._inner_opt._parameter_list[0], dict
+                if inner_opt._parameter_list and isinstance(
+                    inner_opt._parameter_list[0], dict
                 ):
-                    for item in self._inner_opt._param_groups:
+                    for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                self._inner_opt._grad_clip, hcg
+                                inner_opt._grad_clip, hcg
                             )
 
     def _filter_fn(self, param):

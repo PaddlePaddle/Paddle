@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <fcntl.h>
 #include <cstddef>
 #include <string>
 #include <unordered_set>
@@ -349,18 +350,38 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
-    VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
-    inference::DeserializeShapeRangeInfo(shape_range_info_path,
-                                         &min_input_shape,
-                                         &max_input_shape,
-                                         &opt_input_shape,
-                                         &min_shape_tensor,
-                                         &max_shape_tensor,
-                                         &opt_shape_tensor);
+    if (!shape_range_info_path.empty()) {
+      VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
+      inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                           &min_input_shape,
+                                           &max_input_shape,
+                                           &opt_input_shape,
+                                           &min_shape_tensor,
+                                           &max_shape_tensor,
+                                           &opt_shape_tensor);
+    } else {
+      shape_range_info_path =
+          Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
+      if (open(shape_range_info_path.c_str(), O_RDONLY) != -1) {
+        VLOG(1) << "trt dynamic_shape deserialize from "
+                << shape_range_info_path;
+        inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                             &min_input_shape,
+                                             &max_input_shape,
+                                             &opt_input_shape,
+                                             &min_shape_tensor,
+                                             &max_shape_tensor,
+                                             &opt_shape_tensor);
+      } else {
+        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT);
+        close(fd);
+      }
+    }
   }
 
   // The following procedure is used to rename all the intermediate
@@ -447,6 +468,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
+  op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -563,6 +585,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode,
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
+                  with_dynamic_shape,
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
@@ -605,6 +628,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                "does not match Current Version, TRT engine will be rebuilded";
       }
     }
+  }
+
+  // If with_dynamic_shape is configured，but min_input_shape is empty,
+  // create trt engine in runtime instead of in pass.
+  if (with_dynamic_shape && min_input_shape.empty()) {
+    return;
   }
 
   // the following code will NOT run in following situation:

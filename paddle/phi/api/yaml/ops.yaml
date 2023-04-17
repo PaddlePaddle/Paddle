@@ -1980,6 +1980,17 @@
     func : unfold
   backward : unfold_grad
 
+- op : uniform_inplace
+  args: (Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
+  output: Tensor(out)
+  infer_meta:
+    func: UniformRandomInplaceInferMeta
+  kernel:
+    func: uniform_inplace
+    data_type: x
+  inplace: (x -> out)
+  backward: uniform_inplace_grad
+
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
   output : Tensor(out), Tensor(index), Tensor(counts)

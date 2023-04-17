@@ -48,14 +48,6 @@ DEFINE_string(nccl_dir,
               "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
-DEFINE_string(hccl_dir,
-              "",
-              "Specify path for loading hccl library, such as libhccl.so. "
-              "For instance, "
-              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
-              "default, "
-              "dlopen will search hccl from LD_LIBRARY_PATH");
-
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
 DEFINE_string(
