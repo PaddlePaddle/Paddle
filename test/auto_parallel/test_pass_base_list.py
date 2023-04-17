@@ -22,7 +22,7 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed.fleet import auto
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 from test_sparse_addmm_op import get_cuda_version
 
 
