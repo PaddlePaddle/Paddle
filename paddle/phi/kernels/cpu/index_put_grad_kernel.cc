@@ -63,7 +63,7 @@ void set_zero_kernel(const int64_t N,
       }
       offset += stride[i] * cur_ix;
     }
-    *(out + idx) = 0;
+    *(out + offset) = 0;
   }
 }
 

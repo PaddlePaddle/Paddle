@@ -308,8 +308,6 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
-  std::vector<DenseTensor> tmp_value_v;
-  const DenseTensor* ptr_value = nullptr;
 
   if (int_indices_v.size() < total_dims) {
     std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
