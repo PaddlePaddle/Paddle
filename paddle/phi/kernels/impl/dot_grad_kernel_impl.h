@@ -46,7 +46,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
                   DenseTensor* tensor_dy) {
     VLOG(1) << "enable route";
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 >= tensor_dout->dims().size()) {
+    if (tensor_dout->dims().size() <= 1) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
 
       if (tensor_dx) {
