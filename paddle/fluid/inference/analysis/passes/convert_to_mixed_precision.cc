@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 
-#include <glog/logging.h>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
@@ -77,10 +76,7 @@ void ConvertToMixedPrecisionPass::LoadModel() {
   // we assume that the model to be converted only has a model file and no
   // params file, we believe this situation is reasonable. In this case, weight
   // data may not be loaded.
-  bool load_params = true;
-  if (params_file_.empty()) {
-    load_params = false;
-  }
+  bool load_params = !params_file_.empty();
   auto program_desc =
       inference::Load(&exe, &scope_, model_file_, params_file_, load_params);
   main_graph_ = std::unique_ptr<framework::ir::Graph>(
@@ -91,11 +87,8 @@ void ConvertToMixedPrecisionPass::LoadModel() {
 void ConvertToMixedPrecisionPass::Run() {
   LoadModel();
 
-  if (backend_ == phi::Backend::XPU) {
-    framework::ir::ConstantFoldingPass constant_folding_pass;
-    constant_folding_pass.Apply(main_graph_.get());
-  }
-
+  framework::ir::ConstantFoldingPass constant_folding_pass;
+  constant_folding_pass.Apply(main_graph_.get());
   framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
   if (backend_ == phi::Backend::GPU) {
@@ -158,9 +151,9 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
              "level file directory "
              "as the model file by default and ends in pdiparams.";
       save_params_path = mixed_model_file_;
-      int pos = save_params_path.rfind("pdmodel");
+      std::string::size_type pos = save_params_path.rfind(".pdmodel");
       if (pos != std::string::npos) {
-        save_params_path.replace(pos, 8, "pdiparams");
+        save_params_path.replace(pos, 8, ".pdiparams");
         LOG(WARNING) << " The storage path of the converted mixed-precision "
                         "params has been created: ["
                      << save_params_path << "]";
