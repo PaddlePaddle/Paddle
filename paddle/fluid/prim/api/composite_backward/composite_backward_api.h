@@ -1000,7 +1000,7 @@ void group_norm_grad(const Tensor& x,
   const int hw = x_dims[2] * x_dims[3];
   const int g_num = C / groups;
 
-  const float s = 1.0 / (hw * g_num);
+  // const float s = 1.0 / (hw * g_num);
 
   auto reduce_axis = IntArray(std::vector<int64_t>({2, 3}));
   auto shape_group = IntArray(std::vector<int64_t>({N, groups, g_num}));
@@ -1010,6 +1010,7 @@ void group_norm_grad(const Tensor& x,
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
   auto inv_std = sqrt<T>(1.0 / (variance + epsilon));
+  auto inv_std_mul_s = inv_std / hw / g_num;
   auto dtype = x_data.dtype();
   auto sum_y_grad_mul_x =
       sum<T>(out_grad_data * x_data, reduce_axis, dtype, false);
@@ -1042,8 +1043,8 @@ void group_norm_grad(const Tensor& x,
     // p1 [N, G, g_num]
     // p2 [N, G]
 
-    auto p2 = (d2 * mean - d1) * (inv_std * inv_std * inv_std * s);
-    auto p3 = -p2 * mean - d2 * inv_std * s;
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
+    auto p3 = -p2 * mean - d2 * inv_std_mul_s;
     p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
     p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
     p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
