@@ -43,7 +43,7 @@ std::string GetIPCName() {
   handle += std::to_string(getpid());
 #endif
   handle += "_";
-  handle += counter.fetch_add(1);
+  handle += std::to_string(counter.fetch_add(1));
   handle += "_";
   handle += std::to_string(rd());
   return handle;
