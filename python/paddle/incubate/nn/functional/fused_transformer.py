@@ -38,8 +38,6 @@ def fused_feedforward(
     ln1_bias=None,
     ln2_scale=None,
     ln2_bias=None,
-    dropout1_seed_tensor=None,
-    dropout2_seed_tensor=None,
     dropout1_rate=0.5,
     dropout2_rate=0.5,
     activation="relu",
@@ -139,8 +137,8 @@ def fused_feedforward(
             seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
             x,
-            dropout1_seed_tensor,
-            dropout2_seed_tensor,
+            None,
+            None,
             linear1_weight,
             linear1_bias,
             linear2_weight,
@@ -230,8 +228,6 @@ def fused_feedforward(
         type='fused_feedforward',
         inputs={
             'X': x,
-            'Dropout1Seed': dropout1_seed_tensor,
-            'Dropout2Seed': dropout2_seed_tensor,
             'Linear1Weight': linear1_weight,
             'Linear1Bias': linear1_bias,
             'Linear2Weight': linear2_weight,
