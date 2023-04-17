@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"

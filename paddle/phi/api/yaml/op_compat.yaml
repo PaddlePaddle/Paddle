@@ -518,6 +518,13 @@
   outputs :
     out : Out
 
+- op : deformable_conv
+  backward : deformable_conv_grad
+  inputs :
+    {x : Input, offset : Offset, filter : Filter, mask : Mask}
+  outputs :
+    out : Output
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -740,9 +747,9 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : expand_as (expand_as_v2)
+  backward : expand_as_grad (expand_as_v2_grad)
   inputs :
-    x : X
-    y : Y
+    {x : X, y : Y}
   outputs :
     out : Out
 
@@ -1384,6 +1391,13 @@
   outputs :
     out : Out
 
+- op : matrix_rank
+  inputs :
+    {x : X, tol_tensor : TolTensor}
+  outputs :
+    out : Out
+  manual_signature : [matrix_rank]
+
 - op : max (reduce_max)
   backward : max_grad (reduce_max_grad)
   inputs:
@@ -1790,6 +1804,12 @@
       support_tensor : true
   manual_signature : [reverse]
 
+- op : rmsprop_
+  inputs :
+    {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -2034,6 +2054,11 @@
   outputs :
     out : Out
 
+- op : split
+  int_array:
+      sections :
+          data_type : int
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -2253,6 +2278,13 @@
         support_tensor : true
   manual_signature : [uniform]
 
+- op : uniform_inplace (uniform_random_inplace)
+  backward : uniform_inplace_grad(uniform_random_inplace_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : unique
   inputs :
     {x : X}
@@ -2328,6 +2360,12 @@
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
 
+- op : yolo_box
+  inputs :
+    {x : X, img_size : ImgSize}
+  outputs :
+    {boxes : Boxes, scores : Scores}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
@@ -2337,6 +2375,13 @@
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: temporal_shift
+  backward: temporal_shift_grad
   inputs :
     x : X
   outputs :

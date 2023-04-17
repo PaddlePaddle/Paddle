@@ -15,6 +15,8 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"

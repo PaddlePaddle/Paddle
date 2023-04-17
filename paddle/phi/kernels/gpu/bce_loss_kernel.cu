@@ -18,6 +18,8 @@
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -27,22 +29,23 @@ namespace phi {
 
 template <typename T>
 struct BCELossFunctor {
-  T one;
-  T neg_100;
-
-  HOSTDEVICE inline BCELossFunctor() {
-    one = static_cast<T>(1.0f);
-    neg_100 = static_cast<T>(-100.);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT zero = static_cast<MT>(0);
+  MT one = static_cast<MT>(1.0f);
+  MT neg_100 = static_cast<MT>(-100.);
 
   HOSTDEVICE inline T operator()(const T x, const T label) const {
+    MT x_mt = static_cast<MT>(x);
+    MT label_mt = static_cast<MT>(label);
+
     PADDLE_ENFORCE(
-        (x >= static_cast<T>(0)) && (x <= one),
+        (x_mt >= zero) && (x_mt <= one),
         "Input is expected to be within the interval [0, 1], but received %f.",
-        x);
-    T term1 = max(phi::kps::details::Log(x), neg_100);
-    T term2 = max(phi::kps::details::Log(one - x), neg_100);
-    return (((label - one) * term2) - (label * term1));
+        x_mt);
+
+    MT term1 = max(phi::kps::details::Log(x_mt), neg_100);
+    MT term2 = max(phi::kps::details::Log(one - x_mt), neg_100);
+    return static_cast<T>((label_mt - one) * term2 - label_mt * term1);
   }
 };
 
@@ -60,5 +63,10 @@ void BCELossKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    bce_loss, GPU, ALL_LAYOUT, phi::BCELossKernel, float, double) {}
+PD_REGISTER_KERNEL(bce_loss,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BCELossKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
