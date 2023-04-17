@@ -132,9 +132,9 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
                                    const T* x_values_data,
                                    const int64_t x_dim0,
                                    const int64_t x_dim1,
+                                   const int64_t* batch_nnz_data,
                                    int64_t* out_crows_data,
                                    int64_t* out_cols_data,
-                                   int64_t* batch_nnz_data,
                                    T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1), int64_t) {
     int64_t batch = index / (x_dim1 + 1);
@@ -390,9 +390,9 @@ void SumCsrKernel(const Context& dev_ctx,
                                                   x_values_data,
                                                   x_dim0,
                                                   x_dim1,
+                                                  batch_nnz_data,
                                                   out_crows_data,
                                                   out_cols_data,
-                                                  batch_nnz_data,
                                                   out_values_data);
     }
     if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
