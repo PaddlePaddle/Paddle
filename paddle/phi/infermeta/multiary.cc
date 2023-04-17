@@ -3248,5 +3248,64 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void TwoConv2dFusionInferMeta(const MetaTensor& input,
+                              const MetaTensor& bias0,
+                              const MetaTensor& bias1,
+                              const MetaTensor& filter0,
+                              const MetaTensor& filter1,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& strides1,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& paddings1,
+                              MetaTensor* out) {
+  auto in_dims = input.dims();
+  auto filter_dims = filter0.dims();
+  auto filter1_dims = filter1.dims();
+  auto out_dims = in_dims;
+  // int batch0 = in_dims[0];
+  // int ic0 = in_dims[3];
+  int ih0 = in_dims[1];
+  int iw0 = in_dims[2];
+  int pad0_h0 = paddings[0];
+  int pad0_h1 = paddings[0];
+  int pad0_w0 = paddings[0];
+  int pad0_w1 = paddings[0];
+  // int oc0 = filter_dims[0];
+  int kh0 = filter_dims[1];
+  int kw0 = filter_dims[2];
+  int stride0_h = strides[0];
+  int stride0_w = strides[1];
+  int dilation0_h = 1;
+  int dilation0_w = 1;
+  int oh0 =
+      (ih0 + pad0_h0 + pad0_h1 - dilation0_h * (kh0 - 1) - 1) / stride0_h + 1;
+  int ow0 =
+      (iw0 + pad0_w0 + pad0_w1 - dilation0_w * (kw0 - 1) - 1) / stride0_w + 1;
+  // int batch1 = in_dims[0];
+  // int ic1 = oc0;
+  int ih1 = oh0;
+  int iw1 = ow0;
+  int pad1_h0 = paddings1[0];
+  int pad1_h1 = paddings1[0];
+  int pad1_w0 = paddings1[0];
+  int pad1_w1 = paddings1[0];
+  int oc1 = filter1_dims[0];
+  int kh1 = filter1_dims[1];
+  int kw1 = filter1_dims[2];
+  int stride1_h = strides1[0];
+  int stride1_w = strides1[1];
+  int dilation1_h = 1;
+  int dilation1_w = 1;
+
+  int oh1 =
+      (ih1 + pad1_h0 + pad1_h1 - dilation1_h * (kh1 - 1) - 1) / stride1_h + 1;
+  int ow1 =
+      (iw1 + pad1_w0 + pad1_w1 - dilation1_w * (kw1 - 1) - 1) / stride1_w + 1;
+  out_dims[1] = oh1;
+  out_dims[2] = ow1;
+  out_dims[3] = oc1;
+  out->set_dims(out_dims);
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

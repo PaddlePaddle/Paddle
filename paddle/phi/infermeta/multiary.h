@@ -604,5 +604,15 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias1,
                   const std::string& act_type,
                   MetaTensor* out);
+void TwoConv2dFusionInferMeta(const MetaTensor& input,
+                              const MetaTensor& bias0,
+                              const MetaTensor& bias1,
+                              const MetaTensor& filter0,
+                              const MetaTensor& filter1,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& strides1,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& paddings1,
+                              MetaTensor* out);
 
 }  // namespace phi

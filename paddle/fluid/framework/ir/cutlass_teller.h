@@ -174,7 +174,7 @@ class CutlassTeller {
         return false;
       }
     } else if (groups == ic && ic == oc) {
-      // return false;
+      //return false;
       //  conv2d_depthwise not support residual input
       if (fuse_type != CutlassFusionType::cba) {
         return false;

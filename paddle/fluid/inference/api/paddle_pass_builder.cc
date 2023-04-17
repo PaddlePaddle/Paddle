@@ -267,6 +267,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv2d_fusion_layout_transfer_pass",  //
         "auto_mixed_precision_pass",           //
         "delete_cast_op_pass",                 //
+        //"two_conv2d_fusion",
+        "transfer_layout_elim",
         "inplace_op_var_pass",                 // should be the last pass.
   });
 
