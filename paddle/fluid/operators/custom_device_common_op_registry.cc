@@ -499,12 +499,12 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       run_program,
       device_type,
       paddle::operators::
-          RunProgramOpKernel<paddle::platform::CustomDeviceContext, float>);
+          RunProgramOpKernel<float, paddle::platform::CustomDeviceContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       run_program_grad,
       device_type,
       paddle::operators ::
-          RunProgramGradOpKernel<paddle::platform::CustomDeviceContext, float>);
+          RunProgramGradOpKernel<float, paddle::platform::CustomDeviceContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       save_combine,
       device_type,
