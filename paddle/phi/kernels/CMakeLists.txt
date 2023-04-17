@@ -74,6 +74,7 @@ set(COMMON_KERNEL_DEPS
     phi_dynload_warpctc
     phi_dynload_warprnnt
     sequence_padding
+    sequence_pooling
     sequence_scale
     fft
     phi_data_layout_transform
@@ -121,6 +122,7 @@ if(WITH_CUTLASS)
             "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
   execute_process(

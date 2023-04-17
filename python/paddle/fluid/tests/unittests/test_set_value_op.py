@@ -711,6 +711,91 @@ create_test_value_numpy_bool(TestSetValueItemSlice3)
 create_test_value_numpy_bool(TestSetValueItemSlice4)
 
 
+def create_test_value_complex64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = 42.1 + 42.1j
+
+        def set_dtype(self):
+            self.dtype = "complex64"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueComplex64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_complex64(TestSetValueItemInt)
+create_test_value_complex64(TestSetValueItemSlice)
+create_test_value_complex64(TestSetValueItemSlice2)
+create_test_value_complex64(TestSetValueItemSlice3)
+create_test_value_complex64(TestSetValueItemSlice4)
+
+
+def create_test_value_complex128(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = complex(
+                np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+            )
+
+        def set_dtype(self):
+            self.dtype = "complex128"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueComplex128")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_complex128(TestSetValueItemInt)
+create_test_value_complex128(TestSetValueItemSlice)
+create_test_value_complex128(TestSetValueItemSlice2)
+create_test_value_complex128(TestSetValueItemSlice3)
+create_test_value_complex128(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_complex64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = np.array(42.1 + 42.1j)
+
+        def set_dtype(self):
+            self.dtype = "complex64"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyComplex64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_complex64(TestSetValueItemInt)
+create_test_value_numpy_complex64(TestSetValueItemSlice)
+create_test_value_numpy_complex64(TestSetValueItemSlice2)
+create_test_value_numpy_complex64(TestSetValueItemSlice3)
+create_test_value_numpy_complex64(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_complex128(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            v = complex(
+                np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+            )
+            self.value = np.array([v])
+
+        def set_dtype(self):
+            self.dtype = "complex128"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyComplex128")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_complex128(TestSetValueItemInt)
+create_test_value_numpy_complex128(TestSetValueItemSlice)
+create_test_value_numpy_complex128(TestSetValueItemSlice2)
+create_test_value_numpy_complex128(TestSetValueItemSlice3)
+create_test_value_numpy_complex128(TestSetValueItemSlice4)
+
+
 # 2.3 value is a Paddle Tensor (int32, int64, float32, float64, bool)
 def create_test_value_tensor_int32(parent):
     class TestValueInt(parent):

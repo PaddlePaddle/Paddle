@@ -224,11 +224,6 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
 
 void FusedDropoutAddInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
-                              const Scalar& p,
-                              bool is_test,
-                              const std::string& mode,
-                              int seed,
-                              bool fix_seed,
                               MetaTensor* out,
                               MetaTensor* seed_offset);
 
@@ -357,6 +352,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         MetaTensor* index,
                         MetaTensor* roisnum,
                         MetaConfig config = MetaConfig());
+
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out);
 
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,

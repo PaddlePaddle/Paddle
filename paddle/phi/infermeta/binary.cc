@@ -18,12 +18,12 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -1282,11 +1282,6 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
 
 void FusedDropoutAddInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
-                              const Scalar& p,
-                              bool is_test,
-                              const std::string& mode,
-                              int seed,
-                              bool fix_seed,
                               MetaTensor* out,
                               MetaTensor* seed_offset) {
   out->share_meta(x);
@@ -2201,6 +2196,18 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
   if (roisnum != nullptr) {
     roisnum->set_dims({-1});
     roisnum->set_dtype(phi::DataType::INT32);
+  }
+}
+
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out) {
+  if (atol_tensor) {
+    MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
+  } else {
+    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
   }
 }
 
