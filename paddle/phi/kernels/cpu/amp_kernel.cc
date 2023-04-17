@@ -120,4 +120,7 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::INT32);
+}

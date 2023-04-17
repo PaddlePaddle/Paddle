@@ -1097,16 +1097,6 @@
   kernel :
     func : triu_grad
 
-- backward_op : uniform_inplace_grad
-  forward : uniform_inplace(Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val) -> Tensor(out)
-  args : (Tensor out_grad, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UniformRandomInplaceGradInferMeta
-  kernel :
-    func : uniform_inplace_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : yolo_loss_grad
   forward : yolo_loss(Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, Tensor objectness_mask, Tensor gt_match_mask, Tensor loss_grad, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
