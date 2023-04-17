@@ -13,20 +13,25 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../legacy_test")
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
+sys.path.append("..")
 
-class TestRecomputePass(AutoPallelPassTestBase):
+
+class TestShardingPass(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-        self.rtol = 1e-6
+        self.rtol = 1e-5
         self.atol = 1e-8
 
         rank = paddle.distributed.get_rank()
@@ -36,8 +41,18 @@ class TestRecomputePass(AutoPallelPassTestBase):
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.recompute = True
-        dist_strategy.recompute_configs = {"checkpoints": ["tmp_3", "tmp_6"]}
+        dist_strategy.semi_auto = True
+        dist_strategy.sharding = True
+        dist_strategy.sharding_configs = {
+            "sharding_degree": 2,
+            "stage": 2,
+        }
+        fleet.init(is_collective=True, strategy=dist_strategy)
+
+    def apply_no_passes(self):
+        dist_strategy = fleet.DistributedStrategy()
+        dist_strategy.pipeline = False
+        dist_strategy.recompute = False
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -48,14 +63,7 @@ class TestRecomputePass(AutoPallelPassTestBase):
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
-            "mp", place, batch_size, sequence_len, vocab_size
-        )
-
-
-class TestRecomputePassDP(TestRecomputePass):
-    def get_model(self, place, batch_size, sequence_len, vocab_size):
-        return self.get_gpt_model(
-            "dp", place, batch_size, sequence_len, vocab_size
+            'dp', place, batch_size, sequence_len, vocab_size
         )
 
 
