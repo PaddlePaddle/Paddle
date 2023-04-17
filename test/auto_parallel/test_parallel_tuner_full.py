@@ -28,7 +28,7 @@ from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.strategy import Strategy
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,

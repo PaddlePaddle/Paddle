@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet import auto
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,

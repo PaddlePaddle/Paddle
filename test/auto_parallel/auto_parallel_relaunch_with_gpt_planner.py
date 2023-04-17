@@ -20,7 +20,7 @@ import paddle
 from paddle import static
 from paddle.distributed import fleet
 
-sys.path.append("..")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
