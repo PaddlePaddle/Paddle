@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
+import sys
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_pool import (
+
+sys.path.append("../../../../../test/sequence")
+from test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
     compute_seqpool_sum,
