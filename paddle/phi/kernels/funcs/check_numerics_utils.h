@@ -59,19 +59,11 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
   return false;
 }
 
-HOSTDEVICE void PrintAndThrowError(const char* debug_info,
-                                   int64_t num_nan,
-                                   int64_t num_inf,
-                                   int64_t num_zero) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-  PADDLE_ENFORCE(false,
-                 "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
-                 "num_zero=%lld) in %s.",
-                 static_cast<long long>(num_nan),   // NOLINT
-                 static_cast<long long>(num_inf),   // NOLINT
-                 static_cast<long long>(num_zero),  // NOLINT
-                 debug_info);
-#else
+HOSTDEVICE static void PrintAndThrowError(const char* debug_info,
+                                          int64_t num_nan,
+                                          int64_t num_inf,
+                                          int64_t num_zero) {
+#if !(defined(__NVCC__) || defined(__HIPCC__))
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
       "%s.",

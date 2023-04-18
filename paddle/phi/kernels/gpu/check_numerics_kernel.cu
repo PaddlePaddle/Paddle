@@ -293,7 +293,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
                                          int64_t numel,
                                          int64_t numel_max_min,
                                          int check_nan_inf_level,
-                                         int64_t* nan_inf_zero) {
+                                         int64_t* nan_inf_zero_ptr) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     int64_t num_nan = 0;
     int64_t num_inf = 0;
@@ -325,9 +325,9 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         mean_value += tmp_mean_value;
       }
       if (check_nan_inf_level == 0) {
-        nan_inf_zero[0] = num_nan;
-        nan_inf_zero[1] = num_inf;
-        nan_inf_zero[2] = num_zero;
+        nan_inf_zero_ptr[0] = num_nan;
+        nan_inf_zero_ptr[1] = num_inf;
+        nan_inf_zero_ptr[2] = num_zero;
       }
     }
 
