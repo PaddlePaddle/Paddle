@@ -496,6 +496,7 @@
     data_type : x
   optional : scale
   backward : instance_norm_double_grad
+  composite: instance_norm_grad(x, scale, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
 - backward_op : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis) -> Tensor(out), Tensor(mean), Tensor(variance)
@@ -520,15 +521,6 @@
     param: [x]
   kernel :
     func : logsumexp_grad
-
-- backward_op : lu_grad
-  forward : lu (Tensor x, bool pivot) -> Tensor(out), Tensor(pivots), Tensor(infos)
-  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : LUGradInferMeta
-  kernel :
-    func : lu_grad
 
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
@@ -1096,16 +1088,6 @@
     param : [out_grad]
   kernel :
     func : triu_grad
-
-- backward_op : uniform_inplace_grad
-  forward : uniform_inplace(Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val) -> Tensor(out)
-  args : (Tensor out_grad, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UniformRandomInplaceGradInferMeta
-  kernel :
-    func : uniform_inplace_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : yolo_loss_grad
   forward : yolo_loss(Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)

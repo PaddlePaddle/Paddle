@@ -54,14 +54,6 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         )
 
     inputs = {'X': x, 'Scale': scale}
-    if core.is_compiled_with_custom_device('npu'):
-        check_variable_and_dtype(
-            float_status,
-            "float_status",
-            ['float16', 'float32'],
-            'check_finite_and_unscale',
-        )
-        inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs
