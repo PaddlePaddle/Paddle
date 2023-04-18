@@ -808,7 +808,7 @@ def decorate(
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
              gradients will be float32 dtype after the backpropagation. Default is False, there is only float16 weight gradients.
-        excluded_layers(Layer|list of Layer, optional): Specifies the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
+        excluded_layers(Layer|list of Layer, optional): Specify the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
              an Layer instance/type or a list of Layer instances/types. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
     Examples:
