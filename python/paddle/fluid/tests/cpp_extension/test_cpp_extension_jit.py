@@ -67,6 +67,7 @@ class TestCppExtensionJITInstall(unittest.TestCase):
     def test_cpp_extension(self):
         self._test_extension_function()
         self._test_extension_class()
+        self._test_vector_tensor()
         self._test_nullable_tensor()
         self._test_optional_tensor()
 
@@ -105,6 +106,20 @@ class TestCppExtensionJITInstall(unittest.TestCase):
                 np.sum(np.power(np_x, 2)),
                 atol=1e-5,
             )
+
+    def _test_vector_tensor(self):
+        for dtype in self.dtypes:
+            np_inputs = [
+                np.random.uniform(-1, 1, [4, 8]).astype(dtype) for _ in range(3)
+            ]
+            inputs = [paddle.to_tensor(np_x, dtype=dtype) for np_x in np_inputs]
+
+            out = custom_cpp_extension.custom_tensor(inputs)
+            target_out = [x + 1.0 for x in inputs]
+            for i in range(3):
+                np.testing.assert_allclose(
+                    out[i].numpy(), target_out[i].numpy(), atol=1e-5
+                )
 
     def _test_nullable_tensor(self):
         x = custom_cpp_extension.nullable_tensor(True)
