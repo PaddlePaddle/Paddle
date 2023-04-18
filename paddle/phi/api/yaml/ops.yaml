@@ -787,8 +787,8 @@
     func : GenerateProposalsV2InferMeta
   kernel :
     func : generate_proposals
+    data_type : anchors
   optional : rpn_rois_num
-  data_type : anchors
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
