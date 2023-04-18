@@ -105,8 +105,28 @@ class Jacobian:
 
     def __init__(self, ys, xs, is_batched=False):
         if not is_batched:
+            if not 0 <= len(xs.shape) <= 1:
+                raise ValueError(
+                    f"xs.ndim should be 0 or 1 when is_batched=False"
+                    f" but got {len(xs.shape)}"
+                )
+            if not 0 <= len(ys.shape) <= 1:
+                raise ValueError(
+                    f"ys.ndim should be 0 or 1 when is_batched=False"
+                    f" but got {len(ys.shape)}"
+                )
             self._jacobian = _JacobianNoBatch(ys, xs)
         else:
+            if not 1 <= len(ys.shape) <= 2:
+                raise ValueError(
+                    f"ys.ndim should be 1 or 2 when is_batched=True"
+                    f" but got {len(ys.shape)}"
+                )
+            if not 1 <= len(xs.shape) <= 2:
+                raise ValueError(
+                    f"xs.ndim should be 1 or 2 when is_batched=True"
+                    f" but got {len(xs.shape)}"
+                )
             self._jacobian = _JacobianBatchFirst(ys, xs)
 
     @property

@@ -35,12 +35,24 @@ def make_v(f, inputs):
     (utils.TEST_CASE_NAME, 'func', 'xs'),
     (
         ('1d_in_1d_out', utils.square, np.array([2.0, 3.0])),
-        ('3d_in_3d_out', utils.square, np.random.rand(2, 3, 4)),
-        ('single_in_single_out', utils.square, np.random.rand(2, 3)),
+        (
+            'single_in_single_out',
+            utils.square,
+            np.random.rand(
+                6,
+            ),
+        ),
         (
             'multi_in_single_out',
             paddle.matmul,
-            (np.random.rand(2, 2), np.random.rand(2, 2)),
+            (
+                np.random.rand(
+                    4,
+                ),
+                np.random.rand(
+                    4,
+                ),
+            ),
         ),
     ),
 )
@@ -150,7 +162,6 @@ class TestJacobianNoBatch(unittest.TestCase):
             utils.square,
             np.array([[1.0, 2.0, 3.0], [3.0, 4.0, 3.0]]),
         ),
-        ('3d_in_3d_out', utils.square, np.random.rand(2, 3, 4)),
         ('multi_in_single_out', utils.square, np.random.rand(2, 3)),
     ),
 )
@@ -282,7 +293,7 @@ class TestJacobianBatchFirst(unittest.TestCase):
 class TestHessianNoBatch(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.shape = (2, 2)
+        self.shape = (4,)
         self.dtype = 'float32'
         self.np_dtype = np.float32
         self.numerical_delta = (
@@ -570,7 +581,7 @@ class TestHessianNoBatch(unittest.TestCase):
         np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
 
     def func_0Dtensor_index(self):
-        x_0d = self.x[0, 0].reshape([])
+        x_0d = self.x[0].reshape([])
 
         def func(x):
             return x * x
@@ -578,6 +589,15 @@ class TestHessianNoBatch(unittest.TestCase):
         with self.assertRaises(IndexError):
             H = paddle.autograd.hessian(func(x_0d), x_0d)
             H = H[:]
+
+    def func_2Dtensor(self):
+        x_2d = self.x.reshape([self.x.shape[0] // 2, 2])
+
+        def func(x):
+            return (x * x).sum()
+
+        with self.assertRaises(ValueError):
+            H = paddle.autograd.hessian(func(x_2d), x_2d)
 
     def test_all_cases(self):
         self.setUpClass()
@@ -602,6 +622,7 @@ class TestHessianNoBatch(unittest.TestCase):
         self.func_gt()
         self.func_ge()
         self.func_0Dtensor_index()
+        self.func_2Dtensor()
 
 
 class TestHessianBatchFirst(unittest.TestCase):
