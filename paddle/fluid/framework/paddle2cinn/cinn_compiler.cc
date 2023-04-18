@@ -51,7 +51,7 @@
 
 PHI_ECLARE_bool(enable_pe_launch_cinn);
 PHI_DECLARE_bool(enable_cinn_auto_tune);
-DECLARE_string(cinn_subgraph_graphviz_dir);
+PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
