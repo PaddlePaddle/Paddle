@@ -133,8 +133,8 @@ class OpInfoImpl {
     ir::StrAttribute *p_attribute = p_first_attribute;
     ir::IrContext *ctx = ir::IrContext::Instance();
     for (size_t i = 0; i < attributes_num; i++) {
-      new (p_attribute) ir::StrAttribute(
-          ir::StrAttribute::get(ctx, ConcreteOp::attributes_name_[i]));
+      new (p_attribute) ir::StrAttribute(ir::StrAttribute::get(
+          ctx, std::string(ConcreteOp::attributes_name_[i])));
       p_attribute += 1;
     }
     return op_info;
