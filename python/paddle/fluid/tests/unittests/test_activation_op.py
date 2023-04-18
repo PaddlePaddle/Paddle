@@ -1950,6 +1950,9 @@ class TestLeakyRelu(TestActivation):
         self.attrs = {'alpha': alpha}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -4053,11 +4056,13 @@ create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True)
 create_test_act_fp16_class(TestMish)
-create_test_act_fp16_class(TestLeakyRelu)
-create_test_act_fp16_class(TestLeakyReluAlpha1)
-create_test_act_fp16_class(TestLeakyReluAlpha2)
-create_test_act_fp16_class(TestLeakyReluAlpha3)
-create_test_act_fp16_class(TestLeakyRelu_ZeroDim)
+create_test_act_fp16_class(TestLeakyRelu, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha1, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha2, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha3, check_prim=True)
+create_test_act_fp16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, enable_cinn=False
+)
 create_test_act_fp16_class(TestRsqrt)
 
 
@@ -4164,11 +4169,19 @@ create_test_act_bf16_class(TestHardSigmoid)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu)
-create_test_act_bf16_class(TestLeakyReluAlpha1)
-create_test_act_bf16_class(TestLeakyReluAlpha2)
-create_test_act_bf16_class(TestLeakyReluAlpha3)
-create_test_act_bf16_class(TestLeakyRelu_ZeroDim)
+create_test_act_bf16_class(TestLeakyRelu, check_prim=True, enable_cinn=False)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha1, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha2, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha3, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, enable_cinn=False
+)
 create_test_act_bf16_class(TestRsqrt)
 
 if __name__ == "__main__":
