@@ -980,7 +980,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor &&
       !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));

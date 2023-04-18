@@ -661,7 +661,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("xpu_device_id", [](platform::Place &self) { return self.device; })
       .def("npu_device_id", [](platform::Place &self) { return self.device; })
       .def("ipu_device_id", [](platform::Place &self) { return self.device; })
-      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("custom_device_id",
            [](platform::Place &self) { return self.device; })
       .def("set_place",

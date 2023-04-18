@@ -99,7 +99,6 @@ BufferedReader::BufferedReader(
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
   npu_buffer_.resize(buffer_size);
-  mlu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();

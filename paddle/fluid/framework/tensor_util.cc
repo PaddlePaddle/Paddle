@@ -275,8 +275,7 @@ void TensorCopyImpl(const TENSOR& src,
                     TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(dst_place) ||
-
+  if (platform::is_gpu_place(dst_place)||
       platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {

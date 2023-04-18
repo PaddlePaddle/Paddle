@@ -45,7 +45,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
 
               platform::is_xpu_place(ctx.GetPlace()) ||
-
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
