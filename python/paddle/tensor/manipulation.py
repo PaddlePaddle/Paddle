@@ -4761,3 +4761,38 @@ __METHODS = {
 }
 for name, func in __METHODS.items():
     setattr(core.eager.Tensor, name, func)
+
+
+def unflatten(x, shape, axis):
+    if len(shape) == 0:
+        raise ValueError("The input for shape cannot be empty.")
+    if isinstance(shape, list) or isinstance(shape, tuple):
+        if shape.count(-1) > 1:
+            raise ValueError("The shape can contain only one -1.")
+        elif shape.count(-1) == 1:
+            list(shape)[shape.index(-1)] = x.shape[axis] / abs(np.prod(shape))
+        else:
+            sizes = np.prod(shape)
+            if sizes != x.shape[axis]:
+                raise ValueError(
+                    "The product of the elements in shape should be equal to x.shape[axis]."
+                )
+    elif isinstance(shape, paddle.Tensor):
+        sizes = paddle.prod(shape)
+        if paddle.sum(shape == -1) > 1:
+            raise ValueError("The shape can contain only one -1.")
+        elif paddle.sum(shape == -1) == 1:
+            shape[paddle.equal(shape, -1)] = int(
+                x.shape[axis] / -paddle.prod(shape)
+            )
+        else:
+            sizes = paddle.prod(shape)
+            if sizes != x.shape[axis]:
+                raise ValueError(
+                    "The product of the elements in shape should be equal to x.shape[axis]."
+                )
+    if axis < 0:
+        axis = axis + x.dim()
+    new_shape = x.shape[:axis] + list(shape) + x.shape[axis + 1 :]
+    x = x.reshape(new_shape)
+    return x

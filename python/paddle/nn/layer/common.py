@@ -1741,3 +1741,13 @@ class Flatten(Layer):
             input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
         return out
+
+
+class Unflatten(Layer):
+    def __init__(self, shape, axis):
+        super().__init__()
+        self.shape = shape
+        self.axis = axis
+
+    def forward(self, input):
+        out = paddle.unflatten(input, shape=self.shape, axis=self.axis)
