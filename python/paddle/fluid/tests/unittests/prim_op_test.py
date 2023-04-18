@@ -129,7 +129,7 @@ class OpTestUtils:
                     # why we reconstruct a tensor: because we want the tensor in cpu.
                     if in_dygraph_mode():
                         return paddle.to_tensor(
-                            [op_inputs[name][0].numpy()], place='cpu'
+                            op_inputs[name][0].numpy(), place='cpu'
                         )
                     else:
                         return op_inputs[name][0]
@@ -480,7 +480,7 @@ class PrimForwardChecker:
                         else tup[1].dtype
                     )
                     x = paddle.to_tensor(
-                        data=[tup[1]],
+                        data=tup[1],
                         place=self.place,
                         stop_gradient=stop_gradient,
                         dtype=dtype,
@@ -494,7 +494,7 @@ class PrimForwardChecker:
                     else item.dtype
                 )
                 x = paddle.to_tensor(
-                    data=[item],
+                    data=item,
                     place=self.place,
                     stop_gradient=stop_gradient,
                     dtype=dtype,
@@ -865,7 +865,7 @@ class PrimGradChecker(PrimForwardChecker):
         for np_v in self.grad_outputs:
             eager_vs.append(
                 paddle.to_tensor(
-                    data=[np_v],
+                    data=np_v,
                     place=self.place,
                     dtype="bfloat16"
                     if OpTestUtils.is_bfloat16_type(np_v.dtype)
