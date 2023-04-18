@@ -844,7 +844,9 @@ void EighInferMeta(const MetaTensor& x,
     values_dim.emplace_back(input_dim[i]);
   }
   out_w->set_dims(phi::make_ddim(values_dim));
+  out_w->set_dtype(dtype::ToReal(x.dtype()));
   out_v->set_dims(input_dim);
+  out_v->set_dtype(dtype::ToReal(x.dtype()));
 }
 
 void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
@@ -2004,8 +2006,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),
@@ -4822,13 +4824,16 @@ void UniqueRawInferMeta(const MetaTensor& x,
     out->set_dims(out_dims);
     if (return_inverse) {
       index->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+      index->set_dtype(dtype);
     }
   }
   if (return_index) {
     indices->set_dims(phi::make_ddim({-1}));
+    indices->set_dtype(dtype);
   }
   if (return_counts) {
     counts->set_dims(phi::make_ddim({-1}));
+    counts->set_dtype(dtype);
   }
 }
 

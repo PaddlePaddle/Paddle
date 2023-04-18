@@ -89,7 +89,7 @@ def _coalesce_tensors(var_groups):
 
 @framework.dygraph_only
 def _reshape_inplace(x, shape):
-    x_shape = framework._varbase_creator(dtype=x.dtype)
+    x_shape = framework._create_tensor(dtype=x.dtype)
     framework._dygraph_tracer().trace_op(
         type="reshape2",
         inputs={'X': x},
@@ -886,7 +886,7 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'heter', 'cncl']
+        backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
 

@@ -246,6 +246,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     val,
                     name,
                     [
+                        'uint16',
                         'float16',
                         'float32',
                         'float64',
@@ -1504,7 +1505,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, hermitian, use_default_tol)
+        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
     else:
         inputs = {}
         attrs = {}

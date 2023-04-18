@@ -25,7 +25,8 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    phi::Pool2dGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(pool2d_double_grad,
                    GPU,
                    ALL_LAYOUT,

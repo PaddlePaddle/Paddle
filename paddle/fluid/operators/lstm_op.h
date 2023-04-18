@@ -35,7 +35,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -197,7 +197,7 @@ class LSTMKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LSTMGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

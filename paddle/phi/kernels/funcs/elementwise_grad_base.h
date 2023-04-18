@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"

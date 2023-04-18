@@ -343,7 +343,6 @@ class PRChecker:
                 elif (
                     ('/xpu/' in filename.lower())
                     or ('/npu/' in filename.lower())
-                    or ('/mlu/' in filename.lower())
                     or ('/ipu/' in filename.lower())
                 ):
                     filterFiles.append(filename)
@@ -406,7 +405,7 @@ class PRChecker:
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif (
-                        'tests/unittests/xpu' in f_judge
+                        'test/xpu' in f_judge
                         or 'tests/unittests/npu' in f_judge
                         or 'op_npu.cc' in f_judge
                     ):

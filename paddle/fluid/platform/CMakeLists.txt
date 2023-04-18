@@ -129,19 +129,15 @@ cc_library(
        dlpack
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS}
        phi_backends
        phi_device_context
-       generator)
+       generator
+       phi_enforce)
 
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context enforce)
-
-if(WITH_CNCL)
-  target_link_libraries(collective_helper mlu_collective_helper)
-endif()
 
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
