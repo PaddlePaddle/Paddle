@@ -22,12 +22,9 @@ set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
 set(PYBIND_PATCH_COMMAND "")
-if(WITH_GPU AND ${CUDA_VERSION} VERSION_GREATER_EQUAL "12.0")
-  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
-       native_dst)
-  set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
-                           ${native_dst})
-endif()
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch native_dst)
+set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
+                         ${native_dst})
 
 ExternalProject_Add(
   extern_pybind
