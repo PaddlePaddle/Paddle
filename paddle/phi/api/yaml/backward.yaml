@@ -158,6 +158,15 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : bilinear_grad
+  forward : bilinear (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta :
+    func : BilinearGradInferMeta
+  kernel :
+    func : bilinear_grad
+
 - backward_op : bilinear_interp_grad
   forward : bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
@@ -172,15 +181,6 @@
     data_type : output_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
-
-- backward_op : bilinear_tensor_product_grad
-  forward : bilinear_tensor_product (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad), Tensor(weight_grad), Tensor(bias_grad)
-  infer_meta :
-    func : BilinearTensorProductGradInferMeta
-  kernel :
-    func : bilinear_grad
 
 - backward_op : bmm_grad
   forward : bmm (Tensor x, Tensor y) -> Tensor(out)
@@ -542,6 +542,17 @@
     func : exp_grad
   inplace : (out_grad -> x_grad)
   composite : exp_grad(out, out_grad, x_grad)
+
+- backward_op : expand_as_grad
+  forward : expand_as (Tensor x, Tensor y, int[] target_shape = {}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expand_as_grad
+  no_need_buffer : x
 
 - backward_op : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
@@ -1027,6 +1038,16 @@
     param : [x]
   kernel :
     func : logsigmoid_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : lu_grad
+  forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
+  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUGradInferMeta
+  kernel :
+    func : lu_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : lu_unpack_grad
@@ -1718,6 +1739,16 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : squared_l2_norm_grad
+  forward : squared_l2_norm(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : squared_l2_norm_grad
+
 - backward_op : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axis)
@@ -1842,6 +1873,17 @@
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
   optional : grad_out_new_grad, grad_out_grad_grad
 
+- backward_op : temporal_shift_grad
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : temporal_shift_grad
+    data_type : out_grad
+
 - backward_op : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float threshold)
@@ -1919,6 +1961,16 @@
     func : unfold_grad
     data_type : out_grad
   no_need_buffer : x
+
+- backward_op : uniform_inplace_grad
+  forward : uniform_inplace(Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0) -> Tensor(out)
+  args : (Tensor out_grad, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UniformRandomInplaceGradInferMeta
+  kernel :
+    func : uniform_inplace_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : unsqueeze_double_grad
   forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)

@@ -107,6 +107,11 @@ class Parallelizer:
             )
             # Do reshard process
             time0 = time.time()
+            micro_bsz = (
+                1
+                if not self._strategy.pipeline.enable
+                else self._strategy.pipeline.micro_batch_size
+            )
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
@@ -114,6 +119,7 @@ class Parallelizer:
                 rank,
                 self._dist_context,
                 dist_params_grads,
+                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -177,10 +183,22 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
+            # Apply post optimization passes
+            time0 = time.time()
+            self._apply_post_optimization(
+                dist_main_prog, dist_startup_prog, rank, dist_params_grads
+            )
+            self._logger.debug(
+                "within parallel apply_post_optimization time: {}, mode {}".format(
+                    time.time() - time0, self._mode
+                )
+            )
         # Clone program for test
         if self._mode != 'train':
+            pipeline_opt = dist_main_prog._pipeline_opt
             dist_main_prog = dist_main_prog.clone(for_test=True)
             dist_startup_prog = dist_startup_prog.clone(for_test=True)
+            dist_main_prog._pipeline_opt = pipeline_opt
 
         # Store the distributed programs for further usages
         self._dist_context.dist_main_programs[rank] = dist_main_prog
@@ -247,7 +265,7 @@ class Parallelizer:
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
-        if self._strategy.qat.enable:
+        if self._mode == 'train' and self._strategy.qat.enable:
             config = copy.deepcopy(self._strategy.qat.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -307,8 +325,8 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
-        # GradClip is train-only optimization
         if self._mode == "train":
+            # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -330,6 +348,13 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        if self._strategy.pipeline.enable:
+            self._strategy.gradient_merge.enable = True
+            self._strategy.gradient_merge.k_steps = (
+                self._strategy.pipeline.accumulate_steps
+            )
+            self._strategy.gradient_merge.avg = True
+
         # gradient_merge is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
@@ -339,6 +364,16 @@ class Parallelizer:
                 "auto_parallel_gradient_merge_pass", config
             )
             auto_parallel_gradient_merge_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
+        if self._strategy.pipeline.enable:
+            config = copy.deepcopy(self._strategy.pipeline.to_dict())
+            config["dist_context"] = self._dist_context
+            auto_parallel_pipeline_pass = new_pass(
+                "auto_parallel_pipeline", config
+            )
+            auto_parallel_pipeline_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
 

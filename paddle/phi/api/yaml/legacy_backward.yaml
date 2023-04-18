@@ -348,17 +348,6 @@
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
   no_need_buffer : weight
 
-- backward_op : expand_as_grad
-  forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] target_shape)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : expand_as_grad
-  no_need_buffer : x
-
 - backward_op : expand_double_grad
   forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray shape)
@@ -507,6 +496,7 @@
     data_type : x
   optional : scale
   backward : instance_norm_double_grad
+  composite: instance_norm_grad(x, scale, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
 - backward_op : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis) -> Tensor(out), Tensor(mean), Tensor(variance)
@@ -531,15 +521,6 @@
     param: [x]
   kernel :
     func : logsumexp_grad
-
-- backward_op : lu_grad
-  forward : lu (Tensor x, bool pivot) -> Tensor(out), Tensor(pivots), Tensor(infos)
-  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : LUGradInferMeta
-  kernel :
-    func : lu_grad
 
 - backward_op : matmul_double_grad
   forward : matmul_grad (Tensor x, Tensor y, Tensor grad_out, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y)
@@ -812,7 +793,7 @@
 
 - backward_op : relu6_grad
   forward : relu6 (Tensor x) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad, float threshold = 6)
+  args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -962,16 +943,6 @@
   invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
-- backward_op : squared_l2_norm_grad
-  forward : squared_l2_norm(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : squared_l2_norm_grad
-
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)
@@ -1031,7 +1002,7 @@
 
 - backward_op : swish_grad
   forward : swish (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float bete=1.0)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
@@ -1051,16 +1022,6 @@
     func : sync_batch_norm_grad
     data_type : out_grad
   optional : reserve_space
-
-- backward_op : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
-  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : temporal_shift_grad
 
 - backward_op : tile_double_grad
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
@@ -1127,16 +1088,6 @@
     param : [out_grad]
   kernel :
     func : triu_grad
-
-- backward_op : uniform_inplace_grad
-  forward : uniform_inplace(Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val) -> Tensor(out)
-  args : (Tensor out_grad, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UniformRandomInplaceGradInferMeta
-  kernel :
-    func : uniform_inplace_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : yolo_loss_grad
   forward : yolo_loss(Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)

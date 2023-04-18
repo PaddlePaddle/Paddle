@@ -1148,7 +1148,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-def _varbase_creator(
+def _create_tensor(
     type=core.VarDesc.VarType.LOD_TENSOR,
     name=None,
     shape=None,
@@ -2758,10 +2758,7 @@ class Operator:
         'heter_listen_and_serv',
         'c_wait_comm',
         'c_wait_compute',
-        'c_gen_hccl_id',
-        'c_comm_init_hccl',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(
@@ -3839,7 +3836,7 @@ class Block:
 
     def create_var(self, *args, **kwargs):
         if _non_static_mode():
-            var = _varbase_creator(*args, **kwargs)
+            var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
@@ -5737,6 +5734,22 @@ class Program:
             res_str = ""
             for block in self.blocks:
                 res_str += block.to_string(throw_on_error, with_details)
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
+            res_str += (
+                "version {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.version, throw_on_error), "  "
+                )
+                + "}\n"
+            )
+            res_str += (
+                "op_version_map {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.op_version_map, throw_on_error), "  "
+                )
+                + "}\n"
+            )
         else:
             protostr = self.desc.serialize_to_string()
             proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
@@ -7452,7 +7465,7 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', '', None]:
+    if device not in ['cpu', 'gpu', 'xpu', 'npu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device

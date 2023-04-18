@@ -33,17 +33,6 @@
   optional : master_param, skip_update
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
-- op : adamax_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, Tensor master_param, float beta1, float beta2, float epsilon, bool multi_precision)
-  output : Tensor(param_out), Tensor(avg_squared_grad_out), Tensor(avg_squared_update_out), Tensor(master_param_outs)
-  infer_meta :
-    func : AdamaxInferMeta
-  kernel :
-    func : adamax
-    data_type : param
-  optional : master_param
-  inplace : (param -> param_out), (moment -> avg_squared_grad_out), (inf_norm -> avg_squared_update_out), (master_param ->master_param_outs)
-
 - op : adamw_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
@@ -221,14 +210,6 @@
     func : ClassCenterSampleInferMeta
   kernel :
     func : class_center_sample
-
-- op : clip_by_norm
-  args : (Tensor x, float max_norm)
-  output : Tensor(out)
-  infer_meta :
-    func : ClipByNormInferMeta
-  kernel :
-    func : clip_by_norm
 
 - op : coalesce_tensor
   args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
@@ -453,16 +434,6 @@
   kernel :
     func : expand
   backward : expand_grad
-
-- op : expand_as
-  args : (Tensor x, Tensor y, int[] target_shape)
-  output : Tensor(out)
-  infer_meta :
-    func : ExpandAsInferMeta
-  kernel :
-    func : expand_as
-  optional : y
-  backward : expand_as_grad
 
 - op : exponential_
   args : (Tensor x, float lam)
@@ -774,15 +745,6 @@
     func : lstsq
     data_type : x
 
-- op : lu
-  args : (Tensor x, bool pivot)
-  output : Tensor(out), Tensor(pivots), Tensor(infos)
-  infer_meta :
-    func : LUInferMeta
-  kernel :
-    func : lu
-  backward : lu_grad
-
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -998,7 +960,7 @@
   backward : pool3d_grad
 
 - op : prior_box
-  args : (Tensor input, Tensor image, float[] min_sizes, float[] aspect_ratios, float[] variances, float[] max_sizes = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
   output : Tensor(out), Tensor(var)
   infer_meta :
     func : PriorBoxInferMeta
@@ -1099,18 +1061,6 @@
   intermediate : xshape
   backward: reshape_grad
 
-- op : rmsprop_
-  args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon, float decay, float momentum, bool centered, bool multi_precision)
-  output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_out)
-  infer_meta :
-    func : RmspropInferMeta
-  kernel :
-    func : rmsprop {dense, dense, dense, dense, dense, dense, dense-> dense, dense, dense, dense, dense}
-           rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense, dense-> dense, dense, dense, dense, dense}
-    data_type : param
-  optional : mean_grad, master_param
-  inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out), (master_param->master_param_out)
-
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
   output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
@@ -1208,15 +1158,6 @@
     func : split_with_num
   backward : split_with_num_grad
 
-- op : squared_l2_norm
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : SquaredL2NormInferMeta
-  kernel :
-    func : squared_l2_norm
-  backward : squared_l2_norm_grad
-
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
   output : Tensor
@@ -1266,15 +1207,6 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
-
-- op : temporal_shift
-  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor
-  infer_meta :
-    func : TemporalShiftInferMeta
-  kernel :
-    func : temporal_shift
-  backward : temporal_shift_grad
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
@@ -1371,17 +1303,6 @@
     data_type : dtype
     backend : place
 
-- op : uniform_inplace
-  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output: Tensor(out)
-  infer_meta:
-    func: UniformRandomInplaceInferMeta
-  kernel:
-    func: uniform_inplace
-    data_type: x
-  inplace: (x -> out)
-  backward: uniform_inplace_grad
-
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique
   args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
@@ -1411,15 +1332,6 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-
-- op : yolo_box
-  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
-  output : Tensor(boxes), Tensor(scores)
-  infer_meta :
-    func : YoloBoxInferMeta
-  kernel :
-    func : yolo_box
-    data_type : x
 
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
