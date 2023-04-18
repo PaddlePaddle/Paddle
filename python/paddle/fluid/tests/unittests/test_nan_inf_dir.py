@@ -85,6 +85,8 @@ class TestNanInfDirCheckResult(unittest.TestCase):
             output_dir=path,
         )
 
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
+
         def _check_num_nan_inf(use_cuda):
             shape = [32, 32]
             x_np, _ = self.generate_inputs(shape)
@@ -109,6 +111,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         z = paddle.add(x, y)
         path = ""
         paddle.fluid.core.set_nan_inf_debug_path(path)
+        paddle.amp.debugging.disable_tensor_checker()
 
 
 if __name__ == '__main__':
