@@ -524,7 +524,7 @@ class TestArgsortBF16OP(OpTest):
         self.op_type = 'argsort'
         self.dtype = np.uint16
         x = np.random.randn(11, 17).astype(np.float32)
-        out = np.argsort(x).astype(np.float32)
+        out = np.argsort(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
