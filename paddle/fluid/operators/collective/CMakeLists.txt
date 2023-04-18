@@ -43,11 +43,6 @@ if(WITH_XPU_BKCL)
   op_library(gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
-# if (WITH_GPU)
-#   # op_library(rpc_call_op DEPS ${COLLECTIVE_DEPS} rpc_utils)
-#   # op_library(rpc_result_op DEPS ${COLLECTIVE_DEPS} rpc_utils)
-# endif()
-
 set(OPERATOR_DEPS
     ${OPERATOR_DEPS} ${COLLECTIVE_DEPS}
     PARENT_SCOPE)
