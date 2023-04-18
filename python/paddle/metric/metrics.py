@@ -20,7 +20,7 @@ import paddle
 from paddle import _legacy_C_ops
 
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.framework import _create_tensor, _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -804,9 +804,9 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         label = paddle.cast(label, paddle.int64)
     if _non_static_mode():
         if correct is None:
-            correct = _varbase_creator(dtype="int32")
+            correct = _create_tensor(dtype="int32")
         if total is None:
-            total = _varbase_creator(dtype="int32")
+            total = _create_tensor(dtype="int32")
 
         topk_out, topk_indices = paddle.topk(input, k=k)
         _acc, _, _ = _legacy_C_ops.accuracy(
