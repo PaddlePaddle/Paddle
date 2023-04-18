@@ -139,9 +139,12 @@ void Conv2dFusionKernel(const Context& ctx,
       Conv2dBiasAddRelu(params);
     } else if (activation == "identity_elementwise_add_identity") {
       Conv2dBiasAdd(params);
+    } else if (activation == "swish_elementwise_add_identity") {
+      Conv2dBiasSiluAdd(params);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Cutlass now only support relu activation in a residual block"));
+          "Cutlass now only support %s in a residual block",
+          activation.c_str()));
     }
   } else if (activation == "relu") {
     Conv2dBiasRelu(params);

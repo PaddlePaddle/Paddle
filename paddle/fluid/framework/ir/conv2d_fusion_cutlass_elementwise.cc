@@ -36,6 +36,8 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* conv_in = gpd.mutable_pattern()->NewNode("conv_in");
 
   std::string NAME = "conv2d_fusion";
+  // std::unordered_set<std::string> cutlass_ele_set(
+  //     {"elementwise_add"});
 
   auto conv_filter = gpd.mutable_pattern()
                          ->NewNode("conv_filter")
@@ -57,18 +59,18 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
                             ->NewNode("residual_input")
                             ->assert_is_op_input("elementwise_add", "X");
 
-  auto elementwise_add_op = gpd.mutable_pattern()
-                                ->NewNode("elementwise_add_op")
-                                ->assert_is_op("elementwise_add");
+  auto elementwise_op = gpd.mutable_pattern()
+                            ->NewNode("elementwise_op")
+                            ->assert_is_op("elementwise_add");
 
-  auto elementwise_add_out = gpd.mutable_pattern()
-                                 ->NewNode("elementwise_add_out")
-                                 ->assert_is_op_output("elementwise_add")
-                                 ->AsOutput();
+  auto elementwise_op_out = gpd.mutable_pattern()
+                                ->NewNode("elementwise_op_out")
+                                ->assert_is_op_output("elementwise_add")
+                                ->AsOutput();
 
   conv_op->LinksFrom({conv_in, conv_filter, conv_bias}).LinksTo({conv_out});
-  elementwise_add_op->LinksFrom({residual_input, conv_out})
-      .LinksTo({elementwise_add_out});
+  elementwise_op->LinksFrom({residual_input, conv_out})
+      .LinksTo({elementwise_op_out});
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -78,14 +80,14 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
     Node* conv_op_node = subgraph.at(conv_op);
     // Node* conv_out_node = subgraph.at(conv_out);
     Node* residual_input_node = subgraph.at(residual_input);
-    Node* elementwise_add_op_node = subgraph.at(elementwise_add_op);
-    Node* elementwise_add_out_node = subgraph.at(elementwise_add_out);
+    Node* elementwise_op_node = subgraph.at(elementwise_op);
+    Node* elementwise_op_out_node = subgraph.at(elementwise_op_out);
 
     auto* scope = param_scope();
     bool cutlass_can_fuse =
         CutlassTeller::Instance()->CbaeleCanSupport(conv_op_node->Op(),
                                                     scope,
-                                                    "elementwise_add",
+                                                    elementwise_op_node->Name(),
                                                     "identity",
                                                     Get<int>("gpu_device_id"));
 
@@ -96,19 +98,20 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
     std::cout << "cutlass 可以支持" << std::endl;
 
     OpDesc new_desc = *(conv_op_node->Op());
+    auto activation = new_desc.GetAttrIfExists<std::string>("activation");
     // new_desc.SetType(NAME);
     // new_desc.SetInput("Input", {conv_in_node->Name()});
     // new_desc.SetInput("Filter", {conv_filter_node->Name()});
     // new_desc.SetInput("Bias", {conv_bias_node->Name()});
     new_desc.SetAttr("activation",
-                     std::string("identity_elementwise_add_identity"));
+                     activation + std::string("_elementwise_add_identity"));
     new_desc.SetInput("ResidualData", {residual_input_node->Name()});
-    new_desc.SetOutput("Output", {elementwise_add_out_node->Name()});
+    new_desc.SetOutput("Output", {elementwise_op_out_node->Name()});
     new_desc.Flush();
 
     std::unordered_set<const Node*> del_node_set;
     del_node_set.insert(conv_op_node);
-    del_node_set.insert(elementwise_add_op_node);
+    del_node_set.insert(elementwise_op_node);
     GraphSafeRemoveNodes(graph, del_node_set);
 
     auto fused_node = graph->CreateOpNode(&new_desc);
@@ -116,7 +119,7 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(conv_filter_node, fused_node);
     IR_NODE_LINK_TO(conv_bias_node, fused_node);
     IR_NODE_LINK_TO(residual_input_node, fused_node);
-    IR_NODE_LINK_TO(fused_node, elementwise_add_out_node);
+    IR_NODE_LINK_TO(fused_node, elementwise_op_out_node);
   };
   gpd(graph, handler);
 }

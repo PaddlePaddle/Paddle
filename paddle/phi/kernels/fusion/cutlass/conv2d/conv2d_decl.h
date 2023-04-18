@@ -55,6 +55,7 @@ typedef struct {
 // Below functions are provided by cutlass, they are called by phi.
 void Conv2dBiasAddRelu(const ConvAllParams &params);
 void Conv2dBiasAdd(const ConvAllParams &params);
+void Conv2dBiasSiluAdd(const ConvAllParams &params);
 void Conv2dBiasRelu(const ConvAllParams &params);
 void Conv2dBiasLeakyRelu(const ConvAllParams &params);
 void Conv2dBiasSilu(const ConvAllParams &params);

@@ -123,6 +123,11 @@ __global__ void naive_conv2d_kernel(const half *input,
     case CONV2D_DEPTHWISE_BIAS_SILU:
       *out_ptr = x * (1.f / (1 + exp(-x)));
       break;
+    case CONV2D_BIAS_SILU_ADD:
+      x = x * (1.f / (1 + exp(-x)));
+      x += __half2float(*(residual + out_offset));
+      *out_ptr = x;
+      break;
     case CONV2D_BIAS_ADD_RELU:
       x += __half2float(*(residual + out_offset));
       *out_ptr = x > 0 ? x : 0;
@@ -240,6 +245,9 @@ std::string OpType2String(OpType op_type) {
       break;
     case CONV2D_BIAS_ADD:
       return "conv2d_bias_add";
+      break;
+    case CONV2D_BIAS_SILU_ADD:
+      return "conv2d_bias_silu_add";
       break;
     case CONV2D_BIAS_LEAKY_RELU:
       return "conv2d_bias_leaky_relu";

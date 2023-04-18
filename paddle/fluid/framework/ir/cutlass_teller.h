@@ -351,6 +351,7 @@ class CutlassTeller {
   const std::unordered_set<std::string> cbaa_act_set = {"relu"};
   const std::unordered_set<std::string> cbaele_act_set = {
       "identity_elementwise_add_identity",
+      "swish_elementwise_add_identity",
   };
 };
 
