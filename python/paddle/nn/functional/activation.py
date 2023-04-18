@@ -538,10 +538,13 @@ def prelu(x, weight, data_format="NCHW", name=None):
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'prelu'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'prelu'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'prelu'
+            weight,
+            'weight',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'prelu',
         )
         helper = LayerHelper('prelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)

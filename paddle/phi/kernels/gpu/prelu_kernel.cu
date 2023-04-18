@@ -79,4 +79,5 @@ PD_REGISTER_KERNEL(prelu,
                    phi::PReluKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double) {}

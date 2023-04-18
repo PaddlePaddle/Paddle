@@ -2498,7 +2498,7 @@ def multi_dot(x, name=None):
             check_variable_and_dtype(
                 item,
                 'x[' + str(id) + ']',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'multi_dot',
             )
             if item.dtype != x[0].dtype:
