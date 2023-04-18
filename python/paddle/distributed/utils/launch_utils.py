@@ -427,15 +427,6 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
-    elif backend == 'cncl':
-        proc_env = {
-            "FLAGS_selected_mlus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-        }
     elif backend == 'gloo':
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {
@@ -485,7 +476,7 @@ def start_local_trainers(
 
         fn = None
         if log_dir is not None:
-            os.system(f"mkdir -p {log_dir}")
+            os.makedirs(log_dir, exist_ok=True)
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:

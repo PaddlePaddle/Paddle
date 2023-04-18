@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
@@ -100,42 +100,27 @@ class TestCustomConjJit(unittest.TestCase):
         self.dtypes = ['float32', 'float64']
         self.shape = [2, 20, 2, 3]
 
-    def check_output(self, out, pd_out, name):
-        np.testing.assert_array_equal(
-            out,
-            pd_out,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
-    def run_dynamic(self, dtype, np_input):
-        out, x_grad = conj_dynamic(custom_ops.custom_conj, dtype, np_input)
-        pd_out, pd_x_grad = conj_dynamic(paddle.conj, dtype, np_input)
-
-        self.check_output(out, pd_out, "out")
-        self.check_output(x_grad, pd_x_grad, "x's grad")
-
-    def run_static(self, dtype, np_input):
-        out, x_grad = conj_static(
-            custom_ops.custom_conj, self.shape, dtype, np_input
-        )
-        pd_out, pd_x_grad = conj_static(
-            paddle.conj, self.shape, dtype, np_input
-        )
-
-        self.check_output(out, pd_out, "out")
-        self.check_output(x_grad, pd_x_grad, "x's grad")
-
     def test_dynamic(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)
-            self.run_dynamic(dtype, np_input)
+            out, x_grad = conj_dynamic(custom_ops.custom_conj, dtype, np_input)
+            pd_out, pd_x_grad = conj_dynamic(paddle.conj, dtype, np_input)
+
+            check_output(out, pd_out, "out")
+            check_output(x_grad, pd_x_grad, "x's grad")
 
     def test_static(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)
-            self.run_static(dtype, np_input)
+            out, x_grad = conj_static(
+                custom_ops.custom_conj, self.shape, dtype, np_input
+            )
+            pd_out, pd_x_grad = conj_static(
+                paddle.conj, self.shape, dtype, np_input
+            )
+
+            check_output(out, pd_out, "out")
+            check_output(x_grad, pd_x_grad, "x's grad")
 
     # complex only used in dynamic mode now
     def test_complex_dynamic(self):
@@ -143,7 +128,16 @@ class TestCustomConjJit(unittest.TestCase):
             np_input = np.random.random(self.shape).astype(
                 dtype
             ) + 1j * np.random.random(self.shape).astype(dtype)
-            self.run_dynamic(to_complex(dtype), np_input)
+
+            out, x_grad = conj_dynamic(
+                custom_ops.custom_conj, to_complex(dtype), np_input
+            )
+            pd_out, pd_x_grad = conj_dynamic(
+                paddle.conj, to_complex(dtype), np_input
+            )
+
+            check_output(out, pd_out, "out")
+            check_output(x_grad, pd_x_grad, "x's grad")
 
 
 if __name__ == "__main__":

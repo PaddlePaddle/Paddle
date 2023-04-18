@@ -1036,28 +1036,80 @@ def _generate_python_module(
     return custom_module
 
 
-def _gen_output_content(in_names, out_names, inplace_reverse_idx):
+def _gen_output_content(
+    op_name, in_names, out_names, ins_map, attrs_map, inplace_reverse_idx
+):
     # ' ' * tab space * tab number
     indent = ' ' * 4 * 2
-    dynamic_content = ""
-    static_content = ""
+    dynamic_content = f"""
+{indent}res = []
+{indent}start_idx = 0"""
+    static_content = f"""
+{indent}ins = {{}}
+{indent}ins_map = {ins_map}
+{indent}for key, value in ins_map.items():
+{indent}    # handle optional inputs
+{indent}    if value is not None:
+{indent}        ins[key] = value
+{indent}helper = LayerHelper("{op_name}", **locals())
+"""
     for out_idx, out_name in enumerate(out_names):
         in_idx = -1
         if out_idx in inplace_reverse_idx:
             in_idx = inplace_reverse_idx[out_idx]
-        if in_idx != -1 and "@VECTOR" in in_names[in_idx]:
+        if (
+            in_idx != -1
+            and "@VECTOR" in in_names[in_idx]
+            and "@OPTIONAL" in in_names[in_idx]
+        ):
+            # inplace optional vector<Tensor> output case
             lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
-{indent}outs['{out_name}'] = [core.eager.Tensor() for _ in range(len({lower_in_names}))]
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}if {lower_in_names} is not None:
+{indent}    res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}    start_idx += len({lower_in_names})
+{indent}else:
+{indent}    res.append(None)
+{indent}    start_idx += 1"""
+            static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+        elif (
+            in_idx != -1 and "@VECTOR" in in_names[in_idx]
+        ):  # inplace vector<Tensor> output case
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}start_idx += len({lower_in_names})"""
             static_content += f"""
 {indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
-        else:
+        elif (
+            in_idx != -1 and "@OPTIONAL" in in_names[in_idx]
+        ):  # inplace optional Tensor output case, handle inplace None input
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
-{indent}outs['{out_name}'] = core.eager.Tensor()
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}if {lower_in_names} is not None:
+{indent}    res.append(outs[start_idx])
+{indent}else:
+{indent}    res.append(None)
+{indent}start_idx += 1"""
+            static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+        else:  # general/inplace Tensor output case
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
             static_content += f"""
 {indent}outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+
+    dynamic_content += f"""
+{indent}return res[0] if len(res)==1 else res"""
+
+    static_content += f"""
+{indent}helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs={attrs_map})
+{indent}res = [outs[out_name] if out_name in outs.keys() else None for out_name in outs_list]
+{indent}return res[0] if len(res)==1 else res"""
 
     return dynamic_content, static_content
 
@@ -1074,13 +1126,17 @@ def _custom_api_content(op_name):
         inplace_reverse_idx,
     ) = _get_api_inputs_str(op_name)
     dynamic_content, static_content = _gen_output_content(
-        in_names, out_names, inplace_reverse_idx
+        op_name,
+        in_names,
+        out_names,
+        ins_map,
+        attrs_map,
+        inplace_reverse_idx,
     )
-    lower_in_list = [p.split("@")[0].lower() for p in in_names]
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.core import Tensor, CustomOpKernelContext
+        from paddle.fluid.core import Tensor
         from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 
@@ -1092,26 +1148,10 @@ def _custom_api_content(op_name):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
             if in_dygraph_mode():
-                ctx = CustomOpKernelContext()
-                for i in {in_names}:
-                    ctx.add_inputs(i)
-                for j in {attr_names}:
-                    ctx.add_attr(j)
+                outs = core.eager._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
-                core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
-                ins = {{}}
-                for key, value in dict({ins_map}).items():
-                    # handle optional inputs
-                    if value is not None:
-                        ins[key] = value
-                helper = LayerHelper("{op_name}", **locals())
                 {static_content}
-                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs={attrs_map})
-
-            res = [outs[out_name] for out_name in outs_list]
-
-            return res[0] if len(res)==1 else res
             """
     ).lstrip()
 
@@ -1119,11 +1159,6 @@ def _custom_api_content(op_name):
     api_content = API_TEMPLATE.format(
         op_name=op_name,
         params_list=params_list,
-        ins_map=ins_map,
-        attrs_map=attrs_map,
-        # "[x, y, z]""
-        in_names="[" + ",".join(lower_in_list) + "]",
-        attr_names="[" + ",".join(attr_names) + "]",
         outs_list=outs_list,
         dynamic_content=dynamic_content,
         static_content=static_content,
