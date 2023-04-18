@@ -21,14 +21,14 @@ import paddle
 
 
 class ParallelConfig:
-    def __init__(self, tp: int, pp: int, vpp: int = 1, sharding=1):
-        self.tp = tp
+    def __init__(self, mp: int, pp: int, vpp: int = 1, sharding=1):
+        self.mp = mp
         self.pp = pp
         self.vpp = vpp
         self.sharding = sharding
 
     def pipe_parallel_groups(self):
-        for i in range(self.tp):
+        for i in range(self.mp):
             for j in range(self.sharding):
                 yield self.pipe_parallel_group(i, j)
 
@@ -79,20 +79,6 @@ class LayerReNamingManager:
         return ".".join(names)
 
 
-def create_adaptor():
-    src_dir = "./output/epoch_0_step_30"
-    dst_dir = "./dst"
-    src_config = ParallelConfig(2, 2, 2)
-    dst_config = ParallelConfig(2, 2, 2)
-    adaptor = PipeLineModelAdaptor(src_dir, src_config, dst_dir, dst_config, 1)
-    return adaptor
-
-
-def convert_model():
-    adaptor = create_adaptor()
-    adaptor.apply()
-
-
 class PipeLineModelAdaptor:
     def __init__(
         self,
@@ -109,10 +95,11 @@ class PipeLineModelAdaptor:
         self._transformer_layer = transformer_layer
 
     def apply(self):
-        for i in range(self._src_parallel_config.tp):
+        for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
                 # TODO(liuzhenhai): use multiple processs
                 layers = []
+
                 # 1、extract layers in the same pp group
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
                 src_dirs = [
@@ -128,9 +115,11 @@ class PipeLineModelAdaptor:
                     layers.extend(self.extract_layers(dir, with_shared))
                     with_shared = False
                 print(f"1 layer len {len(layers)}")
+
                 # 2、sort and unique layers
                 layers = self.sort_layers(layers)
                 print(f"2 layer len {len(layers)}")
+
                 # 3、resplit layers among pp group according new pp config
                 layer_segments = self.segment_layers(
                     layers, self._dst_parallel_config
@@ -142,12 +131,12 @@ class PipeLineModelAdaptor:
                     )
                     for e in dst_group
                 ]
-                layers_and_dirs = zip(layer_segments, dst_dirs)
+
                 # 4、merge layers belonging to the same node
-                for layer_and_dir in layers_and_dirs:
-                    (layer_segment, dir_) = layer_and_dir
+                for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
                     print(len(layer_segment))
                     self.merge_layers(layer_segment, dir_)
+
                 # 5、copy meta_state.pdopt
                 for (src_dir, dst_dir) in zip(src_dirs, dst_dirs):
                     shutil.copyfile(
@@ -156,7 +145,7 @@ class PipeLineModelAdaptor:
                     )
 
     def peek_model(self, model_dir):
-        for i in range(self._src_parallel_config.tp):
+        for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
                 layers = []
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
@@ -435,10 +424,10 @@ def main():
     )
 
     parser.add_argument(
-        '--src_tp',
+        '--src_mp',
         type=int,
         default=2,
-        help='tp degree of the origin triaing task that dumpped this model',
+        help='mp degree of the origin triaing task that dumpped this model',
     )
 
     parser.add_argument(
@@ -456,10 +445,10 @@ def main():
     )
 
     parser.add_argument(
-        '--dst_tp',
+        '--dst_mp',
         type=int,
         default=None,
-        help='tp degree of the origin triaing task that dumpped this model',
+        help='mp degree of the origin triaing task that dumpped this model',
     )
 
     parser.add_argument(
@@ -477,6 +466,13 @@ def main():
     )
 
     parser.add_argument(
+        '--sharding',
+        type=int,
+        default=1,
+        help=" sharding degree of both the origin triaing task that dumpped this model and the expected triaing task that would recover this model",
+    )
+
+    parser.add_argument(
         '--method',
         type=str,
         default="adapt_model",
@@ -485,24 +481,24 @@ def main():
 
     args = parser.parse_args()
 
-    if args.dst_tp is None:
-        args.dst_tp = args.src_tp
+    if args.dst_mp is None:
+        args.dst_mp = args.src_mp
 
     print(
-        "adapt model dumped by task with pp degree:{}, vp degree:{}, tp degree:{} to task with pp degree:{}, vp degree:{}, tp degree:{}".format(
+        "adapt model dumped by task with pp degree:{}, vp degree:{}, mp degree:{} to task with pp degree:{}, vp degree:{}, mp degree:{}".format(
             args.src_pp,
             args.src_vp,
-            args.src_tp,
+            args.src_mp,
             args.dst_pp,
             args.dst_vp,
-            args.dst_tp,
+            args.dst_mp,
         )
     )
     src_parallel_config = ParallelConfig(
-        args.src_tp, args.src_pp, args.src_vp, 1
+        args.src_mp, args.src_pp, args.src_vp, args.sharding
     )
     dst_parallel_config = ParallelConfig(
-        args.dst_tp, args.dst_pp, args.dst_vp, 1
+        args.dst_mp, args.dst_pp, args.dst_vp, args.sharding
     )
 
     adaptor = PipeLineModelAdaptor(
@@ -515,12 +511,11 @@ def main():
     if args.method == "peek_model":
         adaptor.peek_model(args.dst_path)
     elif args.method == "adapt_model":
-        assert args.src_tp == args.dst_tp, "src tp {} dst tp{}".format(
-            args.src_tp, args.dst_tp
+        assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
+            args.src_mp, args.dst_mp
         )
         adaptor.apply()
 
 
 if __name__ == "__main__":
-    # convert_model()
     main()
