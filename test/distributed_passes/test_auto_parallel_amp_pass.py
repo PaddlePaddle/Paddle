@@ -13,25 +13,29 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../legacy_test")
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestPF16Pass(AutoPallelPassTestBase):
+class TestAMPPass(AutoPallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
         self.rtol = 1e-5
         self.atol = 1e-8
 
-        paddle.seed(2021)
-        random.seed(2021)
-        np.random.seed(2021)
+        rank = paddle.distributed.get_rank()
+        paddle.seed(rank + 2021)
+        random.seed(rank + 2021)
+        np.random.seed(rank + 2021)
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
@@ -42,15 +46,9 @@ class TestPF16Pass(AutoPallelPassTestBase):
                 'layer_norm',
                 'gelu',
             ],
-            "custom_black_list": [
-                'c_softmax_with_cross_entropy',
-                'elementwise_div',
-                'reduce_sum',
-            ],
+            "custom_black_list": ['c_softmax_with_cross_entropy'],
             "init_loss_scaling": 32768,
             "use_dynamic_loss_scaling": True,
-            "use_pure_fp16": True,
-            "use_fp16_guard": False,
         }
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
