@@ -104,4 +104,4 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(
-    yolo_box_head, GPU, ALL_LAYOUT, ops::YoloBoxHeadKernel, float)
+    yolo_box_head, GPU, ALL_LAYOUT, ops::YoloBoxHeadKernel, float) {}

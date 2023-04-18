@@ -556,4 +556,4 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(
-    yolo_box_post, GPU, ALL_LAYOUT, ops::YoloBoxPostKernel, float)
+    yolo_box_post, GPU, ALL_LAYOUT, ops::YoloBoxPostKernel, float) {}

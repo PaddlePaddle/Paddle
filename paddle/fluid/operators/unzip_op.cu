@@ -83,7 +83,7 @@ class unzipGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 PD_REGISTER_STRUCT_KERNEL(unzip,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::unzipCUDAKernel,
                           float,
@@ -93,7 +93,7 @@ PD_REGISTER_STRUCT_KERNEL(unzip,
                           int,
                           int64_t) {}
 PD_REGISTER_STRUCT_KERNEL(unzip_grad,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::unzipGradCUDAKernel,
                           float,
