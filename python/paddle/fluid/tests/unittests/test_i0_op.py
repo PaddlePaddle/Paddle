@@ -43,13 +43,13 @@ class TestI0API(unittest.TestCase):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
-                    name="x", shape=self.x.shape, dtype='float64'
+                    name="x", shape=self.x.shape, dtype=self.DTYPE
                 )
                 out = paddle.i0(x)
                 exe = paddle.static.Executor(place)
                 res = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"x": paddle.to_tensor(self.x)},
+                    feed={"x": self.x},
                     fetch_list=[out],
                 )
                 out_ref = output_i0(self.x)
