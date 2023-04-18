@@ -269,7 +269,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         # input attr
         inputs.extend(self.attrs["names"])
         for output in self.outputs["names"]:
-            local_call += f"""    std::unique_ptr<Tensor> {output}_local = {output} ? std::make_unique<Tensor>() : std::nullptr;
+            local_call += f"""    std::unique_ptr<Tensor> {output}_local = {output} ? std::make_unique<Tensor>() : nullptr;
 """
         # output arg
         inputs.extend([f"{e}_local.get()" for e in self.outputs["names"]])

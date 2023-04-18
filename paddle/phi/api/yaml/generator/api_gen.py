@@ -410,6 +410,7 @@ class ForwardAPI(BaseAPI):
             or not self.outputs_plain_tensor()
             or self.inplace_map
             or self.view_map
+            or not self.inputs["names"]
         ):
             return ""
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{

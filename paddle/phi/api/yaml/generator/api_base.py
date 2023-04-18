@@ -1272,10 +1272,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     #
     def inputs_plain_tensor(self):
-        return all([type == "const Tensor&" for e in self.inputs["input_info"]])
+        return all(
+            [
+                type == "const Tensor&"
+                for type in self.inputs["input_info"].values()
+            ]
+        )
 
     def outputs_plain_tensor(self):
-        return all([type == "Tensor" for e in self.outputs["types"]])
+        return all([type == "Tensor" for type in self.outputs["types"]])
 
     # TODO(liuzhenhai):to support inplace
     def gene_dist_tensor_hijack(self, inplace_flag):
