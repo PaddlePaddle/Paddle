@@ -276,7 +276,6 @@ void TensorCopyImpl(const TENSOR& src,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place) ||
-      platform::is_mlu_place(dst_place) ||
       platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -615,7 +614,6 @@ void TensorFromStream(std::istream& is,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_mlu_place(dev_ctx.GetPlace()) ||
         platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
@@ -691,7 +689,6 @@ void TensorFromStream(std::istream& is,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_mlu_place(dev_ctx.GetPlace()) ||
         platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \

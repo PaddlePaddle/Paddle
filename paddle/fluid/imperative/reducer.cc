@@ -29,9 +29,8 @@
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
-    defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   phi::DenseTensor *tensor =
@@ -67,9 +66,6 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #ifdef PADDLE_WITH_XPU_BKCL
 // TODO(liuyuhui) support xpu about div nranks in the future
 #endif
-  } else if (platform::is_mlu_place(tensor->place())) {
-    // TODO(zhangna)
-    VLOG(4) << "divnrank for mlu not support yet";
   }
 }
 
@@ -229,56 +225,6 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 }
 #endif
 
-#ifdef PADDLE_WITH_CNCL
-// context is used to select the stream for concat
-template <>
-void ConcatTensorsWithType<platform::MLUDeviceContext>(
-    const platform::MLUDeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
-    framework::Variable *p_dense_contents,
-    framework::proto::VarType::Type type) {
-  switch (type) {
-    case framework::proto::VarType::FP16:
-      ConcatTensorsForAllReduce<platform::MLUDeviceContext, platform::float16>(
-          context, dense_tensors_, p_dense_contents);
-      break;
-    case framework::proto::VarType::FP32:
-      ConcatTensorsForAllReduce<platform::MLUDeviceContext, float>(
-          context, dense_tensors_, p_dense_contents);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when it concats tensors for "
-          "allreduce.",
-          framework::DataTypeToString(type)));
-  }
-}
-
-// context is used to select the stream for split
-template <>
-void SplitTensorsWithType<platform::MLUDeviceContext>(
-    const platform::MLUDeviceContext &context,
-    framework::Variable *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors,
-    framework::proto::VarType::Type type) {
-  switch (type) {
-    case framework::proto::VarType::FP16:
-      SplitTensorsForAllReduce<platform::MLUDeviceContext, platform::float16>(
-          context, p_dense_contents, p_dense_tensors);
-      break;
-    case framework::proto::VarType::FP32:
-      SplitTensorsForAllReduce<platform::MLUDeviceContext, float>(
-          context, p_dense_contents, p_dense_tensors);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type (%s) is not supported when it splits tensors for "
-          "allreduce.",
-          framework::DataTypeToString(type)));
-  }
-}
-#endif
-
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
@@ -308,19 +254,6 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat npu grads since it's not compiled with HCCL,"
         "Please recompile or reinstall Paddle with HCCL support."));
-
-  } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_CNCL
-    ConcatTensorsWithType(
-        static_cast<const platform::MLUDeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't concat mlu grads since it's not compiled with CNCL,"
-        "Please recompile or reinstall Paddle with CNCL support."));
-#endif
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(static_cast<const phi::CPUContext &>(context),
                           dense_tensors_,
@@ -361,19 +294,6 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split npu grad since it's not compiled with HCCL,"
         "Please recompile or reinstall Paddle with HCCL support."));
-
-  } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_CNCL
-    SplitTensorsWithType(
-        static_cast<const platform::MLUDeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split mlu grad since it's not compiled with CNCL,"
-        "Please recompile or reinstall Paddle with CNCL support."));
-#endif
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,
@@ -850,11 +770,6 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
           PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx->stream()));
         }
       }
-#elif defined(PADDLE_WITH_CNCL)
-      if (platform::is_mlu_place(group_tensor.place())) {
-        // TODO(liuyuhui) support MLU set constant
-        VLOG(3) << "MLU doesn't support set_constant";
-      }
 #else
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       if (HasGrad(var_index)) {
@@ -1116,7 +1031,7 @@ void Reducer::FinalizeBackward() {
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_GLOO)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

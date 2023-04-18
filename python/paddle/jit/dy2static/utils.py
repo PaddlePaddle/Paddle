@@ -35,6 +35,7 @@ from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -85,6 +86,9 @@ WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
+
+GRAD_PREFIX = 'grad/'
+GRAD_SUFFIX = '@GRAD'
 
 NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.READER,
@@ -1462,18 +1466,28 @@ def _param_grad_names(program_desc, params):
     # the param grad name can be set correctly in the run_program.
     for param in params:
         candidate = []
-        suffix = param.name + '@GRAD'
         for var in program_desc.block(0).all_vars():
             var_name = var.name()
-            if var_name.endswith(suffix):
-                prefix_count = var_name.count('grad/')
-                if 'grad/' * prefix_count + suffix == var_name:
+            if param.name not in var_name:
+                continue
+            suf_count = var_name.count(GRAD_SUFFIX)
+            if suf_count > 0:
+                suffix = param.name + GRAD_SUFFIX * suf_count
+                pre_count = var_name.count(GRAD_PREFIX)
+                if GRAD_PREFIX * pre_count + suffix == var_name:
                     candidate.append(var_name)
 
         if candidate:
-            names.append(max(candidate, key=lambda name: name.count('grad/')))
+            names.append(
+                max(
+                    candidate,
+                    key=lambda name: name.count(GRAD_PREFIX)
+                    if GRAD_PREFIX in name
+                    else name.count(GRAD_SUFFIX),
+                )
+            )
         else:
-            names.append(suffix)
+            names.append(param.name + GRAD_SUFFIX)
     return names
 
 
@@ -1498,7 +1512,10 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
     return names
 
 
-def prim_or_cinn_is_enabled(build_strategy):
+def prim_or_cinn_is_enabled(build_strategy, backend):
+    if backend == 'CINN':
+        return True
+
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
@@ -1534,3 +1551,18 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def backend_guard(backend):
+    core.check_and_set_prim_all_enabled()
+    orign_fwd = core._is_fwd_prim_enabled()
+    orign_bwd = core._is_bwd_prim_enabled()
+
+    if backend == 'CINN':
+        core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        core._set_prim_forward_enabled(orign_fwd)
+        core._set_prim_backward_enabled(orign_bwd)

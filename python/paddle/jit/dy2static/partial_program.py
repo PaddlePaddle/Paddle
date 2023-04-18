@@ -27,7 +27,12 @@ from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    _out_grad_names,
+    _param_grad_names,
+    backend_guard,
+)
 
 __all__ = []
 
@@ -184,19 +189,25 @@ class PartialProgramLayer:
         self._infer_info = ProgramInfo()
         self._forward_end_index_map = {}
 
-        custom_white_list, custom_black_list = None, None
+        amp_dtype, custom_white_list, custom_black_list = None, None, None
         tracer = framework._dygraph_tracer()
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
-        # For AMP training
-        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
-            custom_white_list=custom_white_list,
-            custom_black_list=custom_black_list,
-        )
+            amp_dtype = tracer._amp_dtype
+        if amp_dtype is not None and amp_dtype in ['float16', 'bfloat16']:
+            # For AMP training
+            self._amp_list = (
+                paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
+                    custom_white_list=custom_white_list,
+                    custom_black_list=custom_black_list,
+                    dtype=amp_dtype,
+                )
+            )
 
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
+        self._backend = kwargs.get('backend', None)
 
     def __call__(self, inputs):
         """
@@ -636,10 +647,9 @@ class PartialProgramLayer:
 
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
-            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
-            core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            backward.gradients(targets=targets, inputs=[])
+            with backend_guard(self._backend):
+                backward.gradients(targets=targets, inputs=[])
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(

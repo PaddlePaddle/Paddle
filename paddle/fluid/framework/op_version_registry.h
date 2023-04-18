@@ -264,6 +264,13 @@ inline void SaveOpVersions(
   }
 }
 
+inline void SaveOpVersions(const std::unordered_map<std::string, uint32_t>& src,
+                           pb::OpVersionMap* dst) {
+  for (const auto& pair : src) {
+    (*dst)[pair.first].SetVersionID(pair.second);
+  }
+}
+
 class OpVersionComparator {
  public:
   virtual bool operator()() = 0;
