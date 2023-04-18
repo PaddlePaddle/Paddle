@@ -152,7 +152,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestConv3DCUDNNFP16(parent):
+    class TestConv3DTransposeCUDNNFP16(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = np.float16
@@ -178,8 +178,8 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNFP16OP")
-    TestConv3DCUDNNFP16.__name__ = cls_name
-    globals()[cls_name] = TestConv3DCUDNNFP16
+    TestConv3DTransposeCUDNNFP16.__name__ = cls_name
+    globals()[cls_name] = TestConv3DTransposeCUDNNFP16
 
 
 def create_test_cudnn_bf16_class(parent):
@@ -188,7 +188,7 @@ def create_test_cudnn_bf16_class(parent):
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
         "core is not compiled with CUDA and do not support bfloat16",
     )
-    class TestConv3DCUDNNBF16(parent):
+    class TestConv3DTransposeCUDNNBF16(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = np.uint16
@@ -198,13 +198,12 @@ def create_test_cudnn_bf16_class(parent):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            if self.use_cudnn:
-                place = core.CUDAPlace(0)
-                self.check_grad_with_place(
-                    place,
-                    {'Input', 'Filter'},
-                    'Output',
-                )
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                {'Input', 'Filter'},
+                'Output',
+            )
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
@@ -225,8 +224,8 @@ def create_test_cudnn_bf16_class(parent):
             )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
-    TestConv3DCUDNNBF16.__name__ = cls_name
-    globals()[cls_name] = TestConv3DCUDNNBF16
+    TestConv3DTransposeCUDNNBF16.__name__ = cls_name
+    globals()[cls_name] = TestConv3DTransposeCUDNNBF16
 
 
 def conv3d_transpose_wrapper(
@@ -296,10 +295,6 @@ class TestConv3DTransposeOp(OpTest):
                 'Input': convert_float_to_uint16(input),
                 'Filter': convert_float_to_uint16(filter),
             }
-            output = convert_float_to_uint16(
-                output, data_format=self.data_format
-            )
-
         else:
             self.inputs = {
                 'Input': input,
