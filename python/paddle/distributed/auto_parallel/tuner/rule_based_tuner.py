@@ -35,6 +35,9 @@ from paddle.distributed.auto_parallel.dist_attribute import (
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
+from paddle.distributed.auto_parallel.process_group import (
+    get_world_process_group,
+)
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.utils import (
     is_gradient_clip_op,
@@ -579,7 +582,6 @@ class GraphUtil:
 
         def _match_core(src_node, tgt_node):
             nonlocal not_matched
-
             # not support one input name or output name corresponding to multiple vars
             if not_matched:
                 return
@@ -1125,13 +1127,6 @@ class RuleBasedTuner:
     @property
     def level(self):
         return self._level
-
-    def convert_process_mesh_to_key(self, process_mesh):
-        """Convert process mesh object to str."""
-        processes = ",".join([str(x) for x in process_mesh._process_ids])
-        topology = ",".join([str(x) for x in process_mesh._shape])
-        key = processes + ";" + topology
-        return key
 
     def gen_full_program(self):
         """Generate full program that contain backward and update phase program if mode is train."""
@@ -1878,6 +1873,13 @@ class RuleBasedTuner:
                     ][parallelism][key]
                     self._complete_sub_update_program(sub_program_dist_context)
 
+    def convert_process_mesh_to_key(self, process_mesh):
+        """Convert process mesh object to str."""
+        processes = ",".join([str(x) for x in process_mesh._process_ids])
+        topology = ",".join([str(x) for x in process_mesh._shape])
+        key = processes + ";" + topology
+        return key
+
     def convert_device_mesh_to_key(self, device_mesh):
         """Convert device mesh object to str."""
         processes = ",".join([str(x) for x in device_mesh.device_ids])
@@ -1893,6 +1895,168 @@ class RuleBasedTuner:
             dist_context
         )
         return global_cost.time, max_memory
+
+    def _local_stage_pass(self, start, end, process_mesh):
+        """Get the best cost and the corresponding strategy of layers on the given process mesh."""
+        # convert process mesh to dict key
+        key = self.convert_process_mesh_to_key(process_mesh)
+
+        if start in self.stage_best_cost_of_pm:
+            if end in self.stage_best_cost_of_pm[start]:
+                if key in self.stage_best_cost_of_pm[start][end]:
+                    return self.stage_best_cost_of_pm[start][end][key]["cost"]
+
+        assert end >= start
+        selective_parallelisms = (
+            ["dp", "mp"] if len(process_mesh.shape) == 1 else ["dp_mp", "mp_dp"]
+        )
+        if start not in self.stage_best_cost_of_pm:
+            self.stage_best_cost_of_pm[start] = {}
+        if end not in self.stage_best_cost_of_pm[start]:
+            self.stage_best_cost_of_pm[start][end] = {}
+
+        if key not in self.stage_best_cost_of_pm[start][end]:
+            self.stage_best_cost_of_pm[start][end][key] = {}
+
+        if end == start:
+            dist_contexts_x = [DistributedContext(), DistributedContext()]
+        else:
+            dist_contexts_x = self.stage_best_cost_of_pm[start][end - 1][key][
+                "dist_context"
+            ]
+
+        # Use beam search, the beam size is 2.
+        # When the process mesh is 1-D, the selecetive parallelsim can be dp or mp.
+        # Because the first layer often contains more ops than other layer, using beam search can find more accurate strategy.
+        count = 0
+        for dist_context_x in dist_contexts_x:
+            if end == start and count == 1:
+                break
+            for parallelism in selective_parallelisms:
+                dist_context_y = self.sub_programs_dist_context[end][
+                    parallelism
+                ][key]
+                dist_context = self.combine_dist_contexts(
+                    [dist_context_x, dist_context_y]
+                )
+                if (
+                    "dist_context"
+                    not in self.stage_best_cost_of_pm[start][end][key]
+                ):
+                    self.stage_best_cost_of_pm[start][end][key][
+                        "dist_context"
+                    ] = [None, None]
+                    self.stage_best_cost_of_pm[start][end][key]["cost"] = [
+                        sys.maxsize,
+                        sys.maxsize,
+                    ]
+
+                # estimate cost and memory
+                cost, local_stage_memory = self._get_sub_program_cost(
+                    dist_context
+                )
+
+                if local_stage_memory > 0.9 * self.cluster.machines[0].devices[
+                    0
+                ].memory * (1024**3):
+                    cost = sys.maxsize
+
+                index = -1
+                for idx, item in enumerate(
+                    self.stage_best_cost_of_pm[start][end][key]["cost"]
+                ):
+                    if cost <= item:
+                        index = idx
+                        break
+                if index == 0:
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][
+                        1
+                    ] = self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+                    self.stage_best_cost_of_pm[start][end][key]["dist_context"][
+                        1
+                    ] = self.stage_best_cost_of_pm[start][end][key][
+                        "dist_context"
+                    ][
+                        0
+                    ]
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][
+                        0
+                    ] = cost
+                    self.stage_best_cost_of_pm[start][end][key]["dist_context"][
+                        0
+                    ] = dist_context
+
+                elif index == 1:
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][
+                        1
+                    ] = cost
+                    self.stage_best_cost_of_pm[start][end][key]["dist_context"][
+                        1
+                    ] = dist_context
+            count += 1
+
+        if (
+            self.stage_best_cost_of_pm[start][end][key]["cost"][1]
+            < self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+        ):
+            self.stage_best_cost_of_pm[start][end][key][
+                "best_cost"
+            ] = self.stage_best_cost_of_pm[start][end][key]["cost"][1]
+            self.stage_best_cost_of_pm[start][end][key][
+                "best_dist_context"
+            ] = self.stage_best_cost_of_pm[start][end][key]["dist_context"][1]
+        else:
+            self.stage_best_cost_of_pm[start][end][key][
+                "best_cost"
+            ] = self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+            self.stage_best_cost_of_pm[start][end][key][
+                "best_dist_context"
+            ] = self.stage_best_cost_of_pm[start][end][key]["dist_context"][0]
+
+        return self.stage_best_cost_of_pm[start][end][key]["best_cost"]
+
+    def local_stage_pass(self, start, end, device_mesh):
+        """Get the best cost and the corresponding strategy of layers on the given device mesh."""
+        dm_key = self.convert_device_mesh_to_key(device_mesh)
+        device_mesh_shape = device_mesh.shape
+        if len(device_mesh_shape) == 1:
+            device_mesh_shape.insert(0, 1)
+        process_mesh_shapes = convert_to_process_meshes(device_mesh_shape)
+        best_cost = sys.maxsize
+
+        if start not in self.stage_best_cost_of_dm:
+            self.stage_best_cost_of_dm[start] = {}
+        if end not in self.stage_best_cost_of_dm[start]:
+            self.stage_best_cost_of_dm[start][end] = {}
+        if dm_key not in self.stage_best_cost_of_dm[start][end]:
+            self.stage_best_cost_of_dm[start][end][dm_key] = {}
+
+        for process_mesh_shape in process_mesh_shapes:
+            process_mesh = ProcessMesh(
+                np.array(device_mesh.device_ids)
+                .reshape(process_mesh_shape)
+                .tolist()
+            )
+            key = self.convert_process_mesh_to_key(process_mesh)
+            for i in range(start, end + 1):
+                self._local_stage_pass(start, i, process_mesh)
+            if (
+                self.stage_best_cost_of_pm[start][end][key]["best_cost"]
+                <= best_cost
+            ):
+                best_cost = self.stage_best_cost_of_pm[start][end][key][
+                    "best_cost"
+                ]
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "cost"
+                ] = best_cost
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "dist_context"
+                ] = self.stage_best_cost_of_pm[start][end][key][
+                    "best_dist_context"
+                ]
+
+        return best_cost
 
     def combine_dist_contexts(self, dist_contexts):
         """Combine the dist attr in dist contexts to one dist context."""
@@ -1927,7 +2091,7 @@ class RuleBasedTuner:
         self.layers = self.cluster_operators()
         end = time.time()
         self._logger.info(
-            "Cluster operators to {} layers in {}s.".format(
+            "Cluster operators to {} layers in {:.2f}s.".format(
                 len(self.layers), end - begin
             )
         )
@@ -1937,7 +2101,7 @@ class RuleBasedTuner:
         self.gen_fwd_sub_programs_by_clone()
         end = time.time()
         self._logger.info(
-            f"Generate programs of every layer in {end - begin}s."
+            f"Generate programs of every layer in {end - begin:.2f}s."
         )
 
         # step3: partition devices to device meshes
@@ -1948,7 +2112,7 @@ class RuleBasedTuner:
         )
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
-        self._logger.info(f"Partition cluster in {end - begin}s.")
+        self._logger.info(f"Partition cluster in {end - begin:.2f}s.")
 
         # step4: transform device mesh to process meshes
         dm_idx = 0
@@ -1987,7 +2151,7 @@ class RuleBasedTuner:
         begin = time.time()
         self.gen_full_program()
         end = time.time()
-        self._logger.info(f"Generate full program in {end - begin}s.")
+        self._logger.info(f"Generate full program in {end - begin:.2f}s.")
 
         # step6: complete forward sub programs
         begin = time.time()
@@ -1995,7 +2159,7 @@ class RuleBasedTuner:
             self.complete_sub_fwd_programs(process_mesh)
         end = time.time()
         self._logger.info(
-            f"Complete all sub forward programs in {end - begin}s."
+            f"Complete all sub forward programs in {end - begin:.2f}s."
         )
 
         if self.mode == "train":
@@ -2004,7 +2168,9 @@ class RuleBasedTuner:
             self.complete_sub_bwd_programs()
             end = time.time()
             self._logger.info(
-                f"Complete all sub backward programs in {end - begin}s."
+                "Complete all sub backward programs in {:.2f}s.".format(
+                    end - begin
+                )
             )
 
             # step8: complete update sub programs
@@ -2014,6 +2180,88 @@ class RuleBasedTuner:
             self._logger.info(
                 f"Complete all sub update programs in {end - begin}s."
             )
+
+    def layer_placement_pass(self, stages, layers, device_meshes):
+        """Get the best cost and the corresponding strategy of the given layers on the stages which running on the devices."""
+        stage_layer_cost = [
+            [sys.maxsize for i in range(layers)] for j in range(stages)
+        ]
+        # To get the balance among the stages, we select the minimum maximum cost of stages.
+        min_max_stage_costs = [
+            [None for i in range(layers)] for j in range(stages)
+        ]
+        best_strategies = [[None for i in range(layers)] for j in range(stages)]
+        for s in range(len(device_meshes)):
+            for i in range(0, layers):
+                if s == 0:
+                    stage_layer_cost[s][i] = self.local_stage_pass(
+                        0, i, device_meshes[s]
+                    )
+                    min_max_stage_costs[s][i] = stage_layer_cost[s][i]
+                    key = self.convert_device_mesh_to_key(device_meshes[s])
+                    best_strategies[s][i] = self.stage_best_cost_of_dm[0][i][
+                        key
+                    ]["dist_context"]
+                else:
+                    min_cost = sys.maxsize
+                    min_max_stage_cost = sys.maxsize
+                    for j in range(0, i):
+                        key = self.convert_device_mesh_to_key(device_meshes[s])
+                        local_stage_cost = self.local_stage_pass(
+                            j + 1, i, device_meshes[s]
+                        )
+                        dist_context = self.combine_dist_contexts(
+                            [
+                                best_strategies[s - 1][j],
+                                self.stage_best_cost_of_dm[j + 1][i][key][
+                                    "dist_context"
+                                ],
+                            ]
+                        )
+                        cost, _ = self._get_sub_program_cost(dist_context)
+                        max_stage_cost = (
+                            min_max_stage_costs[s - 1][j]
+                            if local_stage_cost < min_max_stage_costs[s - 1][j]
+                            else local_stage_cost
+                        )
+
+                        if cost <= min_cost:
+                            if cost == min_cost:
+                                if max_stage_cost < min_max_stage_cost:
+                                    min_max_stage_cost = max_stage_cost
+                                    best_strategies[s][i] = dist_context
+                                else:
+                                    break
+                            else:
+                                best_strategies[s][i] = dist_context
+                            min_cost = cost
+                    stage_layer_cost[s][i] = min_cost
+                    min_max_stage_costs[s][i] = min_max_stage_cost
+
+        return (
+            stage_layer_cost[stages - 1][layers - 1],
+            best_strategies[stages - 1][layers - 1],
+        )
+
+    def tune_o2(self):
+        """The o2 level tuning."""
+        best_dist_context = None
+        best_cost = sys.maxsize
+        for device_meshes in self.device_meshes_list:
+            cost, dist_context = self.layer_placement_pass(
+                len(device_meshes), len(self.layers), device_meshes
+            )
+
+            if cost <= best_cost:
+                self._logger.info(
+                    "O2 level: a better strategy has be found as follows: "
+                )
+                print_program_with_dist_attr(
+                    self.full_main_program, best_dist_context
+                )
+                best_cost = cost
+                best_dist_context = dist_context
+        return best_dist_context
 
     def tune_o1(self):
         """The o1 level tuning."""
@@ -2082,7 +2330,7 @@ class RuleBasedTuner:
                         )
 
                         self._logger.info(
-                            "Cost Model: The max memory is {}GB and cost is {} when {} parallelism under process mesh shape {} on {} stages.".format(
+                            "Cost Model: The max memory is {:.2f}GB and cost is {:.2f} when {} parallelism under process mesh shape {} on {} stages.".format(
                                 memory / (1024**3),
                                 cost,
                                 parallelism,
@@ -2090,8 +2338,8 @@ class RuleBasedTuner:
                                 len(device_meshes),
                             )
                         )
-                        # 15% buffer is reserved for memory cost
-                        if memory > 0.85 * self.cluster.machines[0].devices[
+                        # 10% buffer is reserved safely for memory cost
+                        if memory > 0.9 * self.cluster.machines[0].devices[
                             0
                         ].memory * (1024**3):
                             cost = sys.maxsize
@@ -2100,7 +2348,7 @@ class RuleBasedTuner:
                             best_cost = cost
                             best_dist_context = dist_context_of_device_meshes
                             self._logger.info(
-                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {}GB.".format(
+                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {:.2f}GB.".format(
                                     parallelism,
                                     process_mesh_shape,
                                     len(device_meshes),
@@ -2109,9 +2357,6 @@ class RuleBasedTuner:
                             )
 
         return best_dist_context
-
-    def tune_o2(self):
-        return None
 
     def save_strategy(self, best_dist_context, path):
         dist_attrs = {"tensor": {}, "op": {}, "process_meshes": []}
@@ -2151,9 +2396,14 @@ class RuleBasedTuner:
         begin = time.time()
         self.match_program(self._dist_context.serial_main_program)
         end = time.time()
-        self._logger.info(f"Pattern match in {end - begin}s.")
+        self._logger.info(f"Pattern match in {end - begin:.2f}s.")
 
         if self._use_dp:
+            total_rank = (
+                self._cluster.get_num_machines()
+                * self._cluster._num_devices_per_machine
+            )
+            get_world_process_group().add_ranks(list(range(total_rank)))
             completer = Completer(self._dist_context)
             completer.complete_forward_annotation()
             print_program_with_dist_attr(
@@ -2213,7 +2463,7 @@ class RuleBasedTuner:
         self._dist_context._process_meshes = best_dist_context._process_meshes
 
         end = time.time()
-        self._logger.info(f"Rule-based tuner end in {end - begin}s.")
+        self._logger.info(f"Rule-based tuner end in {end - begin:.2f}s.")
         self._logger.info("The best strategy found is as follows: ")
         print_program_with_dist_attr(self.full_main_program, best_dist_context)
 

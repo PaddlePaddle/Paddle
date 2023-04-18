@@ -148,8 +148,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
-  auto dev_ctx = ctx_manager.Get(op_type, place_, stream_priority).get().get();
-  SetDeviceCommContext(op.get(), dev_ctx);
+  DeviceContext* dev_ctx = nullptr;
 
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
@@ -158,22 +157,30 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
-      return ctx_manager
-          .Get(std::string(kCustomStream) + "-" + execution_stream,
-               place_,
-               stream_priority)
-          .get()
-          .get();
+      dev_ctx = ctx_manager
+                    .Get(std::string(kCustomStream) + "-" + execution_stream,
+                         place_,
+                         stream_priority)
+                    .get()
+                    .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     }
 
     if (op_type == interpreter::kMemcpyD2H) {
-      return ctx_manager.Get(std::string(kD2HStream), place_, stream_priority)
-          .get()
-          .get();
+      dev_ctx =
+          ctx_manager.Get(std::string(kD2HStream), place_, stream_priority)
+              .get()
+              .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     } else if (op_type == interpreter::kMemcpyH2D) {
-      return ctx_manager.Get(std::string(kH2DStream), place_, stream_priority)
-          .get()
-          .get();
+      dev_ctx =
+          ctx_manager.Get(std::string(kH2DStream), place_, stream_priority)
+              .get()
+              .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -195,6 +202,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 #endif
   }
 
+  SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
   return op_func_node.dev_ctx_;
 }
 

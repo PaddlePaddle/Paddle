@@ -54,14 +54,6 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         )
 
     inputs = {'X': x, 'Scale': scale}
-    if core.is_compiled_with_custom_device('npu'):
-        check_variable_and_dtype(
-            float_status,
-            "float_status",
-            ['float16', 'float32'],
-            'check_finite_and_unscale',
-        )
-        inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs
@@ -138,13 +130,10 @@ def update_loss_scaling(
             ['float16', 'float32', 'float64', 'uint16'],
             'update_loss_scaling',
         )
-        if (
-            e.dtype == core.VarDesc.VarType.FP16
-            or e.dtype == core.VarDesc.VarType.BF16
-        ):
+        if e.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             assert (
                 prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
-            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
         else:
             assert (
                 prev_loss_scaling.dtype == e.dtype

@@ -27,9 +27,6 @@ register_operators(
   gen_bkcl_id_op
   c_gen_nccl_id_op
   gen_nccl_id_op
-  c_gen_hccl_id_op
-  gen_hccl_id_op
-  c_gen_cncl_id_op
   DEPS
   ${COLLECTIVE_DEPS})
 
@@ -44,11 +41,6 @@ if(WITH_XPU_BKCL)
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
   op_library(c_gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
-endif()
-
-if(WITH_CNCL)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
-  op_library(c_gen_cncl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
 set(OPERATOR_DEPS

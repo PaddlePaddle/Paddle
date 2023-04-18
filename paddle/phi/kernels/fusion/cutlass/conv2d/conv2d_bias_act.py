@@ -36,7 +36,9 @@ cba_header = '''
 #include "cutlass/epilogue/thread/linear_combination_leaky_relu.h"
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
+#include "cutlass/epilogue/thread/linear_combination_sigmoid.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
+
 
 namespace phi {
 namespace fusion {
@@ -46,7 +48,7 @@ namespace cutlass_internal {
 # This is a cutlass kernel, will be many these like kernels
 
 dict_for_declare_part = {
-    "conv_kind_name": "Fprop",
+    "conv_kind_name": "DefaultConv2dFprop",
     "epi_part": "${epi_func}< ${element_c}, ${epilogue_vector_length}, ${element_accum}, ${element_epilogue}>",
 }
 
@@ -78,6 +80,7 @@ class CbaAct(enum.Enum):
     Relu = 2
     Silu = 3
     LeakyRelu = 4
+    Sigmoid = 5
 
 
 # Some global variables used, now we only support these activations.
@@ -86,6 +89,7 @@ SupportedAct = [
     CbaAct.Relu,
     CbaAct.Silu,
     CbaAct.LeakyRelu,
+    CbaAct.Sigmoid,
 ]
 
 ActTag = {
@@ -93,6 +97,7 @@ ActTag = {
     SupportedAct[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
     SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
     SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
+    SupportedAct[4]: 'cutlass::epilogue::thread::LinearCombinationSigmoid',
 }
 
 UnderScoreName = {
@@ -100,6 +105,7 @@ UnderScoreName = {
     SupportedAct[1]: "conv2d_bias_relu",
     SupportedAct[2]: "conv2d_bias_silu",
     SupportedAct[3]: "conv2d_bias_leaky_relu",
+    SupportedAct[4]: "conv2d_bias_sigmoid",
 }
 
 CamelName = {
@@ -107,6 +113,7 @@ CamelName = {
     SupportedAct[1]: "Conv2dBiasRelu",
     SupportedAct[2]: "Conv2dBiasSilu",
     SupportedAct[3]: "Conv2dBiasLeakyRelu",
+    SupportedAct[4]: "Conv2dBiasSigmoid",
 }
 
 # Generate sm75 TensorOp conv code.
@@ -141,12 +148,12 @@ def generate_sm75_1688():
     ]
 
     math_instructions = [
-        (
-            "16,8,8",
-            "cutlass::half_t",
-            "cutlass::half_t",
-            "cutlass::half_t",
-        ),
+        # (
+        #     "16,8,8",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        # ),
         (
             "16,8,8",
             "cutlass::half_t",
@@ -161,6 +168,7 @@ def generate_sm75_1688():
     kernel_dict["align_b"] = "8"
     # this should divided by oc
     kernel_dict["epilogue_vector_length"] = "8"
+    kernel_dict["split_k_slices"] = "1"
 
     sm75_code = ""
     for epi_func in SupportedAct:

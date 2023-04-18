@@ -45,6 +45,16 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
       << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
 }
 
+void TaskNode::SetVarsToDtype(
+    const std::map<std::string, std::string>& vars_to_dtype) {
+  vars_to_dtype_ = vars_to_dtype;
+}
+
+void TaskNode::SetVarsToShape(
+    const std::map<std::string, std::vector<int64_t>>& vars_to_shape) {
+  vars_to_shape_ = vars_to_shape;
+}
+
 void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
   program_ = program;
 }

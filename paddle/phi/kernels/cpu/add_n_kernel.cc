@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 template <typename T, typename Context>
