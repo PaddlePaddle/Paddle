@@ -16,7 +16,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -59,9 +59,6 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::GPUUniformRandomKernel,
-                          float,
-                          double) {}
+REGISTER_OP_CUDA_KERNEL(uniform_random_batch_size_like,
+                        paddle::operators::GPUUniformRandomKernel<float>,
+                        paddle::operators::GPUUniformRandomKernel<double>);

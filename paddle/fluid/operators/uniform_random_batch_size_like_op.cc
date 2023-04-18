@@ -56,7 +56,7 @@ inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
-template <typename T, typename DeviceContext>
+template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -178,20 +178,16 @@ with random values sampled from a uniform distribution.
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     uniform_random_batch_size_like,
-    ops::UniformRandomBatchSizeLikeOp,
-    ops::UniformRandomBatchSizeLikeOpMaker,
+    paddle::operators::UniformRandomBatchSizeLikeOp,
+    paddle::operators::UniformRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::BatchSizeLikeNoNeedBufferVarsInferer);
+    paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 
-PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CPUUniformRandomKernel,
-                          float,
-                          double,
-                          plat::bfloat16) {}
+REGISTER_OP_CPU_KERNEL(
+    uniform_random_batch_size_like,
+    paddle::operators::CPUUniformRandomKernel<float>,
+    paddle::operators::CPUUniformRandomKernel<double>,
+    paddle::operators::CPUUniformRandomKernel<paddle::platform::bfloat16>);
