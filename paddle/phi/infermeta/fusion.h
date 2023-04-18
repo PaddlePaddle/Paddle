@@ -108,6 +108,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& time_step,
     const std::vector<const MetaTensor*>& seq_lengths,
     const std::vector<const MetaTensor*>& src_mask,
+    const std::vector<const MetaTensor*>& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,

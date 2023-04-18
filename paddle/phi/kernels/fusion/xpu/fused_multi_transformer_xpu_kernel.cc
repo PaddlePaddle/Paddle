@@ -52,6 +52,7 @@ void FusedMultiTransformerXpuKernel(
     const paddle::optional<DenseTensor>& time_step,
     const paddle::optional<DenseTensor>& seq_lengths,
     const paddle::optional<DenseTensor>& src_mask,
+    const paddle::optional<DenseTensor>& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
