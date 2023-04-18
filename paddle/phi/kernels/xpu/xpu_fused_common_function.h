@@ -53,7 +53,7 @@ struct XPUDropoutParam {
 
 /******************
  * check is l3
- *******************/
+ ******************/
 
 static bool is_in_l3(const void *addr) {
   int64_t addr_int = (int64_t)addr;
