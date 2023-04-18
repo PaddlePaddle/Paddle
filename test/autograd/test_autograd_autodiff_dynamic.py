@@ -428,10 +428,10 @@ class TestHessianNoBatch(unittest.TestCase):
 class TestHessianBatchFirst(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.x_shape = (1, 2)
+        self.x_shape = (5, 2)
         self.weight_shape = (2, 4)
-        self.y_shape = (1, 2)
-        self.nbatch, self.nrow = 1, 2
+        self.y_shape = (5, 2)
+        self.nbatch, self.nrow = 5, 2
         self.dtype = 'float32'
         self.np_dtype = np.float32
         self.numerical_delta = (
@@ -586,8 +586,7 @@ class TestHessianBatchFirst(unittest.TestCase):
         self.setUpClass()
         self.func_single_input()
         self.func_single_input_attribute_operator()
-        # TODO(sensen): enable it when high-order gradient of multiply is fixed
-        # self.func_multi_input()
+        self.func_multi_input()
         self.func_allow_unused()
         self.func_stop_gradient()
         self.func_out_not_single()

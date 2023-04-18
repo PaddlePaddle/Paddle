@@ -122,6 +122,76 @@ class Jacobian:
             return getattr(self._jacobian, __name)
         return getattr(self._jacobian[:], __name)
 
+    def __add__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs + rhs
+
+    def __sub__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs - rhs
+
+    def __mul__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs * rhs
+
+    def __div__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs / rhs
+
+    def __truediv__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs / rhs
+
+    def __pow__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs**rhs
+
+    def __floordiv__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs // rhs
+
+    def __matmul__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs @ rhs
+
+    def __eq__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs == rhs
+
+    def __ne__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs != rhs
+
+    def __lt__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs < rhs
+
+    def __le__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs <= rhs
+
+    def __gt__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs > rhs
+
+    def __ge__(self, other):
+        lhs = self[:]
+        rhs = other[:] if isinstance(other, Jacobian) else other
+        return lhs >= rhs
+
 
 class Hessian(Jacobian):
     """Hessian class, same as Jacobian except classname"""
@@ -154,15 +224,6 @@ class _Jacobian:
         self.original_xs_shape = xs.shape
         self.original_ys_shape = ys.shape
         self._xs = xs
-        if len(self._xs.shape) == 0 and not self.is_batched:
-            self._xs = self._xs.reshape(
-                [
-                    -1,
-                ]
-            )
-        if len(self._xs.shape) == 1 and self.is_batched:
-            self._xs = self._xs.reshape([-1, 1])
-
         self._ys = ys
         if len(self._ys.shape) == 0 and not self.is_batched:
             self._ys = self._ys.reshape(
@@ -208,9 +269,10 @@ class _Jacobian:
         if self.is_batched is False:
             if len(self.shape) == 0:
                 # xs and ys are both 0-D tensor
-                raise IndexError(
-                    "0-D tensor can not be indexed, please use .item() to get it's value."
-                )
+                if indexes != slice(None, None, None):
+                    raise IndexError("0-D tensor can only be indexed by [:]")
+                else:
+                    indexes = (0, 0)
             elif len(self.shape) == 1:
                 # either ys or xs is 0-D tensor
                 indexes = (
