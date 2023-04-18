@@ -65,22 +65,19 @@ static std::vector<const phi::DenseTensor*> DealWithBoolIndices(
   std::vector<const phi::DenseTensor*> res(indices_v.begin(), indices_v.end());
   bool contains_bool_tensor = false;
   for (size_t i = 0; i < indices_v.size(); ++i) {
-    PADDLE_ENFORCE(
-        (indices_v[i]->dtype() == phi::DataType::INT64) ||
-            (indices_v[i]->dtype() == phi::DataType::INT32) ||
-            (indices_v[i]->dtype() == phi::DataType::BOOL),
-        phi::errors::InvalidArgument(
-            "indices contains bool tensor and int32/int64 tensor at the same "
-            "time"));
     if (indices_v[i]->dtype() == phi::DataType::BOOL) {
       contains_bool_tensor = true;
-    } else {
+    } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
+               (indices_v[i]->dtype() == phi::DataType::INT32)) {
       PADDLE_ENFORCE_EQ(
           contains_bool_tensor,
           false,
           phi::errors::InvalidArgument(
               "indices contains bool tensor and int32/int64 tensor at the same "
               "time"));
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "data type of tensor in indices must be int32, int64 or bool"));
     }
   }
 

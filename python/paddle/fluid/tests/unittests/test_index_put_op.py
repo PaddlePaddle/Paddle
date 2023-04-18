@@ -508,6 +508,30 @@ class TestIndexPutAPI28(TestIndexPutAPIBase):
         self.accumulate = True
 
 
+class TestIndexPutAPI29(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int32
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (16, 16, 56)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int32
+        self.accumulate = False
+
+
+class TestIndexPutAPI30(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int32
+        self.x_shape = (110, 42, 56, 56)
+        self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+        self.value_shape = (16, 16, 56)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int32
+        self.accumulate = True
+
+
 class TestIndexPutInplaceAPI(unittest.TestCase):
     def setUp(self):
         self.init_dtype_type()
