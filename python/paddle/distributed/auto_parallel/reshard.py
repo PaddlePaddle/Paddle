@@ -1595,10 +1595,10 @@ class Resharder:
                     if i == 0:
                         all_partition_index_list.append(process_index[j][1])
                 for process in group:
-                    # append slice op desc
-                    slice_starts = []
-                    slice_ends = []
-                    slices_axes = []
+                    min_comm_group = copy.deepcopy(group)
+                    all_partition_index_list_copied = copy.deepcopy(
+                        all_partition_index_list
+                    )
                     target_partition_index = Resharder.compute_partition_index(
                         process,
                         complete_shape,
@@ -1606,12 +1606,56 @@ class Resharder:
                         target_process_shape,
                         target_process_group,
                     )
-                    for idx, item in enumerate(target_partition_index):
-                        slice_starts.append(item[0])
-                        slice_ends.append(item[1])
-                        slices_axes.append(idx)
+                    for _process in group:
+                        source_partition_index = (
+                            Resharder.compute_partition_index(
+                                _process,
+                                complete_shape,
+                                source_dims_mapping,
+                                source_process_shape,
+                                source_process_group,
+                            )
+                        )
+                        if not all(
+                            _
+                            for _ in list(
+                                map(
+                                    self.is_overlapped,
+                                    source_partition_index,
+                                    target_partition_index,
+                                )
+                            )
+                        ):
+                            min_comm_group.remove(_process)
+                            all_partition_index_list_copied.remove(
+                                source_partition_index
+                            )
 
-                    to_slice_tensor_shape = dist_tensor.global_sizes()
+                    concatenated_partition_index_list = []
+                    for partition_index in all_partition_index_list_copied:
+                        Resharder.concat_partitions(
+                            concatenated_partition_index_list, partition_index
+                        )
+
+                    concatenated_partition_index = (
+                        concatenated_partition_index_list[0]
+                    )
+
+                    slice_starts = []
+                    slice_ends = []
+                    slices_axes = []
+                    to_slice_tensor_shape = []
+
+                    for idx, item in enumerate(concatenated_partition_index):
+                        slice_starts.append(
+                            target_partition_index[idx][0] - item[0]
+                        )
+                        slice_ends.append(
+                            target_partition_index[idx][1] - item[0]
+                        )
+                        slices_axes.append(idx)
+                    to_slice_tensor_shape.append(item[1] - item[0])
+
                     slice_op_desc = SliceOpDesc(
                         starts=slice_starts,
                         ends=slice_ends,
@@ -1626,16 +1670,16 @@ class Resharder:
                     op_desc_seq[process] = (
                         [
                             AllGatherOpDesc(
-                                group=group,
+                                group=min_comm_group,
                                 shape=allgather_shape,
                                 is_bool=(source_tensor.dtype == paddle.bool),
                             ),
                             ConcatOpDesc(
-                                partition_index_list=all_partition_index_list
+                                partition_index_list=all_partition_index_list_copied
                             ),
                             slice_op_desc,
                         ]
-                        if len(group) > 1
+                        if len(min_comm_group) > 1
                         else [slice_op_desc]
                     )
 
