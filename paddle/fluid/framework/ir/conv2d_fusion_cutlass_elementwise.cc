@@ -22,37 +22,39 @@ namespace framework {
 namespace ir {
 
 void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
-  // This pass is used for cutlass, because cutlass can fuse conv + bias + silu
+  // This pass is used for cutlass, because cutlass can fuse conv + bias + act0
+  // + elementwise_op + act1
   bool cutlass_enable = Get<bool>("use_cutlass");
   if (!cutlass_enable) {
     return;
   }
 
-  const std::string pattern_name = "conv_bias_act_elementwise";
+  const std::string pattern_name = "conv2d_fusion_cutlass_elementwise";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
 
   auto* conv_in = gpd.mutable_pattern()->NewNode("conv_in");
 
-  std::string NAME = "conv2d_fusion";
+  std::string target_op = "conv2d_fusion";
   // std::unordered_set<std::string> cutlass_ele_set(
   //     {"elementwise_add"});
 
   auto conv_filter = gpd.mutable_pattern()
                          ->NewNode("conv_filter")
-                         ->assert_is_op_input(NAME, "Filter")
+                         ->assert_is_op_input(target_op, "Filter")
                          ->AsInput();
   auto conv_bias = gpd.mutable_pattern()
                        ->NewNode("conv_bias")
-                       ->assert_is_op_input(NAME, "Bias")
+                       ->assert_is_op_input(target_op, "Bias")
                        ->AsInput();
 
-  auto conv_op = gpd.mutable_pattern()->NewNode("conv_op")->assert_is_op(NAME);
+  auto conv_op =
+      gpd.mutable_pattern()->NewNode("conv_op")->assert_is_op(target_op);
 
   auto conv_out = gpd.mutable_pattern()
                       ->NewNode("conv_out")
-                      ->assert_is_op_output(NAME)
+                      ->assert_is_op_output(target_op)
                       ->assert_is_op_input("elementwise_add", "Y")
                       ->AsIntermediate();
   auto residual_input = gpd.mutable_pattern()
@@ -99,7 +101,7 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
 
     OpDesc new_desc = *(conv_op_node->Op());
     auto activation = new_desc.GetAttrIfExists<std::string>("activation");
-    // new_desc.SetType(NAME);
+    // new_desc.SetType(target_op);
     // new_desc.SetInput("Input", {conv_in_node->Name()});
     // new_desc.SetInput("Filter", {conv_filter_node->Name()});
     // new_desc.SetInput("Bias", {conv_bias_node->Name()});
