@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle import static
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -95,7 +95,7 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestGroupOperators(unittest.TestCase):
+class TestGroupOperatorsAndPatterns(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
@@ -112,23 +112,28 @@ class TestGroupOperators(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.dist_context import (
-            DistributedContext,
-        )
         from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
-            RuleBasedTuner,
+            _PATTERNS,
+            GraphUtil,
         )
 
-        dist_context = DistributedContext(train_program)
-        dist_context.initialize()
-        tuner = RuleBasedTuner(dist_context)
-        layers = tuner.cluster_operators()
-        op_types = []
-        for layer in layers:
-            tmp = []
-            for op in layer:
-                tmp.append(op.type)
-            op_types.append(tmp)
+        graph = GraphUtil.convert_to_graph(train_program.global_block())
+        print("graph: ", graph)
+        print("qkv: ", _PATTERNS["qkv"].attrs["shard_spec"])
+        print("row_matmul: ", _PATTERNS["row_matmul"].attrs["shard_spec"])
+        print("ffn: ", _PATTERNS["ffn"].attrs["shard_spec"])
+        print(
+            "shared_word_embedding: ",
+            _PATTERNS["shared_word_embedding"].attrs["shard_spec"],
+        )
+        print(
+            "position_embedding: ",
+            _PATTERNS["position_embedding"].attrs["shard_spec"],
+        )
+        print(
+            "unsqueeze_data: ", _PATTERNS["unsqueeze_data"].attrs["shard_spec"]
+        )
+        print("reshape_data: ", _PATTERNS["reshape_data"].attrs["shard_spec"])
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle import static
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -95,15 +95,15 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestRuleBasedTuner(unittest.TestCase):
+class TestGroupOperators(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
         start_program = static.Program()
+        place = paddle.set_device("gpu")
         batch_size = 8
         sequence_len = 512
         vocab_size = 1000
-        place = None
         train_program, start_program, loss, gen_data = get_gpt_model(
             train_program,
             start_program,
@@ -112,7 +112,6 @@ class TestRuleBasedTuner(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.cluster import Cluster
         from paddle.distributed.auto_parallel.dist_context import (
             DistributedContext,
         )
@@ -120,21 +119,16 @@ class TestRuleBasedTuner(unittest.TestCase):
             RuleBasedTuner,
         )
 
-        clip = paddle.nn.ClipGradByGlobalNorm(0.2)
-        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-
-        cluster = Cluster()
-        cluster.gen_default_config_cluster(node_count=1, device_count=8)
-        dist_context = DistributedContext(
-            serial_main_prog=train_program,
-            serial_startup_prog=start_program,
-            serial_optimizer=opt,
-            serial_loss=loss,
-            cluster=cluster,
-        )
+        dist_context = DistributedContext(train_program)
         dist_context.initialize()
         tuner = RuleBasedTuner(dist_context)
-        tuner.tune()
+        layers = tuner.cluster_operators()
+        op_types = []
+        for layer in layers:
+            tmp = []
+            for op in layer:
+                tmp.append(op.type)
+            op_types.append(tmp)
 
 
 if __name__ == "__main__":
