@@ -223,3 +223,4 @@ atexit.register(core.clear_executor_cache)
 # Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)
+atexit.register(core.ProcessGroupIdMap.destroy)

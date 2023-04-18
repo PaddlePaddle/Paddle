@@ -18,6 +18,8 @@
 #include <cmath>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
@@ -92,7 +94,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
   if (input_dim.size() == static_cast<size_t>(2)) {
     // when input is a two-dimension matrix, The det value is a number.
-    output_dim_vec = {1};
+    output_dim_vec = {};
   }
   output_dim_vec.insert(output_dim_vec.begin(),
                         2);  // make the output dims as same as numpy

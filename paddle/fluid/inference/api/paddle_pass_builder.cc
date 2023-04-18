@@ -86,17 +86,17 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "trt_support_nhwc_pass",
-      "adaptive_pool2d_convert_global_pass",       //
-      "shuffle_channel_detect_pass",               //
-      "quant_conv2d_dequant_fuse_pass",            //
-      "delete_fill_constant_op_pass",              //
-      "delete_quant_dequant_op_pass",              //
-      "delete_quant_dequant_filter_op_pass",       //
-      "trt_delete_weight_dequant_linear_op_pass",  //
-      "delete_quant_dequant_linear_op_pass",       //
-      "identity_scale_op_clean_pass",              //
-      "add_support_int8_pass",                     //
-      // "fc_fuse_pass",                        //
+      "adaptive_pool2d_convert_global_pass",          //
+      "trt_map_ops_to_matrix_multiply_pass",          //
+      "shuffle_channel_detect_pass",                  //
+      "quant_conv2d_dequant_fuse_pass",               //
+      "delete_fill_constant_op_pass",                 //
+      "delete_quant_dequant_op_pass",                 //
+      "delete_quant_dequant_filter_op_pass",          //
+      "trt_delete_weight_dequant_linear_op_pass",     //
+      "delete_quant_dequant_linear_op_pass",          //
+      "identity_scale_op_clean_pass",                 //
+      "add_support_int8_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "trt_embedding_eltwise_layernorm_fuse_pass",    //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
@@ -119,18 +119,12 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "preln_residual_bias_fuse_pass",     //
-      "preln_layernorm_x_fuse_pass",       //
-      "reverse_roll_fuse_pass",            //
-      "conv_bn_fuse_pass",                 //
-      "unsqueeze2_eltwise_fuse_pass",      //
-      "trt_squeeze2_matmul_fuse_pass",     //
-      "trt_flatten2_matmul_fuse_pass",     //
-      "trt_map_matmul_v2_to_mul_pass",     //
-      "trt_map_matmul_v2_to_matmul_pass",  //
-      "trt_map_matmul_to_mul_pass",        //
-      "fc_fuse_pass",                      //
-      "conv_elementwise_add_fuse_pass",    //
+      "preln_residual_bias_fuse_pass",   //
+      "preln_layernorm_x_fuse_pass",     //
+      "reverse_roll_fuse_pass",          //
+      "conv_bn_fuse_pass",               //
+      "unsqueeze2_eltwise_fuse_pass",    //
+      "conv_elementwise_add_fuse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trans_layernorm_fuse_pass",             //
@@ -216,10 +210,6 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_eltwiseadd_bn_fuse_pass",
     "trt_embedding_eltwise_layernorm_fuse_pass",
     "trt_skip_layernorm_fuse_pass",
-    "trt_map_matmul_v2_to_mul_pass",
-    "trt_map_matmul_v2_to_matmul_pass",
-    "trt_map_matmul_to_mul_pass",
-    "fc_fuse_pass",
     "tensorrt_subgraph_pass",
 };
 
@@ -522,8 +512,10 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
       "identity_scale_op_clean_pass",
+      "delete_repeated_ops_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
+      "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",

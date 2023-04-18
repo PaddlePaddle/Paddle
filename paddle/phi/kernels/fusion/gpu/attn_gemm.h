@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #endif
 
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
