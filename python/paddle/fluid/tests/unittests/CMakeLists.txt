@@ -647,7 +647,7 @@ if(WITH_DISTRIBUTE)
       bash_test_modules(
         ${TEST_OP}
         START_BASH
-        dist_test.sh
+        ${PADDLE_BINARY_DIR}/build/test/dist_test.sh
         LABELS
         "RUN_TYPE=EXCLUSIVE"
         ENVS
