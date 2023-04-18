@@ -113,6 +113,7 @@ class Dialect {
   void RegisterOperation() {
     VLOG(4) << "Operation registered into Dialect. --->";
     ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>();
+    VLOG(4) << "OpInfo: " << op_info;
     this->ir_context()->RegisterOperation(ir::TypeId::get<ConcertOp>(),
                                           op_info);
     VLOG(4) << "----------------------------------";

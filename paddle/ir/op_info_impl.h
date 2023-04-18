@@ -86,20 +86,18 @@ class OpInfoImpl {
  public:
   ///
   /// \brief Construct and Deconstruct OpInfoImpl. The memory layout of
-  /// OpInfoImpl is: std::pair<TypeId, void *>... | TypeId... | OpInfoImpl |
-  /// StrAttribute_0 ... StrAttribute_n
+  /// OpInfoImpl is: std::pair<TypeId, void *>... | TypeId... | OpInfoImpl
   ///
   template <typename ConcreteOp>
   static OpInfoImpl *create() {
-    // (1) Malloc memory for interfaces, traits, opinfo_impl and StrAttribues.
+    // (1) Malloc memory for interfaces, traits, opinfo_impl.
     size_t interfaces_num =
         std::tuple_size<typename ConcreteOp::InterfaceList>::value;
     size_t traits_num = std::tuple_size<typename ConcreteOp::TraitList>::value;
     size_t attributes_num = sizeof(ConcreteOp::attributes_name_) /
                             sizeof(ConcreteOp::attributes_name_[0]);
     size_t base_size = sizeof(std::pair<ir::TypeId, void *>) * interfaces_num +
-                       sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl) +
-                       sizeof(ir::StrAttribute) * attributes_num;
+                       sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl);
     void *base_ptr = malloc(base_size);
     std::pair<ir::TypeId, void *> *p_first_interface =
         reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
@@ -115,7 +113,6 @@ class OpInfoImpl {
         ConcreteOp,
         typename ConcreteOp::InterfaceList>::interface(p_first_interface);
     std::sort(p_first_interface, p_first_interface + interfaces_num);
-
     // (3) Construct traits and sort by TypeId.
     ConstructInterfacesOrTraits<ConcreteOp, typename ConcreteOp::TraitList>::
         trait(p_first_trait);
@@ -125,18 +122,10 @@ class OpInfoImpl {
     OpInfoImpl *op_info =
         new (p_opinfo_impl) OpInfoImpl(p_first_interface,
                                        p_first_trait,
+                                       ConcreteOp::attributes_name_,
                                        attributes_num,
                                        ir::TypeId::get<ConcreteOp>(),
                                        ConcreteOp::name());
-
-    // (5) Construct StrAttributes.
-    ir::StrAttribute *p_attribute = p_first_attribute;
-    ir::IrContext *ctx = ir::IrContext::Instance();
-    for (size_t i = 0; i < attributes_num; i++) {
-      new (p_attribute) ir::StrAttribute(ir::StrAttribute::get(
-          ctx, std::string(ConcreteOp::attributes_name_[i])));
-      p_attribute += 1;
-    }
     return op_info;
   }
 
@@ -237,11 +226,13 @@ class OpInfoImpl {
  private:
   OpInfoImpl(std::pair<TypeId, void *> *p_first_interface,
              TypeId *p_first_trait,
+             const char **p_attributes,
              uint32_t num_attributes,
              TypeId op_id,
              const char *op_name)
       : p_first_interface_(p_first_interface),
         p_first_trait_(p_first_trait),
+        p_attributes_(p_attributes),
         num_attributes_(num_attributes),
         op_id_(op_id),
         op_name_(op_name) {}
@@ -251,6 +242,9 @@ class OpInfoImpl {
 
   /// Trait will be recorded by TypeId.
   TypeId *p_first_trait_{nullptr};
+
+  /// Attributes array address.
+  const char **p_attributes_{nullptr};
 
   /// The number of attributes for this Op.
   uint32_t num_attributes_ = 0;
