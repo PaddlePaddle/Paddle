@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
@@ -26,11 +27,8 @@ void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
   int axis = -1;
-  funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
-      dev_ctx, x, y, axis, funcs::MaximumFunctor<T>(), out);
+  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -38,11 +36,8 @@ void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
   int axis = -1;
-  funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
-      dev_ctx, x, y, axis, funcs::MinimumFunctor<T>(), out);
+  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -50,18 +45,8 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
   int axis = -1;
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::RemainderFunctor<T>(), out);
-  } else {
-    funcs::ElementwiseCompute<funcs::InverseRemainderFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::InverseRemainderFunctor<T>(), out);
-  }
+  RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -69,18 +54,8 @@ void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
   int axis = -1;
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<funcs::FloorDivideFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::FloorDivideFunctor<T>(), out);
-  } else {
-    funcs::ElementwiseCompute<funcs::InverseFloorDivideFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::InverseFloorDivideFunctor<T>(), out);
-  }
+  FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -88,18 +63,8 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
   int axis = -1;
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::ElementwisePowFunctor<T>(), out);
-  } else {
-    funcs::ElementwiseCompute<funcs::ElementwiseInversePowFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::ElementwiseInversePowFunctor<T>(), out);
-  }
+  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>

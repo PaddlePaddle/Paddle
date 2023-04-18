@@ -58,9 +58,9 @@ void MinimumKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void RemainderKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       DenseTensor* out) {
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
   std::vector<const DenseTensor*> inputs;
   inputs.reserve(2);
   std::vector<DenseTensor*> outputs;
