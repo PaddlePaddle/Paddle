@@ -177,10 +177,11 @@ void TransposeCooKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(d_perm,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_perm,
+                     dev_ctx.GetPlace(),
                      perm.data(),
                      sizeof(int) * perm.size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
@@ -251,30 +252,33 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(d_perm,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_perm,
+                     dev_ctx.GetPlace(),
                      perm.data(),
                      sizeof(int) * perm.size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
   auto d_x_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * x.dims().size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
-  memory_utils::Copy(d_x_dims,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_x_dims,
+                     dev_ctx.GetPlace(),
                      x.dims().Get(),
                      sizeof(int64_t) * x.dims().size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
   auto d_out_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * out_dims.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
-  memory_utils::Copy(d_out_dims,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_out_dims,
+                     dev_ctx.GetPlace(),
                      out_dims.Get(),
                      sizeof(int64_t) * out_dims.size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
 
   int64_t x_nnz = x.nnz();

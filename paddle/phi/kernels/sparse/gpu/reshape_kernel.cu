@@ -85,10 +85,11 @@ void ReshapeCooKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_x_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_x_sparse_part_strides_tensor->ptr());
-  memory_utils::Copy(destination_x_sparse_part_strides,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     reinterpret_cast<void*>(destination_x_sparse_part_strides),
+                     dev_ctx.GetPlace(),
                      x_sparse_part_strides.Get(),
                      sizeof(int64_t) * x_sparse_part_strides.size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
 
   auto destination_out_sparse_part_strides_tensor = memory_utils::Alloc(
@@ -97,10 +98,11 @@ void ReshapeCooKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_out_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_out_sparse_part_strides_tensor->ptr());
-  memory_utils::Copy(destination_out_sparse_part_strides,
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     destination_out_sparse_part_strides,
+                     dev_ctx.GetPlace(),
                      out_sparse_part_strides.Get(),
                      sizeof(int64_t) * out_sparse_part_strides.size(),
-                     gpuMemcpyHostToDevice,
                      dev_ctx.stream());
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
