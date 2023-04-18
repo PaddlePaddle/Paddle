@@ -2006,8 +2006,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),

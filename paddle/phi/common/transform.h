@@ -82,7 +82,7 @@ struct Transform<phi::CPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
