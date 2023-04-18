@@ -19,16 +19,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-void Transpose2D(const phi::DenseTensor& in, phi::DenseTensor* out);
+void Assign(const phi::DenseTensor& in, phi::DenseTensor* out);
+
+void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+
+void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
 // 1. Quant weight from fp32 to int16/int31
 // 2. Weight data is in-place update.
 // 3. Generate weight max tensor
 template <typename T>
-void QuantWeight(phi::DenseTensor* weight,
-                 phi::DenseTensor* weight_max,
-                 bool transpose);
+void PrepareWeight(phi::DenseTensor* weight,
+                   phi::DenseTensor* weight_max,
+                   bool transpose);
 
 }  // namespace ir
 }  // namespace framework

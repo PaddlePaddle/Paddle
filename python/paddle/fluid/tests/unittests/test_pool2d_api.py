@@ -22,8 +22,8 @@ from test_pool2d_op import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.functional import avg_pool2d, max_pool2d
 
 
@@ -36,7 +36,7 @@ class TestPool2D_API(unittest.TestCase):
 
     def check_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
             result = avg_pool2d(input, kernel_size=2, stride=2, padding=0)
@@ -128,7 +128,7 @@ class TestPool2D_API(unittest.TestCase):
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
+            input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
             result = max_pool2d(input, kernel_size=2, stride=2, padding=0)

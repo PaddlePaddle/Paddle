@@ -53,7 +53,7 @@ void SliceCompute(const Context& ctx,
     }
   }
 
-  funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
+  funcs::UpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims<int64_t>(slice_dims, decrease_axis);
@@ -100,14 +100,14 @@ void SliceCompute(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SliceRawKernel(const Context& ctx,
-                    const DenseTensor& input,
-                    const std::vector<int64_t>& axes,
-                    const IntArray& starts_arr,
-                    const IntArray& ends_arr,
-                    const std::vector<int64_t>& infer_flags,
-                    const std::vector<int64_t>& decrease_axis,
-                    DenseTensor* out) {
+void SliceKernel(const Context& ctx,
+                 const DenseTensor& input,
+                 const std::vector<int64_t>& axes,
+                 const IntArray& starts_arr,
+                 const IntArray& ends_arr,
+                 const std::vector<int64_t>& infer_flags,
+                 const std::vector<int64_t>& decrease_axis,
+                 DenseTensor* out) {
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

@@ -151,8 +151,8 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
     AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
-    AddAttr<std::vector<int>>("ring_id",
-                              "The ring id of the NCCL communicator.")
+    AddAttr<std::vector<int>>("ring_ids",
+                              "The ring ids of the NCCL communicator.")
         .SetDefault({0});
     AddAttr<bool>("use_hierarchical_allreduce",
                   "Whether to use hierarchical allreduce")
@@ -170,6 +170,8 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
                              ops::DistributedFusedLambOp,
                              ops::DistributedFusedLambOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedFusedLambOpKernel,
+                          float) {}

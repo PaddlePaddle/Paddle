@@ -19,9 +19,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -249,7 +249,7 @@ more details can refer to GRU op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionGRUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -273,46 +273,46 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int total_T = x_mat_dims[0];                       \
   const int D3 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                   \
-  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                              \
-  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                         \
-  auto* bias = ctx.Input<phi::DenseTensor>("Bias");                          \
-  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");                 \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
-  const int M = x_mat_dims[1];                                               \
-  const int D = wh_dims[0];                                                  \
-  const int D2 = D * 2;                                                      \
-  const jit::gru_attr_t attr(                                                \
-      D,                                                                     \
-      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),          \
-      jit::to_kerneltype(ctx.Attr<std::string>("activation")));              \
-  jit::gru_t one_step;                                                       \
-  auto ComputeH1 =                                                           \
-      jit::KernelFuncs<jit::GRUH1Tuple<T>, platform::CPUPlace>::Cache().At(  \
-          attr);                                                             \
-  auto ComputeHtPart1 =                                                      \
-      jit::KernelFuncs<jit::GRUHtPart1Tuple<T>, platform::CPUPlace>::Cache() \
-          .At(attr);                                                         \
-  auto ComputeHtPart2 =                                                      \
-      jit::KernelFuncs<jit::GRUHtPart2Tuple<T>, platform::CPUPlace>::Cache() \
-          .At(attr);                                                         \
-  const T* x_data = x->data<T>();                                            \
-  const T* wx_data = wx->data<T>();                                          \
-  const T* wh_data = wh->data<T>();                                          \
-  auto place = ctx.GetPlace();                                               \
+#define INIT_OTHER_DEFINES                                                  \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                             \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                        \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");                         \
+  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");                \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");                           \
+  const int M = x_mat_dims[1];                                              \
+  const int D = wh_dims[0];                                                 \
+  const int D2 = D * 2;                                                     \
+  const phi::jit::gru_attr_t attr(                                          \
+      D,                                                                    \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),    \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("activation")));        \
+  phi::jit::gru_t one_step;                                                 \
+  auto ComputeH1 = phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>,           \
+                                         platform::CPUPlace>::Cache()       \
+                       .At(attr);                                           \
+  auto ComputeHtPart1 = phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>, \
+                                              platform::CPUPlace>::Cache()  \
+                            .At(attr);                                      \
+  auto ComputeHtPart2 = phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>, \
+                                              platform::CPUPlace>::Cache()  \
+                            .At(attr);                                      \
+  const T* x_data = x->data<T>();                                           \
+  const T* wx_data = wx->data<T>();                                         \
+  const T* wh_data = wh->data<T>();                                         \
+  auto place = ctx.GetPlace();                                              \
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     const int N = x_lod[0].size() - 1;
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,
@@ -393,7 +393,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     if (x_lod[0].size() == 2) {
       xx->Resize({total_T, D3});
@@ -550,9 +549,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_gru,
-                       ops::FusionGRUKernel<float>,
-                       ops::FusionGRUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_gru, CPU, ALL_LAYOUT, ops::FusionGRUKernel, float, double) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(fusion_gru)

@@ -148,6 +148,8 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
+  DeviceContext* dev_ctx = nullptr;
+
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||
@@ -155,22 +157,30 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
-      return ctx_manager
-          .Get(std::string(kCustomStream) + "-" + execution_stream,
-               place_,
-               stream_priority)
-          .get()
-          .get();
+      dev_ctx = ctx_manager
+                    .Get(std::string(kCustomStream) + "-" + execution_stream,
+                         place_,
+                         stream_priority)
+                    .get()
+                    .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     }
 
     if (op_type == interpreter::kMemcpyD2H) {
-      return ctx_manager.Get(std::string(kD2HStream), place_, stream_priority)
-          .get()
-          .get();
+      dev_ctx =
+          ctx_manager.Get(std::string(kD2HStream), place_, stream_priority)
+              .get()
+              .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     } else if (op_type == interpreter::kMemcpyH2D) {
-      return ctx_manager.Get(std::string(kH2DStream), place_, stream_priority)
-          .get()
-          .get();
+      dev_ctx =
+          ctx_manager.Get(std::string(kH2DStream), place_, stream_priority)
+              .get()
+              .get();
+      SetDeviceCommContext(op.get(), dev_ctx);
+      return dev_ctx;
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -192,6 +202,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 #endif
   }
 
+  SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
   return op_func_node.dev_ctx_;
 }
 

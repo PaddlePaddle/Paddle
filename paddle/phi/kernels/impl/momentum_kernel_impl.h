@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -443,7 +445,7 @@ void MomentumDenseImpl(const Context& ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+  if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,
@@ -455,7 +457,7 @@ void MomentumDenseImpl(const Context& ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+  } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
     funcs::ForRange<Context> for_range(ctx, param.numel());
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type) \
   DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(      \

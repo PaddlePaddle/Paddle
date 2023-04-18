@@ -16,11 +16,11 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 
 paddle.enable_static()
 np.random.seed(100)
@@ -177,7 +177,6 @@ def python_api(
     path_code=None,
     num_classes=-1,
     is_sparse=False,
-    remote_prefetch=False,
 ):
     return paddle.nn.functional.hsigmoid_loss(
         input,
@@ -219,14 +218,13 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'W', 'Bias'],
             ['Out'],
             user_defined_grads=self.user_grads,
-            check_eager=True,
         )
 
 
@@ -280,7 +278,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
@@ -343,7 +341,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             exe = fluid.Executor(place)
 
             exe.run(start_up)
-            result = list()
+            result = []
             for i in range(10):
                 data = [
                     (
@@ -416,14 +414,13 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['Bias', 'X', 'W'],
             ['Out'],
             no_grad_set=set('Label'),
-            check_eager=True,
         )
 
 
@@ -482,12 +479,10 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True
-        )
+        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
 class TestHSigmoidLossAPI(unittest.TestCase):
@@ -628,13 +623,13 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            x = fluid.data('x', [-1, self.feature_size])
-            labels = fluid.data('labels', [-1, 1], 'int64')
+            x = paddle.static.data('x', [-1, self.feature_size])
+            labels = paddle.static.data('labels', [-1, 1], 'int64')
             path_table = None
             path_code = None
             if self.is_custom:
-                path_table = fluid.data('path_table', [-1, -1], 'int64')
-                path_code = fluid.data('path_code', [-1, -1], 'int64')
+                path_table = paddle.static.data('path_table', [-1, -1], 'int64')
+                path_code = paddle.static.data('path_code', [-1, -1], 'int64')
             weight_attr = paddle.nn.initializer.Assign(self.weight_np)
             bias_attr = paddle.nn.initializer.Assign(self.bias_np)
             loss = paddle.nn.HSigmoidLoss(

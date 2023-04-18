@@ -15,7 +15,6 @@
 import unittest
 
 import paddle
-from paddle.fluid.layers.utils import try_set_static_shape_tensor
 
 
 class StaticShapeInferrenceTest(unittest.TestCase):
@@ -24,7 +23,7 @@ class StaticShapeInferrenceTest(unittest.TestCase):
         data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
         shape = paddle.shape(data)  # shape should be [-1, 2]
         x = paddle.uniform(shape)
-        try_set_static_shape_tensor(x, shape)
+        paddle.utils.try_set_static_shape_tensor(x, shape)
         self.assertEqual(x.shape, data.shape)
         paddle.disable_static()
 

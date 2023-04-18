@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -626,7 +626,9 @@ class TestMulticlassNMS2Op(TestMulticlassNMSOp):
         det_outs = np.array(det_outs)
 
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
@@ -696,7 +698,9 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
 
         det_outs = np.array(det_outs)
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
@@ -768,7 +772,9 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         det_outs = np.array(det_outs)
 
         nmsed_outs = (
-            det_outs[:, :-1].astype('float32') if len(det_outs) else det_outs
+            det_outs[:, :-1].astype('float32')
+            if len(det_outs)
+            else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
             det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
@@ -791,7 +797,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):

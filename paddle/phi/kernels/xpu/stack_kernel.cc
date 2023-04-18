@@ -55,5 +55,11 @@ void StackKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    stack, XPU, ALL_LAYOUT, phi::StackKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(stack,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::StackKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

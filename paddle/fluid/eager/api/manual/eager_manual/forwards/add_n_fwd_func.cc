@@ -22,8 +22,7 @@
 
 DECLARE_bool(check_nan_inf);
 
-paddle::experimental::Tensor add_n_ad_func(
-    const std::vector<paddle::experimental::Tensor>& x) {
+paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "add_n dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -33,8 +32,7 @@ paddle::experimental::Tensor add_n_ad_func(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
     auto op_name = phi::TransToFluidOpName("add_n");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {x};
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);

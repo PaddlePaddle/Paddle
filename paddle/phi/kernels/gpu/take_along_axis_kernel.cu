@@ -29,7 +29,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on GPU device."));
 
@@ -54,4 +54,5 @@ PD_REGISTER_KERNEL(take_along_axis,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

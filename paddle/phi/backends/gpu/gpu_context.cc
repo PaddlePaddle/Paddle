@@ -1046,4 +1046,20 @@ void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 
 void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+GPUPinnedContext::GPUPinnedContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+GPUPinnedContext::GPUPinnedContext(GPUPinnedPlace place) : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* GPUPinnedContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+const Place& GPUPinnedContext::GetPlace() const { return place_; }
+#endif
+
 }  // namespace phi

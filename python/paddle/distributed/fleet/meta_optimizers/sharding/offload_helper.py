@@ -26,23 +26,17 @@ class PlaceType:
     CUDA = 1
     CUDA_PINNED = 2
     XPU = 3  # unsupport for now
-    NPU = 4
-    NPU_PINNED = 5
 
     @staticmethod
     def default_device():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU
         return PlaceType.CPU
 
     @staticmethod
     def default_pinned():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA_PINNED
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU_PINNED
         return PlaceType.CPU
 
 
@@ -156,11 +150,11 @@ class OffloadHelper:
         (p_fp16) = cast(p)
         (p@offload) = memcpy(p)
         """
-        param_to_idx = dict()
-        param_to_fp16 = dict()
+        param_to_idx = {}
+        param_to_fp16 = {}
         # recompute_var which need rename to fp16_param
-        fp16_param_to_recompute = dict()
-        recompute_to_fp16 = dict()
+        fp16_param_to_recompute = {}
+        recompute_to_fp16 = {}
 
         def remove_param(input_name):
             param_to_idx.pop(input_name)
@@ -215,7 +209,7 @@ class OffloadHelper:
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param
 
-        param_name_to_offload_name = dict()
+        param_name_to_offload_name = {}
         # step3: main_block add offload, cast op
         # change recompute to fp16, remove cast(param) to fp16
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -325,7 +319,7 @@ class OffloadHelper:
         (m1out, m2out, pout) = adam(m1, m2, p)
         (m1@offload, m2@offload) = memcpy(m1, m2)
         """
-        vars_name_to_offload_name = dict()
+        vars_name_to_offload_name = {}
 
         # main_block add offload
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -403,10 +397,10 @@ class OffloadHelper:
         """
         global_params = set()
         local_params = set()
-        param_to_fp16 = dict()
+        param_to_fp16 = {}
         # recompute_var which need rename to fp16_param
-        fp16_param_to_recompute = dict()
-        recompute_to_fp16 = dict()
+        fp16_param_to_recompute = {}
+        recompute_to_fp16 = {}
 
         def remove_param(input_name):
             global_params.remove(input_name)
@@ -464,7 +458,7 @@ class OffloadHelper:
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param
 
-        param_name_to_offload_name = dict()
+        param_name_to_offload_name = {}
         # step3: main_block add offload, cast op
         # change recompute to fp16, remove cast(param) to fp16
         for idx, op in reversed(list(enumerate(block.ops))):

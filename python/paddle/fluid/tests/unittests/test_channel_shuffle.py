@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -45,6 +45,7 @@ def channel_shuffle_np(x, groups, data_format="NCHW"):
 class TestChannelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
+        self.init_dtype()
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
         self.python_api = paddle.nn.functional.channel_shuffle
@@ -56,12 +57,15 @@ class TestChannelShuffleOp(OpTest):
 
         groups = 3
 
-        x = np.random.random(shape).astype("float64")
+        x = np.random.random(shape).astype(self.dtype)
         npresult = channel_shuffle_np(x, groups, self.format)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'groups': groups, "data_format": self.format}
+
+    def init_dtype(self):
+        self.dtype = 'float64'
 
     def init_data_format(self):
         self.format = "NCHW"
@@ -92,10 +96,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             out_1 = F.channel_shuffle(x_1, 3)
@@ -127,10 +131,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             # init instance
@@ -193,9 +197,9 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            channel_shuffle_str = 'groups={}'.format(groups)
+            channel_shuffle_str = f'groups={groups}'
             if data_format != 'NCHW':
-                channel_shuffle_str += ', data_format={}'.format(data_format)
+                channel_shuffle_str += f', data_format={data_format}'
             self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
 
     def test_dygraph1(self):
@@ -266,6 +270,54 @@ class TestChannelShuffleError(unittest.TestCase):
                 cs = paddle.nn.ChannelShuffle(3, "MEOW")
 
         self.assertRaises(ValueError, error_data_format_layer)
+
+
+class TestChannelShuffleFP16OP(TestChannelShuffleOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestChannelShuffleBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "channel_shuffle"
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
+        self.python_api = paddle.nn.functional.channel_shuffle
+        self.dtype = np.uint16
+        self.use_mkldnn = False
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
+        groups = 3
+
+        x = np.random.random(shape).astype('float32')
+        out = channel_shuffle_np(x, groups, self.format)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'groups': groups, "data_format": self.format}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_data_format(self):
+        self.format = "NCHW"
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+        )
 
 
 if __name__ == '__main__':

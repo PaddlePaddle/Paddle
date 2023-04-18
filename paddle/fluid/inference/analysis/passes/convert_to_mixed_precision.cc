@@ -41,18 +41,31 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
       backend_(backend),
       keep_io_types_(keep_io_types),
       black_list_(black_list) {
-  if (mixed_precision_ != phi::DataType::FLOAT16 &&
-      mixed_precision_ != phi::DataType::BFLOAT16) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "mixed_precision currently not supported dtype %d, we now only "
-        "support fp16 and bf16.",
-        static_cast<int>(mixed_precision_)));
-  }
-  if (backend_ != phi::Backend::GPU && backend_ != phi::Backend::CUSTOM) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "mixed_precision currently not supported place %d, we now only "
-        "support gpu and custom device .",
-        static_cast<int>(backend_)));
+  switch (backend_) {
+    case phi::Backend::GPU:
+      PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
+                         mixed_precision_ == phi::DataType::BFLOAT16,
+                     platform::errors::InvalidArgument(
+                         "mixed_precision of %s currently only supported fp16 "
+                         "and bf16, not support %s.",
+                         experimental::BackendToString(backend_),
+                         phi::DataTypeToString(mixed_precision_)));
+      break;
+    case phi::Backend::XPU:
+    case phi::Backend::CUSTOM:
+      PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16,
+                     platform::errors::InvalidArgument(
+                         "mixed_precision of %s currently only supported fp16 "
+                         "and bf16, not support %s.",
+                         experimental::BackendToString(backend_),
+                         phi::DataTypeToString(mixed_precision_)));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "mixed_precision currently not supported place GPU or XPU or CUSTOM, "
+          "not support %s.",
+          experimental::BackendToString(backend_)));
+      break;
   }
 }
 
@@ -70,17 +83,16 @@ void ConvertToMixedPrecisionPass::Run() {
 
   framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
-  pass.Set("mixed_black_list",
-           new std::unordered_set<std::string>{black_list_});
   if (backend_ == phi::Backend::GPU) {
     pass.Set("enable_gpu_mixed", new bool{true});
-    pass.Set("enable_custom_device_mixed", new bool{false});
+  } else if (backend_ == phi::Backend::XPU) {
+    pass.Set("enable_xpu_mixed", new bool{true});
   } else if (backend_ == phi::Backend::CUSTOM) {
-    pass.Set("enable_gpu_mixed", new bool{false});
     pass.Set("enable_custom_device_mixed", new bool{true});
   }
+  pass.Set("mixed_black_list",
+           new std::unordered_set<std::string>{black_list_});
   pass.Set("keep_io_types", new bool{keep_io_types_});
-
   pass.Apply(main_graph_.get());
 
   SaveMixedModel();
@@ -90,32 +102,53 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
   framework::ProgramDesc mixed_program_desc;
   framework::ir::GraphToProgram(*main_graph_, &mixed_program_desc);
 
-  auto parameters = scope_.LocalVarNames();
-  std::sort(parameters.begin(), parameters.end());
+  auto SerializeParams = [&](const std::string& path) {
+    auto IsPersistable = [](const framework::VarDesc* var) {
+      if (var->Persistable() &&
+          var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+          var->GetType() != framework::proto::VarType::FETCH_LIST &&
+          var->GetType() != framework::proto::VarType::RAW) {
+        return true;
+      }
+      return false;
+    };
+    framework::ProgramDesc save_program;
+    auto* save_block = save_program.MutableBlock(0);
 
-  auto SerializeParams = [&]() -> std::string {
-    std::ostringstream os;
-    phi::CPUContext ctx;
-    for (const auto& param : parameters) {
-      PADDLE_ENFORCE_NOT_NULL(
-          scope_.FindVar(param),
-          platform::errors::NotFound(
-              "Block should already have a '%s' variable", param));
-      auto* tensor = scope_.FindVar(param)->GetMutable<phi::DenseTensor>();
-      framework::SerializeToStream(os, *tensor, ctx);
+    const auto& global_block = mixed_program_desc.Block(0);
+    std::vector<std::string> save_var_list;
+    for (framework::VarDesc* var : global_block.AllVars()) {
+      if (IsPersistable(var)) {
+        framework::VarDesc* new_var = save_block->Var(var->Name());
+        new_var->SetShape(var->GetShape());
+        new_var->SetDataType(var->GetDataType());
+        new_var->SetType(var->GetType());
+        new_var->SetLoDLevel(var->GetLoDLevel());
+        new_var->SetPersistable(true);
+
+        save_var_list.push_back(new_var->Name());
+      }
     }
-    return os.str();
+    std::sort(save_var_list.begin(), save_var_list.end());
+    auto* op = save_block->AppendOp();
+    op->SetType("save_combine");
+    op->SetInput("X", save_var_list);
+    op->SetAttr("file_path", path);
+    op->CheckAttrs();
+
+    framework::Executor exe(platform::CPUPlace{});
+    exe.Run(save_program, &scope_, 0, true, true);
   };
 
-  auto StrToBinary = [](const std::string& path, const std::string& str) {
+  auto SerializeProg = [&](const std::string& path) {
+    auto str = mixed_program_desc.Proto()->SerializeAsString();
     std::ofstream file(path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());
     file.close();
   };
 
-  StrToBinary(mixed_model_file_,
-              mixed_program_desc.Proto()->SerializeAsString());
-  StrToBinary(mixed_params_file_, SerializeParams());
+  SerializeProg(mixed_model_file_);
+  SerializeParams(mixed_params_file_);
 }
 
 bool OpSupportPrecision(const std::string& op_type,

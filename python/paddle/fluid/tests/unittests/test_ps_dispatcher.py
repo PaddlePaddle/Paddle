@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.incubate.fleet.parameter_server.ir.ps_dispatcher import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
     HashName,
     PSDispatcher,
     RoundRobin,
@@ -41,7 +41,7 @@ class TestPsDispatcher(unittest.TestCase):
     def test_hash(self):
         class Var:
             def __init__(self, index):
-                self._name = "var_{}".format(index)
+                self._name = f"var_{index}"
 
             def name(self):
                 return self._name
@@ -59,7 +59,7 @@ class TestPsDispatcher(unittest.TestCase):
     def test_round_rodin(self):
         class Var:
             def __init__(self, index):
-                self._name = "var_{}".format(index)
+                self._name = f"var_{index}"
 
             def name(self):
                 return self._name

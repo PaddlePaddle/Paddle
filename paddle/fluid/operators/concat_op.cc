@@ -21,6 +21,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -38,7 +41,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
-      if (input->IsInitialized() && input->numel() > 0) {
+      if (input->IsInitialized()) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
@@ -153,6 +156,37 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    std::vector<paddle::Tensor> input = this->GetMultiForwardInput("X");
+    paddle::optional<paddle::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    std::vector<paddle::Tensor> input_grad = this->GetMultiInputGrad("X");
+
+    std::vector<paddle::Tensor *> input_grad_ptr;
+    for (auto i = 0; i < static_cast<int>(input_grad.size()); ++i) {
+      input_grad_ptr.push_back(&input_grad[i]);
+    }
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    std::vector<paddle::Tensor *> dx_ptr = this->GetOutputPtr(input_grad_ptr);
+    std::vector<std::string> dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Runing concat_grad composite func";
+    if (tensor_axis.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index from tensor for concat composite "
+          "grad for now. "));
+    } else {
+      prim::concat_grad<prim::DescTensor>(input, out_grad, axis, dx_ptr);
+    }
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
+
 template <typename T>
 class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -181,6 +215,7 @@ REGISTER_OPERATOR(concat,
                   ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ConcatCompositeGradOpMaker,
                   ConcatInferShapeFunctor);
 REGISTER_OPERATOR(concat_grad,
                   ops::ConcatOpGrad,

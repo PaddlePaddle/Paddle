@@ -655,7 +655,7 @@ class DataLoader:
 
         Args:
             feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
-                The Tensors should be created by :code:`fluid.data()`.
+                The Tensors should be created by :code:`paddle.static.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader
                 is fast.
@@ -798,21 +798,13 @@ class DataLoader:
                 # Define network
                 loss = simple_net(image, label)
 
-                # Set data source of DataLoader
-                #
-                # If DataLoader is iterable, places must be given and the number of places must be the same with device number.
-                #  - If you are using GPU, call `paddle.static.cuda_places()` to get all GPU places.
-                #  - If you are using CPU, call `paddle.static.cpu_places()` to get all CPU places.
-                #
-                # If DataLoader is not iterable, places can be None.
                 places = static.cuda_places() if USE_GPU else static.cpu_places()
                 set_data_source(loader, places)
 
                 exe = static.Executor(places[0])
                 exe.run(static.default_startup_program())
 
-                prog = static.CompiledProgram(static.default_main_program()).with_data_parallel(loss_name=loss.name)
-
+                prog = static.CompiledProgram(static.default_main_program())
                 if loader.iterable:
                     train_iterable(exe, prog, loss, loader)
                 else:
@@ -890,54 +882,6 @@ class DataLoader:
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-        Examples 3:
-
-            .. code-block:: python
-
-                '''
-                Example of `drop_last` using in static graph multi-cards mode
-                '''
-                import paddle
-                import paddle.static as static
-                import numpy as np
-                import os
-
-                # We use 2 CPU cores to run inference network
-                os.environ['CPU_NUM'] = '2'
-
-                paddle.enable_static()
-
-                # The data source has only 3 batches, which can not be
-                # divided evenly to each CPU core
-                def batch_generator():
-                    for i in range(3):
-                        yield np.array([i+1]).astype('float32'),
-
-                x = static.data(name='x', shape=[None], dtype='float32')
-                y = x * x
-
-                def run_inference(drop_last):
-                    loader = paddle.io.DataLoader.from_generator(feed_list=[x],
-                            capacity=8, drop_last=drop_last)
-                    loader.set_batch_generator(batch_generator, static.cpu_places())
-
-                    exe = static.Executor(paddle.CPUPlace())
-                    prog = static.CompiledProgram(static.default_main_program())
-                    prog = prog.with_data_parallel()
-
-                    result = []
-                    for data in loader():
-                        each_ret, = exe.run(prog, feed=data, fetch_list=[y])
-                        result.extend(each_ret)
-                    return result
-
-                # Set drop_last to True, so that the last batch whose
-                # number is less than CPU core number would be discarded.
-                print(run_inference(drop_last=True)) # [1.0, 4.0]
-
-                # Set drop_last to False, so that the last batch whose
-                # number is less than CPU core number can be tested.
-                print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
         if _non_static_mode():
             return DygraphGeneratorLoader(
@@ -1025,6 +969,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._batch_reader = None
         self._places = None
         self._feed_list = feed_list
+        self._timeout = QUEUE_GET_TIMEOUT
 
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -1220,7 +1165,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # has no enough time to put the data in the queue when the main process
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
-                tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
+                tensor_list = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also
@@ -1606,7 +1551,12 @@ class GeneratorLoader(DataLoaderBase):
             feeder = DataFeeder(
                 feed_list=self._feed_list, place=core.CPUPlace()
             )
-            paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
+
+            def decorate_reader():
+                for item in reader():
+                    yield feeder.feed(item)
+
+            paddle_reader = decorate_reader
 
         def __tensor_reader_impl__():
             for slots in paddle_reader():
@@ -1707,8 +1657,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
            reader = fluid.io.PyReader(feed_list=[image, label],
                                       capacity=4,
@@ -1764,8 +1714,8 @@ class PyReader(DataLoaderBase):
                        yield fake_image, fake_label
                return reader
 
-           image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-           label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+           image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+           label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
            reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
 
            user_defined_reader = reader_creator_random_image(784, 784)
@@ -1856,7 +1806,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1893,7 +1843,7 @@ class PyReader(DataLoaderBase):
                     for i in range(5):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
@@ -1964,8 +1914,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -2031,8 +1981,8 @@ class PyReader(DataLoaderBase):
                             yield fake_image, fake_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
@@ -2099,8 +2049,8 @@ class PyReader(DataLoaderBase):
                             yield batch_image, batch_label
                     return generator
 
-                image = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+                image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
                 reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)

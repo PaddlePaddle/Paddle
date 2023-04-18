@@ -50,8 +50,7 @@ class OneDNNAXPYHandler {
 
  private:
   OneDNNAXPYHandler() = delete;
-  // (arogowie-intel) Private implementation idiom to hide dependency
-  // on OneDNN headers.
+  // Private implementation idiom to hide dependency on oneDNN headers.
   class Impl;
   // We need custom deleter, since the compiler is unable to parameterize
   // an allocator's default deleter due to incomple type.

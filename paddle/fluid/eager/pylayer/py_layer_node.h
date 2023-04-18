@@ -48,9 +48,9 @@ class GradNodePyLayer : public GradNodeBase {
 
   ~GradNodePyLayer() override;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
@@ -60,8 +60,7 @@ class GradNodePyLayer : public GradNodeBase {
   std::string name() override { return name_; }
 
   void SaveForwardOutputsMeta(
-      const std::vector<std::vector<paddle::experimental::Tensor*>>&
-          outputs_tensor) {
+      const std::vector<std::vector<paddle::Tensor*>>& outputs_tensor) {
     forward_outputs_meta_.resize(outputs_tensor.size());
     forward_outputs_place_.resize(outputs_tensor.size());
     for (size_t i = 0; i < outputs_tensor.size(); i++) {
