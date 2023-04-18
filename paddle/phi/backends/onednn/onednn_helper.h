@@ -17,11 +17,11 @@
 #include <thread>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
-
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace funcs {
@@ -282,8 +282,8 @@ inline std::string ThreadIDasStr(void) {
       std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
-inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
-                                                   const std::string& key) {
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const OneDNNContext& dev_ctx UNUSED, const std::string& key) {
   return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;

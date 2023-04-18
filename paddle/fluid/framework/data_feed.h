@@ -1415,13 +1415,13 @@ class InMemoryDataFeed : public DataFeed {
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      T* instance,
-                                      CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len,
-                                  const char* str,
-                                  std::vector<T>* instances,
-                                  CustomParser* parser) {
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      T* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
+  virtual int ParseInstanceFromSo(int len UNUSED,
+                                  const char* str UNUSED,
+                                  std::vector<T>* instances UNUSED,
+                                  CustomParser* parser UNUSED) {
     return 0;
   }
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;

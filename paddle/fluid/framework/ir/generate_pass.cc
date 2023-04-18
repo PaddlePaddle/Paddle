@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -53,7 +53,8 @@ class operation_visitor {
       : type_(type) {}
 
   template <typename T1, typename T2>
-  Attribute operator()(const T1& attr, const T2& operation) const {
+  Attribute operator()(const T1& attr UNUSED,
+                       const T2& operation UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 

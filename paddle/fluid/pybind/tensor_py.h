@@ -27,7 +27,6 @@ limitations under the License. */
 #include <type_traits>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -35,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -844,7 +844,7 @@ void _sliceDapper(const phi::DenseTensor *in,
 template <typename T>
 inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        const phi::CPUContext &ctx,
-                                       py::object obj,
+                                       py::object obj UNUSED,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {

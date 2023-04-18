@@ -62,7 +62,8 @@ class GradOpBaseMakerBase {
 
   TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
       const std::string& name, bool drop_empty_grad = true) const {
-    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/true);
+    return GetVarBaseList<TracedVarRole::kBackward>(
+        name, /*is_input=*/drop_empty_grad);
   }
 
   TracedVarList<VarBase, TracedVarRole::kBackward> OutputGrad(
