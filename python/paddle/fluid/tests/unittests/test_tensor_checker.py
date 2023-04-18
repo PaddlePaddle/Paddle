@@ -41,51 +41,25 @@ class TestTensorChecker(unittest.TestCase):
         )
         return num_nan
 
-    def generate_num_inf(self):
+    def generate_num_inf(self, place):
         num_inf = 0
         num_nan = 0
+        paddle.set_device(place)
         # check op list
         x = paddle.to_tensor(
-            [1, 0, 1],
-            place=paddle.CPUPlace(),
+            [1, 0, 0],
             dtype='float32',
             stop_gradient=False,
         )
-        y = paddle.to_tensor(
-            [0, 0, 1], place=paddle.CPUPlace(), dtype='float32'
-        )
-        res = paddle.pow(x, y)
+        y = paddle.to_tensor([0, 0, 1], dtype='float32')
         try:
+            res = paddle.pow(x, y)
             # test backward
             paddle.autograd.backward([res])
             res = paddle.divide(y, x)
         except Exception as e:
             num_inf = self.get_num_inf(e)
         return num_inf
-
-    def test_check_op_list(self):
-        checker_config = paddle.amp.debugging.TensorCheckerConfig(
-            enable=True,
-            debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_AND_ABORT,
-            skipped_op_list=["elementwise_div"],
-        )
-
-        x = paddle.to_tensor(
-            [0, 0, 0],
-            place=paddle.CPUPlace(),
-            dtype='float32',
-            stop_gradient=False,
-        )
-        y = paddle.to_tensor(
-            [0.2, -1, 0.5], place=paddle.CPUPlace(), dtype='float32'
-        )
-        paddle.amp.debugging.enable_tensor_checker(checker_config)
-        try:
-            # test forward
-            res = paddle.divide(y, x)
-        except Exception as e:
-            num_inf = self.get_num_inf(e)
-            self.assertEqual(0, num_inf)
 
     def test_tensor_checker(self):
         def _assert_flag(value):
@@ -102,28 +76,34 @@ class TestTensorChecker(unittest.TestCase):
             skipped_op_list=["elementwise_div"],
             debug_step=[0, 3],
         )
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
         # check seed
         self.assertEqual(checker_config.initial_seed, 102)
         self.assertEqual(checker_config.seed, 102)
         _assert_flag(False)
-        for index in range(5):
-            paddle.amp.debugging.enable_tensor_checker(checker_config)
-            if index <= 2:
-                _assert_flag(True)
-                self.assertEqual(
-                    index + 1,
-                    paddle.amp.debugging.TensorCheckerConfig.current_step_id,
-                )
-                self.assertEqual(1, self.generate_num_inf())
-            else:
-                self.assertEqual(
-                    3, paddle.amp.debugging.TensorCheckerConfig.current_step_id
-                )
-                _assert_flag(False)
-                self.assertEqual(0, self.generate_num_inf())
 
-            paddle.amp.debugging.disable_tensor_checker()
-            _assert_flag(False)
+        for place in places:
+            for index in range(5):
+                paddle.amp.debugging.enable_tensor_checker(checker_config)
+                if index <= 2:
+                    _assert_flag(True)
+                    self.assertEqual(
+                        index + 1,
+                        paddle.amp.debugging.TensorCheckerConfig.current_step_id,
+                    )
+                    self.assertEqual(1, self.generate_num_inf(place))
+                else:
+                    self.assertEqual(
+                        3,
+                        paddle.amp.debugging.TensorCheckerConfig.current_step_id,
+                    )
+                    _assert_flag(False)
+                    self.assertEqual(0, self.generate_num_inf(place))
+
+                paddle.amp.debugging.disable_tensor_checker()
+                _assert_flag(False)
 
 
 if __name__ == '__main__':
