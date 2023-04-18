@@ -623,7 +623,7 @@ struct ConvDepthwiseConv : public PatternBase {
   ConvDepthwiseConv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv1x1_depthwise_conv") {}
 
-  PDNode* operator()(bool with_bias);
+  PDNode* operator()(const std::string& conv_type, bool with_bias);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);

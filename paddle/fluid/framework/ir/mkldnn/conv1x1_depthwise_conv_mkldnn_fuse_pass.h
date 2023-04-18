@@ -33,8 +33,11 @@ class Conv1x1DepthwiseConvOneDNNFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  void FuseConvDepthWise(bool with_bias, Graph* graph) const;
+  void FuseConvDepthWise(const std::string& conv_type,
+                         bool with_bias,
+                         Graph* graph) const;
   const std::string name_scope_{"conv1x1_depthwise_conv"};
+  std::vector<std::string> conv_types = {"conv_2d", "fused_conv2d"};
 };
 
 }  // namespace ir

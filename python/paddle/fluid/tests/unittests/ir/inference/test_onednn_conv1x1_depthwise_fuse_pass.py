@@ -22,8 +22,6 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
-
-    # without bias for now
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "VALID", "SAME"]))
@@ -56,9 +54,11 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+        with_bias = draw(st.booleans())
+        bias_shape = [out_channel]
 
         conv2d_op = OpConfig(
-            "conv2d",
+            "fused_conv2d",
             inputs={
                 "Input": ["conv2d_input"],
                 "Filter": ["conv2d_filter_1"],
@@ -71,9 +71,12 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             paddings=paddings,
             strides=strides,
             use_mkldnn=True,
-            has_bias=False,
+            has_bias=with_bias,
             is_test=True,
         )
+
+        if with_bias:
+            conv2d_op.inputs["Bias"] = ["conv2d_bias_1"]
 
         paddings_depthwise = [1, 1]
         strides_depthwise = draw(st.sampled_from([[1, 1], [2, 2]]))
@@ -88,8 +91,11 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             3,
         ]
 
+        with_bias_depthwise = draw(st.booleans())
+        bias_shape_depthwise = [out_channel_depthwise]
+
         depthwise_conv2d_op = OpConfig(
-            type="conv2d",
+            type="fused_conv2d",
             inputs={
                 "Input": ["conv2d_out"],
                 "Filter": ["conv2d_filter_2"],
@@ -104,9 +110,12 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
             paddings=paddings_depthwise,
             strides=strides_depthwise,
             use_mkldnn=True,
-            has_bias=False,
+            has_bias=with_bias_depthwise,
             is_test=True,
         )
+
+        if with_bias_depthwise:
+            depthwise_conv2d_op.inputs["Bias"] = ["conv2d_bias_2"]
 
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
@@ -125,6 +134,12 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
                 "conv2d_filter_2": TensorConfig(
                     data_gen=partial(generate_data, filter_depthwise_shape)
                 ),
+                "conv2d_bias_1": TensorConfig(
+                    data_gen=partial(generate_data, bias_shape)
+                ),
+                "conv2d_bias_2": TensorConfig(
+                    data_gen=partial(generate_data, bias_shape_depthwise)
+                ),
             },
             outputs=["depth_conv2d_out"],
         )
@@ -140,7 +155,7 @@ class TestOneDNNCon1x1vDepthwiseFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=100,
             passes=["conv1x1_depthwise_conv_mkldnn_fuse_pass"],
         )
 

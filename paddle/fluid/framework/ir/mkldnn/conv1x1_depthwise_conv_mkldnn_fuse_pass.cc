@@ -157,14 +157,15 @@ static bool isValidForFusing(phi::DenseTensor* conv_filter,
   return true;
 }
 
-void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
-                                                           Graph* graph) const {
+void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(
+    const std::string& conv_type, bool with_bias, Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::ConvDepthwiseConv conv_depthwise_conv_pattern(gpd.mutable_pattern(),
                                                           name_scope_);
-  conv_depthwise_conv_pattern(with_bias);
+  conv_depthwise_conv_pattern(conv_type, with_bias);
   int found_conv_depthwise_conv_count = 0;
+
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Fuse conv with depthwise conv";
@@ -276,9 +277,10 @@ void Conv1x1DepthwiseConvOneDNNFusePass::FuseConvDepthWise(bool with_bias,
 void Conv1x1DepthwiseConvOneDNNFusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-
-  FuseConvDepthWise(/*with bias*/ true, graph);
-  FuseConvDepthWise(/*without bias*/ false, graph);
+  for (const auto conv_type : conv_types) {
+    FuseConvDepthWise(conv_type, /*with bias*/ true, graph);
+    FuseConvDepthWise(conv_type, /*without bias*/ false, graph);
+  }
 }
 
 }  // namespace ir
