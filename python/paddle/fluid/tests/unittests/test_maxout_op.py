@@ -150,8 +150,7 @@ class TestMaxOutOpFP16(TestMaxOutOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=0.001
-        )
+            place, ['X'], 'Out')
 
 
 class TestMaxoutFP16Case1(TestMaxOutOpFP16):
