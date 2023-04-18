@@ -95,8 +95,17 @@ PD_REGISTER_STRUCT_KERNEL(skip_layernorm,
                           GPU,
                           ALL_LAYOUT,
                           ops::SkipLayerNormKernel,
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
                           plat::float16,
+                          float) {}
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+PD_REGISTER_STRUCT_KERNEL(skip_layernorm,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SkipLayerNormKernel,
+                          float,
+                          plat::float16) {}
+#else
+PD_REGISTER_STRUCT_KERNEL(
+    skip_layernorm, GPU, ALL_LAYOUT, ops::SkipLayerNormKernel, float) {}
 #endif
-                          float) {
-}
