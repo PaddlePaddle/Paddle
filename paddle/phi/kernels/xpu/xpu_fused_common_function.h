@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "/home/paddle/paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 namespace phi {
 struct XPUDropoutParam {
   float dropout_prob;
