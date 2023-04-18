@@ -1040,6 +1040,16 @@
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : lu_grad
+  forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
+  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUGradInferMeta
+  kernel :
+    func : lu_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : lu_unpack_grad
   forward : lu_unpack (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true) -> Tensor(pmat), Tensor(l), Tensor(u)
   args : (Tensor x, Tensor y, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)

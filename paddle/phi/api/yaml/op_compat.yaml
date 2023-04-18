@@ -1810,6 +1810,14 @@
   outputs :
     {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
 
+- op : rnn
+  backward : rnn_grad
+  inputs:
+    { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
+  outputs:
+    { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
+  drop_empty_grad : [pre_state_grad, weight_list_grad]
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -2365,6 +2373,15 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op: lu
+  backward: lu_grad
+  inputs:
+    x: X
+  outputs:
+    {out: Out, pivots : Pivots, infos : Infos}
+  attrs:
+    pivot : pivots
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
