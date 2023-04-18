@@ -235,6 +235,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,
@@ -247,30 +248,32 @@ REGISTER_OPERATOR(lod_reset_grad,
                   ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    lod_reset,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, paddle::platform::float16>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(lod_reset,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LoDResetKernel,
+                          plat::float16,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 
 #ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    lod_reset,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext,
-                        paddle::platform::float16>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, double>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::LoDResetKernel<paddle::platform::XPUDeviceContext, int64_t>);
+using XPUCtx = paddle::platform::XPUDeviceContext;
+REGISTER_OP_XPU_KERNEL(lod_reset,
+                       ops::LoDResetKernel<paddle::platform::float16, XPUCtx>,
+                       ops::LoDResetKernel<float, XPUCtx>,
+                       ops::LoDResetKernel<double, XPUCtx>,
+                       ops::LoDResetKernel<int, XPUCtx>,
+                       ops::LoDResetKernel<int64_t, XPUCtx>);
 #endif
 
-REGISTER_OP_CPU_KERNEL(
-    lod_reset_grad,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace,
-                            paddle::platform::float16>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LoDResetGradKernel,
+                          plat::float16,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

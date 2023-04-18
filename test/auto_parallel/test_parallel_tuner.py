@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.dist_context import (
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -59,11 +59,11 @@ def get_program_v3():
     train_program = static.Program()
     start_program = static.Program()
     modeling.init_global()
-    modeling._global_parallel_strategy = "dp_mp_pp"
-    modeling.DPMPPP_MESH_LIST = [
-        ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
-        ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"]),
-    ]
+    modeling._global_parallel_strategy = None
+    # modeling.DPMPPP_MESH_LIST = [
+    #     ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+    #     ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"])
+    # ]
     with static.program_guard(train_program, start_program):
         tokens = paddle.static.data(
             name="tokens", shape=[batch_size, sequence_len], dtype='int64'
@@ -100,7 +100,7 @@ def get_program_v3():
             eos_token_id=7,
             bos_token_id=0,
             eol_token_id=3,
-            pp_degree=len(modeling.DPMPPP_MESH_LIST),
+            pp_degree=1,
         )
 
         model = GPTForPretraining(
@@ -135,8 +135,8 @@ def get_program_v3():
     )
 
 
-class TestParallelTunerPredict(unittest.TestCase):
-    def test_tune_predict(self):
+class TestParallelTunerTrain(unittest.TestCase):
+    def test_tune_with_train(self):
         flag = False
         set_default_distributed_context(DistributedContext())
         (
@@ -160,13 +160,10 @@ class TestParallelTunerPredict(unittest.TestCase):
             cluster,
         )
         dist_context.initialize()
-
-        parallel_tuner = ParallelTuner(
-            dist_context, max_trials=3, mode="predict"
-        )
+        parallel_tuner = ParallelTuner(dist_context, max_trials=3, mode="train")
         parallel_tuner.tune()
+        parallel_tuner._store_best_parallel_strategy()
         flag = True
-
         self.assertTrue(flag)
 
 
