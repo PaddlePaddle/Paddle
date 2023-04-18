@@ -46,8 +46,8 @@ extern void* flashattn_dso_handle;
 #define FLASHATTN_ROUTINE_EACH(__macro) \
   __macro(flash_attn_fwd);              \
   __macro(flash_attn_bwd);              \
-  __macro(flash_attn_error);            \
-  __macro(flash_attn_fwd_with_bias_and_mask);
+  __macro(flash_attn_error);
+  __macro(flash_attn_fwd_with_bias_and_mask); \
 
 FLASHATTN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_FLASHATTN_WRAP);
 
