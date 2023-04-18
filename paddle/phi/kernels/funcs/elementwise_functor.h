@@ -277,16 +277,6 @@ struct FMaxGradDx<dtype::float16> {
 };
 
 template <>
-struct FMaxGradDx<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(dtype::bfloat16 x,
-                                        dtype::bfloat16 y,
-                                        dtype::bfloat16 out,
-                                        dtype::bfloat16 dout) const {
-    return dout * static_cast<dtype::bfloat16>((x >= y) || dtype::isnan(y));
-  }
-};
-
-template <>
 struct FMaxGradDx<int> {
   HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
     return dout * static_cast<int>((x >= y));
@@ -317,16 +307,6 @@ struct FMaxGradDy<dtype::float16> {
                                        dtype::float16 out,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>(!((x >= y) || dtype::isnan(y)));
-  }
-};
-
-template <>
-struct FMaxGradDy<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(dtype::bfloat16 x,
-                                        dtype::bfloat16 y,
-                                        dtype::bfloat16 out,
-                                        dtype::bfloat16 dout) const {
-    return dout * static_cast<dtype::bfloat16>(!((x >= y) || dtype::isnan(y)));
   }
 };
 
