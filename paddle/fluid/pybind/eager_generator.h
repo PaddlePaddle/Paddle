@@ -244,7 +244,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
     {"sequence_mask", {"X", "MaxLenTensor"}},
     {"graph_reindex",
-     {"x", "neighbors", "count", "hashTable_vlue", "hashTable_index"}},
+     {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
     {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
     {"crop", {"X", "Y", "Offsets"}},
     {"batch_norm",

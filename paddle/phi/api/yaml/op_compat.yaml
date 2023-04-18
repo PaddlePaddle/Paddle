@@ -2383,6 +2383,12 @@
   attrs:
     pivot : pivots
 
+- op: reindex_graph (graph_reindex)
+  inputs :
+    {x : X, neighbors : Neighbors, count : Count, hashTable_value : HashTable_Value, hashTable_index : HashTable_Index}
+  outputs :
+    {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :

@@ -117,7 +117,7 @@ def graph_reindex(
             )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = _C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
@@ -126,18 +126,18 @@ def graph_reindex(
         )
         return reindex_src, reindex_dst, out_nodes
 
-    check_variable_and_dtype(x, "x", ("int32", "int64"), "graph_reindex")
+    check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
     check_variable_and_dtype(
-        neighbors, "neighbors", ("int32", "int64"), "graph_reindex"
+        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
     )
-    check_variable_and_dtype(count, "count", ("int32"), "graph_reindex")
+    check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
 
     if flag_buffer_hashtable:
         check_variable_and_dtype(
-            value_buffer, "hashTable_value", ("int32"), "graph_reindex"
+            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
         )
         check_variable_and_dtype(
-            index_buffer, "hashTable_index", ("int32"), "graph_reindex"
+            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
         )
 
     helper = LayerHelper("graph_reindex", **locals())
@@ -147,16 +147,16 @@ def graph_reindex(
     helper.append_op(
         type="graph_reindex",
         inputs={
-            "x": x,
-            "neighbors": neighbors,
-            "count": count,
-            "hashTable_value": value_buffer if flag_buffer_hashtable else None,
-            "hashTable_index": index_buffer if flag_buffer_hashtable else None,
+            "X": x,
+            "Neighbors": neighbors,
+            "Count": count,
+            "HashTable_Value": value_buffer if flag_buffer_hashtable else None,
+            "HashTable_Index": index_buffer if flag_buffer_hashtable else None,
         },
         outputs={
-            "reindex_src": reindex_src,
-            "reindex_dst": reindex_dst,
-            "out_nodes": out_nodes,
+            "Reindex_Src": reindex_src,
+            "Reindex_Dst": reindex_dst,
+            "Out_Nodes": out_nodes,
         },
     )
     return reindex_src, reindex_dst, out_nodes

@@ -1362,12 +1362,12 @@ void GraphReindexInferMeta(const MetaTensor& x,
     }
   };
 
-  GraphReindexShapeCheck(x.dims(), "x");
-  GraphReindexShapeCheck(neighbors.dims(), "neighbors");
-  GraphReindexShapeCheck(count.dims(), "count");
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
   if (flag_buffer_hashtable) {
-    GraphReindexShapeCheck(hashtable_value.dims(), "hashTable_value");
-    GraphReindexShapeCheck(hashtable_index.dims(), "hashTable_index");
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
   }
 
   reindex_src->set_dims({-1});
