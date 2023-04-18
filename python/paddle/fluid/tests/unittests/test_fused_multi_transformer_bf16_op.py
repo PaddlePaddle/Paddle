@@ -21,7 +21,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid import layers
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
@@ -33,23 +33,18 @@ random.seed(42)
 default_main_program().random_seed = 42
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
         self.config()
         self.generate_input_data()
 
         self.rtol = 1e-5
-        # FIXME(wangxi): Because there is a problem with the test precision
-        #  on A100, atol is temporarily set to 1e-2, and it will be
-        #  changed back after the precision problem is solved.
-        self.atol = 1e-2
-        # make sure local development precision
-        if "V100" in paddle.device.cuda.get_device_name():
-            self.atol = 1e-4
-        if self.x_type is 'float16':
-            self.atol = 1e-1
-        elif self.x_type is 'bfloat16':
-            self.atol = 1e-1
+        self.atol = 1e-1
 
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_multi_transformer"
@@ -671,7 +666,7 @@ class TestFusedMultiTransformerOp(OpTest):
                 dtype=self.x_type,
             )
             elems = 4
-            if self.x_type is 'float16' or self.x_type is 'bfloat16':
+            if self.x_type == 'float16' or self.x_type == 'bfloat16':
                 elems = 8
 
             assert self.head_dim % elems == 0
@@ -847,7 +842,7 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
             elems = 4
-            if self.x_type is 'float16' or self.x_type is 'bfloat16':
+            if self.x_type == 'float16' or self.x_type == 'bfloat16':
                 elems = 8
 
             assert self.head_dim % elems == 0
@@ -1038,7 +1033,7 @@ class TestFusedMultiTransformerOp(OpTest):
             head_dim = s[4]
             elems = (
                 8
-                if self.x_type is 'float16' or self.x_type is 'bfloat16'
+                if self.x_type == 'float16' or self.x_type == 'bfloat16'
                 else 4
             )
             v_elems = head_dim // elems
@@ -1170,6 +1165,11 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestFusedMultiTransformerBF16L1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -1177,6 +1177,11 @@ class TestFusedMultiTransformerBF16L1(TestFusedMultiTransformerOp):
         self.layers = 2
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestFusedMultiTransformerOpGenCacheRotaryBF16RoPE1(
     TestFusedMultiTransformerOp
 ):
@@ -1189,6 +1194,11 @@ class TestFusedMultiTransformerOpGenCacheRotaryBF16RoPE1(
         self.layers = 4
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestFusedMultiTransformerOpGenCacheRotaryBF16RoPE2(
     TestFusedMultiTransformerOp
 ):
@@ -1201,18 +1211,11 @@ class TestFusedMultiTransformerOpGenCacheRotaryBF16RoPE2(
         self.layers = 4
 
 
-class TestFusedMultiTransformerOpGenCacheRotaryBF16RoPE2(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.x_type = 'bfloat16'
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.rotary_emb_dims = 2
-        self.layers = 4
-
-
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestFusedMultiTransformerOpGenRotaryBF16(TestFusedMultiTransformerOp):
     def config(self):
         super().config()

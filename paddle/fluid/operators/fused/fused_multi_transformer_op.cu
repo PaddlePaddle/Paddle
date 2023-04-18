@@ -1375,5 +1375,7 @@ PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerOpKernel,
                           float,
-                          plat::float16,
-                          plat::bfloat16) {}
+#if defined(PADDLE_CUDA_BF16)
+                          plat::bfloat16,
+#endif  // ENABLE_BF16
+                          plat::float16) {}

@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MMHA_UTIL_CU_H_
-#define MMHA_UTIL_CU_H_
-#include <cuda_bf16.h>
+#ifndef PADDLE_FLUID_OPERATORS_FUSED_MMHA_UTIL_CU_H_
+#define PADDLE_FLUID_OPERATORS_FUSED_MMHA_UTIL_CU_H_
 #include <cuda_fp16.h>
 #include <float.h>
 #include <cub/cub.cuh>
@@ -24,9 +23,9 @@
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -39,7 +38,10 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
+#if defined(PADDLE_CUDA_BF16)
 #define ENABLE_BF16
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -207,7 +209,6 @@ template <>
 struct V_vec_<bfloat16, 8> {
   using Type = bf16_8_t;
 };
-#endif  // ENABLE_BF16
 
 inline __device__ __nv_bfloat162 bf16hmul2(const __nv_bfloat162 x,
                                            const __nv_bfloat162 y) {
@@ -231,6 +232,7 @@ inline __device__ __nv_bfloat16 bf16hmul(const __nv_bfloat16 x,
   return __hmul(x, y);
 #endif
 }
+#endif  // ENABLE_BF16
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
@@ -842,17 +844,6 @@ inline __device__ Float4_ fma(float a, Float4_ b, Float4_ c) {
   return d;
 }
 
-inline __device__ __nv_bfloat162 fma(float a, float2 b, __nv_bfloat162 c) {
-  return bf16hfma2(__float2bfloat162_rn(a), __float22bfloat162_rn(b), c);
-}
-
-inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
-  bf16_4_t d;
-  d.x = fma(a, b.x, c.x);
-  d.y = fma(a, b.y, c.y);
-  return d;
-}
-
 inline __device__ uint32_t h0_h0(uint16_t a) {
   uint32_t b;
   asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
@@ -882,6 +873,21 @@ inline __device__ uint4 fma(uint16_t a, uint4 b, uint4 c) {
 }
 
 #ifdef ENABLE_BF16
+
+inline __device__ __nv_bfloat162 fma(float a, float2 b, __nv_bfloat162 c) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bf16hfma2(__float2bfloat162_rn(a), __float22bfloat162_rn(b), c);
+#else
+  return bf16hfma2(__float2bfloat162_rn(a), __floats2bfloat162_rn(b.x, b.y), c);
+#endif
+}
+
+inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
+  bf16_4_t d;
+  d.x = fma(a, b.x, c.x);
+  d.y = fma(a, b.y, c.y);
+  return d;
+}
 
 inline __device__ __nv_bfloat162 fma(__nv_bfloat162 a,
                                      __nv_bfloat162 b,
@@ -1037,4 +1043,4 @@ inline __device__ Float8_ cast_to_float(bf16_8_t u) {
 
 }  // namespace operators
 }  // namespace paddle
-#endif
+#endif  // PADDLE_FLUID_OPERATORS_FUSED_MMHA_UTIL_CU_H_

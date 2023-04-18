@@ -89,11 +89,13 @@ class PDDataTypeTraits<float16> {
   typedef half DataType;
 };
 
+#ifdef ENABLE_BF16
 template <>
 class PDDataTypeTraits<bfloat16> {
  public:
   typedef __nv_bfloat16 DataType;
 };
+#endif  // ENABLE_BF16
 
 template <typename T>
 struct Masked_multihead_attention_params {
@@ -154,6 +156,7 @@ struct V_vec_acum_fp32_<uint4> {
   using Type = Float8_;
 };
 
+#ifdef ENABLE_BF16
 template <>
 struct V_vec_acum_fp32_<__nv_bfloat162> {
   using Type = float2;
@@ -167,11 +170,10 @@ struct V_vec_acum_fp32_<bf16_8_t> {
   using Type = Float8_;
 };
 
-#endif
+#endif  // ENABLE_BF16
+#endif  // MMHA_USE_FP32_ACUM_FOR_OUT
 
 // clang-format on
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(const K_vec (&q)[N],
@@ -309,13 +311,14 @@ inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT
   dst.w = float2_to_half2(src.w);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef ENABLE_BF16
-inline __device__ void convert_from_float(__nv_bfloat16 &dst, float src) {
+inline __device__ void convert_from_float(__nv_bfloat16 &dst,  // NOLINT
+                                          float src) {
   dst = __float2bfloat16(src);
 }
 
-inline __device__ void convert_from_float(__nv_bfloat162 &dst, float2 src) {
+inline __device__ void convert_from_float(__nv_bfloat162 &dst,  // NOLINT
+                                          float2 src) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
   dst = __float22bfloat162_rn(src);
 #else
@@ -323,7 +326,8 @@ inline __device__ void convert_from_float(__nv_bfloat162 &dst, float2 src) {
 #endif
 }
 
-inline __device__ void convert_from_float(bf16_4_t &dst, Float4_ src) {
+inline __device__ void convert_from_float(bf16_4_t &dst,  // NOLINT
+                                          Float4_ src) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
   dst.x = __float22bfloat162_rn(src.x);
   dst.y = __float22bfloat162_rn(src.y);
@@ -333,14 +337,14 @@ inline __device__ void convert_from_float(bf16_4_t &dst, Float4_ src) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline __device__ void convert_from_float(bf16_4_t &dst, float4 src) {
+inline __device__ void convert_from_float(bf16_4_t &dst,  // NOLINT
+                                          float4 src) {
   convert_from_float(
       dst, Float4_{make_float2(src.x, src.y), make_float2(src.z, src.w)});
 }
 
-inline __device__ void convert_from_float(bf16_8_t &dst, Float8_ src) {
+inline __device__ void convert_from_float(bf16_8_t &dst,  // NOLINT
+                                          Float8_ src) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
   dst.x = __float22bfloat162_rn(src.x);
   dst.y = __float22bfloat162_rn(src.y);
@@ -354,8 +358,6 @@ inline __device__ void convert_from_float(bf16_8_t &dst, Float8_ src) {
 #endif
 }
 #endif  // ENABLE_BF16
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 inline __device__ void zero(uint16_t &dst) { dst = uint16_t(0); }  // NOLINT
 
@@ -567,12 +569,12 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("=======q_out=======\n");
-  //   for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
-  //   printf("\n");
-  // }
-  // __syncthreads();
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("=======q_out=======\n");
+    for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
+    printf("\n");
+  }
+  __syncthreads();
 #endif
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
@@ -653,12 +655,12 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("=======qk_out=======\n");
-  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
-  //   printf("qk_max=%f\n", qk_max);
-  // }
-  // __syncthreads();
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("=======qk_out=======\n");
+    for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
+    printf("qk_max=%f\n", qk_max);
+  }
+  __syncthreads();
 #endif
 
   float sum = 0.f;
@@ -714,12 +716,12 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("======logits_out=====\n");
-  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
-  //   printf("\n");
-  // }
-  // __syncthreads();
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("======logits_out=====\n");
+    for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
+    printf("\n");
+  }
+  __syncthreads();
 #endif
 
   V_vec v_bias;
@@ -775,13 +777,13 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // __syncthreads();
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("======fmha_out=====\n");
-  //   for (int i = 0; i < Dh; ++i)
-  //     printf("%f ", static_cast<float>(params.out[i]));
-  //   printf("\n");
-  // }
+  __syncthreads();
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("======fmha_out=====\n");
+    for (int i = 0; i < Dh; ++i)
+      printf("%f ", static_cast<float>(params.out[i]));
+    printf("\n");
+  }
 #endif
 #else
   assert(false);
