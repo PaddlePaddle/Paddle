@@ -195,7 +195,7 @@ class TensorCheckerConfig:
         if self.enable:
             self._set_seed(self.enable)
 
-    def keep_random(self, seed, flag):
+    def _keep_random(self, seed, flag):
         # get random seed
         self.seed = seed
         paddle.seed(self.seed)
@@ -224,7 +224,7 @@ class TensorCheckerConfig:
         if self.seed > 4294967295 or self.seed < 0:
             print("[Warnning: Seed must be between 0 and 2**32 - 1")
             self.seed = 123
-            self.keep_random(self.seed, True)
+            self._keep_random(self.seed, True)
 
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
@@ -246,7 +246,7 @@ class TensorCheckerConfig:
             else:
                 raise ValueError("stack_height_limit must be int")
 
-    def check_step_id(self):
+    def _check_step_id(self):
         if self.enable:
             if self.start_step is not None and self.end_step is not None:
                 if (
@@ -259,11 +259,11 @@ class TensorCheckerConfig:
             return True
         return False
 
-    def run(self):
+    def _run(self):
         if self.enable:
             self._set_env(self.enable)
 
-    def end(self):
+    def _end(self):
         self._set_env(False)
 
 
@@ -460,10 +460,10 @@ def enable_tensor_checker(checker_config):
         #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
     """
-    if checker_config.check_step_id():
-        checker_config.run()
+    if checker_config._check_step_id():
+        checker_config._run()
     else:
-        checker_config.end()
+        checker_config._end()
 
 
 def disable_tensor_checker():
