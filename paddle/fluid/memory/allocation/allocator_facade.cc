@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -37,7 +36,6 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -63,6 +61,7 @@
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time,

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <gtest/gtest.h>
 #include <random>
 #include <sstream>
 #include <string>
