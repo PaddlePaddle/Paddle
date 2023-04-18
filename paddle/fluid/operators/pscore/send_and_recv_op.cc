@@ -99,7 +99,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
 PD_REGISTER_STRUCT_KERNEL(send_and_recv,
-                          CPU,
+                          GPU,
                           ALL_LAYOUT,
                           ops::SendAndRecvKernel,
                           float,
