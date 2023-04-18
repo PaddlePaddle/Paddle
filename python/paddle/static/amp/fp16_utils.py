@@ -147,7 +147,7 @@ def _keep_fp32_output(op, out_name):
 
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
-    Insert cast op and rename args of input and output.
+    Insert cast op and rename op's input.
 
     Args:
         block (Program): The block in which the operator is.
@@ -209,20 +209,23 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         stop_gradient=in_var.stop_gradient,
                     )
 
+                    # Only forward program will be inserted cast op, but some ops
+                    # has no op_role attr, so here set it direcly. eg. resnet_unit.
+                    op_role = (
+                        int(core.op_proto_and_checker_maker.OpRole.Forward)
+                        if not op.has_attr('op_role')
+                        else op.attr('op_role')
+                    )
                     block._insert_op_without_sync(
                         idx,
                         type="cast",
                         inputs={"X": in_var},
                         outputs={"Out": out_var},
-                        # Only forward program will be inserted cast op, but some ops
-                        # has no op_role attr, so here set it direcly. eg. resnet_unit.
                         attrs={
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
                             "op_device": op_device,
-                            "op_role": int(
-                                core.op_proto_and_checker_maker.OpRole.Forward
-                            ),
+                            "op_role": op_role,
                         },
                     )
                     num_cast_ops += 1
@@ -547,10 +550,6 @@ def cast_model_to_fp16(
     # For amp o2 there is no blacklist by default.
     if level == 'O2':
         amp_lists.black_list = amp_lists.black_list - black_list
-        if amp_lists._custom_black_list:
-            amp_lists.black_list = amp_lists.black_list.union(
-                amp_lists._custom_black_list
-            )
 
     global_block = program.global_block()
     keep_fp32_ops = set()

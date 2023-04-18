@@ -122,6 +122,29 @@ def _get_unsupported_list(dtype):
     return unsupported_list
 
 
+# The three sets listed below are changed dynamiclly. They don't contain all
+# paddle ops currently.
+
+# The set of ops that support fp16 calculation and are considered numerically-
+# safe and performance-critical. These ops are always converted to fp16.
+
+_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
+
+white_list = {
+    'conv2d',
+    'matmul',
+    'matmul_v2',
+    'mul',
+}
+
+
+def _get_white_list(dtype):
+    white_list_for_dtype = copy.copy(white_list)
+    if dtype == 'float16':
+        white_list_for_dtype = white_list_for_dtype | _only_supported_fp16_list
+    return white_list_for_dtype
+
+
 class AutoMixedPrecisionLists:
     """
     AutoMixedPrecisionLists is a class for black/white list. It can update
@@ -146,7 +169,7 @@ class AutoMixedPrecisionLists:
         self.amp_dtype = check_amp_dtype(dtype)
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
-        self.white_list = copy.copy(white_list)
+        self.white_list = copy.copy(_get_white_list(self.amp_dtype))
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
         self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
@@ -193,21 +216,6 @@ class AutoMixedPrecisionLists:
                 f"On current {device}, {self.amp_dtype} is not supported for operators < {actual_unsupported_list} > in white_list!"
             )
 
-
-# The three sets listed below are changed dynamiclly. They don't contain all
-# paddle ops currently.
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-
-_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
-
-white_list = {
-    'conv2d',
-    'matmul',
-    'matmul_v2',
-    'mul',
-} | _only_supported_fp16_list
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
