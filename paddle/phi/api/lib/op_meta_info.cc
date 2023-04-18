@@ -24,6 +24,17 @@ limitations under the License. */
 
 namespace paddle {
 
+const std::unordered_set<std::string> custom_attrs_type(
+    {"bool",
+     "int",
+     "float",
+     "int64_t",
+     "std::string",
+     "std::vector<int>",
+     "std::vector<float>",
+     "std::vector<int64_t>",
+     "std::vector<std::string>"});
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
     VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
@@ -346,6 +357,20 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  for (const auto& attr : attrs) {
+    auto attr_type_str = ParseAttrStr(attr)[1];
+    if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, "
+          "Please check whether the attribute data type and "
+          "data type string are matched.",
+          attr_type_str));
+    }
+  }
   info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }

@@ -97,6 +97,25 @@ inline std::string Optional(const std::string& t_name) {
   return result;
 }
 
+static std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos,
+                    std::string::npos,
+                    platform::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(string::trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(string::trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
