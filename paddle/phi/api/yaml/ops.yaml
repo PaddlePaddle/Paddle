@@ -2084,4 +2084,5 @@
     func : yolo_loss
     data_type : x
   optional : gt_score
+  intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
