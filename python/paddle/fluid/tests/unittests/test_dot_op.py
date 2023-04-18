@@ -215,8 +215,8 @@ class TestComplexDotOp(OpTest):
         self.grad_x = self.grad_out * np.conj(self.y)
         self.grad_y = self.grad_out * np.conj(self.x)
 
-    # def test_check_output(self):
-    #     self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
