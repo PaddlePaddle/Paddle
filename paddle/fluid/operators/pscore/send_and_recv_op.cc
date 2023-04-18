@@ -98,14 +98,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
-PD_REGISTER_STRUCT_KERNEL(send_and_recv,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SendAndRecvKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+
 PD_REGISTER_STRUCT_KERNEL(send_and_recv,
                           CPU,
                           ALL_LAYOUT,
@@ -114,7 +107,16 @@ PD_REGISTER_STRUCT_KERNEL(send_and_recv,
                           double,
                           int,
                           int64_t) {}
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(send_and_recv,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SendAndRecvKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#endif
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(
         R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
