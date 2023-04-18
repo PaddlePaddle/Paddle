@@ -129,6 +129,10 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(sequence_erase,
-                        paddle::operators::SequenceEraseOpCUDAKernel<int32_t>,
-                        paddle::operators::SequenceEraseOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_erase,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceEraseOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}
