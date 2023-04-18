@@ -97,5 +97,6 @@ PD_REGISTER_STRUCT_KERNEL(skip_layernorm,
                           ops::SkipLayerNormKernel,
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
                           plat::float16,
-#else
-                          float) {}
+#endif
+                          float) {
+}
