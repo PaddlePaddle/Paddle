@@ -91,13 +91,6 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(skip_layernorm,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SkipLayerNormKernel,
-                          plat::float16,
-                          float) {}
-
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 PD_REGISTER_STRUCT_KERNEL(skip_layernorm,
                           GPU,
