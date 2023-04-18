@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -76,4 +75,5 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

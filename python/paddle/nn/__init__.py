@@ -114,6 +114,8 @@ from .layer.loss import MultiMarginLoss
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
 from .layer.loss import SoftMarginLoss
+from .layer.loss import GaussianNLLLoss
+
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -335,4 +337,5 @@ __all__ = [  # noqa
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',
+    'GaussianNLLLoss',
 ]

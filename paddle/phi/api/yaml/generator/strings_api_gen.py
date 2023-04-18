@@ -330,6 +330,8 @@ def source_include(header_file_path):
 #include "{header_file_path}"
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/string_tensor.h"
