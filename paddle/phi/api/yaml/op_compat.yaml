@@ -2366,6 +2366,15 @@
   outputs :
     {boxes : Boxes, scores : Scores}
 
+- op: lu
+  backward: lu_grad
+  inputs:
+    x: X
+  outputs:
+    {out: Out, pivots : Pivots, infos : Infos}
+  attrs:
+    pivot : pivots
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
