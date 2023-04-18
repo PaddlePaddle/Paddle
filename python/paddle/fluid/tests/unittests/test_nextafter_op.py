@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 
@@ -59,6 +60,25 @@ class TestNextafterAPI(unittest.TestCase):
         out_ref = ref_nextafter(self.x_np, self.y_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
+
+
+class TextNextafterOP(OpTest):
+    def setUp(self):
+        self.op_type = "nextafter"
+        self.python_api = paddle.nextafter
+        self.init_dtype()
+
+        x = np.array([1, 2]).astype(self.dtype)
+        y = np.array([2, 1]).astype(self.dtype)
+        out = np.nextafter(x, y)
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
 
 if __name__ == "__main__":
