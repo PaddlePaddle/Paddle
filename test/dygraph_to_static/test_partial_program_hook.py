@@ -44,7 +44,7 @@ class TestPrimHook(unittest.TestCase):
             f
         ).get_concrete_program()
         self._hook = program_translator.PrimHooker(
-            concrete_program.main_program
+            concrete_program.main_program, None
         )
         self._forward = partial_program.forward_program
         self._whole = partial_program._train_program

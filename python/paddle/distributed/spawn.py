@@ -108,8 +108,6 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
-    elif 'mlu' in device:
-        return core.get_custom_device_count('mlu')
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
     else:
@@ -126,8 +124,6 @@ def _get_default_backend():
         return 'nccl'
     elif 'xpu' in device:
         return 'bkcl'
-    elif 'mlu' in device:
-        return 'cncl'
     elif 'cpu' in device:
         return 'gloo'
     else:
@@ -259,45 +255,6 @@ def _get_subprocess_env_list(nprocs, options):
                         "XPU_VISIBLE_DEVICES (%s)."
                         % (card_id, ",".join(env_devices_list))
                     )
-    elif options['backend'] == 'cncl':
-        args.selected_devices = options.get('mlus', None)
-        if args.selected_devices is None:
-            args.selected_devices = options.get('selected_devices', None)
-        env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
-        if env_devices is None or env_devices == "":
-            env_devices_list = [
-                str(x) for x in range(core.get_custom_device_count('mlu'))
-            ]
-        else:
-            env_devices_list = env_devices.split(',')
-        if args.selected_devices is None:
-            if len(env_devices_list) < nprocs:
-                raise RuntimeError(
-                    "the number of visible devices(%d) is less than the number "
-                    "of spawn processes(%d), please ensure that the correct "
-                    "`nprocs` argument is passed or the environment variable "
-                    "`MLU_VISIBLE_DEVICES` is correctly configured."
-                    % (len(env_devices_list), nprocs)
-                )
-            args.selected_devices = ",".join(
-                [str(env_devices_list[x]) for x in range(0, nprocs)]
-            )
-        else:
-            selected_device_list = args.selected_devices.split(',')
-            if len(selected_device_list) != nprocs:
-                raise ValueError(
-                    "The number of selected devices(%s) is not equal to "
-                    "the number of spawn processes(%d), please ensure that the "
-                    "correct `nprocs` and `mlus` arguments are passed."
-                    % (len(selected_device_list), nprocs)
-                )
-            for card_id in selected_device_list:
-                if card_id not in env_devices_list:
-                    raise ValueError(
-                        "The selected mlu card %s cannot found in "
-                        "MLU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
-                    )
     elif options['backend'] == 'gloo':
         # TODO check gpu / xpu flag must not exist
         warnings.warn(
@@ -372,8 +329,6 @@ def _set_trainer_env(env_dict, backend):
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     elif backend == 'bkcl':
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
-    elif backend == 'cncl':
-        set_flags({'FLAGS_selected_mlus': env_dict['FLAGS_selected_mlus']})
     else:
         # NOTE(xiongkun) why not raise Error ?
         # So far, we added support for CPU parallel, and will be applied when paddle is not

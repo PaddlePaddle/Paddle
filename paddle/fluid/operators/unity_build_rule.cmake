@@ -17,7 +17,6 @@ register_unity_group(
   assert_op.cc
   assign_value_op.cc
   attention_lstm_op.cc
-  average_accumulates_op.cc
   batch_fc_op.cc
   bce_loss_op.cc
   beam_search_op.cc
@@ -222,7 +221,6 @@ register_unity_group(
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
   random_crop_op.cc
-  randperm_op.cc
   range_op.cc
   rank_attention_op.cc
   rank_loss_op.cc
@@ -330,7 +328,6 @@ register_unity_group(
   pool_op.cu.cc
   pool_cudnn_op.cu.cc
   pool_with_index_op.cu.cc
-  run_program_op.cu.cc
   softmax_op.cu.cc
   softmax_cudnn_op.cu.cc
   spp_op.cu.cc
@@ -356,7 +353,6 @@ register_unity_group(
   rnn_op.cu.cc
   split_op.cu.cc
   assign_value_op.cu.cc
-  run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
   cu
@@ -386,7 +382,6 @@ register_unity_group(
   conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
-  average_accumulates_op.cu
   conj_op.cu
   correlation_op.cu)
 register_unity_group(
@@ -495,12 +490,12 @@ register_unity_group(
   pixel_shuffle_op.cu
   prelu_op.cu
   prroi_pool_op.cu
+  run_program_op.cu
   pull_box_extended_sparse_op.cu
   pull_box_sparse_op.cu)
 register_unity_group(
   cu
   random_crop_op.cu
-  randperm_op.cu
   range_op.cu
   reverse_op.cu
   partial_concat_op.cu

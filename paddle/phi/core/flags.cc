@@ -1001,6 +1001,20 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
                             "It controls whether to use cinn with "
                             "its auto-tune feature enabled");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_subgraph_graphviz_dir
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_cinn_subgraph_graphviz_dir="./cinn_graph/" will save the
+ * CINN sub-graph into "./cinn_graph/", and each sub-graph will save into
+ * "fusion_groups_*"" directory
+ */
+PADDLE_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
+                              "",
+                              "Specify the directory path of dot file of "
+                              "graph, which is used for debug.");
+
 #endif
 
 /*
