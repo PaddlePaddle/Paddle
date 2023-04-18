@@ -755,11 +755,11 @@
   backward : matmul_grad
 
 - op : matrix_rank
-  args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
+  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankInferMeta
-    param : [x, hermitian, use_default_tol]
+    param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
 

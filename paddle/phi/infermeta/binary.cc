@@ -2207,7 +2207,7 @@ void MatrixRankStaticInferMeta(const MetaTensor& x,
   if (atol_tensor) {
     MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
   } else {
-    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
   }
 }
 
