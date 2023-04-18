@@ -40,9 +40,7 @@ struct EigenGenericI0eGrad<Eigen::GpuDevice, T> {
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {
-
-  }
+                   const InType& dout) {}
 };
 
 template <typename T>
@@ -65,13 +63,11 @@ struct EigenGenericI0Grad<Eigen::GpuDevice, T> {
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {
-
-  }
+                   const InType& dout) {}
 };
 
-#define INSTANTIATION(FUNCTOR)                           \
-  template struct FUNCTOR<Eigen::GpuDevice, float>;  \
+#define INSTANTIATION(FUNCTOR)                      \
+  template struct FUNCTOR<Eigen::GpuDevice, float>; \
   template struct FUNCTOR<Eigen::GpuDevice, double>
 INSTANTIATION(EigenGenericI0e);
 INSTANTIATION(EigenGenericI0eGrad);

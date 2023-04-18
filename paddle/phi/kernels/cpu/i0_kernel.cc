@@ -18,5 +18,4 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/i0_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    i0, CPU, ALL_LAYOUT, phi::I0Kernel, float, double) {}
+PD_REGISTER_KERNEL(i0, CPU, ALL_LAYOUT, phi::I0Kernel, float, double) {}

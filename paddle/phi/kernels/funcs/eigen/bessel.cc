@@ -39,9 +39,7 @@ struct EigenGenericI0eGrad<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {
-
-  }
+                   const InType& dout) {}
 };
 
 template <typename T>
@@ -53,7 +51,7 @@ struct EigenGenericI0<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in) {
-          out.device(dev) = in.bessel_i0();
+    out.device(dev) = in.bessel_i0();
   }
 };
 
@@ -66,13 +64,11 @@ struct EigenGenericI0Grad<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {
-
-  }
+                   const InType& dout) {}
 };
 
-#define INSTANTIATION(FUNCTOR)                           \
-  template struct FUNCTOR<Eigen::DefaultDevice, float>;  \
+#define INSTANTIATION(FUNCTOR)                          \
+  template struct FUNCTOR<Eigen::DefaultDevice, float>; \
   template struct FUNCTOR<Eigen::DefaultDevice, double>
 INSTANTIATION(EigenGenericI0e);
 INSTANTIATION(EigenGenericI0eGrad);

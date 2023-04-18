@@ -19,7 +19,8 @@
 namespace phi {
 
 /**
- * @brief This kernel calculate Exponentially scaled modified Bessel function of order 0..
+ * @brief This kernel calculate Exponentially scaled modified Bessel function of
+ * order 0..
  * @param  ctx   device context
  * @param  x     The input tensor of i0e
  * @param  out   The output tensor of i0e kernel, it has the same shape and
