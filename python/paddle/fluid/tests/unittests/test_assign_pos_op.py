@@ -120,7 +120,7 @@ class TestAssignPosAPI(unittest.TestCase):
     def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        cum_count = paddle.to_tensor([self.cum_count]).astype(x.dtype)
+        cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
 
         out = utils._assign_pos(x, cum_count)
         assert_allclose(out.numpy(), self.out, self.cum_count)
