@@ -47,8 +47,8 @@ class StreamAllToAllSingleTestCase:
             )
 
         nranks = len(test_data_list)
-        data1 = paddle.to_tensor([test_data_list[0]])
-        data2 = paddle.to_tensor([test_data_list[1]])
+        data1 = paddle.to_tensor(test_data_list[0])
+        data2 = paddle.to_tensor(test_data_list[1])
         result1 = np.vstack(
             (
                 data1[0 : data1.shape[0] // 2, :],
@@ -60,7 +60,7 @@ class StreamAllToAllSingleTestCase:
         )
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor([test_data_list[rank]])
+        tensor = paddle.to_tensor(test_data_list[rank])
 
         out_tensor = paddle.empty_like(tensor)
         task = dist.stream.alltoall_single(
