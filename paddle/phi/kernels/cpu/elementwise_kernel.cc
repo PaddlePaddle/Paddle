@@ -25,10 +25,10 @@ template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   int axis,
                    DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
       dev_ctx, x, y, axis, funcs::MaximumFunctor<T>(), out);
 }
@@ -37,10 +37,10 @@ template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   int axis,
                    DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
       dev_ctx, x, y, axis, funcs::MinimumFunctor<T>(), out);
 }
@@ -49,10 +49,10 @@ template <typename T, typename Context>
 void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
-                     int axis,
                      DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
@@ -68,10 +68,10 @@ template <typename T, typename Context>
 void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
-                       int axis,
                        DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
@@ -87,10 +87,10 @@ template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
-                          int axis,
                           DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
+  int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
