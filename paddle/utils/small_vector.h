@@ -451,7 +451,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
   template <typename... ArgTypes>
   T &growAndEmplaceBack(ArgTypes &&...Args) {
     // Grow manually in case one of Args is an internal reference.
-    size_t NewCapacity;
+    size_t NewCapacity = 0;
     T *NewElts = mallocForGrow(0, NewCapacity);
     ::new (reinterpret_cast<void *>(NewElts + this->size()))
         T(std::forward<ArgTypes>(Args)...);
