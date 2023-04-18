@@ -297,6 +297,10 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 
     // Node Construction
 {}
+    // Set for forward trace
+  if (FLAGS_check_nan_inf) {{
+  {}
+  }}
     // SetAttributes if needed
 {}
     // Set TensorWrappers for Forward Inputs if needed
@@ -485,7 +489,25 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
     }}
   }}"""
 
-CHECK_NAN_AND_INF_TEMPLATE = """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
+CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
+  std::string forward_trace ="";
+  if (FLAGS_check_nan_inf) {{
+      egr::CheckTensorHasNanOrInf("{}", {});
+      forward_trace = egr::Controller::Instance().GetPythonStack();
+  }}
+"""
+
+CHECK_NAN_AND_INF_TEMPLATE_BACKWARD = """
+  if (FLAGS_check_nan_inf) {{
+     try{{
+       egr::CheckTensorHasNanOrInf("{}", {});
+     }} catch(...) {{
+       LOG(WARNING) << "There are nan/inf in ({})";
+       auto forward_trace = GetForwardTrace();
+       std::cout<<forward_trace<<std::endl;
+       std::rethrow_exception(std::current_exception());
+     }}
+  }}
 """
 
 inplace_optional_out_type_map = {
@@ -1048,11 +1070,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         node_event_name = forward_api_name + " node_creation"
         node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
+        set_forward_trace = (
+            f"{indent} grad_node->SetForwardTrace(forward_trace);"
+        )
         if not for_backward:
             self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
                 node_creation_event_str,
                 pass_stop_gradient_args_str,
                 node_construction_str,
+                set_forward_trace,
                 set_attributes_str,
                 set_input_tensor_wrappers_str,
                 set_grad_out_meta_str,
@@ -1427,7 +1453,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE_FORWARD.format(
             function_name, "api_result"
         )
 
@@ -2322,8 +2348,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
-            backward_api_name, "returns"
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE_BACKWARD.format(
+            backward_api_name, "returns", backward_api_name
         )
 
         # Prepare for Node Creation if Necessary
