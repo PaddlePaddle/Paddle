@@ -1984,6 +1984,7 @@ def split(x, num_or_sections, axis=0, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
                 'int8',
             ],
             'split',
