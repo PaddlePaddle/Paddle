@@ -203,10 +203,10 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
     cudnn_frontend::feature_vector_t feature_vector;
     phi::autotune::BuildFeatureVector(&feature_vector, dim_x, fuse_dual);
 
-    if (plan_cache.FindPlan(feature_vector)) {
+    if (plan_cache.FindPlan(feature_vector, handle)) {
       const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
       int64_t workspace_size = 0;
-      plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+      plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
       helper::ExecutePlan(handle,
                           &workspace_handle,
                           &data_ptrs,
@@ -229,7 +229,7 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
                         plan.get_raw_desc(),
                         workspace_size);
 
-    plan_cache.InsertPlan(feature_vector, plan);
+    plan_cache.InsertPlan(feature_vector, plan, handle);
   }
 };
 

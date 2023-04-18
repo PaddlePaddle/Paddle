@@ -396,10 +396,11 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
       alpha,
       beta);
 
-  if (plan_cache_bwd_data.FindPlan(op_graph)) {
+  if (plan_cache_bwd_data.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache_bwd_data.GetPlan(op_graph, &cached_plan, &workspace_size);
+    plan_cache_bwd_data.GetPlan(
+        op_graph, &cached_plan, &workspace_size, handle);
     workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {dx_tensor_data, dy_tensor_data, w_tensor_data};
@@ -444,8 +445,8 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
           },
           workspace_size);
       if (!exhaustive_search ||
-          plan_cache_bwd_data.IsStable(op_graph, plan.getTag())) {
-        plan_cache_bwd_data.InsertPlan(op_graph, plan);
+          plan_cache_bwd_data.IsStable(op_graph, plan.getTag(), handle)) {
+        plan_cache_bwd_data.InsertPlan(op_graph, plan, handle);
       }
       return;
     } catch (cudnn_frontend::cudnnException& e) {
@@ -496,10 +497,11 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
       alpha,
       beta);
 
-  if (plan_cache_bwd_filter.FindPlan(op_graph)) {
+  if (plan_cache_bwd_filter.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache_bwd_filter.GetPlan(op_graph, &cached_plan, &workspace_size);
+    plan_cache_bwd_filter.GetPlan(
+        op_graph, &cached_plan, &workspace_size, handle);
     workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {x_tensor_data, dy_tensor_data, dw_tensor_data};
@@ -544,8 +546,8 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
           },
           workspace_size);
       if (!exhaustive_search ||
-          plan_cache_bwd_filter.IsStable(op_graph, plan.getTag())) {
-        plan_cache_bwd_filter.InsertPlan(op_graph, plan);
+          plan_cache_bwd_filter.IsStable(op_graph, plan.getTag(), handle)) {
+        plan_cache_bwd_filter.InsertPlan(op_graph, plan, handle);
       }
       return;
     } catch (cudnn_frontend::cudnnException& e) {

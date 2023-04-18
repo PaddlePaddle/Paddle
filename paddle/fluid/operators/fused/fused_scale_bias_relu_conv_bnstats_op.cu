@@ -258,10 +258,10 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                                     post_padding,
                                     fuse_prologue);
 
-  if (plan_cache.FindPlan(feature_vector)) {
+  if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -282,7 +282,7 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                       plan.get_raw_desc(),
                       workspace_size);
 
-  plan_cache.InsertPlan(feature_vector, plan);
+  plan_cache.InsertPlan(feature_vector, plan, handle);
 }
 
 template <typename T>
@@ -455,10 +455,10 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
   phi::autotune::BuildFeatureVector(
       &feature_vector, dim_input, accumulation_count, exp_decay, epsilon);
 
-  if (plan_cache.FindPlan(feature_vector)) {
+  if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -479,7 +479,7 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
                       plan.get_raw_desc(),
                       workspace_size);
 
-  plan_cache.InsertPlan(feature_vector, plan);
+  plan_cache.InsertPlan(feature_vector, plan, handle);
 }
 
 template <typename T>

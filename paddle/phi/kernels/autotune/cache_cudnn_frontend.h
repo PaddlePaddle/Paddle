@@ -17,7 +17,6 @@
 #include <map>
 #include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -65,10 +64,11 @@ class CudnnFrontendPlanCache {
     cache_misses_ = 0;
   }
 
-  bool FindPlan(const cudnn_frontend::feature_vector_t &feature) {
+  bool FindPlan(const cudnn_frontend::feature_vector_t &feature,
+                cudnnHandle_t handle) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    auto &local_map = map_[handle];
     if (local_map.count(feature) > 0) {
       cache_hits_++;
       ret = true;
@@ -80,14 +80,15 @@ class CudnnFrontendPlanCache {
 
   void GetPlan(const cudnn_frontend::feature_vector_t &feature,
                const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size) {
+               int64_t *workspace_size,
+               cudnnHandle_t handle) {
     // Note(tizheng): CUDNNv8 execution plan is not thread-safe.
     // A shared plan being executed by different threads with the
     // same CUDNN handle is generally not safe (for now).
     // But somehow having thread-local copies of plans work fine,
     // even with the same handle.
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    auto &local_map = map_[handle];
 
     auto it = local_map.find(feature);
     if (it == local_map.end()) {
@@ -102,21 +103,23 @@ class CudnnFrontendPlanCache {
   }
 
   void InsertPlan(const cudnn_frontend::feature_vector_t &feature,
-                  const cudnn_frontend::ExecutionPlan &plan) {
+                  const cudnn_frontend::ExecutionPlan &plan,
+                  cudnnHandle_t handle) {
     VLOG(4) << "[cudnn_frontend] cache: Insert plan: " << plan.getTag();
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    auto &local_map = map_[handle];
     local_map.insert(std::make_pair(feature, plan));
   }
 
   bool IsStable(const cudnn_frontend::feature_vector_t &feature,
-                const std::string &tag) {
+                const std::string &tag,
+                cudnnHandle_t handle) {
     if (saturation_count_ == 1) {
       return true;
     }
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[hasher(std::this_thread::get_id())];
-    auto &local_tracker = tracker_[hasher(std::this_thread::get_id())];
+    auto &local_map = map_[handle];
+    auto &local_tracker = tracker_[handle];
     if (local_map.count(feature)) {
       return false;
     }
@@ -125,38 +128,41 @@ class CudnnFrontendPlanCache {
     return cnt >= saturation_count_;
   }
 
-  bool FindPlan(const cudnn_frontend::OperationGraph &op_graph) {
-    return FindPlan(op_graph.getFeatureVector());
+  bool FindPlan(const cudnn_frontend::OperationGraph &op_graph,
+                cudnnHandle_t handle) {
+    return FindPlan(op_graph.getFeatureVector(), handle);
   }
 
   void GetPlan(const cudnn_frontend::OperationGraph &op_graph,
                const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size) {
-    GetPlan(op_graph.getFeatureVector(), plan, workspace_size);
+               int64_t *workspace_size,
+               cudnnHandle_t handle) {
+    GetPlan(op_graph.getFeatureVector(), plan, workspace_size, handle);
   }
 
   void InsertPlan(const cudnn_frontend::OperationGraph &op_graph,
-                  const cudnn_frontend::ExecutionPlan &plan) {
-    InsertPlan(op_graph.getFeatureVector(), plan);
+                  const cudnn_frontend::ExecutionPlan &plan,
+                  cudnnHandle_t handle) {
+    InsertPlan(op_graph.getFeatureVector(), plan, handle);
   }
 
   bool IsStable(const cudnn_frontend::OperationGraph &op_graph,
-                const std::string &tag) {
-    return IsStable(op_graph.getFeatureVector(), tag);
+                const std::string &tag,
+                cudnnHandle_t handle) {
+    return IsStable(op_graph.getFeatureVector(), tag, handle);
   }
 
  private:
   using FeatureVectorToPlanMap =
       std::map<cudnn_frontend::feature_vector_t, cudnn_frontend::ExecutionPlan>;
-  std::map<std::size_t, FeatureVectorToPlanMap> map_;
-  std::hash<std::thread::id> hasher;
+  std::map<cudnnHandle_t, FeatureVectorToPlanMap> map_;
 
   std::shared_ptr<std::mutex> cache_mutex_;
   int saturation_count_;
 
   using SaturationTracker =
       std::map<std::pair<cudnn_frontend::feature_vector_t, std::string>, int>;
-  std::map<std::size_t, SaturationTracker> tracker_;
+  std::map<cudnnHandle_t, SaturationTracker> tracker_;
 
   int64_t cache_hits_{0};
   int64_t cache_misses_{0};

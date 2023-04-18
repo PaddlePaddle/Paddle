@@ -261,10 +261,10 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
       alpha,
       beta);
 
-  if (plan_cache.FindPlan(op_graph)) {
+  if (plan_cache.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(op_graph, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(op_graph, &cached_plan, &workspace_size, handle);
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           void* data_ptrs[] = {input_data, output_data, filter_data};
@@ -308,8 +308,9 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                 handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
           },
           workspace_size);
-      if (!exhaustive_search || plan_cache.IsStable(op_graph, plan.getTag())) {
-        plan_cache.InsertPlan(op_graph, plan);
+      if (!exhaustive_search ||
+          plan_cache.IsStable(op_graph, plan.getTag(), handle)) {
+        plan_cache.InsertPlan(op_graph, plan, handle);
       }
       return;
     } catch (cudnn_frontend::cudnnException& e) {

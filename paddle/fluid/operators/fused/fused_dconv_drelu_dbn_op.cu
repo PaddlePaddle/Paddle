@@ -490,10 +490,10 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                                     pre_padding,
                                     post_padding);
 
-  if (plan_cache.FindPlan(feature_vector)) {
+  if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -516,7 +516,7 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                       plan.get_raw_desc(),
                       workspace_size);
 
-  plan_cache.InsertPlan(feature_vector, plan);
+  plan_cache.InsertPlan(feature_vector, plan, handle);
 }
 
 template <typename T>
@@ -690,10 +690,10 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
   cudnn_frontend::feature_vector_t feature_vector;
   phi::autotune::BuildFeatureVector(&feature_vector, dim_x, fuse_dual);
 
-  if (plan_cache.FindPlan(feature_vector)) {
+  if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -714,7 +714,7 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
                       plan.get_raw_desc(),
                       workspace_size);
 
-  plan_cache.InsertPlan(feature_vector, plan);
+  plan_cache.InsertPlan(feature_vector, plan, handle);
 }
 
 template <typename T>
@@ -869,10 +869,10 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                                     pre_padding,
                                     post_padding);
 
-  if (plan_cache.FindPlan(feature_vector)) {
+  if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size);
+    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -894,7 +894,7 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                       plan.get_raw_desc(),
                       workspace_size);
 
-  plan_cache.InsertPlan(feature_vector, plan);
+  plan_cache.InsertPlan(feature_vector, plan, handle);
 
   // transfer back to NCWH
   TransToChannelFirst<Context, T>(ctx, &dw_tensor_transformed, dw_tensor);
