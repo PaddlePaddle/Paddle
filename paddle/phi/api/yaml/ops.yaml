@@ -1159,6 +1159,17 @@
     func : logsigmoid
   backward : logsigmoid_grad
 
+- op : lu
+  args : (Tensor x, bool pivot = true)
+  output : Tensor(out), Tensor(pivots), Tensor(infos)
+  infer_meta :
+    func : LUInferMeta
+  kernel :
+    func : lu
+    data_type : x
+  inplace : (x -> out)
+  backward : lu_grad
+
 - op : lu_unpack
   args : (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true)
   output : Tensor(pmat), Tensor(l), Tensor(u)
@@ -1979,6 +1990,17 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- op : uniform_inplace
+  args: (Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
+  output: Tensor(out)
+  infer_meta:
+    func: UniformRandomInplaceInferMeta
+  kernel:
+    func: uniform_inplace
+    data_type: x
+  inplace: (x -> out)
+  backward: uniform_inplace_grad
 
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)

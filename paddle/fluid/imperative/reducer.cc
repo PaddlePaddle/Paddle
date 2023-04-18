@@ -66,9 +66,6 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #ifdef PADDLE_WITH_XPU_BKCL
 // TODO(liuyuhui) support xpu about div nranks in the future
 #endif
-  } else if (platform::is_mlu_place(tensor->place())) {
-    // TODO(zhangna)
-    VLOG(4) << "divnrank for mlu not support yet";
   }
 }
 
