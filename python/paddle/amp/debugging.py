@@ -35,17 +35,17 @@ __all__ = [
 
 class DebugMode(Enum):
     """
-    DebugMode is used to present the state of TensorCheckerConfig
+    DebugMode is used to present the state of TensorCheckerConfig.
 
     The meaning of each DebugMode is as following
 
-    -**DebugMode.CHECK_NAN_INF_AND_ABORT** : Print or save Tensor key information with NaN/Inf and interrupt the program
+    - **DebugMode.CHECK_NAN_INF_AND_ABORT** : Print or save Tensor key information with NaN/Inf and interrupt the program
 
-    -**DebugMode.CHECK_NAN_INF** : Print or save Tensor critical information with NaN/Inf, but continue to run
+    - **DebugMode.CHECK_NAN_INF** : Print or save Tensor critical information with NaN/Inf, but continue to run
 
-    -**DebugMode.CHECK_ALL_FOR_OVERFLOW** : Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
+    - **DebugMode.CHECK_ALL_FOR_OVERFLOW** : Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
 
-    -**DebugMode.CHECK_ALL** : Print or save output Tensor key information for all operators
+    - **DebugMode.CHECK_ALL** : Print or save output Tensor key information for all operators
 
     """
 
@@ -85,6 +85,7 @@ class TensorCheckerConfig:
     * enable: Whether to enable Tensor's value detection function. The default value is False, which means that these tools will never be used.
 
     * debug_mode: Debug mode,There are 6 kinds of debug mode.
+
         CHECK_NAN_INF_AND_ABORT(default): Print or save Tensor key information with NaN/Inf and interrupt the program
 
         CHECK_NAN_INF: Print or save Tensor critical information with NaN/Inf, but continue to run
@@ -106,18 +107,20 @@ class TensorCheckerConfig:
     * enable_traceback_filtering: Whether to filter the traceback. The main purpose is to filter out the internal code call stack of the framework and only display the user code call stack
 
     Examples:
-       .. code-block:: python
-          import paddle
 
-          checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT)
-          paddle.amp.debugging.enable_tensor_checker(checker_config)
+     .. code-block:: python
 
-          x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-          y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-          res = paddle.pow(x, y)
+        import paddle
 
-          paddle.autograd.backward(res, retain_graph=True)
-          paddle.amp.debugging.disable_tensor_checker()
+        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
+
+        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+        res = paddle.pow(x, y)
+        paddle.autograd.backward(res, retain_graph=True)
+        paddle.amp.debugging.disable_tensor_checker()
+        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
     """
 
@@ -441,18 +444,21 @@ def enable_tensor_checker(checker_config):
     * If disable is called before optimizer.step() tensor_checker(), the optimizer and other weight update related operators will not be checked
 
     Examples:
-       .. code-block:: python
-           import paddle
 
-           checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT)
-           paddle.amp.debugging.enable_tensor_checker(checker_config)
+     .. code-block:: python
 
-           x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-           y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-           res = paddle.pow(x, y)
-           paddle.autograd.backward(res, retain_graph=True)
+        import paddle
 
-           paddle.amp.debugging.disable_tensor_checker()
+        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
+
+        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+        res = paddle.pow(x, y)
+        paddle.autograd.backward(res, retain_graph=True)
+        paddle.amp.debugging.disable_tensor_checker()
+        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+
     """
     if checker_config.check_step_id():
         checker_config.run()
@@ -471,18 +477,20 @@ def disable_tensor_checker():
     * If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked
 
     Examples:
-       .. code-block:: python
-           import paddle
 
-           checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT)
-           paddle.amp.debugging.enable_tensor_checker(checker_config)
+     .. code-block:: python
 
-           x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-           y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-           res = paddle.pow(x, y)
-           paddle.autograd.backward(res, retain_graph=True)
+        import paddle
 
-           paddle.amp.debugging.disable_tensor_checker()
+        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
+
+        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+        res = paddle.pow(x, y)
+        paddle.autograd.backward(res, retain_graph=True)
+        paddle.amp.debugging.disable_tensor_checker()
+        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})
