@@ -27,16 +27,8 @@ void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::MaximumFunctor<T>());
+  int axis = -1;
+  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -44,16 +36,8 @@ void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::MinimumFunctor<T>());
+  int axis = -1;
+  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -61,16 +45,8 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::RemainderFunctor<T>());
+  int axis = -1;
+  RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -78,16 +54,8 @@ void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::FloorDivideFunctor<T>());
+  int axis = -1;
+  FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 // Create the definition of Heaviside
 template <typename T, typename Context>
@@ -112,16 +80,8 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::ElementwisePowFunctor<T>());
+  int axis = -1;
+  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
