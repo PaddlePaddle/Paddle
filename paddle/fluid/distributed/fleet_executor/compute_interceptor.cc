@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/jit/serializer.h"
 #include "paddle/phi/core/errors.h"
 
 namespace paddle {
@@ -43,6 +44,65 @@ void ComputeInterceptor::PrepareDeps() {
   for (auto down : downstream) {
     out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
+}
+
+void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
+  int64_t scope_id = msg.scope_idx();
+  PADDLE_ENFORCE_LT(scope_id,
+                    microbatch_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "Step out of range. There are %ld "
+                        "microbatch_scopes, but recevice scope index %ld",
+                        microbatch_scopes_.size(),
+                        scope_id));
+  auto* scope = microbatch_scopes_[scope_id];
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  for (const auto& var_iter : msg.vars_list()) {
+    const std::string& name = var_iter.name();
+    auto& dev_ctx = *pool.Get(place_);
+    std::istringstream ss(var_iter.stensor());
+    auto* var = scope->Var(name);
+    auto* tensor = var->GetMutable<phi::DenseTensor>();
+    framework::DeserializeFromStream(ss, tensor, dev_ctx);
+
+    VLOG(3) << "Set vars " << name << " with value in scope " << scope_id
+            << " with dims " << tensor->dims() << " with dtype "
+            << tensor->dtype();
+  }
+}
+
+InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
+  PADDLE_ENFORCE_LT(cur_scope_id_,
+                    microbatch_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "Step out of range. There are %ld "
+                        "microbatch_scopes, but recevice scope index %ld",
+                        microbatch_scopes_.size(),
+                        cur_scope_id_));
+  auto* scope = microbatch_scopes_[cur_scope_id_];
+
+  InterceptorMessage ready_msg;
+  ready_msg.set_message_type(DATA_WITH_VARS);
+  ready_msg.set_scope_idx(cur_scope_id_);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  for (auto iter : node_->vars_to_dtype()) {
+    VarList* vars = ready_msg.add_vars_list();
+    const auto& var_name = iter.first;
+    vars->set_name(var_name);
+    std::ostringstream ss;
+    auto& dev_ctx = *pool.Get(place_);
+    auto* var = scope->FindVar(var_name);
+    PADDLE_ENFORCE(
+        var,
+        platform::errors::NotFound(
+            "Variable %s not exists in scope %ld", var_name, cur_scope_id_));
+    const auto& tensor = var->Get<phi::DenseTensor>();
+    framework::SerializeToStream(ss, tensor, dev_ctx);
+    vars->set_stensor(ss.str());
+    VLOG(3) << "Prepare vars msg " << var_name << " with dimension "
+            << tensor.dims() << " dtype " << tensor.dtype();
+  }
+  return ready_msg;
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
@@ -105,6 +165,16 @@ bool ComputeInterceptor::IsInputReady() {
       flag = flag && (ready_size_map.at(i) != 0);
     }
     if (flag) {
+      for (auto iter : scope_id_to_finish_flag_) {
+        if (iter.first == i) {
+          break;
+        } else if (!iter.second) {
+          VLOG(3) << "The previous scope is not ready, waiting for the "
+                     "previous scope "
+                  << iter.first;
+          return false;
+        }
+      }
       cur_scope_id_ = i;
       return true;
     } else {
@@ -214,10 +284,19 @@ void ComputeInterceptor::RunOps() {
 
 void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput()) {
-    VLOG(0) << "id=" << GetInterceptorId()
+    VLOG(3) << "id=" << GetInterceptorId()
             << " ComputeInterceptor running in scope " << cur_scope_id_;
 
     RunOps();
+
+    if (!scope_id_to_finish_flag_.empty()) {
+      PADDLE_ENFORCE_NE(
+          scope_id_to_finish_flag_.find(cur_scope_id_),
+          scope_id_to_finish_flag_.end(),
+          platform::errors::NotFound(
+              "Can not find scope %ld in scope_id_to_finish", cur_scope_id_));
+      scope_id_to_finish_flag_.erase(cur_scope_id_);
+    }
 
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
@@ -238,6 +317,20 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
             << " receive data_is_useless " << msg.src_id() << " "
             << msg.scope_idx() << " ";
     DecreaseBuff(msg.src_id());
+    Run();
+  } else if (msg.message_type() == DATA_WITH_VARS) {
+    VLOG(3) << "Compute interceptor " << interceptor_id_
+            << " receive data_with_vars " << msg.src_id() << " "
+            << msg.scope_idx() << " ";
+    DecodeMsgVars(msg);
+    IncreaseReady(msg.src_id(), msg.scope_idx());
+    Run();
+  } else if (msg.message_type() == START_LOOP) {
+    VLOG(3) << "Compute interceptor " << interceptor_id_
+            << " receive start_loop " << msg.src_id() << " " << msg.scope_idx()
+            << " ";
+    IncreaseReady(msg.src_id(), msg.scope_idx());
+    scope_id_to_finish_flag_.emplace(msg.scope_idx(), false);
     Run();
   }
 }
