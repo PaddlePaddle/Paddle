@@ -22,11 +22,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   int axis,
+                   DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
@@ -34,11 +34,11 @@ void MaximumRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MinimumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   int axis,
+                   DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
@@ -46,11 +46,11 @@ void MinimumRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void RemainderRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        int axis,
-                        DenseTensor* out) {
+void RemainderKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
@@ -65,11 +65,11 @@ void RemainderRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FloorDivideRawKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          int axis,
-                          DenseTensor* out) {
+void FloorDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
@@ -84,11 +84,11 @@ void FloorDivideRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwisePowRawKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out) {
+void ElementwisePowKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
@@ -127,42 +127,38 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(maximum_raw,
+PD_REGISTER_KERNEL(maximum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::MaximumRawKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(minimum_raw,
+PD_REGISTER_KERNEL(minimum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::MinimumRawKernel,
+                   phi::MinimumKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(remainder_raw,
+PD_REGISTER_KERNEL(remainder,
                    CPU,
                    ALL_LAYOUT,
-                   phi::RemainderRawKernel,
+                   phi::RemainderKernel,
                    float,
                    double,
                    int,
                    int64_t) {}
-PD_REGISTER_KERNEL(floor_divide_raw,
+PD_REGISTER_KERNEL(
+    floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FloorDivideRawKernel,
-                   int,
-                   int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
+                   phi::ElementwisePowKernel,
                    float,
                    double,
                    int,
