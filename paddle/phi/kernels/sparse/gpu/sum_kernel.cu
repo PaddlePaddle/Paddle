@@ -75,10 +75,11 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
     }
     if (keep_dim) {
       for (int j = 0; j < sparse_dim; ++j) {
-        out_indices_data[index_i + j * x_nnz] =
-            x_indices_data[index_i + j * x_nnz];
         if (j == axis) {
           out_indices_data[index_i + j * x_nnz] = 0;
+        } else {
+          out_indices_data[index_i + j * x_nnz] =
+              x_indices_data[index_i + j * x_nnz];
         }
       }
       return;
