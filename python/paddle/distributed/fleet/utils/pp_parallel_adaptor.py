@@ -114,11 +114,8 @@ class PipeLineModelAdaptor:
                     print("extract layer params in dir %s" % dir)
                     layers.extend(self.extract_layers(dir, with_shared))
                     with_shared = False
-                print(f"1 layer len {len(layers)}")
-
                 # 2、sort and unique layers
                 layers = self.sort_layers(layers)
-                print(f"2 layer len {len(layers)}")
 
                 # 3、resplit layers among pp group according new pp config
                 layer_segments = self.segment_layers(
@@ -134,7 +131,7 @@ class PipeLineModelAdaptor:
 
                 # 4、merge layers belonging to the same node
                 for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
-                    print(len(layer_segment))
+                    print(f"merge {len(layer_segment)} layers to {dir_}")
                     self.merge_layers(layer_segment, dir_)
 
                 # 5、copy meta_state.pdopt
