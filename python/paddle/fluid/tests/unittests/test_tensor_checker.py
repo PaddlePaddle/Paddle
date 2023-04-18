@@ -39,7 +39,7 @@ class TestTensorChecker(unittest.TestCase):
                 num_nan, num_inf
             )
         )
-        return num_inf
+        return num_nan
 
     def generate_num_inf(self):
         num_inf = 0
@@ -52,10 +52,12 @@ class TestTensorChecker(unittest.TestCase):
             stop_gradient=False,
         )
         y = paddle.to_tensor(
-            [0.2, -1, 0.5], place=paddle.CPUPlace(), dtype='float32'
+            [0, 0, 1], place=paddle.CPUPlace(), dtype='float32'
         )
+        res = paddle.pow(x, y)
         try:
-            res = paddle.pow(x, y)
+            # test backward
+            paddle.autograd.backward([res])
             res = paddle.divide(y, x)
         except Exception as e:
             num_inf = self.get_num_inf(e)
@@ -79,6 +81,7 @@ class TestTensorChecker(unittest.TestCase):
         )
         paddle.amp.debugging.enable_tensor_checker(checker_config)
         try:
+            # test forward
             res = paddle.divide(y, x)
         except Exception as e:
             num_inf = self.get_num_inf(e)
@@ -95,7 +98,7 @@ class TestTensorChecker(unittest.TestCase):
         checker_config = paddle.amp.debugging.TensorCheckerConfig(
             enable=True,
             debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF_AND_ABORT,
-            checked_op_list=["elementwise_pow"],
+            checked_op_list=["elementwise_pow_grad"],
             skipped_op_list=["elementwise_div"],
             debug_step=[0, 3],
         )
