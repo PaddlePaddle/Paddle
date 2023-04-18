@@ -21,6 +21,14 @@ set(PYBIND_TAG v2.10.3)
 set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
+set(PYBIND_PATCH_COMMAND "")
+if(WITH_GPU AND ${CUDA_VERSION} VERSION_GREATER_EQUAL "12.0")
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
+       native_dst)
+  set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
+                           ${native_dst})
+endif()
+
 ExternalProject_Add(
   extern_pybind
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -33,6 +41,7 @@ ExternalProject_Add(
   # third-party library version changes cannot be incorporated.
   # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
   UPDATE_COMMAND ""
+  PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
