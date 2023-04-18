@@ -25,6 +25,38 @@ limitations under the License. */
 
 namespace paddle {
 
+// remove leading and tailing spaces
+std::string trim_spaces(const std::string& str) {
+  const char* p = str.c_str();
+  while (*p != 0 && isspace(*p)) {
+    p++;
+  }
+  size_t len = strlen(p);
+  while (len > 0 && isspace(p[len - 1])) {
+    len--;
+  }
+  return std::string(p, len);
+}
+
+std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos,
+                    std::string::npos,
+                    phi::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
     VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
