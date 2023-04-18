@@ -19,6 +19,7 @@
 #endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 
 namespace phi {
 
