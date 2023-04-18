@@ -109,7 +109,6 @@ constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
-constexpr DeviceType kMLU = DeviceType::MLU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
