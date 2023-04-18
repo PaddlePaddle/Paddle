@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

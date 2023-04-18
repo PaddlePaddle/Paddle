@@ -33,6 +33,11 @@
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/rocsparse.h"
+#endif
+
+#include "glog/logging.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/phi/core/enforce.h"
@@ -294,6 +299,9 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(*handle, stream));
 #endif
+#elif defined(PADDLE_WITH_HIP)
+  phi::dynload::rocsparse_create_handle(handle);
+  phi::dynload::rocsparse_set_stream(*handle, stream);
 #endif
 }
 
@@ -305,6 +313,11 @@ void DestroySparseHandle(sparseHandle_t handle) {
     handle = nullptr;
   }
 #endif
+#elif defined(PADDLE_WITH_HIP)
+  if (handle != nullptr) {
+    phi::dynload::rocsparse_destroy_handle(handle);
+    handle = nullptr;
+  }
 #endif
 }
 

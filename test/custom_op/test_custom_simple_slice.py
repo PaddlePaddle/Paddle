@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle.utils.cpp_extension import get_build_directory, load
@@ -47,13 +47,7 @@ class TestCustomSimpleSliceJit(unittest.TestCase):
         x = paddle.to_tensor(np_x)
         custom_op_out = custom_ops.custom_simple_slice(x, 2, 3)
         np_out = np_x[2:3]
-        np.testing.assert_array_equal(
-            custom_op_out,
-            np_out,
-            err_msg='custom op: {},\n numpy: {}'.format(
-                np_out, custom_op_out.numpy()
-            ),
-        )
+        check_output(custom_op_out, np_out, "out")
 
 
 if __name__ == "__main__":

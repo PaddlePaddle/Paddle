@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -39,12 +39,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
-
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
-
-#if defined(PADDLE_WITH_CNCL)
-#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
 #endif
 
 namespace paddle {
@@ -359,82 +354,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #define DEFINE_C_ALLREDUCE_CUDA_KERNEL(op_name, red_type) \
   template <typename T, typename DeviceContext>           \
   class op_name##CUDAKernel : public CAllReduceOpCUDAKernel<red_type, T> {};
-
-template <ReduceType red_type, typename T>
-class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CNCL)
-    auto in = ctx.Input<phi::DenseTensor>("X");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-
-    if (ctx.HasInput("Cond")) {
-      auto cond = ctx.Input<phi::DenseTensor>("Cond");
-      auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` tensor should be on cpu place"));
-      PADDLE_ENFORCE_EQ(cond->numel(),
-                        1,
-                        platform::errors::PreconditionNotMet(
-                            "The input `cond` should be shape [1]"));
-      if (!cond->data<bool>()[0]) {
-        VLOG(4) << "Skip all reduce Op since cond is 0";
-        return;
-      }
-    }
-
-    auto place = ctx.GetPlace();
-    cnclDataType_t dtype =
-        platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
-    int64_t numel = in->numel();
-    const void* sendbuff = in->data<T>();
-    out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
-
-    int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::CNCLCommContext::Instance().Get(rid, place);
-
-    mluStream stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::MLUDeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
-
-    cnclReduceOp_t cncl_red_type = cnclSum;
-    switch (red_type) {
-      case kRedSum:
-        cncl_red_type = cnclSum;
-        break;
-
-      case kRedMax:
-        cncl_red_type = cnclMax;
-        break;
-
-      case kRedMin:
-        cncl_red_type = cnclMin;
-        break;
-
-      case kRedProd:
-        cncl_red_type = cnclProd;
-        break;
-
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
-    }
-
-    PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(
-        sendbuff, recvbuff, numel, dtype, cncl_red_type, comm->comm(), stream));
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with MLU."));
-#endif
-  }
-};
 
 class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

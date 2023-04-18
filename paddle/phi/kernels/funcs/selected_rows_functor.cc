@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 template <typename T>

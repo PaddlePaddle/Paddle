@@ -141,7 +141,6 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
-        self.enable_cinn = False
         self.config_dtype()
         if self.dtype == np.float64:
             target_dtype = "float64"
@@ -216,6 +215,7 @@ class TestGatherNdOpIndex1(OpTest):
             output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index}
         self.outputs = {'Out': output}
+        # the outputs are 0D-tensor, CINN not support
         self.enable_cinn = False
 
     def config_dtype(self):
@@ -258,7 +258,6 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
-        self.enable_cinn = False
         self.config_dtype()
         if self.dtype == np.float64:
             target_dtype = "float64"

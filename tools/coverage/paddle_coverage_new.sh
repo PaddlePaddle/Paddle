@@ -116,8 +116,6 @@ function gen_full_html_report_npu() {
 
 # if [ ${WITH_XPU:-OFF} == "ON" ]; then
 #     gen_full_html_report_xpu || true
-# elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-#     gen_full_html_report_npu || true
 # else
 #     gen_full_html_report || true
 # fi

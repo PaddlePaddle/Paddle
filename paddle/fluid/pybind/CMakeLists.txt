@@ -91,11 +91,6 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
-if(WITH_CNCL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
-endif()
-
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   if(WITH_NCCL OR WITH_RCCL)
@@ -171,11 +166,6 @@ if(WITH_PYTHON)
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
-
-if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif()
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -262,10 +252,6 @@ if(WITH_PYTHON)
 
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
-  endif()
-
-  if(WITH_CNCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif()
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))

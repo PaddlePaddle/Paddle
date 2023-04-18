@@ -22,7 +22,7 @@ from eager_op_test import OpTest
 import paddle
 from paddle.fluid import core
 
-sys.path.append("./rnn")
+sys.path.append("../../../../../test/rnn")
 from convert import get_params_for_net
 from rnn_numpy import LSTM
 

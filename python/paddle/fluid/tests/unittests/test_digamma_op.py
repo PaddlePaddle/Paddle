@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import psi
 
 import paddle
 from paddle import fluid, static
+from paddle.fluid import core
 
 
 class TestDigammaOp(OpTest):
@@ -53,6 +54,43 @@ class TestDigammaOpFp32(TestDigammaOp):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestDigammaFP16Op(TestDigammaOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestDigammaBF16Op(OpTest):
+    def setUp(self):
+        # switch to static
+        paddle.enable_static()
+
+        self.op_type = 'digamma'
+        self.python_api = paddle.digamma
+        self.init_dtype_type()
+        shape = (5, 32)
+        data = np.random.random(shape).astype(self.np_dtype) + 1
+        self.inputs = {'X': convert_float_to_uint16(data)}
+        result = np.ones(shape).astype(self.np_dtype)
+        result = psi(data)
+        self.outputs = {'Out': convert_float_to_uint16(result)}
+
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        # bfloat16 needs to set the parameter place
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 class TestDigammaAPI(unittest.TestCase):
