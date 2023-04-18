@@ -176,8 +176,11 @@ void TransposeCooKernel(const Context &dev_ctx,
       d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
 #else
   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  cudaMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(d_perm,
+                  perm.data(),
+                  sizeof(int) * perm.size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
 #endif
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
@@ -186,6 +189,11 @@ void TransposeCooKernel(const Context &dev_ctx,
                            0,
                            dev_ctx.stream()>>>(
       x_indices_data, d_perm, n_dim, x_nnz, out_indices_data);
+#ifdef PADDLE_WITH_HIP
+  hipFree(d_perm);
+#else
+  cudaFree(d_perm);
+#endif
 }
 
 template <typename T, typename Context>
@@ -244,36 +252,46 @@ void TransposeCsrKernel(const Context &dev_ctx,
   int64_t *d_x_dims, *d_out_dims;
 #ifdef PADDLE_WITH_HIP
   hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  hipMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
+  hipMemcpyAsync(d_perm,
+                 perm.data(),
+                 sizeof(int) * perm.size(),
+                 hipMemcpyHostToDevice,
+                 dev_ctx.stream());
   hipMalloc(reinterpret_cast<void **>(&d_x_dims),
             sizeof(int64_t) * x.dims().size());
-  hipMemcpy(d_x_dims,
-            x.dims().Get(),
-            sizeof(int64_t) * x.dims().size(),
-            hipMemcpyHostToDevice);
+  hipMemcpyAsync(d_x_dims,
+                 x.dims().Get(),
+                 sizeof(int64_t) * x.dims().size(),
+                 hipMemcpyHostToDevice,
+                 dev_ctx.stream());
   hipMalloc(reinterpret_cast<void **>(&d_out_dims),
             sizeof(int64_t) * out_dims.size());
-  hipMemcpy(d_out_dims,
-            out_dims.Get(),
-            sizeof(int64_t) * out_dims.size(),
-            hipMemcpyHostToDevice);
+  hipMemcpyAsync(d_out_dims,
+                 out_dims.Get(),
+                 sizeof(int64_t) * out_dims.size(),
+                 hipMemcpyHostToDevice,
+                 dev_ctx.stream());
 #else
   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  cudaMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(d_perm,
+                  perm.data(),
+                  sizeof(int) * perm.size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
   cudaMalloc(reinterpret_cast<void **>(&d_x_dims),
              sizeof(int64_t) * x.dims().size());
-  cudaMemcpy(d_x_dims,
-             x.dims().Get(),
-             sizeof(int64_t) * x.dims().size(),
-             cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(d_x_dims,
+                  x.dims().Get(),
+                  sizeof(int64_t) * x.dims().size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
   cudaMalloc(reinterpret_cast<void **>(&d_out_dims),
              sizeof(int64_t) * out_dims.size());
-  cudaMemcpy(d_out_dims,
-             out_dims.Get(),
-             sizeof(int64_t) * out_dims.size(),
-             cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(d_out_dims,
+                  out_dims.Get(),
+                  sizeof(int64_t) * out_dims.size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
 #endif
   int64_t x_nnz = x.nnz();
   auto config =
@@ -305,6 +323,16 @@ void TransposeCsrKernel(const Context &dev_ctx,
                                                                out_cols_data,
                                                                out_values_data);
   }
+
+#ifdef PADDLE_WITH_HIP
+  hipFreeAsync(d_perm, dev_ctx.stream());
+  hipFreeAsync(d_x_dims, dev_ctx.stream());
+  hipFreeAsync(d_out_dims, dev_ctx.stream());
+#else
+  cudaFreeAsync(d_perm, dev_ctx.stream());
+  cudaFreeAsync(d_x_dims, dev_ctx.stream());
+  cudaFreeAsync(d_out_dims, dev_ctx.stream());
+#endif
 }
 }  // namespace sparse
 }  // namespace phi
