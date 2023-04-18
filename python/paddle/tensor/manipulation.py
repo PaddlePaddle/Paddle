@@ -4769,7 +4769,7 @@ def unflatten(x, shape, axis):
         x,
         'x',
         [
-            'uint16',
+            'uint8',
             'int8',
             'int16',
             'int32',
