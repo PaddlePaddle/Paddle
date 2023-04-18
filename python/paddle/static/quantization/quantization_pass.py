@@ -347,8 +347,10 @@ class QuantizationTransformPass:
                         quant_type == 'channel_wise_abs_max'
                     ):  # Weight quantization
                         op_type = op.name()
-                        if op_type == 'matmul_v2' and op.op().attr('trans_y'):
-                            op_type += '_trans_y'
+                        trans_y = (op_type == 'matmul_v2') and op.op().attr(
+                            'trans_y'
+                        )
+                        op_type = op_type + '_trans_y' if trans_y else op_type
                         quant_axis = (
                             1
                             if op_type in utils._channelwise_quant_axis1_ops
@@ -2591,8 +2593,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 if quant_type == 'channel_wise_abs_max':  # Weight quantization
                     channel_wise = True
                     op_type = op.name()
-                    if op_type == 'matmul_v2' and op.op().attr('trans_y'):
-                        op_type += '_trans_y'
+                    trans_y = (op_type == 'matmul_v2') and op.op().attr(
+                        'trans_y'
+                    )
+                    op_type = op_type + '_trans_y' if trans_y else op_type
                     quant_axis = (
                         1
                         if op_type in utils._channelwise_quant_axis1_ops
