@@ -367,7 +367,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     } else {
       shape_range_info_path =
           Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
-      if (open(shape_range_info_path.c_str(), O_RDONLY, 0644) != -1) {
+      if (open(shape_range_info_path.c_str(), O_RDONLY) != -1) {
         VLOG(1) << "trt dynamic_shape deserialize from "
                 << shape_range_info_path;
         inference::DeserializeShapeRangeInfo(shape_range_info_path,
@@ -378,7 +378,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                              &max_shape_tensor,
                                              &opt_shape_tensor);
       } else {
-        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT);
+        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT, 0644);
         close(fd);
       }
     }
