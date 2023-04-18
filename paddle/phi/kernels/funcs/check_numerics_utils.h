@@ -59,6 +59,29 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
   return false;
 }
 
+HOSTDEVICE void PrintAndThrowError(const char* debug_info,
+                                   int64_t num_nan,
+                                   int64_t num_inf,
+                                   int64_t num_zero) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+  PADDLE_ENFORCE(false,
+                 "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
+                 "num_zero=%lld) in %s.",
+                 static_cast<long long>(num_nan),   // NOLINT
+                 static_cast<long long>(num_inf),   // NOLINT
+                 static_cast<long long>(num_zero),  // NOLINT
+                 debug_info);
+#else
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
+      "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
+      "%s.",
+      static_cast<long long>(num_nan),   // NOLINT
+      static_cast<long long>(num_inf),   // NOLINT
+      static_cast<long long>(num_zero),  // NOLINT
+      debug_info));
+#endif
+}
+
 template <typename T, typename MT>
 HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        int64_t numel,
@@ -82,15 +105,7 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
         static_cast<float>(min_value),
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
-#if !(defined(__NVCC__) || defined(__HIPCC__))
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
-          "%s.",
-          static_cast<long long>(num_nan),   // NOLINT
-          static_cast<long long>(num_inf),   // NOLINT
-          static_cast<long long>(num_zero),  // NOLINT
-          debug_info));
-#endif
+      PrintAndThrowError(debug_info, num_nan, num_inf, num_zero);
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
     printf(
@@ -252,8 +267,6 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
 
   // Write log to file
   if (output_filepath.size() > 0) {
-    VLOG(4) << "[check_nan_inf_level=" << check_nan_inf_level
-            << "]. Write log to " << output_filepath;
     PrintForDifferentLevelFile<T, MT>(cpu_hint_str.c_str(),
                                       numel,
                                       num_nan,

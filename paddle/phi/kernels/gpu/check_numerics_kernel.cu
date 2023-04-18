@@ -497,20 +497,19 @@ void CheckNumericsKernel(const Context& ctx,
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
   phi::DenseTensor nan_inf_zero_tensor;
   nan_inf_zero_tensor.Resize({static_cast<int64_t>(3)});
-  int64_t* nan_inf_zero =
-      dev_ctx->template Alloc<int64_t>(&nan_inf_zero_tensor);
+  int64_t* nan_inf_zero_ptr = ctx.template Alloc<int64_t>(&nan_inf_zero_tensor);
   FindGlobalMaxMinAndPrint<T, MT>
-      <<<1, 1, 0, dev_ctx->stream()>>>(block_num_nan_ptr,
-                                       block_num_inf_ptr,
-                                       block_num_zero_ptr,
-                                       tensor_block_max_ptr,
-                                       tensor_block_min_ptr,
-                                       tensor_block_mean_ptr,
-                                       gpu_str_ptr,
-                                       tensor.numel(),
-                                       numel_max_min,
-                                       check_nan_inf_level,
-                                       nan_inf_zero_tensor.data<int64_t>());
+      <<<1, 1, 0, ctx.stream()>>>(block_num_nan_ptr,
+                                  block_num_inf_ptr,
+                                  block_num_zero_ptr,
+                                  tensor_block_max_ptr,
+                                  tensor_block_min_ptr,
+                                  tensor_block_mean_ptr,
+                                  gpu_str_ptr,
+                                  tensor.numel(),
+                                  numel_max_min,
+                                  check_nan_inf_level,
+                                  nan_inf_zero_ptr);
 
   if (check_nan_inf_level == 0) {
     auto nan_cpu =
@@ -518,22 +517,16 @@ void CheckNumericsKernel(const Context& ctx,
     int64_t* nan_cpu_ptr = reinterpret_cast<int64_t*>(nan_cpu->ptr());
     phi::memory_utils::Copy(phi::CPUPlace(),
                             nan_cpu_ptr,
-                            place,
-                            nan_inf_zero,
+                            tensor.place(),
+                            nan_inf_zero_ptr,
                             3 * sizeof(int64_t),
-                            dev_ctx->stream());
-
-    dev_ctx->Wait();
+                            ctx.stream());
+    ctx.Wait();
     if (nan_cpu_ptr[0] > 0 || nan_cpu_ptr[1] > 0) {
       const std::string debug_info =
-          GetHintString<T>(op_type, var_name, place, dev_id);
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
-          "%s.",
-          static_cast<long long>(nan_cpu_ptr[0]),  // NOLINT
-          static_cast<long long>(nan_cpu_ptr[1]),  // NOLINT
-          static_cast<long long>(nan_cpu_ptr[2]),  // NOLINT
-          debug_info));
+          GetHintString<T>(op_type, var_name, tensor.place(), dev_id);
+      phi::funcs::PrintAndThrowError(
+          debug_info.c_str(), nan_cpu_ptr[0], nan_cpu_ptr[1], nan_cpu_ptr[2]);
     }
   }
 #endif
