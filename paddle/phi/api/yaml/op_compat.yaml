@@ -1810,6 +1810,14 @@
   outputs :
     {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
 
+- op : rnn
+  backward : rnn_grad
+  inputs:
+    { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
+  outputs:
+    { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
+  drop_empty_grad : [pre_state_grad, weight_list_grad]
+
 - op : roll
   backward : roll_grad
   inputs :
