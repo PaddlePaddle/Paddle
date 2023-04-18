@@ -105,7 +105,7 @@ class small_vector_base {
   /// This is a helper for \a grow() that's out of line to reduce code
   /// duplication.  This function will report a fatal error if it can't grow at
   /// least to \p MinSize.
-  void *mallocForGrow(size_t MinSize, size_t TSize, const size_t &NewCapacity);
+  void *mallocForGrow(size_t MinSize, size_t TSize, size_t NewCapacity);
 
   /// This is an implementation of the grow() method which only works
   /// on POD-like data types and is out of line to reduce code duplication.
@@ -464,13 +464,13 @@ class small_vector_template_base : public small_vector_template_common<T> {
  public:
   void push_back(const T &Elt) {
     const T *EltPtr = reserveForParamAndGetAddress(Elt);
-    ::new (reinterpret_cast<void *> this->end()) T(*EltPtr);
+    ::new (reinterpret_cast<void *>(this->end())) T(*EltPtr);
     this->set_size(this->size() + 1);
   }
 
   void push_back(T &&Elt) {
     T *EltPtr = reserveForParamAndGetAddress(Elt);
-    ::new (reinterpret_cast<void *> this->end()) T(::std::move(*EltPtr));
+    ::new (reinterpret_cast<void *>(this->end())) T(::std::move(*EltPtr));
     this->set_size(this->size() + 1);
   }
 
