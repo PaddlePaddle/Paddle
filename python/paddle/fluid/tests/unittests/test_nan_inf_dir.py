@@ -91,14 +91,18 @@ class TestNanInfDirCheckResult(unittest.TestCase):
             num_nan_np, num_inf_np = self.get_reference_num_nan_inf(x_np)
             add_assert = (num_nan_np + num_inf_np) > 0
             num_nan, num_inf = self.get_num_nan_inf(
-                x_np, use_cuda, add_assert, path
+                x_np,
+                use_cuda,
+                add_assert,
+                path,
             )
             if not use_cuda:
                 assert num_nan == num_nan_np and num_inf == num_inf_np
 
-        _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
+        else:
+            _check_num_nan_inf(use_cuda=False)
 
         x = paddle.to_tensor([2, 3, 4], 'float32')
         y = paddle.to_tensor([1, 5, 2], 'float32')
