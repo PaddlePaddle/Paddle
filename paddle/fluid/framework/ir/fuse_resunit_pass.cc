@@ -251,6 +251,8 @@ ir::Node *CreateDconvDreluDBNOpNode(Graph *g,
                                     bool fuse_dual,
                                     bool fuse_shortcut,
                                     ir::Node *conv_grad,
+                                    ir::Node *bn_grad,
+                                    ir::Node *bn2_grad,
                                     ir::Node *d_conv_out,
                                     ir::Node *conv_w,
                                     ir::Node *d_conv_w,
@@ -332,6 +334,25 @@ ir::Node *CreateDconvDreluDBNOpNode(Graph *g,
   op_desc.SetAttr("fuse_dual", fuse_dual);
   op_desc.SetAttr("fuse_add", fuse_add);
   op_desc.SetAttr("op_role", conv_grad->Op()->GetAttr("op_role"));
+  auto conv_grad_op_role_val =
+      details::GetOpRoleVarsOrEmpty(*(conv_grad->Op()));
+  auto bn_grad_op_role_val = details::GetOpRoleVarsOrEmpty(*(bn_grad->Op()));
+  std::vector<std::string> fused_op_role_var;
+  for (auto i : conv_grad_op_role_val) {
+    fused_op_role_var.push_back(i);
+  }
+  for (auto i : bn_grad_op_role_val) {
+    fused_op_role_var.push_back(i);
+  }
+  if (fuse_dual) {
+    auto bn2_grad_op_role_val =
+        details::GetOpRoleVarsOrEmpty(*(bn2_grad->Op()));
+    for (auto i : bn2_grad_op_role_val) {
+      fused_op_role_var.push_back(i);
+    }
+  }
+  op_desc.SetAttr("op_role_var", fused_op_role_var);
+
   auto op_node = g->CreateOpNode(&op_desc);
 
   IR_NODE_LINK_TO_DEBUG(d_conv_out, op_node);
@@ -687,6 +708,8 @@ ir::Graph *FuseResUnitPass::FuseBNActConvBwd(
                               false,
                               false,
                               conv_grad,
+                              batch_norm_grad,
+                              nullptr,
                               d_conv_out,
                               conv_w,
                               d_conv_w,
@@ -778,6 +801,8 @@ ir::Graph *FuseResUnitPass::FuseBNAddActConvBwd(
                               !shortcut,
                               shortcut,
                               conv_grad,
+                              batch_norm1_grad,
+                              batch_norm2_grad,
                               d_conv_out,
                               conv_w,
                               d_conv_w,

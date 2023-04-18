@@ -26,6 +26,8 @@ from paddle.nn import BatchNorm, Conv2D
 from paddle.nn.initializer import Constant, KaimingNormal
 
 paddle.enable_static()
+np.random.seed(12345)
+paddle.seed(12345)
 
 
 class ConvBNLayer(nn.Layer):
@@ -155,33 +157,33 @@ class BottleneckBlock(nn.Layer):
 
 
 class ResUnitNet(nn.Layer):
-    def __init__(self):
+    def __init__(self, shortcut):
         super().__init__()
-
+        self.shortcut = shortcut
         self.conv1 = ConvBNLayer(
             num_channels=3,
-            num_filters=16,
-            filter_size=3,
-            act='relu',
-            data_format='NHWC',
-        )
-
-        self.conv2 = ConvBNLayer(
-            num_channels=64,
-            num_filters=16,
+            num_filters=64,
             filter_size=3,
             act='relu',
             data_format='NHWC',
         )
 
         self.block = BottleneckBlock(
-            num_channels=16,
+            num_channels=64,
             num_filters=16,
             stride=1,
-            shortcut=False,
+            shortcut=self.shortcut,
             lr_mult=1.0,
             data_format="NHWC",
             bn_weight_decay=True,
+        )
+
+        self.conv2 = ConvBNLayer(
+            num_channels=64,
+            num_filters=64,
+            filter_size=3,
+            act='relu',
+            data_format='NHWC',
         )
 
     def forward(self, x):
@@ -196,13 +198,14 @@ class TestFuseResUnitPass(DistPassTestBase):
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
+        self.shortcut = True
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image'
         )
 
-        model = ResUnitNet()
+        model = ResUnitNet(self.shortcut)
         pred_out = model(image)
         loss = paddle.mean(pred_out)
         optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
@@ -240,13 +243,19 @@ class TestFuseResUnitPass(DistPassTestBase):
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
-        print("DEBUG: ", op_type)
         self.assertTrue("fused_scale_bias_add_relu" in op_type)
         self.assertTrue("fused_scale_bias_relu_conv_bnstats" in op_type)
         self.assertTrue("fused_dconv_drelu_dbn" in op_type)
 
     def test_fuse_resunit(self):
         self.check_main()
+
+
+class TestFuseResUnitPassDual(TestFuseResUnitPass):
+    def init(self):
+        self.atol = 1e-4
+        self.rtol = 1e-4
+        self.shortcut = False
 
 
 if __name__ == "__main__":
