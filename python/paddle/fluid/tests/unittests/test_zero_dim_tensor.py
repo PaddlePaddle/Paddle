@@ -4149,9 +4149,15 @@ class TestSundryAPIStatic(unittest.TestCase):
         c.stop_gradient = False
 
         out = paddle.linalg.multi_dot([a, b, c])
+        paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(
+            prog, fetch_list=[out, a.grad_name, b.grad_name, c.grad_name]
+        )
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (4,))
+        self.assertEqual(res[2].shape, (4, 5))
+        self.assertEqual(res[3].shape, (5,))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
