@@ -138,6 +138,9 @@ class TestAssignApi4(TestAssignApi):
         self.dtype = "bool"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAssignApiFp16(TestAssignApi):
     def init_dtype(self):
         self.dtype = np.float16
