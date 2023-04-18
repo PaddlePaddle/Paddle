@@ -299,7 +299,7 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 {}
     // Set for forward trace
   if (FLAGS_check_nan_inf) {{
-    grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());"
+    grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
   }}
     // SetAttributes if needed
 {}
