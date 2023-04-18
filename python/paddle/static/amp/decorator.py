@@ -34,6 +34,10 @@ from .fp16_utils import (
 )
 from .function_overload import FunctionType, overload
 
+__all__ = [
+    "decorate",
+]
+
 
 class OptimizerWithMixedPrecision:
     """
