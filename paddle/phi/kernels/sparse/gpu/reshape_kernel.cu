@@ -14,10 +14,8 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -81,31 +79,29 @@ void ReshapeCooKernel(const Context& dev_ctx,
   int64_t *destination_x_sparse_part_strides,
       *destination_out_sparse_part_strides;
 
-  auto destination_x_sparse_part_strides_tensor = paddle::memory::Alloc(
+  auto destination_x_sparse_part_strides_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * x_sparse_part_strides.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_x_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_x_sparse_part_strides_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(
-      destination_x_sparse_part_strides,
-      x_sparse_part_strides.Get(),
-      sizeof(int64_t) * x_sparse_part_strides.size(),
-      gpuMemcpyHostToDevice,
-      dev_ctx.stream());
+  memory_utils::Copy(destination_x_sparse_part_strides,
+                     x_sparse_part_strides.Get(),
+                     sizeof(int64_t) * x_sparse_part_strides.size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
 
-  auto destination_out_sparse_part_strides_tensor = paddle::memory::Alloc(
+  auto destination_out_sparse_part_strides_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * out_sparse_part_strides.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_out_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_out_sparse_part_strides_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(
-      destination_out_sparse_part_strides,
-      out_sparse_part_strides.Get(),
-      sizeof(int64_t) * out_sparse_part_strides.size(),
-      gpuMemcpyHostToDevice,
-      dev_ctx.stream());
+  memory_utils::Copy(destination_out_sparse_part_strides,
+                     out_sparse_part_strides.Get(),
+                     sizeof(int64_t) * out_sparse_part_strides.size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   ReshapeCooCudaKernel<<<config.block_per_grid.x,

@@ -14,10 +14,8 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -174,16 +172,16 @@ void TransposeCooKernel(const Context &dev_ctx,
   auto *out_indices_data = out_indices.data<int64_t>();
   int *d_perm;
 
-  auto d_perm_tensor = paddle::memory::Alloc(
+  auto d_perm_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(d_perm,
-                                   perm.data(),
-                                   sizeof(int) * perm.size(),
-                                   gpuMemcpyHostToDevice,
-                                   dev_ctx.stream());
+  memory_utils::Copy(d_perm,
+                     perm.data(),
+                     sizeof(int) * perm.size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
   TransposeCooCudaKernel<<<config.block_per_grid.x,
@@ -248,36 +246,36 @@ void TransposeCsrKernel(const Context &dev_ctx,
   int *d_perm;
   int64_t *d_x_dims, *d_out_dims;
 
-  auto d_perm_tensor = paddle::memory::Alloc(
+  auto d_perm_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(d_perm,
-                                   perm.data(),
-                                   sizeof(int) * perm.size(),
-                                   gpuMemcpyHostToDevice,
-                                   dev_ctx.stream());
-  auto d_x_dims_tensor = paddle::memory::Alloc(
+  memory_utils::Copy(d_perm,
+                     perm.data(),
+                     sizeof(int) * perm.size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
+  auto d_x_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * x.dims().size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(d_x_dims,
-                                   x.dims().Get(),
-                                   sizeof(int64_t) * x.dims().size(),
-                                   gpuMemcpyHostToDevice,
-                                   dev_ctx.stream());
-  auto d_out_dims_tensor = paddle::memory::Alloc(
+  memory_utils::Copy(d_x_dims,
+                     x.dims().Get(),
+                     sizeof(int64_t) * x.dims().size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
+  auto d_out_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * out_dims.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
-  paddle::platform::GpuMemcpyAsync(d_out_dims,
-                                   out_dims.Get(),
-                                   sizeof(int64_t) * out_dims.size(),
-                                   gpuMemcpyHostToDevice,
-                                   dev_ctx.stream());
+  memory_utils::Copy(d_out_dims,
+                     out_dims.Get(),
+                     sizeof(int64_t) * out_dims.size(),
+                     gpuMemcpyHostToDevice,
+                     dev_ctx.stream());
 
   int64_t x_nnz = x.nnz();
   auto config =
