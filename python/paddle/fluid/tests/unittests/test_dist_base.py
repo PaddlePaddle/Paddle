@@ -700,12 +700,7 @@ class TestParallelDyGraphRunnerBase:
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
             # if args.update_method == "nccl2":
-            if (
-                args.update_method == "nccl2"
-                or args.update_method == "bkcl"
-                or args.update_method == "hccl"
-                or args.update_method == "cncl"
-            ):
+            if args.update_method == "nccl2" or args.update_method == "bkcl":
                 strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
@@ -819,12 +814,12 @@ class TestParallelDyGraphRunnerBase:
             strategy.find_unused_parameters = True
 
         # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
+        if args.update_method == "nccl2" or "bkcl":
             fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
+        if args.update_method == "nccl2" or "bkcl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -861,8 +856,6 @@ def runtime_main(test_class):
             "local",
             "nccl2_reduce_layer",
             "gloo",
-            "hccl",
-            "cncl",
         ],
     )
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
@@ -970,8 +963,6 @@ class TestDistBase(unittest.TestCase):
         self._nccl2_mode = False
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
-        self._hccl_mode = False
-        self._cncl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -1767,22 +1758,6 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='gloo',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._hccl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='hccl',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._cncl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='cncl',
                 check_error_log=check_error_log,
                 log_name=log_name,
             )

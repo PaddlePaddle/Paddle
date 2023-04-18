@@ -93,8 +93,7 @@ cc_test(
   DEPS tracer layer prepared_operator mul_op)
 if(WITH_NCCL
    OR WITH_RCCL
-   OR WITH_XPU_BKCL
-   OR WITH_CNCL)
+   OR WITH_XPU_BKCL)
   cc_test(
     test_group
     SRCS test_group.cc
