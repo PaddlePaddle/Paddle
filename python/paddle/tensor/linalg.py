@@ -1514,7 +1514,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, hermitian, use_default_tol)
+        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
     else:
         inputs = {}
         attrs = {}

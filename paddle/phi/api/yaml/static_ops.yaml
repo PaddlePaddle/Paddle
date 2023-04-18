@@ -222,7 +222,7 @@
   output : Tensor(out)
   infer_meta :
     func : MatrixRankStaticInferMeta
-    param : [x, tol_tensor, hermitian, use_default_tol]
+    param : [x, tol_tensor, use_default_tol, hermitian]
   optional : tol_tensor
   kernel :
     func : matrix_rank {dense -> dense},
