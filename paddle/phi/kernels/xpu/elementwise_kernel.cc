@@ -24,9 +24,9 @@ template <typename T, typename Context>
 void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
-                       int axis,
                        DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -43,9 +43,9 @@ template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   int axis,
                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -62,9 +62,9 @@ template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   int axis,
                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -81,9 +81,9 @@ template <typename T, typename Context>
 void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
-                     int axis,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -100,9 +100,9 @@ template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
-                          int axis,
                           DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
