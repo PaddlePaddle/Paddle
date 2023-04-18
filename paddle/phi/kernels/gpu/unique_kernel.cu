@@ -217,10 +217,9 @@ UniqueFlattendCUDATensor(const Context& context,
                          bool return_counts,
                          int64_t num_input) {
   // 1. Sort indices
-  auto in_flat_dims = phi::flatten_to_1d(in.dims());
   DenseTensor in_resize;
-  in_resize.Resize(in_flat_dims);
   in_resize.ShareDataWith(in);
+  in_resize.Resize(phi::make_ddim({num_input}));
   const InT* in_data = in_resize.data<InT>();
   auto equal = BinaryEqual<InT>(1, in_data);
   auto not_equal = BinaryNotEqual<InT>(1, in_data);
@@ -234,23 +233,7 @@ UniqueFlattendCUDATensor(const Context& context,
                indices_data + num_input,
                LessThan<InT>(1, in_data));
 
-  // 2. Calculate op result and sorted index: 'out' & 'indices'
-  DenseTensor range;
-  range.Resize(phi::make_ddim({num_input + 1}));
-  auto* range_data_ptr = context.template Alloc<IndexT>(&range);
-  thrust::sequence(
-      thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
-  int num_out;
-  num_out = thrust::unique_by_key(thrust::device,
-                                  indices_data,
-                                  indices_data + num_input,
-                                  range_data_ptr,
-                                  equal)
-                .first -
-            indices_data;
-  indices->Resize(phi::make_ddim({num_out}));
-
-  // 3. Calculate inverse indices: 'index'
+  // 2. Calculate inverse indices: 'index'
   if (return_inverse) {
     index->Resize(phi::make_ddim({num_input}));
     auto* inverse_data = context.template Alloc<IndexT>(index);
@@ -274,6 +257,25 @@ UniqueFlattendCUDATensor(const Context& context,
                     indices_data,
                     inverse_data);
   }
+
+  // 3. Calculate op result and sorted index: 'out' & 'indices'
+  DenseTensor range;
+  range.Resize(phi::make_ddim({num_input + 1}));
+  auto* range_data_ptr = context.template Alloc<IndexT>(&range);
+  thrust::sequence(
+      thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
+  int num_out;
+  num_out = thrust::unique_by_key(thrust::device,
+                                  indices_data,
+                                  indices_data + num_input,
+                                  range_data_ptr,
+                                  equal)
+                .first -
+            indices_data;
+  indices->Resize(phi::make_ddim({num_out}));
+  out->Resize(phi::make_ddim({num_out}));
+  context.template Alloc<InT>(out);
+  phi::IndexSelectKernel<InT, Context>(context, in_resize, *indices, 0, out);
 
   // 4. Calculate 'counts'
   if (return_counts) {
