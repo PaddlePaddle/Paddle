@@ -171,11 +171,15 @@ void TransposeCooKernel(const Context &dev_ctx,
   auto *out_indices_data = out_indices.data<int64_t>();
   int *d_perm;
 #ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  hipMallocAsync(reinterpret_cast<void **>(&d_perm),
+                 sizeof(int) * perm.size(),
+                 dev_ctx.stream());
   hipMemcpy(
       d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
 #else
-  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  cudaMallocAsync(reinterpret_cast<void **>(&d_perm),
+                  sizeof(int) * perm.size(),
+                  dev_ctx.stream());
   cudaMemcpyAsync(d_perm,
                   perm.data(),
                   sizeof(int) * perm.size(),
@@ -251,42 +255,50 @@ void TransposeCsrKernel(const Context &dev_ctx,
   int *d_perm;
   int64_t *d_x_dims, *d_out_dims;
 #ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  hipMallocAsync(reinterpret_cast<void **>(&d_perm),
+                 sizeof(int) * perm.size(),
+                 dev_ctx.stream());
   hipMemcpyAsync(d_perm,
                  perm.data(),
                  sizeof(int) * perm.size(),
                  hipMemcpyHostToDevice,
                  dev_ctx.stream());
-  hipMalloc(reinterpret_cast<void **>(&d_x_dims),
-            sizeof(int64_t) * x.dims().size());
+  hipMallocAsync(reinterpret_cast<void **>(&d_x_dims),
+                 sizeof(int64_t) * x.dims().size(),
+                 dev_ctx.stream());
   hipMemcpyAsync(d_x_dims,
                  x.dims().Get(),
                  sizeof(int64_t) * x.dims().size(),
                  hipMemcpyHostToDevice,
                  dev_ctx.stream());
-  hipMalloc(reinterpret_cast<void **>(&d_out_dims),
-            sizeof(int64_t) * out_dims.size());
+  hipMallocAsync(reinterpret_cast<void **>(&d_out_dims),
+                 sizeof(int64_t) * out_dims.size(),
+                 dev_ctx.stream());
   hipMemcpyAsync(d_out_dims,
                  out_dims.Get(),
                  sizeof(int64_t) * out_dims.size(),
                  hipMemcpyHostToDevice,
                  dev_ctx.stream());
 #else
-  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
+  cudaMallocAsync(reinterpret_cast<void **>(&d_perm),
+                  sizeof(int) * perm.size(),
+                  dev_ctx.stream());
   cudaMemcpyAsync(d_perm,
                   perm.data(),
                   sizeof(int) * perm.size(),
                   cudaMemcpyHostToDevice,
                   dev_ctx.stream());
-  cudaMalloc(reinterpret_cast<void **>(&d_x_dims),
-             sizeof(int64_t) * x.dims().size());
+  cudaMallocAsync(reinterpret_cast<void **>(&d_x_dims),
+                  sizeof(int64_t) * x.dims().size(),
+                  dev_ctx.stream());
   cudaMemcpyAsync(d_x_dims,
                   x.dims().Get(),
                   sizeof(int64_t) * x.dims().size(),
                   cudaMemcpyHostToDevice,
                   dev_ctx.stream());
-  cudaMalloc(reinterpret_cast<void **>(&d_out_dims),
-             sizeof(int64_t) * out_dims.size());
+  cudaMallocAsync(reinterpret_cast<void **>(&d_out_dims),
+                  sizeof(int64_t) * out_dims.size(),
+                  dev_ctx.stream());
   cudaMemcpyAsync(d_out_dims,
                   out_dims.Get(),
                   sizeof(int64_t) * out_dims.size(),

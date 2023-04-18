@@ -79,31 +79,40 @@ void ReshapeCooKernel(const Context& dev_ctx,
       *destination_out_sparse_part_strides;
 
 #ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
-            sizeof(int64_t) * x_sparse_part_strides.size());
-  hipMemcpy(destination_x_sparse_part_strides,
-            x_sparse_part_strides.Get(),
-            sizeof(int64_t) * x_sparse_part_strides.size(),
-            hipMemcpyHostToDevice);
-  hipMalloc(reinterpret_cast<void**>(&destination_out_sparse_part_strides),
-            sizeof(int64_t) * out_sparse_part_strides.size());
-  hipMemcpy(destination_out_sparse_part_strides,
-            out_sparse_part_strides.Get(),
-            sizeof(int64_t) * out_sparse_part_strides.size(),
-            hipMemcpyHostToDevice);
+  hipMallocAsync(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
+                 sizeof(int64_t) * x_sparse_part_strides.size(),
+                 dev_ctx.stream());
+  hipMemcpyAsync(destination_x_sparse_part_strides,
+                 x_sparse_part_strides.Get(),
+                 sizeof(int64_t) * x_sparse_part_strides.size(),
+                 hipMemcpyHostToDevice,
+                 dev_ctx.stream());
+  hipMallocAsync(reinterpret_cast<void**>(&destination_out_sparse_part_strides),
+                 sizeof(int64_t) * out_sparse_part_strides.size(),
+                 dev_ctx.stream());
+  hipMemcpyAsync(destination_out_sparse_part_strides,
+                 out_sparse_part_strides.Get(),
+                 sizeof(int64_t) * out_sparse_part_strides.size(),
+                 hipMemcpyHostToDevice,
+                 dev_ctx.stream());
 #else
-  cudaMalloc(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
-             sizeof(int64_t) * x_sparse_part_strides.size());
-  cudaMemcpy(destination_x_sparse_part_strides,
-             x_sparse_part_strides.Get(),
-             sizeof(int64_t) * x_sparse_part_strides.size(),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(reinterpret_cast<void**>(&destination_out_sparse_part_strides),
-             sizeof(int64_t) * out_sparse_part_strides.size());
-  cudaMemcpy(destination_out_sparse_part_strides,
-             out_sparse_part_strides.Get(),
-             sizeof(int64_t) * out_sparse_part_strides.size(),
-             cudaMemcpyHostToDevice);
+  cudaMallocAsync(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
+                  sizeof(int64_t) * x_sparse_part_strides.size(),
+                  dev_ctx.stream());
+  cudaMemcpyAsync(destination_x_sparse_part_strides,
+                  x_sparse_part_strides.Get(),
+                  sizeof(int64_t) * x_sparse_part_strides.size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
+  cudaMallocAsync(
+      reinterpret_cast<void**>(&destination_out_sparse_part_strides),
+      sizeof(int64_t) * out_sparse_part_strides.size(),
+      dev_ctx.stream());
+  cudaMemcpyAsync(destination_out_sparse_part_strides,
+                  out_sparse_part_strides.Get(),
+                  sizeof(int64_t) * out_sparse_part_strides.size(),
+                  cudaMemcpyHostToDevice,
+                  dev_ctx.stream());
 #endif
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
@@ -118,6 +127,14 @@ void ReshapeCooKernel(const Context& dev_ctx,
       destination_x_sparse_part_strides,
       destination_out_sparse_part_strides,
       out_indices_data);
+
+#ifdef PADDLE_WITH_HIP
+  hipFreeAsync(destination_x_sparse_part_strides, dev_ctx.stream());
+  hipFreeAsync(destination_out_sparse_part_strides, dev_ctx.stream());
+#else
+  cudaFreeAsync(destination_x_sparse_part_strides, dev_ctx.stream());
+  cudaFreeAsync(destination_out_sparse_part_strides, dev_ctx.stream());
+#endif
 }
 
 // just copy from paddle\phi\kernels\sparse\cpu\reshape_kernel.cc
