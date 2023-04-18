@@ -19,6 +19,7 @@
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/index_put_utils.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
