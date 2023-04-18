@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include <assert.h>
 #include <cuda.h>
 
@@ -133,16 +131,6 @@ struct Load {
   }
 };
 
-// each warp calculate 1 or 2 row(s)
-// input size: (num_row, num_col)
-// VecSize: size of vectorized read and write.
-// ColsPerThread: how many cols each thread calculates.
-// ThreadGroupWidth: 32, 16, 8, 4, 2, 1 according to num_col.
-// RowsPerThread: how many rows thread_group calculate at one time.
-//    at most time, it will be 1. but if num_col is too small,
-//    each thread_group will calculate 2 rows at one
-//    time.
-// isPadded: whether padding num_col to intergal multiple of warpsize
 template <typename T,
           typename SourceType,
           typename Context,
@@ -167,7 +155,6 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
   const int num_thread_group = gridDim.x * blockDim.y;
   const int thread_id = threadIdx.x;
   const int step = num_thread_group * RowsPerThread;
-  const int lane_id = threadIdx.x;
 
   for (int64_t cur_row = group_id * RowsPerThread; cur_row < num_row;
        cur_row += step) {
@@ -180,7 +167,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
 #pragma unroll
       for (int read_id = 0; read_id < num_read; read_id++) {
         const int offset = read_id * VecSize;
-        const int cur_col = (read_id * ThreadGroupWidth + lane_id) * VecSize;
+        const int cur_col = (read_id * ThreadGroupWidth + thread_id) * VecSize;
         if (!isPadded || cur_col < num_col) {
           load.template load<VecSize>(
               row_buffer + offset, cur_row + row_id, cur_col);
@@ -217,16 +204,16 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
     }
 
     T warp_sum[RowsPerThread];
-// Ger warp sum
+// Get warp sum and write
 #pragma unroll
     for (int row_id = 0; row_id < RowsPerThread; row_id++) {
       warp_sum[row_id] =
           WarpAllReduce<T, AddFunctor, ThreadGroupWidth>(thread_sum[row_id]);
     }
-// calculate
+
 #pragma unroll
     for (int row_id = 0; row_id < RowsPerThread; row_id++) {
-      out[cur_row] =
+      out[cur_row + row_id] =
           static_cast<SourceType>(log(warp_sum[row_id]) + warp_max[row_id]);
     }
   }
@@ -324,7 +311,6 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   if (num_col <= 0) {
     return cudaErrorInvalidValue;
   }
-// NOLINT
 #define HANDLE_ROWS(thread_group_width)                            \
   else if (num_col <= (thread_group_width)*VecSize) {              \
     if (num_row % 2 == 0) {                                        \
@@ -357,7 +343,7 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_ROWS(32)
 #undef HANDLE_ROWS
 #define HANDLE_THREAD_GROUP(col)                        \
-  else if (num_col <= (col)*kWarpSize) {                \  /* NOLINT */
+  else if (num_col <= (col)*kWarpSize) {                \
     return DispatchLogsumexpWarpWithPadding<T,          \
                                             SourceType, \
                                             Context,    \
@@ -401,7 +387,7 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_THREAD_GROUP(31)
   HANDLE_THREAD_GROUP(32)
 #undef HANDLE_THREAD_GROUP
-  else {  // NOLINT
+  else {
     return cudaErrorInvalidValue;
   }
 }
@@ -452,7 +438,7 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_ROWS(32)
 #undef HANDLE_ROWS
 #define HANDLE_THREAD_GROUP(col)                        \
-  else if (num_col <= (col)*kWarpSize) {                \  /* NOLINT */
+  else if (num_col <= (col)*kWarpSize) {                \
     return DispatchLogsumexpWarpWithPadding<T,          \
                                             SourceType, \
                                             Context,    \
@@ -480,7 +466,7 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_THREAD_GROUP(30)
   HANDLE_THREAD_GROUP(32)
 #undef HANDLE_THREAD_GROUP
-  else {  // NOLINT
+  else {
     return cudaErrorInvalidValue;
   }
 }
