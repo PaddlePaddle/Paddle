@@ -16,10 +16,10 @@
 
 #include <string>
 
+#include "nlohmann/json.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/collective/thirdparty/json.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/rpc_utils.h"
 

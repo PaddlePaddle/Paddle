@@ -20,9 +20,9 @@
 #include <memory>
 #include <string>
 
+#include "nlohmann/json.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/collective/thirdparty/json.h"
 #include "paddle/fluid/platform/rpc_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
