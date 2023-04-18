@@ -14,6 +14,7 @@
 
 import argparse
 import re
+import shutil
 from collections import OrderedDict
 
 import paddle
@@ -58,7 +59,7 @@ class LayerReNamingHelper:
 class LayerReNamingManager:
     def __init__(self):
         self._renaming_helpers = OrderedDict()
-        self._renaming_helpers["linear"] = LayerReNamingHelper("linear{}")
+        self._renaming_helpers["linear"] = LayerReNamingHelper("linear_{}")
         self._renaming_helpers["layer_norm"] = LayerReNamingHelper(
             "layer_norm_{}"
         )
@@ -114,15 +115,18 @@ class PipeLineModelAdaptor:
                 layers = []
                 # 1、extract layers in the same pp group
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
-                dirs = [
+                src_dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
                         self._src_model_path, *e
                     )
                     for e in group
                 ]
-                for dir in dirs:
+                # first rank extract shared layer
+                with_shared = True
+                for dir in src_dirs:
                     print("extract layer params in dir %s" % dir)
-                    layers.extend(self.extract_layers(dir))
+                    layers.extend(self.extract_layers(dir, with_shared))
+                    with_shared = False
                 print(f"1 layer len {len(layers)}")
                 # 2、sort and unique layers
                 layers = self.sort_layers(layers)
@@ -132,25 +136,29 @@ class PipeLineModelAdaptor:
                     layers, self._dst_parallel_config
                 )
                 dst_group = self._dst_parallel_config.pipe_parallel_group(i, j)
-                dirs = [
+                dst_dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
                         self._dst_model_path, *e
                     )
                     for e in dst_group
                 ]
-                layers_and_dirs = zip(layer_segments, dirs)
+                layers_and_dirs = zip(layer_segments, dst_dirs)
                 # 4、merge layers belonging to the same node
                 for layer_and_dir in layers_and_dirs:
-                    (layer, dir_) = layer_and_dir
-                    print(len(layer))
-                    self.merge_layers(layer, dir_)
+                    (layer_segment, dir_) = layer_and_dir
+                    print(len(layer_segment))
+                    self.merge_layers(layer_segment, dir_)
+                # 5、copy meta_state.pdopt
+                for (src_dir, dst_dir) in zip(src_dirs, dst_dirs):
+                    shutil.copyfile(
+                        f"{src_dir}/meta_state.pdopt",
+                        f"{dst_dir}/meta_state.pdopt",
+                    )
 
     def peek_model(self, model_dir):
         for i in range(self._src_parallel_config.tp):
             for j in range(self._src_parallel_config.sharding):
-                # TODO(liuzhenhai): use multiple processs
                 layers = []
-                # 1、extract layers in the same pp group
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
                 dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
@@ -167,7 +175,7 @@ class PipeLineModelAdaptor:
         for (k, v) in state_dict.items():
             print(f"\t{k} -> {v.name}")
 
-    def extract_layers(self, dir):
+    def extract_layers(self, dir, with_shared):
         opt = paddle.load(dir + "/model_state.pdopt")
         params = paddle.load(dir + "/model.pdparams")
         # what about meta_state?
@@ -176,6 +184,7 @@ class PipeLineModelAdaptor:
         for (k, v) in params.items():
             layer = self._extract_layer_name(k)
             assert layer
+            # special treatment for embedding layer
             # skip duplicated shared layer
             if "shared_layers" not in layer and (
                 "word_embeddings" in k or "position_embeddings" in k
@@ -218,6 +227,9 @@ class PipeLineModelAdaptor:
         ans = []
 
         for (layer_name, layer) in layers.items():
+            # special treatment for embedding layer
+            if (not with_shared) and "shared_layers" in layer_name:
+                continue
             file_name = "./" + layer_name + ".tmp"
             paddle.save(layer, file_name)
             ans.append((layer_name, file_name))
@@ -279,12 +291,12 @@ class PipeLineModelAdaptor:
                     if config.vpp > 1:
                         segments[i].append(
                             (
-                                [f"_layer.{start}.{j - start}"],
+                                [f"_layers.{start}.{j - start}"],
                                 layers[j][1],
                             )
                         )
                     else:
-                        segments[i].append(([f"_layer.{j}"], layers[j][1]))
+                        segments[i].append(([f"_layers.{j}"], layers[j][1]))
         if config.vpp > 1:
             segments[0] = [
                 ([layers[0][0], segments[0][0][0][0]], layers[0][1])
@@ -305,7 +317,6 @@ class PipeLineModelAdaptor:
         params = OrderedDict()
         opt = OrderedDict()
         master_weights = OrderedDict()
-        lr_csheduler = None
         renaming_manager = LayerReNamingManager()
 
         def merge(src, dst, map_k=None):
@@ -342,9 +353,9 @@ class PipeLineModelAdaptor:
             merge(layer_master_weight, master_weights)
             lr_scheduler = layer["LR_Scheduler"]
 
-        opt = self._pack_opt_state_dict(opt, master_weights, lr_csheduler)
+        opt = self._pack_opt_state_dict(opt, master_weights, lr_scheduler)
         paddle.save(params, save_dir + "/model.pdparams")
-        paddle.save(opt, save_dir + "/model_state.opt")
+        paddle.save(opt, save_dir + "/model_state.pdopt")
 
     def _pack_opt_state_dict(self, opt, master_weights, lr_scheduler):
         opt["master_weights"] = master_weights
