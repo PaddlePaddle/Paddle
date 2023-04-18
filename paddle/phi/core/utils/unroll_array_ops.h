@@ -87,7 +87,8 @@ struct UnrollCompare {
 template <size_t kStart, size_t kEnd>
 struct UnrollCompare<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static bool Run(const T *d1, const T *d2) {
+  HOSTDEVICE inline constexpr static bool Run(const T *d1 UNUSED,
+                                              const T *d2 UNUSED) {
     return true;
   }
 };
@@ -104,7 +105,7 @@ struct UnrollProduct {
 template <size_t kStart, size_t kEnd>
 struct UnrollProduct<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static T Run(const T *d) {
+  HOSTDEVICE inline constexpr static T Run(const T *d UNUSED) {
     return 1;
   }
 };
