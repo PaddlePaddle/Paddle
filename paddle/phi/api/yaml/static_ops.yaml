@@ -78,6 +78,16 @@
     func : decode_jpeg
     param : [x, mode]
 
+- op : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64)
+  output : Tensor(out)
+  infer_meta :
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+    data_type : x
+  backward : deformable_conv_grad
+
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
   output : Tensor
@@ -207,6 +217,18 @@
   data_transform :
     skip_transform : start, stop, number
 
+- op : matrix_rank
+  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankStaticInferMeta
+    param : [x, tol_tensor, hermitian, use_default_tol]
+  optional : tol_tensor
+  kernel :
+    func : matrix_rank {dense -> dense},
+           matrix_rank_tol {dense, dense -> dense}
+    data_type : x
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -290,6 +312,20 @@
   kernel :
     func : reduce_scatter
     param: [x, nranks]
+
+- op : rnn
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
+  output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
+  infer_meta:
+    func: RnnInferMeta
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+  kernel:
+    func: rnn
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+    data_type: x
+  backward: rnn_grad
+  optional : sequence_length, dropout_state_out
+  intermediate : reserve
 
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})

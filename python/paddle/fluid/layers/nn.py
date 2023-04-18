@@ -28,7 +28,7 @@ from ..framework import (
     dygraph_only,
     _dygraph_tracer,
     default_main_program,
-    _varbase_creator,
+    _create_tensor,
     static_only,
     _global_flags,
     in_dygraph_mode,
