@@ -55,6 +55,8 @@ class TestAMPList(unittest.TestCase):
         )
 
     def test_eager(self):
+        if not paddle.amp.is_float16_supported():
+            return
         white_list = paddle.amp.white_list()
         black_list = paddle.amp.black_list()
         self.check_if_op_in_list(
