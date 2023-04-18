@@ -415,6 +415,170 @@ class TestHessianNoBatch(unittest.TestCase):
             x = paddle.ones([3])
             paddle.autograd.hessian(func(x), x, batch_axis=None)
 
+    def func_add(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected + 1.0
+        actual = H + 1.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_sub(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected - 1.0
+        actual = H - 1.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_mul(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected * 2.0
+        actual = H * 2.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_div(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected / 2.0
+        actual = H / 2.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_truediv(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected / 2.0
+        actual = H / 2.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_pow(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected**3.0
+        actual = H**3.0
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_mod(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected % 1.2
+        actual = H % 1.2
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_matmul(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected @ expected
+        actual = H @ H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_eq(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected == expected
+        actual = H == H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_ne(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected != expected
+        actual = H != H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_lt(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected < expected
+        actual = H < H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_le(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected <= expected
+        actual = H <= H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_gt(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected > expected
+        actual = H > H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_ge(self):
+        def func(x):
+            return (x * x).sum()
+
+        H = paddle.autograd.hessian(func(self.x), self.x)
+        expected = np.diag(np.full((self.x.size,), 2.0))
+
+        expected = expected >= expected
+        actual = H >= H
+        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def func_0Dtensor_index(self):
+        x_0d = self.x[0, 0].reshape([])
+
+        def func(x):
+            return x * x
+
+        with self.assertRaises(IndexError):
+            H = paddle.autograd.hessian(func(x_0d), x_0d)
+            H = H[:]
+
     def test_all_cases(self):
         self.setUpClass()
         self.func_single_input()
@@ -423,6 +587,21 @@ class TestHessianNoBatch(unittest.TestCase):
         self.func_allow_unused_true()
         self.func_create_graph_true()
         self.func_out_not_single()
+        self.func_add()
+        self.func_sub()
+        self.func_mul()
+        self.func_div()
+        self.func_truediv()
+        self.func_pow()
+        self.func_mod()
+        self.func_matmul()
+        self.func_eq()
+        self.func_ne()
+        self.func_lt()
+        self.func_le()
+        self.func_gt()
+        self.func_ge()
+        self.func_0Dtensor_index()
 
 
 class TestHessianBatchFirst(unittest.TestCase):

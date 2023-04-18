@@ -120,76 +120,83 @@ class Jacobian:
     def __getattr__(self, __name: str):
         if __name == "shape":
             return getattr(self._jacobian, __name)
-        return getattr(self._jacobian[:], __name)
+        if __name == "_evaluate_all":
+            return getattr(self._jacobian, __name)
+        return getattr(self._jacobian._evaluate_all(), __name)
 
     def __add__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs + rhs
 
     def __sub__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs - rhs
 
     def __mul__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs * rhs
 
     def __div__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs / rhs
 
     def __truediv__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs / rhs
 
     def __pow__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs**rhs
 
+    def __mod__(self, other):
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
+        return lhs % rhs
+
     def __floordiv__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs // rhs
 
     def __matmul__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs @ rhs
 
     def __eq__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs == rhs
 
     def __ne__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs != rhs
 
     def __lt__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs < rhs
 
     def __le__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs <= rhs
 
     def __gt__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs > rhs
 
     def __ge__(self, other):
-        lhs = self[:]
-        rhs = other[:] if isinstance(other, Jacobian) else other
+        lhs = self._evaluate_all()
+        rhs = other._evaluate_all() if isinstance(other, Jacobian) else other
         return lhs >= rhs
 
 
@@ -269,10 +276,7 @@ class _Jacobian:
         if self.is_batched is False:
             if len(self.shape) == 0:
                 # xs and ys are both 0-D tensor
-                if indexes != slice(None, None, None):
-                    raise IndexError("0-D tensor can only be indexed by [:]")
-                else:
-                    indexes = (0, 0)
+                raise IndexError("0-D tensor can not be indexed.")
             elif len(self.shape) == 1:
                 # either ys or xs is 0-D tensor
                 indexes = (
@@ -316,6 +320,8 @@ class _Jacobian:
         return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
 
     def _cached_evaluate(self, k):
+        if k is None:
+            return self._cached_evaluate(0)[(0,)]
         v = self._cache.get(k)
         if v is None:
             v = self._evaluate(k)
@@ -325,6 +331,12 @@ class _Jacobian:
     def _evaluate(self, index):
         """Evaluate one slice at along lazy axis."""
         raise NotImplementedError
+
+    def _evaluate_all(self):
+        if len(self.shape) == 0:
+            return self._cached_evaluate(None)
+        else:
+            return self[:]
 
 
 class _JacobianNoBatch(_Jacobian):
