@@ -177,6 +177,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
                                    AnalysisConfig::Precision::kFloat32,
                                    nullptr,
                                    0,
+                                   true,
                                    min_input_shape,
                                    max_input_shape,
                                    optim_input_shape));

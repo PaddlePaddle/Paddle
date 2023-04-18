@@ -14,12 +14,13 @@
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

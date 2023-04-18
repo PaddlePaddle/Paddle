@@ -285,8 +285,6 @@ class OperatorBase {
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
-  virtual bool SupportNPU() const { return false; }
-  virtual bool SupportMLU() const { return false; }
   virtual bool SupportXPU() const { return false; }
 
   const std::string& Type() const { return type_; }
@@ -745,18 +743,6 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override;
-
-  bool SupportNPU() const override;
-
-  bool SupportMLU() const override {
-    // TODO(zhiqiu): support phi if needed?
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(),
-                       op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_mlu_place(kern_pair.first.place_);
-                       });
-  }
 
   bool SupportXPU() const override;
 

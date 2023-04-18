@@ -33,8 +33,6 @@ limitations under the License. */
 #include <cusparse.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
-
-#include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
@@ -53,13 +51,12 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <utility>
-
+#include "paddle/phi/core/macros.h"
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "glog/logging.h"
 #include "paddle/phi/core/errors.h"
 
 #include "paddle/phi/backends/dynload/port.h"
@@ -91,7 +88,6 @@ limitations under the License. */
 #endif  // PADDLE_WITH_HIP
 
 // Note: these headers for simplify demangle type string
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -226,7 +222,7 @@ struct BinaryCompareMessageConverter {
 template <>
 struct BinaryCompareMessageConverter<false> {
   template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
+  static const char* Convert(const char* expression, const T& value UNUSED) {
     return expression;
   }
 };
@@ -286,10 +282,16 @@ inline bool is_error(bool stat) { return !stat; }
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
-#define __THROW_WARN_INTERNAL__(__MSG__)    \
-  do {                                      \
-    LOG(WARNING) << "WARNING :" << __MSG__; \
-  } while (0)
+/**
+ * [Why declare function ThrowWarnInternal instead of defining macro
+ * __THROW_WARN_INTERNAL__?]
+ * ThrowWarnInternal uses `LOG` macro to display warning message, which depends
+ * on third-party header file "logging.h". However, "logging.h" has not been
+ * exposed to site-package yet, so that error will occur when we include
+ * "enforce.h" header file. Hence, we declare function in enforce.h and define
+ * it in enforce.cc file.
+ */
+void ThrowWarnInternal(const std::string& message);
 
 /** ENFORCE EXCEPTION AND MACROS **/
 
@@ -432,7 +434,7 @@ struct EnforceNotMet : public std::exception {
       auto __message__ = ::paddle::string::Sprintf(       \
           "%s\n  [Hint: " #__VAL " should not be null.]", \
           __summary__.error_message());                   \
-      __THROW_WARN_INTERNAL__(__message__);               \
+      ::phi::enforce::ThrowWarnInternal(__message__);     \
     }                                                     \
   } while (0)
 
@@ -616,162 +618,30 @@ namespace details {
 template <typename T>
 struct ExternalApiType {};
 
-#define DEFINE_EXTERNAL_API_TYPE(type, success_value, proto_type) \
-  template <>                                                     \
-  struct ExternalApiType<type> {                                  \
-    using Type = type;                                            \
-    static constexpr Type kSuccess = success_value;               \
-    static constexpr const char* kTypeString = #proto_type;       \
-    static constexpr phi::proto::ApiType kProtoType =             \
-        phi::proto::ApiType::proto_type;                          \
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
   }
 
-DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
-DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
-DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
-DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
-DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS, CUSPARSE);
-DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
-DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
-DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS, CU);
+DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
+DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
 
 template <typename T>
-inline const char* GetErrorMsgUrl(T status) {
-  using __CUDA_STATUS_TYPE__ = decltype(status);
-  phi::proto::ApiType proto_type =
-      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
-  switch (proto_type) {
-    case phi::proto::ApiType::CUDA:
-    case phi::proto::ApiType::CU:
-      return "https://docs.nvidia.com/cuda/cuda-runtime-api/"
-             "group__CUDART__TYPES.html#group__CUDART__TYPES_"
-             "1g3f51e3575c2178246db0a94a430e0038";
-      break;
-    case phi::proto::ApiType::CURAND:
-      return "https://docs.nvidia.com/cuda/curand/"
-             "group__HOST.html#group__HOST_1gb94a31d5c165858c96b6c18b70644437";
-      break;
-    case phi::proto::ApiType::CUDNN:
-      return "https://docs.nvidia.com/deeplearning/cudnn/api/"
-             "index.html#cudnnStatus_t";
-      break;
-    case phi::proto::ApiType::CUBLAS:
-      return "https://docs.nvidia.com/cuda/cublas/index.html#cublasstatus_t";
-      break;
-    case phi::proto::ApiType::CUSOLVER:
-      return "https://docs.nvidia.com/cuda/cusolver/"
-             "index.html#cuSolverSPstatus";
-      break;
-    case phi::proto::ApiType::NCCL:
-      return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
-             "types.html#ncclresult-t";
-      break;
-    case phi::proto::ApiType::CUFFT:
-      return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
-    case phi::proto::ApiType::CUSPARSE:
-      return "https://docs.nvidia.com/cuda/cusparse/"
-             "index.html#cusparseStatus_t";
-      break;
-    default:
-      return "Unknown type of External API, can't get error message URL!";
-      break;
-  }
-}
-
-template <typename T>
-inline std::string GetExternalErrorMsg(T status) {
-  std::ostringstream sout;
-  bool _initSucceed = false;
-  phi::proto::ExternalErrorDesc externalError;
-  if (externalError.ByteSizeLong() == 0) {
-    std::string filePath;
-#if !defined(_WIN32)
-    Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
-      std::string strModule(info.dli_fname);
-      const size_t last_slash_idx = strModule.find_last_of("/");
-      std::string compare_path = strModule.substr(strModule.length() - 6);
-      if (std::string::npos != last_slash_idx) {
-        strModule.erase(last_slash_idx, std::string::npos);
-      }
-      if (compare_path.compare("avx.so") == 0) {
-        filePath =
-            strModule +
-            "/../include/third_party/externalError/data/externalErrorMsg.pb";
-      } else {
-        filePath = strModule +
-                   "/../../third_party/externalError/data/externalErrorMsg.pb";
-      }
-    }
-#else
-    char buf[512];
-    MEMORY_BASIC_INFORMATION mbi;
-    HMODULE h_module =
-        (::VirtualQuery(GetCurrentTraceBackString, &mbi, sizeof(mbi)) != 0)
-            ? (HMODULE)mbi.AllocationBase
-            : NULL;
-    GetModuleFileName(h_module, buf, 512);
-    std::string strModule(buf);
-    const size_t last_slash_idx = strModule.find_last_of("\\");
-    std::string compare_path = strModule.substr(strModule.length() - 7);
-    if (std::string::npos != last_slash_idx) {
-      strModule.erase(last_slash_idx, std::string::npos);
-    }
-    if (compare_path.compare("avx.pyd") == 0) {
-      filePath = strModule +
-                 "\\..\\include\\third_"
-                 "party\\externalerror\\data\\externalErrorMsg.pb";
-    } else {
-      filePath =
-          strModule +
-          "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
-    }
-#endif
-    std::ifstream fin(filePath, std::ios::in | std::ios::binary);
-    _initSucceed = externalError.ParseFromIstream(&fin);
-  }
-  using __CUDA_STATUS_TYPE__ = decltype(status);
-  phi::proto::ApiType proto_type =
-      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
-  if (_initSucceed) {
-    for (int i = 0; i < externalError.errors_size(); ++i) {
-      if (proto_type == externalError.errors(i).type()) {
-        for (int j = 0; j < externalError.errors(i).messages_size(); ++j) {
-          if (status == externalError.errors(i).messages(j).code()) {
-            sout << "\n  [Hint: "
-                 << externalError.errors(i).messages(j).message() << "]";
-            return sout.str();
-          }
-        }
-      }
-    }
-  }
-
-  sout << "\n  [Hint: Please search for the error code(" << status
-       << ") on website (" << GetErrorMsgUrl(status)
-       << ") to get Nvidia's official solution and advice about "
-       << details::ExternalApiType<__CUDA_STATUS_TYPE__>::kTypeString
-       << " Error.]";
-  return sout.str();
-}
-
-template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
-template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
-template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
-template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
-template std::string GetExternalErrorMsg<cusparseStatus_t>(cusparseStatus_t);
-template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
-template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
-template std::string GetExternalErrorMsg<CUresult>(CUresult);
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
-#endif
+std::string GetExternalErrorMsg(T status);
 
 /*************** CUDA ERROR ***************/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
@@ -906,7 +776,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         ::phi::enforce::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                 \
     if (UNLIKELY(__cond__ != __success_type__)) {            \
-      __THROW_WARN_INTERNAL__(                               \
+      ::phi::enforce::ThrowWarnInternal(                     \
           ::phi::enforce::build_nvidia_error_msg(__cond__)); \
     }                                                        \
   } while (0)
@@ -1117,16 +987,17 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
     }                                                      \
   } while (0)
 
-#define PADDLE_WARN_GPU_SUCCESS(COND)                                          \
-  do {                                                                         \
-    auto __cond__ = (COND);                                                    \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
-    constexpr auto __success_type__ =                                          \
-        ::phi::enforce::details::ExternalApiType<                              \
-            __CUDA_STATUS_TYPE__>::kSuccess;                                   \
-    if (UNLIKELY(__cond__ != __success_type__)) {                              \
-      __THROW_WARN_INTERNAL__(::phi::enforce::build_rocm_error_msg(__cond__)); \
-    }                                                                          \
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_rocm_error_msg(__cond__)); \
+    }                                                      \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {

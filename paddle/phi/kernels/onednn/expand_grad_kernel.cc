@@ -39,6 +39,9 @@ void ExpandGradKernel(const Context& dev_ctx,
   if (out_grad_vec_dims == in_grad_vec_dims) {
     dnnl::memory::data_type out_grad_type =
         funcs::ToOneDNNDataType(out_grad.dtype());
+    if (out_grad_vec_dims.empty()) {
+      out_grad_vec_dims = std::vector<int64_t>{1};
+    }
     funcs::ReorderOneDNNHandler reorder_handler(
         out_grad_vec_dims, out_grad.dtype(), out_grad_type, onednn_engine);
 
@@ -78,8 +81,10 @@ void ExpandGradKernel(const Context& dev_ctx,
     reduction_p->execute(astream, reduction_args);
     astream.wait();
     in_grad->set_layout(DataLayout::ONEDNN);
-    in_grad->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(in_grad->dims())));
+    const auto in_grad_md_dims = in_grad->dims().size() != 0
+                                     ? vectorize<int64_t>(in_grad->dims())
+                                     : std::vector<int64_t>{1};
+    in_grad->set_mem_desc(dst_memory_p->get_desc().reshape(in_grad_md_dims));
   }
 }
 }  // namespace phi
