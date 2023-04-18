@@ -20,8 +20,9 @@ namespace framework {
 namespace ir {
 
 typedef enum {
-  cba,
-  cbaa,
+  cba,     // conv + bias + act
+  cbaa,    // this servers for conv_elementwise_add2_act_fuse_pass
+  cbaele,  // conv + bias + act + elementwise_op
 } CutlassFusionType;
 
 class CutlassTeller {
@@ -136,6 +137,62 @@ class CutlassTeller {
     return true;
   }
 
+  // Determine this NCHW conv2d_fusion + elewise_op + act1 can be fused by
+  // cutlass? will not set or change any attribute in op_desc
+  bool CbaeleCanSupport(OpDesc *op_desc,
+                        Scope *scope,
+                        std::string ele_type,
+                        std::string act1_type,
+                        int device_id) {
+    auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+    auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
+    CHECK_EQ(strides.size() == 2UL, true);
+    CHECK_EQ(dilations.size() == 2UL, true);
+    int stride_h = strides[0];
+    int stride_w = strides[1];
+    int dilation_h = dilations[0];
+    int dilation_w = dilations[1];
+    auto act_type = op_desc->GetAttrIfExists<std::string>("activation");
+
+    auto filter_names = op_desc->Input("Filter");
+
+    for (const auto &filter_name : filter_names) {
+      auto *filter_var = scope->FindLocalVar(filter_name);
+      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
+      auto groups = op_desc->GetAttrIfExists<int>("groups");
+      int oc = filter_tensor.dims()[0];
+      int kc = filter_tensor.dims()[1];
+      int kh = filter_tensor.dims()[2];
+      int kw = filter_tensor.dims()[3];
+
+      // For convience, we only support EXPLICIT
+      auto padding_algorithm =
+          op_desc->GetAttrIfExists<std::string>("padding_algorithm");
+      if (padding_algorithm != "EXPLICIT") {
+        return false;
+      }
+
+      if (!Conv2dCanSupport(oc,
+                            kc,
+                            kh,
+                            kw,
+                            stride_h,
+                            stride_w,
+                            dilation_h,
+                            dilation_w,
+                            groups,
+                            act_type,
+                            device_id,
+                            CutlassFusionType::cbaele,
+                            act1_type,
+                            ele_type)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Determine whether this conv can be fused with the activation by cutlass
   // backend.
   bool Conv2dCanSupport(int oc,
@@ -149,7 +206,10 @@ class CutlassTeller {
                         int groups,
                         std::string activation,
                         int device_id,
-                        CutlassFusionType fuse_type) {
+                        CutlassFusionType fuse_type,
+                        // below two are used by cbaele
+                        std::string activation1 = "identity",
+                        std::string elemenstwise_type = "elementwise_add") {
     int sm_version = platform::GetGPUComputeCapability(device_id);
     int ic = kc * groups;
     if (!cutlass_sm.count(sm_version)) {
@@ -173,6 +233,14 @@ class CutlassTeller {
           !cbaa_act_set.count(activation)) {
         return false;
       }
+
+      // conv + bias + act + elementwise_op
+      if (fuse_type == CutlassFusionType::cbaele &&
+          !cbaele_act_set.count(activation + "_" + elemenstwise_type + "_" +
+                                activation1)) {
+        return false;
+      }
+
     } else if (groups == ic && ic == oc) {
       // return false;
       //  conv2d_depthwise not support residual input
@@ -261,7 +329,10 @@ class CutlassTeller {
                         int groups,
                         std::string activation,
                         int device_id,
-                        CutlassFusionType fuse_type) {
+                        CutlassFusionType fuse_type,
+                        // below two are used by cbaele
+                        std::string activation1 = "identity",
+                        std::string elemenstwise_type = "elementwise_add") {
     return false;
   }
   std::unordered_set<std::string> CbaAct(int device_id) { return {}; }
@@ -278,6 +349,9 @@ class CutlassTeller {
   const std::unordered_set<std::string> cdba_act_set = {
       "identity", "relu", "swish", "sigmoid"};
   const std::unordered_set<std::string> cbaa_act_set = {"relu"};
+  const std::unordered_set<std::string> cbaele_act_set = {
+      "identity_elementwise_add_identity",
+  };
 };
 
 }  // namespace ir
