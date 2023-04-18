@@ -731,6 +731,96 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
+    def test_backwardBroadCastValue1(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            value = paddle.ones(shape=[1, 2], dtype=paddle.float64)
+            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
+            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            value.stop_gradient = False
+            x.stop_gradient = False
+            out = paddle.index_put(x, (ix1, ix2), value, False)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+            ref_dx[ix1, ix2] = 0
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[2.0, 2.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
+            out = paddle.index_put(x, (ix1, ix2), value, True)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[2.0, 2.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
+    def test_backwardBroadCastValue2(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            value = paddle.ones(shape=[2, 1], dtype=paddle.float64)
+            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
+            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            value.stop_gradient = False
+            x.stop_gradient = False
+            out = paddle.index_put(x, (ix1, ix2), value, False)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+            ref_dx[ix1, ix2] = 0
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[2.0], [2.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
+            out = paddle.index_put(x, (ix1, ix2), value, True)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[2.0], [2.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
