@@ -4819,6 +4819,6 @@ def unflatten(x, shape, axis):
     length = x.shape[axis]
     if axis < 0:
         axis = axis + length
-    new_shape = x.shape[:axis] + list(shape) + x.shape[axis + 1 :]
+    new_shape = x.shape[:axis] + tuple(shape) + x.shape[axis + 1 :]
     x = x.reshape(new_shape)
     return x
