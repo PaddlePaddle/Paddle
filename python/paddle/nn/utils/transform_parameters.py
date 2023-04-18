@@ -17,8 +17,8 @@ from functools import reduce
 import paddle
 from paddle import _C_ops
 from paddle.fluid.framework import (
+    _create_tensor,
     _dygraph_tracer,
-    _varbase_creator,
     dygraph_only,
     in_dygraph_mode,
 )
@@ -26,7 +26,7 @@ from paddle.fluid.framework import (
 
 # input==output, inplace strategy of reshape has no cost almostly
 def _inplace_reshape_dygraph(x, shape):
-    x_shape = _varbase_creator(dtype='int64')
+    x_shape = _create_tensor(dtype='int64')
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
             tmp_out = _C_ops.reshape(x, shape)
@@ -104,7 +104,7 @@ def parameters_to_vector(parameters, name=None):
         origin_shapes.append(param.shape)
         _inplace_reshape_dygraph(param, [-1])
 
-    out = _varbase_creator(dtype=dtype)
+    out = _create_tensor(dtype=dtype)
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
             tmp = _C_ops.concat(parameters, 0)

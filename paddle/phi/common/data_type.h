@@ -39,7 +39,7 @@ enum class DataType {
 
   BOOL,
 
-  UINT8,  // BYte
+  UINT8,  // Byte
   INT8,   // Char
   UINT16,
   INT16,
@@ -70,7 +70,7 @@ enum class DataType {
   BFLOAT16,
 
   NUM_DATA_TYPES,
-  // See Note [ Why we need ALL in baisc kernel key member? ]
+  // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_DTYPE = UNDEFINED,
 };
 

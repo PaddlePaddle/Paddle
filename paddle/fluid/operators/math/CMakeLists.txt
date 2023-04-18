@@ -15,7 +15,6 @@ math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
 
-math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 if(WITH_XPU)
   math_library(beam_search DEPS math_function beam_search_xpu)
 else()
@@ -39,10 +38,6 @@ cc_test(
   vol2col_test
   SRCS vol2col_test.cc
   DEPS vol2col)
-cc_test(
-  sequence_pooling_test
-  SRCS sequence_pooling_test.cc
-  DEPS sequence_pooling)
 cc_test(
   beam_search_test
   SRCS beam_search_test.cc
