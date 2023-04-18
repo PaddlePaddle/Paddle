@@ -146,16 +146,16 @@ class TestUpdateLossScalingBF16Op(OpTest):
         self.inputs = {
             'X': [('x0', convert_float_to_uint16(x))],
             'FoundInfinite': found_inf,
-            'PrevLossScaling': convert_float_to_uint16(self.prev_loss_scaling),
+            # do not convert
+            'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
             'InBadSteps': self.num_bad_steps,
         }
 
         self.outputs = {
             'Out': [('out0', convert_float_to_uint16(x))],
-            'LossScaling': convert_float_to_uint16(
-                self.prev_loss_scaling * self.incr_ratio
-            ),
+            # do not convert
+            'LossScaling': self.prev_loss_scaling * self.incr_ratio,
             'OutGoodSteps': self.zero_steps,
             'OutBadSteps': self.zero_steps,
         }

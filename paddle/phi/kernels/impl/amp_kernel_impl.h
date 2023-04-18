@@ -50,15 +50,11 @@ inline HOSTDEVICE void Update(const FoundInfFlagT found_inf_data,
                               T* updated_loss_scaling_data,
                               int* good_out_data,
                               int* bad_out_data) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   if (IsFoundNanInf(found_inf_data)) {
     *good_out_data = 0;
     *bad_out_data = *bad_in_data + 1;
     if (*bad_out_data == decr_every_n_nan_or_inf) {
-      const MPType mp_pre_loss_scaling_data =
-          static_cast<MPType>(*pre_loss_scaling_data);
-      T new_loss_scaling =
-          static_cast<T>(mp_pre_loss_scaling_data * decr_ratio);
+      T new_loss_scaling = *pre_loss_scaling_data * decr_ratio;
       *updated_loss_scaling_data = new_loss_scaling < static_cast<T>(1)
                                        ? static_cast<T>(1)
                                        : new_loss_scaling;
@@ -68,13 +64,10 @@ inline HOSTDEVICE void Update(const FoundInfFlagT found_inf_data,
     *bad_out_data = 0;
     *good_out_data = *good_in_data + 1;
     if (*good_out_data == incr_every_n_steps) {
-      const MPType mp_pre_loss_scaling_data =
-          static_cast<MPType>(*pre_loss_scaling_data);
-      const MPType mp_new_loss_scaling =
-          (mp_pre_loss_scaling_data * incr_ratio);
-      *updated_loss_scaling_data = static_cast<T>(
-          CheckFinite(mp_new_loss_scaling) ? mp_new_loss_scaling
-                                           : mp_pre_loss_scaling_data);
+      T new_loss_scaling = *pre_loss_scaling_data * incr_ratio;
+      *updated_loss_scaling_data = CheckFinite(new_loss_scaling)
+                                       ? new_loss_scaling
+                                       : *pre_loss_scaling_data;
       *good_out_data = 0;
     }
   }
@@ -122,6 +115,8 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* loss_scaling,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   PADDLE_ENFORCE_EQ(
       found_infinite.numel(),
       1,
@@ -145,40 +140,43 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     return;
   }
 
-  const T* pre_loss_scaling_data = prev_loss_scaling.data<T>();
+  const MPDType* pre_loss_scaling_data = prev_loss_scaling.data<MPDType>();
   const int* good_in_data = in_good_steps.data<int>();
   const int* bad_in_data = in_bad_steps.data<int>();
 
-  T* updated_loss_scaling_data = dev_ctx.template Alloc<T>(loss_scaling);
+  MPDType* updated_loss_scaling_data =
+      dev_ctx.template Alloc<MPDType>(loss_scaling);
   int* good_out_data = dev_ctx.template Alloc<int>(out_good_steps);
   int* bad_out_data = dev_ctx.template Alloc<int>(out_bad_steps);
 
   if (is_found_inf_on_cpu) {
-    UpdateLossScalingFunctor<Context, T, true>{}(dev_ctx,
-                                                 found_inf_data,
-                                                 pre_loss_scaling_data,
-                                                 good_in_data,
-                                                 bad_in_data,
-                                                 incr_every_n_steps,
-                                                 decr_every_n_nan_or_inf,
-                                                 incr_ratio,
-                                                 decr_ratio,
-                                                 updated_loss_scaling_data,
-                                                 good_out_data,
-                                                 bad_out_data);
+    UpdateLossScalingFunctor<Context, MPDType, true>{}(
+        dev_ctx,
+        found_inf_data,
+        pre_loss_scaling_data,
+        good_in_data,
+        bad_in_data,
+        incr_every_n_steps,
+        decr_every_n_nan_or_inf,
+        incr_ratio,
+        decr_ratio,
+        updated_loss_scaling_data,
+        good_out_data,
+        bad_out_data);
   } else {
-    UpdateLossScalingFunctor<Context, T, false>{}(dev_ctx,
-                                                  found_inf_data,
-                                                  pre_loss_scaling_data,
-                                                  good_in_data,
-                                                  bad_in_data,
-                                                  incr_every_n_steps,
-                                                  decr_every_n_nan_or_inf,
-                                                  incr_ratio,
-                                                  decr_ratio,
-                                                  updated_loss_scaling_data,
-                                                  good_out_data,
-                                                  bad_out_data);
+    UpdateLossScalingFunctor<Context, MPDType, false>{}(
+        dev_ctx,
+        found_inf_data,
+        pre_loss_scaling_data,
+        good_in_data,
+        bad_in_data,
+        incr_every_n_steps,
+        decr_every_n_nan_or_inf,
+        incr_ratio,
+        decr_ratio,
+        updated_loss_scaling_data,
+        good_out_data,
+        bad_out_data);
   }
 }
 
