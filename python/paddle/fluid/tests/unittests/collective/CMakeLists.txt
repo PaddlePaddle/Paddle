@@ -437,14 +437,9 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_ROCM OR WITH_GPU) AND (LINUX))
-  bash_test_modules(
-    test_rpc_call_result
-    START_BASH
-    test_rpc_call_result.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=22074;http_proxy=;https_proxy=")
-  set_tests_properties(test_rpc_call_result PROPERTIES TIMEOUT "120")
+  py_test_modules(test_rpc_call_result MODULES test_rpc_call_result ENVS
+                  "http_proxy=;https_proxy=")
+  set_tests_properties(test_rpc_call_result PROPERTIES TIMEOUT "120" LABELS
+                                                       "RUN_TYPE=DIST")
 endif()
 add_subdirectory(fleet)
