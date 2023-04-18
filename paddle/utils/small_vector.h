@@ -574,12 +574,6 @@ class small_vector_template_base<T, true>
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
-  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
-    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
-  }
-
-  /// Reserve enough space to add one element, and return the updated element
-  /// pointer in case it was a reference to the storage.
   T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
     return const_cast<T *>(
         this->reserveForParamAndGetAddressImpl(this, Elt, N));
@@ -815,7 +809,7 @@ class small_vector_impl : public small_vector_template_base<T> {
         this->reserveForParamAndGetAddress(Elt);
     I = this->begin() + Index;
 
-    ::new (reinterpret_cast<void *> this->end()) T(::std::move(this->back()));
+    ::new (reinterpret_cast<void *>(this->end())) T(::std::move(this->back()));
     // Push everything else over.
     std::move_backward(I, this->end() - 1, this->end());
     this->set_size(this->size() + 1);
@@ -975,7 +969,7 @@ class small_vector_impl : public small_vector_template_base<T> {
     if (this->size() >= this->capacity())
       return this->growAndEmplaceBack(std::forward<ArgTypes>(Args)...);
 
-    ::new (reinterpret_cast<void *> this->end())
+    ::new (reinterpret_cast<void *>(this->end()))
         T(std::forward<ArgTypes>(Args)...);
     this->set_size(this->size() + 1);
     return this->back();
