@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ class TestNextafterAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TextNextafterOP(OpTest):
+class TestNextafterOP(OpTest):
     def setUp(self):
         self.op_type = "nextafter"
         self.python_api = paddle.nextafter
@@ -79,6 +79,11 @@ class TextNextafterOP(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class TestNextafterOPFP32(TestNextafterOP):
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 if __name__ == "__main__":
