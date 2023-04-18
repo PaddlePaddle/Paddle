@@ -483,7 +483,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 // Define this out-of-line to dissuade the C++ compiler from inlining it.
 template <typename T, bool TriviallyCopyable>
 void small_vector_template_base<T, TriviallyCopyable>::grow(size_t MinSize) {
-  size_t NewCapacity;
+  size_t NewCapacity = 0;
   T *NewElts = mallocForGrow(MinSize, NewCapacity);
   moveElementsForGrow(NewElts);
   takeAllocationForGrow(NewElts, NewCapacity);
