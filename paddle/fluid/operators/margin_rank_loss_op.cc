@@ -181,7 +181,11 @@ REGISTER_OPERATOR(margin_rank_loss,
                   ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
                   ops::MarginRankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
-REGISTER_OP_CPU_KERNEL(margin_rank_loss,
-                       ops::MarginRankLossKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(margin_rank_loss_grad,
-                       ops::MarginRankLossGradKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    margin_rank_loss, CPU, ALL_LAYOUT, ops::MarginRankLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(margin_rank_loss_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::MarginRankLossGradKernel,
+                          float) {}

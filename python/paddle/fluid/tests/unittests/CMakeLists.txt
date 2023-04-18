@@ -560,9 +560,6 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
 if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed_passes)
-  add_subdirectory(ps)
-  add_subdirectory(auto_parallel)
   add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
@@ -769,8 +766,6 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(rnn)
-add_subdirectory(distribution)
 
 # dist xpu tests:
 if(WITH_XPU_BKCL)
@@ -789,8 +784,6 @@ if(WIN32)
     SRCS cc_imp_py_test.cc
     DEPS python)
 endif()
-
-add_subdirectory(ir)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
@@ -1115,6 +1108,8 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scale_op
+    test_clip_op
     test_scatter_op
     test_gather_op
     test_layer_norm_op
@@ -1163,6 +1158,8 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
+    test_eig_op
+    test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_imperative_optimizer
@@ -1184,7 +1181,10 @@ set(STATIC_BUILD_TESTS
     test_sparse_conv_op
     test_sparse_norm_op
     test_sparse_pooling_op
+    test_sync_batch_norm_op
     test_tensor_array_to_tensor
+    test_unique
+    test_update_loss_scaling_op
     test_while_op
     test_one_hot_v2_op)
 
@@ -1204,3 +1204,7 @@ set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
 set_tests_properties(test_paddle_save_load_binary_static_build
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_sync_batch_norm_op_static_build
+                     PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
+                                                                     120)

@@ -200,6 +200,7 @@ def create_parameter(
         [
             'bool',
             'float16',
+            'uint16',
             'float32',
             'float64',
             'int8',
