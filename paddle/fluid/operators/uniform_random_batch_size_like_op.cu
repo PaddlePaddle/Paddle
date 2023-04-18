@@ -59,6 +59,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,
                           GPU,
                           ALL_LAYOUT,
