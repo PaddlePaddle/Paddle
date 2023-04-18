@@ -2080,6 +2080,27 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [])
         self.assertEqual(out2, 2.5)
 
+    def test_linalg_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        out = paddle.linalg.slogdet(x)
+        out.retain_grads()
+        out.backward()
+
+        self.assertTrue(out.shape, [2])
+        self.assertTrue(x.grad.shape, [3, 3])
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertTrue(out1.shape, [2, 3])
+        self.assertTrue(x1.grad.shape, [3, 3, 3])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -3635,6 +3656,30 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0], 1)
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 2.5)
+
+    @prog_scope()
+    def test_linalg_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        out = paddle.linalg.slogdet(x)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        self.assertEqual(res[0].shape, (2,))
+        self.assertEqual(res[1].shape, (3, 3))
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        paddle.static.append_backward(out1.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, x1.grad_name])
+        self.assertEqual(res[0].shape, (2, 3))
+        self.assertEqual(res[1].shape, (3, 3, 3))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
