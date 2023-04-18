@@ -60,7 +60,7 @@ class StreamAllToAllTestCase:
         )
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor([test_data_list[rank]])
+        tensor = paddle.to_tensor(test_data_list[rank])
         t1, t2 = paddle.split(tensor, nranks, axis=0)
 
         # case 1: pass an empty tensor list

@@ -47,7 +47,7 @@ class StreamAllgatherTestCase:
             )
 
         rank = dist.get_rank()
-        tensor = paddle.to_tensor([test_data_list[rank]])
+        tensor = paddle.to_tensor(test_data_list[rank])
 
         # case 1: pass an empty tensor list
         empty_tensor_list = []
