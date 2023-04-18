@@ -3940,6 +3940,7 @@ function main() {
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       build_gpubox)
+        rm -rf build
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}
         ;;
       check_xpu)
