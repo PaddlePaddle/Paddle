@@ -263,7 +263,8 @@ void BindCudaStream(py::module *m_ptr) {
               place = &place_tmp;
             }
 
-            auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
+            static auto stream_flag =
+                phi::CUDAStream::StreamFlag::kStreamNonBlocking;
             // seting priority 1(high) and 2(normal) correspond to the actual
             // cuda stream priority -1 and 0.
             new (&self) phi::CUDAStream(*place, priority - 2, stream_flag);
