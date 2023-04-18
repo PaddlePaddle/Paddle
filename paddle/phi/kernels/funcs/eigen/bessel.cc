@@ -53,7 +53,7 @@ struct EigenGenericI0<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in) {
-    out.device(dev) = in.bessel_i0e();
+          out.device(dev) = in.bessel_i0();
   }
 };
 

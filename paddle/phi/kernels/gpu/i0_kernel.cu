@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/i0_kernel.h"
-//#include "paddle/phi/kernels/gpu/bessel_utils.h"
 
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/i0_kernel_impl.h"
 
+//namespace phi {
+//
 //template <typename T>
 //__global__ void CalcI0(
 //    const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
@@ -29,9 +28,9 @@ namespace phi {
 //    out[idx] = std::exp(x) * out[idx];
 //  }
 //}
-
-template <typename T, typename Context>
-void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+//
+//template <typename T, typename Context>
+//void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 //  const T* x_data = x.data<T>();
 //  T* out_data = ctx.template Alloc<T>(out);
 //  const int size = x.numel();
@@ -48,9 +47,9 @@ void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 //  uint64_t offset = seed_offset.second;
 //  CalcI0e<<<dim_grid, dim_block>>>(x_data, out_data, size, seed, offset);
 //  CalcI0<<<dim_grid, dim_block>>>(x_data, out_data, size, seed, offset);
-}
-
-}  // namespace phi
+//}
+//
+//}  // namespace phi
 
 PD_REGISTER_KERNEL(
     i0, GPU, ALL_LAYOUT, phi::I0Kernel, float, double) {}

@@ -52,7 +52,7 @@ struct EigenGenericI0<Eigen::GpuDevice, T> {
   using OutType =
       Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
   static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in) {
-    out.device(dev) = in.bessel_i0e();
+    out.device(dev) = in.bessel_i0();
   }
 };
 

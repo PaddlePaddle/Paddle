@@ -29,8 +29,11 @@ def output_i0e(x):
 
 
 class TestI0eAPI(unittest.TestCase):
+    DTYPE = "float64"
+    DATA = [0, 1, 2, 3, 4, 5]
+
     def setUp(self):
-        self.x = np.array([0, 1, 2, 3, 4, 5]).astype("float64")
+        self.x = np.array(self.DATA).astype(self.DTYPE)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -75,6 +78,26 @@ class TestI0eAPI(unittest.TestCase):
             x = None
             self.assertRaises(ValueError, paddle.i0e, x)
             paddle.enable_static()
+
+
+class TestI0eFloat32Zero2EightCase(TestI0eAPI):
+    DTYPE = "float32"
+    DATA = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+
+class TestI0eFloat32OverEightCase(TestI0eAPI):
+    DTYPE = "float32"
+    DATA = [9, 10, 11, 12]
+
+
+class TestI0eFloat64Zero2EightCase(TestI0eAPI):
+    DTYPE = "float64"
+    DATA = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+
+class TestI0eFloat64OverEightCase(TestI0eAPI):
+    DTYPE = "float64"
+    DATA = [9, 10, 11, 12]
 
 
 if __name__ == "__main__":
