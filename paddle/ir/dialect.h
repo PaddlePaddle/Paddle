@@ -16,6 +16,7 @@
 
 #include "paddle/ir/attribute_base.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/op_info_impl.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -96,6 +97,31 @@ class Dialect {
   /// \brief Register abstract_attribute into context.
   ///
   void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
+
+  ///
+  /// \brief Register all Operation.
+  ///
+  template <typename... Args>
+  void RegisterOperations() {
+    (void)std::initializer_list<int>{0, (RegisterOperation<Args>(), 0)...};
+  }
+
+  ///
+  /// \brief Register Operation of class T.
+  ///
+  template <typename ConcertOp>
+  void RegisterOperation() {
+    VLOG(4) << "Operation registered into Dialect. --->";
+    ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>();
+    this->ir_context()->RegisterOperation(ir::TypeId::get<ConcertOp>(),
+                                          op_info);
+    VLOG(4) << "----------------------------------";
+  }
+
+  ///
+  /// \brief Register operation into context.
+  ///
+  void RegisterOperation(ir::TypeId id, OpInfoImpl *op_info);
 
  private:
   std::string name_;

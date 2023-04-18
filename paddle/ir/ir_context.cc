@@ -99,25 +99,6 @@ class IrContextImpl {
     return nullptr;
   }
 
-  void RegisterDialect(std::string name, Dialect *dialect) {
-    std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(4) << "Register a dialect of: [name=" << name
-            << ", dialect_ptr=" << dialect << "].";
-    registed_dialect_.emplace(name, dialect);
-  }
-
-  Dialect *GetDialect(std::string name) {
-    std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
-    auto iter = registed_dialect_.find(name);
-    if (iter != registed_dialect_.end()) {
-      VLOG(4) << "Fonund a cached dialect of: [name=" << name
-              << ", dialect_ptr=" << iter->second << "].";
-      return iter->second;
-    }
-    LOG(WARNING) << "No cache fonund dialect of: [name=" << name << "].";
-    return nullptr;
-  }
-
   void RegisterOperation(ir::TypeId type_id, OpInfoImpl *opinfo) {
     std::lock_guard<ir::SpinLock> guard(registed_operations_lock_);
     VLOG(4) << "Register an operation of: [TypeId_hash="
@@ -137,6 +118,25 @@ class IrContextImpl {
     }
     LOG(WARNING) << "No cache found operation of: [TypeId_hash="
                  << std::hash<ir::TypeId>()(type_id) << "].";
+    return nullptr;
+  }
+
+  void RegisterDialect(std::string name, Dialect *dialect) {
+    std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
+    VLOG(4) << "Register a dialect of: [name=" << name
+            << ", dialect_ptr=" << dialect << "].";
+    registed_dialect_.emplace(name, dialect);
+  }
+
+  Dialect *GetDialect(std::string name) {
+    std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
+    auto iter = registed_dialect_.find(name);
+    if (iter != registed_dialect_.end()) {
+      VLOG(4) << "Fonund a cached dialect of: [name=" << name
+              << ", dialect_ptr=" << iter->second << "].";
+      return iter->second;
+    }
+    LOG(WARNING) << "No cache fonund dialect of: [name=" << name << "].";
     return nullptr;
   }
 
@@ -198,7 +198,7 @@ StorageManager &IrContext::type_storage_manager() {
 }
 
 std::unordered_map<TypeId, AbstractType *>
-    &IrContext::registed_abstracted_type() {
+    &IrContext::registed_abstract_type() {
   return impl().registed_abstract_types_;
 }
 
@@ -212,7 +212,7 @@ StorageManager &IrContext::attribute_storage_manager() {
 }
 
 std::unordered_map<TypeId, AbstractAttribute *>
-    &IrContext::registed_abstracted_attribute() {
+    &IrContext::registed_abstract_attribute() {
   return impl().registed_abstract_attributes_;
 }
 

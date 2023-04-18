@@ -19,8 +19,6 @@
 #include <memory>
 #include <unordered_map>
 
-// #include "paddle/ir/op_info_impl.h"
-
 namespace ir {
 class IrContextImpl;
 class StorageManager;
@@ -29,7 +27,6 @@ class AbstractAttribute;
 class TypeId;
 class Dialect;
 class OpInfoImpl;
-class OpInfo;
 
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
@@ -74,7 +71,7 @@ class IrContext {
   /// \return The storage uniquer used for constructing TypeStorage
   /// instances.
   ///
-  std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
+  std::unordered_map<TypeId, AbstractType *> &registed_abstract_type();
 
   ///
   /// \brief Register an AbstractAttribute to IrContext
@@ -102,7 +99,14 @@ class IrContext {
   /// instances.
   ///
   std::unordered_map<TypeId, AbstractAttribute *>
-      &registed_abstracted_attribute();
+      &registed_abstract_attribute();
+
+  ///
+  /// \brief Get or register operaiton.
+  ///
+  std::unordered_map<TypeId, OpInfoImpl *> &registed_operation();
+
+  void RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo);
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,
@@ -160,25 +164,6 @@ class IrContext {
   T *GetRegisteredDialect() {
     return static_cast<T *>(GetRegisteredDialect(T::name()));
   }
-
-  ///
-  /// \brief Get or register operaiton.
-  ///
-  std::unordered_map<TypeId, OpInfoImpl *> &registed_operation();
-
-  void RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo);
-
-  // template <typename ConcertOp>
-  // void RegisterOperation() {
-  //   RegisterOperation(ir::TypeId::get<ConcertOp>(),
-  //   OpInfoImpl::create<ConcertOp>());
-  // }
-
-  // template <typename ConcertOp>
-  // OpInfo GetOrRegisterOperation() {
-  //   RegisterOperation(ir::TypeId::get<ConcertOp>(),
-  //   OpInfoImpl::create<ConcertOp>());
-  // }
 
   IrContext(const IrContext &) = delete;
 

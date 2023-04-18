@@ -15,6 +15,9 @@
 #pragma once
 
 #include <cstring>
+#include <initializer_list>
+#include <utility>
+
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type.h"
@@ -41,18 +44,20 @@ class ConstructInterfacesOrTraits {
  private:
   /// Placement new interface.
   template <typename T>
-  void PlacementConstrctInterface(
+  static void PlacementConstrctInterface(
       std::pair<TypeId, void *> *&p_interface) {  // NOLINT
     void *ptmp = malloc(sizeof(typename T::template Model<ConcreteOp>));
     new (ptmp) typename T::template Model<ConcreteOp>();
     std::pair<ir::TypeId, void *> pair_tmp =
-        make_pair(ir::TypeId::get<T>(), ptmp);
-    memcpy(p_interface, &pair_tmp, sizeof(std::pair<ir::TypeId, void *>));
+        std::make_pair(ir::TypeId::get<T>(), ptmp);
+    memcpy(reinterpret_cast<void *>(p_interface),
+           reinterpret_cast<void *>(&pair_tmp),
+           sizeof(std::pair<ir::TypeId, void *>));
     p_interface += 1;
   }
   /// Placement new trait.
   template <typename T>
-  void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
+  static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
     new (p_trait) TypeId(ir::TypeId::get<T>());
     p_trait += 1;
   }
@@ -90,20 +95,20 @@ class OpInfoImpl {
     size_t interfaces_num =
         std::tuple_size<typename ConcreteOp::InterfaceList>::value;
     size_t traits_num = std::tuple_size<typename ConcreteOp::TraitList>::value;
-    size_t attributes_num = ConcreteOp::attributes_name_.size();
+    size_t attributes_num = sizeof(ConcreteOp::attributes_name_) /
+                            sizeof(ConcreteOp::attributes_name_[0]);
     size_t base_size = sizeof(std::pair<ir::TypeId, void *>) * interfaces_num +
                        sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl) +
                        sizeof(ir::StrAttribute) * attributes_num;
     void *base_ptr = malloc(base_size);
     std::pair<ir::TypeId, void *> *p_first_interface =
         reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
-    ir::TypeId *p_first_trait = reinterpret_cast<ir::TypeId *>(
-        base_ptr + sizeof(std::pair<ir::TypeId, void *>) * interfaces_num);
+    ir::TypeId *p_first_trait =
+        reinterpret_cast<ir::TypeId *>(p_first_interface + interfaces_num);
     OpInfoImpl *p_opinfo_impl =
-        reinterpret_cast<OpInfoImpl *>(reinterpret_cast<void *>(p_first_trait) +
-                                       sizeof(ir::TypeId) * traits_num);
-    ir::StrAttribute *p_first_attribute = reinterpret_cast<ir::StrAttribute *>(
-        reinterpret_cast<void *>(p_opinfo_impl) + sizeof(OpInfoImpl));
+        reinterpret_cast<OpInfoImpl *>(p_first_trait + traits_num);
+    ir::StrAttribute *p_first_attribute =
+        reinterpret_cast<ir::StrAttribute *>(p_opinfo_impl + 1);
 
     // (2) Construct interfaces and sort by TypeId.
     ConstructInterfacesOrTraits<

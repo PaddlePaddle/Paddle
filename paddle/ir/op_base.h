@@ -20,6 +20,8 @@
 namespace ir {
 class OpBase {
  public:
+  explicit OpBase(Operation *operation) : operation_(operation) {}
+
   Operation *operation() { return operation_; }
 
   explicit operator bool() { return operation() != nullptr; }
@@ -27,9 +29,6 @@ class OpBase {
   operator Operation *() const { return operation_; }
 
   Operation *operator->() const { return operation_; }
-
- protected:
-  explicit OpBase(Operation *operation) : operation_(operation) {}
 
  private:
   Operation *operation_;
@@ -41,14 +40,9 @@ class OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
-  OpTraitBase::OpTraitBase(Operation *op) : OpBase(op) {}
+  explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
-};
-
-class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
- public:
-  explicit ReadOnlyTrait(Operation *op) : OpTraitBase<ReadOnlyTrait>(op) {}
 };
 
 ///
@@ -57,81 +51,21 @@ class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
 template <typename ConcreteInterface>
 class OpInterfaceBase : public OpBase {
  public:
-  using Concept = typename ConcreteInterface::Concept;
-
-  OpInterfaceBase(Operation *op, Concept *impl) : OpBase(op), impl_(impl) {}
-
-  Concept *impl() { return impl_; }
+  explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
-
- protected:
-  Concept *impl_;
-};
-
-class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
- public:
-  struct Concept {
-    explicit Concept(void (*infer_shape)(Operation *))
-        : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(Operation *);
-  };
-
-  template <class ConcreteOp>
-  struct Model : public Concept {
-    static void InferShape(Operation *op) {
-      ConcreteOp concret_op = ir::dyn_cast<ConcreteOp>(op);
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      concret_op.InferShape();
-    }
-
-    Model() : Concept(InferShape) {
-      if (sizeof(Model) != sizeof(Concept)) {
-        throw("sizeof(Model) != sizeof(Concept)")
-      }
-    }
-  };
-
-  InferShapeInterface(Operation *op, Concept *impl)
-      : OpInterfaceBase(op, impl) {}
-
-  void InferShape() { impl_->infer_shape_(operation()); }
 };
 
 template <typename ConcreteOp, class... TraitOrInterface>
 class Op : public OpBase {
  public:
+  using OpBase::OpBase;
+
   // 利用TraitOrInterface中是OpTraitBase还是OpTraitInterface的基类，分别拆出TraitList和InterfaceList.
   using TraitList =
       typename Filter<OpTraitBase, std::tuple<TraitOrInterface...>>::Type;
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 };
-
-class FakeConvOp : Op<FakeConvOp, ReadOnlyTrait, InferShapeInterface> {
- public:
-  ///
-  /// \brief Op name.
-  ///
-  static const char *name() { return "fake_conv"; }
-
-  ///
-  /// \brief Op attributes name.
-  ///
-  static std::vector<std::string> attributes_name_ = {"strides",
-                                                      "paddings",
-                                                      "padding_algorithm",
-                                                      "dilations",
-                                                      "groups",
-                                                      "data_format"};
-
-  ///
-  /// \brief This Op definition template parameter contains InterfaceInterface,
-  /// therefore it must define the InferShape function.
-  ///
-  static void InferShape() {
-    std::cout << "this is a fake conv op interface" << std::endl;
-  }
-}
 
 }  // namespace ir

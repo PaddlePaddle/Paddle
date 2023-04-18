@@ -31,4 +31,8 @@ void Dialect::RegisterAttribute(ir::AbstractAttribute &&abstract_attribute) {
   this->ir_context()->RegisterAbstractAttribute(
       new_abstract_attribute->type_id(), new_abstract_attribute);
 }
+
+void Dialect::RegisterOperation(ir::TypeId id, OpInfoImpl *op_info) {
+  this->ir_context()->RegisterOperation(id, op_info);
+}
 }  // namespace ir
