@@ -68,8 +68,8 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     out->mutable_data<T>(out_dims, place);
-    int recv_numel = numel / num;
-    int offset = recv_numel * id;
+    int64_t recv_numel = numel / num;
+    int64_t offset = recv_numel * id;
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
