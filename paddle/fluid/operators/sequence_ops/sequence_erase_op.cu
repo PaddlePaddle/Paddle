@@ -62,7 +62,7 @@ __global__ void SetOutput(const T* in_dat,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
