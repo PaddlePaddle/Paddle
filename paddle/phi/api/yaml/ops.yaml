@@ -1987,7 +1987,7 @@
   optional : index, counts
 
 - op : unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1，1}, int[] padding ={0,0}, str unpooling_type = {"max"} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1，1}, int[] padding ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
   output: Tensor(out)
   infer_meta:
     func: UnpoolInferMeta

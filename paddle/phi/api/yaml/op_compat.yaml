@@ -2279,10 +2279,6 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
-  int_array:
-    output_size :
-      data_type : int
-      tensor_name : OutputSize
 
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
