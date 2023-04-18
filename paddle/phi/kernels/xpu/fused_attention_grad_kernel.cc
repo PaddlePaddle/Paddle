@@ -94,7 +94,7 @@ void FusedAttentionGradKernel(
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  auto *seed_1 = nullptr;
+  const phi::DenseTensor *seed_1 = nullptr;
 
   phi::XPUDropoutParam attn_dropout_param;
   attn_dropout_param.initXPUDropoutParam(attn_dropout_rate,
@@ -528,3 +528,15 @@ void FusedAttentionGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
 }
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_attention_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FusedAttentionGradKernel,
+                   float,
+                   phi::dtype::float16) {
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+}
