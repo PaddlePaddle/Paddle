@@ -259,6 +259,7 @@ void BindCudaStream(py::module *m_ptr) {
 
             if (place == nullptr) {
               int curr_device_id = platform::GetCurrentDeviceId();
+
               static auto place_tmp = platform::CUDAPlace(curr_device_id);
               place = &place_tmp;
             }
