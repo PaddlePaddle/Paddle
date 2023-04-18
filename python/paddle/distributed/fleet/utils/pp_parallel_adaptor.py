@@ -219,9 +219,10 @@ class PipeLineModelAdaptor:
             # special treatment for embedding layer
             if (not with_shared) and "shared_layers" in layer_name:
                 continue
-            file_name = "./" + layer_name + ".tmp"
+            file_name = f"./tmp_layer_files/{layer_name}.tmp"
             paddle.save(layer, file_name)
             ans.append((layer_name, file_name))
+            print(f"save layer {layer_name} to {file_name}")
         return ans
 
     def sort_layers(self, layers):
