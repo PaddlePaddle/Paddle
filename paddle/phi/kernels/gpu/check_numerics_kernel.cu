@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -435,6 +436,7 @@ void CheckNumericsKernel(const Context& ctx,
     phi::funcs::CheckNumericsCpuImpl(cpu_tensor.data<T>(),
                                      tensor.numel(),
                                      debug_info,
+                                     FLAGS_check_nan_inf_level,
                                      "gpu",
                                      output_filepath);
     return;

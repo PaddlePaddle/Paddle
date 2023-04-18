@@ -19,7 +19,6 @@
 #endif
 #include <fstream>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
@@ -32,8 +31,6 @@
 #include <sys/stat.h>
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 #endif
-
-DECLARE_int32(check_nan_inf_level);
 
 namespace phi {
 namespace funcs {
@@ -186,6 +183,7 @@ template <
 static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const int64_t numel,
                                  const std::string& cpu_hint_str,
+                                 const bool check_nan_inf_level,
                                  const std::string log_name = "cpu",
                                  const std::string output_filepath = "") {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
@@ -254,7 +252,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
 
   // Write log to file
   if (output_filepath.size() > 0) {
-    VLOG(4) << "[FLAGS_check_nan_inf_level=" << FLAGS_check_nan_inf_level
+    VLOG(4) << "[check_nan_inf_level=" << check_nan_inf_level
             << "]. Write log to " << output_filepath;
     PrintForDifferentLevelFile<T, MT>(cpu_hint_str.c_str(),
                                       numel,
@@ -264,7 +262,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                       max_value,
                                       min_value,
                                       mean_value,
-                                      FLAGS_check_nan_inf_level,
+                                      check_nan_inf_level,
                                       log_name,
                                       output_filepath);
     return;
@@ -278,7 +276,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                 max_value,
                                 min_value,
                                 mean_value,
-                                FLAGS_check_nan_inf_level);
+                                check_nan_inf_level);
 }
 
 template <
@@ -289,6 +287,7 @@ template <
 void CheckNumericsCpuImpl(const T* value_ptr,
                           const int64_t numel,
                           const std::string& cpu_hint_str,
+                          const bool check_nan_inf_level,
                           const std::string log_name = "cpu",
                           const std::string output_filepath = "") {
   using RealType = typename T::value_type;
