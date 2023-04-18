@@ -4436,6 +4436,13 @@ void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
   TrilTriuInferMeta(x, diagonal, false, out);
 }
 
+// Some operator having oneDnn kernel will be set layout in kernel.
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }

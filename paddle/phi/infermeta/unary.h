@@ -628,6 +628,8 @@ void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs);
 
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
