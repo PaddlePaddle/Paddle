@@ -52,7 +52,7 @@ class TestUnflattenAPI(unittest.TestCase):
         self.axis = 0
 
     def get_output(self):
-        self.out_put = self.ref_api(self.x, self.shape, self.axis)
+        self.output = self.ref_api(self.x, self.shape, self.axis)
 
     def set_api(self):
         self.ref_api = numpy_unflatten
@@ -91,7 +91,7 @@ class TestUnflattenAPI(unittest.TestCase):
                 )
 
                 exe = paddle.static.Executor(place)
-                out = self.paddle_api(x=x, shpe=self.shape, axis=self.axis)
+                out = self.paddle_api(x=x, shape=self.shape, axis=self.axis)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={
