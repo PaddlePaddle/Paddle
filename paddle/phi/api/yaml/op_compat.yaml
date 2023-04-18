@@ -2556,15 +2556,3 @@
     x : X
   outputs :
     out : Out
-
-- op : i0
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
-- op : i0e
-  inputs :
-    x : X
-  outputs :
-    out : Out

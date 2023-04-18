@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-import scipy.special as special
+from scipy import special
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 np.random.seed(100)
 paddle.seed(100)
