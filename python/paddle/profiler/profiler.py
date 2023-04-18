@@ -499,8 +499,6 @@ class Profiler:
             profileoption.trace_switch |= 1
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= 1 << 1
-        if ProfilerTarget.MLU in self.targets:
-            profileoption.trace_switch |= 1 << 2
         if ProfilerTarget.CUSTOM_DEVICE in self.targets:
             profileoption.trace_switch |= 1 << 3
             if not custom_device_types:

@@ -711,6 +711,91 @@ create_test_value_numpy_bool(TestSetValueItemSlice3)
 create_test_value_numpy_bool(TestSetValueItemSlice4)
 
 
+def create_test_value_complex64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = 42.1 + 42.1j
+
+        def set_dtype(self):
+            self.dtype = "complex64"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueComplex64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_complex64(TestSetValueItemInt)
+create_test_value_complex64(TestSetValueItemSlice)
+create_test_value_complex64(TestSetValueItemSlice2)
+create_test_value_complex64(TestSetValueItemSlice3)
+create_test_value_complex64(TestSetValueItemSlice4)
+
+
+def create_test_value_complex128(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = complex(
+                np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+            )
+
+        def set_dtype(self):
+            self.dtype = "complex128"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueComplex128")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_complex128(TestSetValueItemInt)
+create_test_value_complex128(TestSetValueItemSlice)
+create_test_value_complex128(TestSetValueItemSlice2)
+create_test_value_complex128(TestSetValueItemSlice3)
+create_test_value_complex128(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_complex64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = np.array(42.1 + 42.1j)
+
+        def set_dtype(self):
+            self.dtype = "complex64"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyComplex64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_complex64(TestSetValueItemInt)
+create_test_value_numpy_complex64(TestSetValueItemSlice)
+create_test_value_numpy_complex64(TestSetValueItemSlice2)
+create_test_value_numpy_complex64(TestSetValueItemSlice3)
+create_test_value_numpy_complex64(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_complex128(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            v = complex(
+                np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+            )
+            self.value = np.array([v])
+
+        def set_dtype(self):
+            self.dtype = "complex128"
+
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyComplex128")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_complex128(TestSetValueItemInt)
+create_test_value_numpy_complex128(TestSetValueItemSlice)
+create_test_value_numpy_complex128(TestSetValueItemSlice2)
+create_test_value_numpy_complex128(TestSetValueItemSlice3)
+create_test_value_numpy_complex128(TestSetValueItemSlice4)
+
+
 # 2.3 value is a Paddle Tensor (int32, int64, float32, float64, bool)
 def create_test_value_tensor_int32(parent):
     class TestValueInt(parent):
@@ -895,6 +980,45 @@ class TestSetValueValueShape5(TestSetValueApi):
 
     def _get_answer(self):
         self.data[:, 0] = self.value
+
+
+# This is to test case which dims of indexed Tensor is
+# less than value Tensor on CPU / GPU.
+class TestSetValueValueShape6(TestSetValueApi):
+    def set_value(self):
+        self.value = np.ones((1, 4)) * 5
+
+    def set_shape(self):
+        self.shape = [4, 4]
+
+    def _call_setitem(self, x):
+        x[:, 0] = self.value  # x is Paddle.Tensor
+
+    def _get_answer(self):
+        self.data[:, 0] = self.value
+
+    def test_api(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            static_out = self._run_static()
+            dynamic_out = self._run_dynamic()
+            self._get_answer()
+
+            error_msg = (
+                "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+            )
+            self.assertTrue(
+                (self.data == static_out).all(),
+                msg=error_msg.format("static", self.data, static_out),
+            )
+            self.assertTrue(
+                (self.data == dynamic_out).all(),
+                msg=error_msg.format("dynamic", self.data, dynamic_out),
+            )
 
 
 # 4. Test error

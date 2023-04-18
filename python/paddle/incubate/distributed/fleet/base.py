@@ -262,6 +262,7 @@ class Fleet(metaclass=abc.ABCMeta):
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         pass
 

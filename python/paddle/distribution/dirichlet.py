@@ -164,7 +164,10 @@ def _dirichlet(concentration, name=None):
     else:
         op_type = 'dirichlet'
         check_variable_and_dtype(
-            concentration, 'concentration', ['float32', 'float64'], op_type
+            concentration,
+            'concentration',
+            ['float16', 'float32', 'float64', 'uint16'],
+            op_type,
         )
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(

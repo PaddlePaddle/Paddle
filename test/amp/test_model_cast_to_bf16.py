@@ -17,7 +17,7 @@ import struct
 import unittest
 
 import numpy as np
-from amp_base_models import build_add_model, build_embedding_model
+from amp_base_models import AmpTestBase, build_add_model, build_embedding_model
 
 import paddle
 from paddle import fluid
@@ -220,11 +220,7 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestProgramBF16(unittest.TestCase):
+class TestProgramBF16(AmpTestBase):
     def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
         for op_type, value in expected_bf16_calls.items():
             self.assertEqual(
@@ -270,11 +266,7 @@ class TestProgramBF16(unittest.TestCase):
         self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestStaticBF16(unittest.TestCase):
+class TestStaticBF16(AmpTestBase):
     def _generate_feed_x(self):
         x = np.random.random(size=[16, 16]).astype("float32")
         x_bf16 = convert_float_to_uint16(x)
@@ -282,7 +274,7 @@ class TestStaticBF16(unittest.TestCase):
         return x_fp32, x_bf16
 
     def test_compare_o1_o2(self):
-        def _run_o1(exe, x_np, max_iters):
+        def _run_o1(place, exe, x_np, max_iters):
             (
                 main_program,
                 startup_program,
@@ -305,7 +297,7 @@ class TestStaticBF16(unittest.TestCase):
                     losses.append(results[0])
             return losses
 
-        def _run_o2(exe, x_np, max_iters):
+        def _run_o2(place, exe, x_np, max_iters):
             (
                 main_program,
                 startup_program,
@@ -334,8 +326,8 @@ class TestStaticBF16(unittest.TestCase):
 
         max_iters = 2
         x_fp32, x_bf16 = self._generate_feed_x()
-        losses_o1 = _run_o1(exe, x_fp32, max_iters)
-        losses_o2 = _run_o2(exe, x_bf16, max_iters)
+        losses_o1 = _run_o1(place, exe, x_fp32, max_iters)
+        losses_o2 = _run_o2(place, exe, x_bf16, max_iters)
 
 
 if __name__ == '__main__':
