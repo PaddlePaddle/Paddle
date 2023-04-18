@@ -251,6 +251,30 @@ void subtract_grad(const Tensor& x,
 }
 
 template <typename T>
+void subtract_double_grad(const Tensor& y,
+                          const Tensor& grad_out,
+                          const paddle::optional<Tensor>& grad_x_grad,
+                          const paddle::optional<Tensor>& grad_y_grad,
+                          int axis,
+                          Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    // ddout = ddx + ddy
+    if (!grad_x_grad && !grad_y_grad) {
+      grad_out_grad = nullptr;
+    } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      if (grad_x_grad) {
+        ddout = ddout + grad_x_grad.get();
+      }
+      if (grad_y_grad) {
+        ddout = ddout - grad_y_grad.get();
+      }
+      set_output<T>(ddout, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
 void add_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,

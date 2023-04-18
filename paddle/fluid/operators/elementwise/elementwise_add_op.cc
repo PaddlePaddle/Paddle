@@ -128,7 +128,7 @@ class ElementwiseAddCompositeDoubleGradOpMaker
     paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
     std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
 
-    VLOG(6) << "Runing add_grad composite func";
+    VLOG(6) << "Runing add_double_grad composite func";
     prim::add_double_grad<prim::DescTensor>(
         y, out_grad, ddx, ddy, axis, grad_out_grad);
     this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);

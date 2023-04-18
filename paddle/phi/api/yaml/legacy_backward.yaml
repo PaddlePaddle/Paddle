@@ -952,6 +952,7 @@
   optional : grad_x_grad, grad_y_grad
   no_need_buffer : y, grad_out
   inplace : (grad_x_grad -> grad_out_grad)
+  composite : subtract_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)
 
 - backward_op : subtract_grad
   forward : subtract (Tensor x, Tensor y) -> Tensor(out)
