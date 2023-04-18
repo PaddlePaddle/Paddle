@@ -15,18 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/range_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-#include "paddle/phi/kernels/funcs/range_function.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 
 #ifdef PADDLE_WITH_FLASHATTN
-#include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/backends/dynload/flashattn.h"
+#include "paddle/phi/kernels/flash_attn_kernel.h"
 #endif
 
 namespace paddle {
@@ -155,7 +155,7 @@ struct GateAttentionConfig {
   }
 
   bool UseFlashAttn(const bool merge_qkv, const bool is_amp) {
-    if (!is_amp) { 
+    if (!is_amp) {
       return false;
     }
 
@@ -345,28 +345,36 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   phi::DenseTensor qk_out_grad;
 };
 
-
 #define DEBUG_HERE printf("[%s, %d]: Run here!\n", __func__, __LINE__);
-#define DEBUG_DATA_INT(name, x)  do { \
-  printf("[%s, %d]: %s = %d\n", __func__, __LINE__, name, static_cast<int>(x)); \
-} whilie(0);
+#define DEBUG_DATA_INT(name, x)                                                \
+  do {                                                                         \
+    printf(                                                                    \
+        "[%s, %d]: %s = %d\n", __func__, __LINE__, name, static_cast<int>(x)); \
+  }                                                                            \
+  whilie(0);
 
-#define DEBUG_DATA_FlOAT(name, x) do {\
-  printf("[%s, %d]: %s = %f\n", __func__, __LINE__, std::string(name), static_cast<float>(x)); \
-} whilie(0);
+#define DEBUG_DATA_FlOAT(name, x)  \
+  do {                             \
+    printf("[%s, %d]: %s = %f\n",  \
+           __func__,               \
+           __LINE__,               \
+           std::string(name),      \
+           static_cast<float>(x)); \
+  }                                \
+  whilie(0);
 
-#define DEBUG_DIMS(x) do { \
-  printf("[%s, %d]: dims is : [", __func__, __LINE__); \
-  for (int i = 0; i < x.size(); ++i) { \
-    printf("%d, ", x[i]);              \
-  }                                    \
-  printf(" ]\n");                      \
-} whilie(0);
-
+#define DEBUG_DIMS(x)                                    \
+  do {                                                   \
+    printf("[%s, %d]: dims is : [", __func__, __LINE__); \
+    for (int i = 0; i < x.size(); ++i) {                 \
+      printf("%d, ", x[i]);                              \
+    }                                                    \
+    printf(" ]\n");                                      \
+  }                                                      \
+  whilie(0);
 
 template <typename T>
-__global__ void FlashAttRange(
-    int start, int step, int size, T* out1, T* out2) {
+__global__ void FlashAttRange(int start, int step, int size, T* out1, T* out2) {
   CUDA_KERNEL_LOOP(index, size) {
     out1[index] = static_cast<T>(start + step * index);
     out2[index] = static_cast<T>(start + step * index);
@@ -374,23 +382,24 @@ __global__ void FlashAttRange(
 }
 
 static void GetFlashAttnDimsString(const std::string& prefix,
-                                   const phi::DDim dim_val) {   
-  // if (VLOG_IS_ON(4)) {
+                                   const phi::DDim dim_val) {
+  if (VLOG_IS_ON(4)) {
     std::ostringstream out_string;
     out_string << "FlashAttn - " << prefix << ".dims() is [ ";
     for (int i = 0; i < dim_val.size(); ++i) {
-        out_string << dim_val[i] << ", ";
+      out_string << dim_val[i] << ", ";
     }
     out_string << "]\n";
     VLOG(4) << out_string.str();
     std::cout << out_string.str();
-  // }
+  }
 }
 
-#define DBG_WAIT  do {\
-  printf("[%s, %d] Run here.\n", __func__, __LINE__); \
-  dev_ctx_.Wait(); \
-} while(0);
+#define DBG_WAIT                                        \
+  do {                                                  \
+    printf("[%s, %d] Run here.\n", __func__, __LINE__); \
+    dev_ctx_.Wait();                                    \
+  } while (0);
 
 template <typename T>
 class FMHAGateRef {
@@ -411,7 +420,8 @@ class FMHAGateRef {
     T* q_ptr = nullptr;
     T* k_ptr = nullptr;
     T* v_ptr = nullptr;
-    bool is_bf16 = qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
+    bool is_bf16 =
+        qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
 
     if (std::is_same<T, phi::dtype::float16>::value) {
       std::cout << "T is phi::dtype::float16. \n";
@@ -429,14 +439,14 @@ class FMHAGateRef {
       phi::DenseTensor* qkv_out = config->GetQKVOut();
       ComputeQKVTransposeForwardForFlashAttn(*qkv_out, qkv_transpose_out);
       config->ClearQKVOut();
-      
+
       dev_ctx_.Wait();
       qkv_transpose_out->Resize({3,
-          static_cast<int>(config->batch_size),
-          static_cast<int>(config->seq_len_m), 
-          static_cast<int>(config->seq_len_r),
-          static_cast<int>(config->num_heads),
-          static_cast<int>(config->head_dim)});
+                                 static_cast<int>(config->batch_size),
+                                 static_cast<int>(config->seq_len_m),
+                                 static_cast<int>(config->seq_len_r),
+                                 static_cast<int>(config->num_heads),
+                                 static_cast<int>(config->head_dim)});
 
       // 1. Dealing with qkv_out for flash_attn.
       auto& qkv_dims = qkv_transpose_out->dims();
@@ -446,10 +456,8 @@ class FMHAGateRef {
       for (int i = 1; i < (rank - 3); ++i) {
         q_batch_size *= qkv_dims[i];
       }
-      qkv_transpose_out->Resize({3, 
-                                 q_batch_size * rest_dim,
-                                 config->num_heads,
-                                 config->head_dim});
+      qkv_transpose_out->Resize(
+          {3, q_batch_size * rest_dim, config->num_heads, config->head_dim});
       DBG_WAIT;
       // q_size == k_size
       int64_t q_size = config->GetQuerySize();
@@ -486,10 +494,10 @@ class FMHAGateRef {
           mask_first_dim *= mask_dim[i];
         }
         auto mask_dim_rank = mask_dim.size();
-        temp_mask.Resize({mask_first_dim, 
-                         mask_dim[mask_dim_rank - 3],
-                         mask_dim[mask_dim_rank - 2],
-                         mask_dim[mask_dim_rank - 1]});
+        temp_mask.Resize({mask_first_dim,
+                          mask_dim[mask_dim_rank - 3],
+                          mask_dim[mask_dim_rank - 2],
+                          mask_dim[mask_dim_rank - 1]});
         GetFlashAttnDimsString("mask_dim", temp_mask.dims());
       }
       if (nonbatched_bias) {
@@ -520,7 +528,7 @@ class FMHAGateRef {
       int max_seqlen_k_ = batch_size_;
       int num_splits = 0;  // 0 for an internal heuristic, which is optimal
       DBG_WAIT;
-      
+
       VLOG(6) << "[Flash_attn] batch_size : " << batch_size_;
       VLOG(6) << "[Flash_attn] total_q   : " << total_q_;
       VLOG(6) << "[Flash_attn] total_k   : " << total_k_;
@@ -533,7 +541,8 @@ class FMHAGateRef {
       phi::DenseTensor softmax_lse;
       int softmax_lse_last_dim = ((max_seqlen_q_ + 16 - 1) / 16) * 16;
       softmax_lse.Resize({batch_size_, num_heads_, softmax_lse_last_dim});
-      AllocWithDebugInfo<float>(dev_ctx_, "flash_attn: softmax_lse", &softmax_lse);
+      AllocWithDebugInfo<float>(
+          dev_ctx_, "flash_attn: softmax_lse", &softmax_lse);
 
       DBG_WAIT;
       // 6. construct random seed
@@ -582,15 +591,15 @@ class FMHAGateRef {
           src_mask ? temp_mask.data() : nullptr,
           nonbatched_bias ? temp_bias.data() : nullptr,
           temp_mask.dims().Get(),
-          temp_bias.dims().Get()
-      );
+          temp_bias.dims().Get());
       if (!succ) {
         PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
       }
       DBG_WAIT;
       phi::DenseTensor workspace;
       if (workspace_size > 0) {
-        workspace = phi::Empty<float>(dev_ctx_, {int64_t(workspace_size / sizeof(float))});
+        workspace = phi::Empty<float>(
+            dev_ctx_, {int64_t(workspace_size / sizeof(float))});
       }
       DBG_WAIT;
       // 8. flas_attn part two, run impl.
@@ -624,8 +633,7 @@ class FMHAGateRef {
           src_mask ? temp_mask.data() : nullptr,
           nonbatched_bias ? temp_bias.data() : nullptr,
           temp_mask.dims().Get(),
-          temp_bias.dims().Get()
-      );
+          temp_bias.dims().Get());
       DBG_WAIT;
       if (!succ) {
         PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
@@ -956,8 +964,8 @@ class FMHAGateRef {
 
   // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
   //         [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
-  void ComputeQKVTransposeForwardForFlashAttn(const phi::DenseTensor& qkv_out,
-                                              phi::DenseTensor* qkv_transpose_out) {
+  void ComputeQKVTransposeForwardForFlashAttn(
+      const phi::DenseTensor& qkv_out, phi::DenseTensor* qkv_transpose_out) {
     std::vector<int> perm = {3, 0, 1, 2, 4, 5};
     phi::funcs::TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_out, perm, qkv_transpose_out);
