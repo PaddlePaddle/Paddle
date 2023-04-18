@@ -17,25 +17,33 @@ limitations under the License. */
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
-using CUDACtx = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(cross_entropy,
-                        ops::CrossEntropyOpKernel<CUDACtx, float>,
-                        ops::CrossEntropyOpKernel<CUDACtx, double>,
-                        ops::CrossEntropyOpKernel<CUDACtx, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
-    cross_entropy_grad,
-    ops::CrossEntropyGradientOpKernel<CUDACtx, float>,
-    ops::CrossEntropyGradientOpKernel<CUDACtx, double>,
-    ops::CrossEntropyGradientOpKernel<CUDACtx, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(cross_entropy,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CrossEntropyOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CrossEntropyGradientOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}
 
-REGISTER_OP_CUDA_KERNEL(cross_entropy2,
-                        ops::CrossEntropyOpKernel2<CUDACtx, float>,
-                        ops::CrossEntropyOpKernel2<CUDACtx, double>,
-                        ops::CrossEntropyOpKernel2<CUDACtx, plat::float16>);
-
-REGISTER_OP_CUDA_KERNEL(
-    cross_entropy_grad2,
-    ops::CrossEntropyGradientOpKernel2<CUDACtx, float>,
-    ops::CrossEntropyGradientOpKernel2<CUDACtx, double>,
-    ops::CrossEntropyGradientOpKernel2<CUDACtx, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CrossEntropyOpKernel2,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CrossEntropyGradientOpKernel2,
+                          float,
+                          double,
+                          plat::float16) {}

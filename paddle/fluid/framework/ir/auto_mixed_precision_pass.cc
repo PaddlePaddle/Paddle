@@ -620,6 +620,15 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
       if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
         return true;
       }
+    } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
+      auto vecs = op_desc->Input("Bias");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
     }
   }
 

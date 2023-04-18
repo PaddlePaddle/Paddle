@@ -27,12 +27,6 @@ limitations under the License. */
 
 namespace phi {
 
-static uint64_t GetRandomSeed() {
-  std::random_device rd;
-  // double has 53 bit significant, so limit uint64 to 53 bits
-  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
-}
-
 class Generator {
  public:
   struct GeneratorState {

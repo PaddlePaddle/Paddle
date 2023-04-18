@@ -24,7 +24,6 @@
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
@@ -177,7 +176,9 @@ class ProcessGroupCustom : public ProcessGroupWithStream {
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,
-      CommType op_type);
+      CommType op_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   void CreateCustomManagerCache(const std::string& places_key,
                                 const std::vector<Place>& places);

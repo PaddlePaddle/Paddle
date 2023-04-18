@@ -197,17 +197,6 @@ class TestProfiler(unittest.TestCase):
         prof.stop()
 
 
-class TestNvprof(unittest.TestCase):
-    def test_nvprof(self):
-        for i in range(10):
-            paddle.fluid.profiler._nvprof_range(i, 10, 20)
-            x_value = np.random.randn(2, 3, 3)
-            x = paddle.to_tensor(
-                x_value, stop_gradient=False, place=paddle.CPUPlace()
-            )
-            y = x / 2.0
-
-
 class TestGetProfiler(unittest.TestCase):
     def test_getprofiler(self):
         config_content = '''
@@ -404,7 +393,7 @@ class TestTimerOnly(unittest.TestCase):
                 p.step(num_samples=step_num_samples)
                 if i % 10 == 0:
                     step_info = p.step_info()
-                    print("Iter {}: {}".format(i, step_info))
+                    print(f"Iter {i}: {step_info}")
             p.stop()
             return step_info
 

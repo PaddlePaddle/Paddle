@@ -55,7 +55,7 @@ class TestCustomVJP(unittest.TestCase):
             'elementwise_mul',
             'scale',
             'cast',
-            'fill_any_like',
+            'fill_constant',
             'cast',
             'elementwise_mul',
             'scale',

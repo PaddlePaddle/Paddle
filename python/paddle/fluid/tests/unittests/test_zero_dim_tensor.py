@@ -768,6 +768,44 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out3.grad.shape, [3, 3])
         np.testing.assert_allclose(out3.grad, 1.0)
 
+    def test_broadcast_tensors(self):
+        # 1) x is 0D, y is 0D
+        x1 = paddle.full([], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+        # backward has bug now
+        # out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        # self.assertEqual(x1.grad.shape, [])
+
+        # 2) x is ND , y is 0D
+        x1 = paddle.full([2, 3], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+        # out1.backward()
+
+        self.assertEqual(out1.shape, [2, 3])
+        self.assertEqual(out2.shape, [2, 3])
+        # self.assertEqual(x1.grad.shape, [2, 3])
+
+        # 3) x is 0D , y is ND
+        x1 = paddle.full([], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([2, 3], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+        # out1.backward()
+
+        self.assertEqual(out1.shape, [2, 3])
+        self.assertEqual(out2.shape, [2, 3])
+        # self.assertEqual(x1.grad.shape, [2, 3])
+
     def test_broadcast_shape(self):
         x = []
         y = [3, 5]
@@ -2027,6 +2065,27 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_allclose(i.grad, np.array(10))
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(1.0))
+
+    def test_linalg_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        out = paddle.linalg.slogdet(x)
+        out.retain_grads()
+        out.backward()
+
+        self.assertTrue(out.shape, [2])
+        self.assertTrue(x.grad.shape, [3, 3])
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertTrue(out1.shape, [2, 3])
+        self.assertTrue(x1.grad.shape, [3, 3, 3])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -3540,6 +3599,61 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (0))
         np.testing.assert_array_equal(res[0], np.array([]))
 
+    def test_broadcast_tensors(self):
+        # 1) x is 0D, y is 0D
+        x1 = paddle.full([], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+
+        self.assertEqual(out1.shape, ())
+        self.assertEqual(out2.shape, ())
+
+        # 2) x is ND , y is 0D
+        x1 = paddle.full([2, 3], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+
+        self.assertEqual(out1.shape, (2, 3))
+        self.assertEqual(out2.shape, (2, 3))
+
+        # 3) x is 0D , y is ND
+        x1 = paddle.full([], 2.0)
+        x1.stop_gradient = False
+        x2 = paddle.full([2, 3], 2.0)
+        x2.stop_gradient = False
+        out1, out2 = paddle.broadcast_tensors([x1, x2])
+
+        self.assertEqual(out1.shape, (2, 3))
+        self.assertEqual(out2.shape, (2, 3))
+
+    @prog_scope()
+    def test_linalg_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        out = paddle.linalg.slogdet(x)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        self.assertEqual(res[0].shape, (2,))
+        self.assertEqual(res[1].shape, (3, 3))
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        out1 = paddle.linalg.slogdet(x1)
+        paddle.static.append_backward(out1.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, x1.grad_name])
+        self.assertEqual(res[0].shape, (2, 3))
+        self.assertEqual(res[1].shape, (3, 3, 3))
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):
@@ -4112,6 +4226,130 @@ class TestAsComplex(unittest.TestCase):
             self.assertEqual(res[3].shape, ())
 
         paddle.disable_static()
+
+
+class TestDistribution(unittest.TestCase):
+    def setUp(self):
+        self.x = paddle.full([], 2.0)
+
+    def test_Categorical(self):
+        logits = paddle.rand([6])
+        d = paddle.distribution.Categorical(logits)
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.probs(paddle.full([], 2, dtype='int64')).shape, [])
+        self.assertEqual(
+            d.log_prob(paddle.full([], 2, dtype='int64')).shape, []
+        )
+        # because use paddle.sum
+        # self.assertEqual(d.entropy().shape, [])
+
+    def test_Normal(self):
+        normal = paddle.distribution.Normal(0.0, 3.0)
+        self.assertEqual(normal.sample([]).shape, [])
+        self.assertEqual(normal.rsample([]).shape, [])
+        self.assertEqual(normal.mean.shape, [])
+        self.assertEqual(normal.variance.shape, [])
+        self.assertEqual(normal.probs(self.x).shape, [])
+        self.assertEqual(normal.log_prob(self.x).shape, [])
+        self.assertEqual(normal.entropy().shape, [])
+
+        normal = paddle.distribution.Normal(
+            paddle.full([], 0.0), paddle.full([], 3.0)
+        )
+        self.assertEqual(normal.sample([]).shape, [])
+        self.assertEqual(normal.rsample([]).shape, [])
+        self.assertEqual(normal.mean.shape, [])
+        self.assertEqual(normal.variance.shape, [])
+        self.assertEqual(normal.probs(self.x).shape, [])
+        self.assertEqual(normal.log_prob(self.x).shape, [])
+        self.assertEqual(normal.entropy().shape, [])
+
+    def test_Uniform(self):
+        uniform = paddle.distribution.Uniform(0.0, 1.0)
+        self.assertEqual(uniform.sample([]).shape, [])
+        self.assertEqual(uniform.probs(self.x).shape, [])
+        self.assertEqual(uniform.log_prob(self.x).shape, [])
+        self.assertEqual(uniform.entropy().shape, [])
+
+        uniform = paddle.distribution.Uniform(
+            paddle.full([], 0.0), paddle.full([], 1.0)
+        )
+        self.assertEqual(uniform.sample([]).shape, [])
+        self.assertEqual(uniform.probs(self.x).shape, [])
+        self.assertEqual(uniform.log_prob(self.x).shape, [])
+        self.assertEqual(uniform.entropy().shape, [])
+
+    def test_Beta(self):
+        beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+        self.assertEqual(beta.sample([]).shape, [])
+        self.assertEqual(beta.mean.shape, [])
+        self.assertEqual(beta.variance.shape, [])
+        # because use paddle.sum
+        # self.assertEqual(beta.prob(self.x).shape, [])
+        # self.assertEqual(beta.log_prob(self.x).shape, [])
+        # self.assertEqual(beta.entropy().shape, [])
+
+    def test_kl_divergence(self):
+        p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+        q = paddle.distribution.Beta(alpha=0.2, beta=1.0)
+        kl = paddle.distribution.kl_divergence(p, q)
+        self.assertEqual(kl.shape, [])
+
+    def test_TransformedDistribution(self):
+        d = paddle.distribution.TransformedDistribution(
+            paddle.distribution.Normal(0.0, 1.0),
+            [
+                paddle.distribution.AffineTransform(
+                    paddle.full([], 1.0), paddle.full([], 2.0)
+                )
+            ],
+        )
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+
+    def test_Laplace(self):
+        d = paddle.distribution.Laplace(0.0, 1.0)
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.mean.shape, [])
+        self.assertEqual(d.stddev.shape, [])
+        self.assertEqual(d.variance.shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.cdf(self.x).shape, [])
+        self.assertEqual(d.icdf(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
+
+    def test_LogNormal(self):
+        d = paddle.distribution.LogNormal(0.0, 1.0)
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.mean.shape, [])
+        self.assertEqual(d.variance.shape, [])
+        self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.probs(self.x).shape, [])
+
+    def test_Gumbel(self):
+        d = paddle.distribution.Gumbel(0.0, 1.0)
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.mean.shape, [])
+        self.assertEqual(d.variance.shape, [])
+        self.assertEqual(d.stddev.shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.cdf(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
+
+    def test_Multinomial(self):
+        d = paddle.distribution.Multinomial(
+            10, paddle.to_tensor([0.2, 0.3, 0.5])
+        )
+        # because use paddle.sum
+        # self.assertEqual(d.prob(self.x).shape, [])
+        # self.assertEqual(d.log_prob(self.x).shape, [])
+        # self.assertEqual(d.entropy().shape, [])
 
 
 if __name__ == "__main__":

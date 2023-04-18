@@ -577,7 +577,7 @@ class ParallelTuner:
         return {"status": TrialStatus.RUNNING, "values": values}
 
     def _create_trial(self):
-        trial_id = "{{:0{}d}}".format(len(str(self._max_trials)))
+        trial_id = f"{{:0{len(str(self._max_trials))}d}}"
         trial_id = trial_id.format(self._num_trials)
 
         if self._max_trials and self._num_trials >= self._max_trials:
@@ -955,7 +955,7 @@ class ParallelTuner:
         max_memory = self._estimator._estimate_max_memory_by_dist_op(
             self._dist_context
         )
-        print("\tmax_memory", "{:,}".format(max_memory), flush=True)
+        print("\tmax_memory", f"{max_memory:,}", flush=True)
         # The max memory must be less than 80% 32GB (hard code)
         if max_memory > 32 * 0.8 * 1024 * 1024 * 1024:
             return math.inf

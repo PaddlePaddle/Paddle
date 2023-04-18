@@ -26,6 +26,7 @@ using dnnl::stream;
 using phi::ReshapeToMatrix;
 
 namespace phi {
+namespace fusion {
 
 template <typename XT, typename YT, typename OT>
 class FusedMatmulOneDNNHandler
@@ -514,12 +515,13 @@ void FusedMatmulKernel(const Context &dev_ctx,
   }
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_matmul,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedMatmulKernel,
+                   phi::fusion::FusedMatmulKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,

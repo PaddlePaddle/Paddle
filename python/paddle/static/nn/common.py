@@ -306,7 +306,10 @@ def instance_norm(
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'instance_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'instance_norm',
     )
     if param_attr is False:
         assert (
@@ -909,8 +912,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -946,7 +949,7 @@ def conv2d(
         l_type = 'depthwise_conv2d'
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if core.is_compiled_with_npu():
+    if core.is_compiled_with_custom_device('npu'):
         if num_channels == groups and num_channels == num_filters:
             l_type = 'depthwise_conv2d'
         else:
@@ -1231,8 +1234,8 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input(%s) should be defined. "
-            "Received: %s." % (str(input.shape), str(num_channels))
+            "The channel dimmention of the input({}) should be defined. "
+            "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
     if groups is None:

@@ -18,11 +18,11 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
 
@@ -42,7 +42,7 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -66,7 +66,7 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -148,7 +148,7 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

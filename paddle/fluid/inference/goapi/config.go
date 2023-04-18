@@ -213,15 +213,6 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 }
 
 ///
-/// \brief Turn on NPU.
-///
-/// \param deviceId the NPU card to use.
-///
-func (config *Config) EnableNpu(deviceId int32) {
-	C.PD_ConfigEnableNpu(config.c, C.int32_t(deviceId))
-}
-
-///
 /// \brief A boolean state telling whether the GPU is turned on.
 ///
 /// \return bool Whether the GPU is turned on.

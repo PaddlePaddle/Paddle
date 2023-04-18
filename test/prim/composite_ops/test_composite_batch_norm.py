@@ -24,7 +24,6 @@ from paddle.fluid import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401
-from paddle.tensor import zeros  # noqa: F401
 
 np.random.seed(2023)
 
@@ -216,7 +215,10 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
             primapi.to_prim(blocks)
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that batch_norm is splitted into small ops
-            assert 'batch_norm' not in fwd_ops_new
+            assert (
+                'batch_norm' not in fwd_ops_new
+                and 'reduce_mean' not in fwd_ops_new
+            )
 
     exe = paddle.static.Executor()
     exe.run(startup_program)

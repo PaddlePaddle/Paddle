@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
@@ -40,6 +42,7 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
+                       const MetaTensor& learning_rate,
                        const MetaTensor& master_param,
                        float rho,
                        float epsilon,
@@ -48,6 +51,11 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        MetaTensor* avg_squared_grad_out,
                        MetaTensor* avg_squared_update_out,
                        MetaTensor* master_param_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
       param_dims,
@@ -695,12 +703,12 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      config);
 }
 
-void BilinearTensorProductInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& weight,
-                                    const MetaTensor& bias,
-                                    MetaTensor* out,
-                                    MetaConfig config) {
+void BilinearInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* out,
+                       MetaConfig config) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto weight_dims = weight.dims();
@@ -770,12 +778,6 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
   for (const auto& input_ddim : input_dims) {
     target_rank = std::max(target_rank, input_ddim.size());
   }
-
-  PADDLE_ENFORCE_GT(target_rank,
-                    0,
-                    errors::InvalidArgument("BroadcastTensorsOp requires at "
-                                            "least one input tensor to have "
-                                            "rank greater than zero"));
 
   std::vector<int64_t> target_dims(target_rank, 0);
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
@@ -1432,7 +1434,6 @@ void HSigmoidLossInferMeta(const MetaTensor& x,
                            const MetaTensor& path,
                            const MetaTensor& code,
                            int num_classes,
-                           bool remote_prefetch,
                            bool is_sparse,
                            MetaTensor* out,
                            MetaTensor* pre_out,
@@ -2044,19 +2045,26 @@ void LambInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_NOT_NULL(
       beta2_pow_out,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
-
   param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
+
+  phi::DataType dtype = param.dtype();
+  if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
+    dtype = phi::DataType::FLOAT32;
+  }
 
   moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(moment1.dtype());
+  moment1_out->set_dtype(dtype);
   moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(moment2.dtype());
+  moment2_out->set_dtype(dtype);
 
   beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta1_pow_out->set_dtype(dtype);
   beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  beta2_pow_out->set_dtype(dtype);
+
+  if (master_param_outs) {
+    master_param_outs->set_dtype(dtype);
+  }
 }
 
 void LogspaceInferMeta(const MetaTensor& start,

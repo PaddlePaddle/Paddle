@@ -16,7 +16,7 @@ if(WITH_GLOO)
   cc_library(
     gloo_utils
     SRCS gloo_utils.cc
-    DEPS gloo dense_tensor enforce)
+    DEPS gloo dense_tensor enforce tcp_store)
 
   cc_library(
     gloo_comm_context

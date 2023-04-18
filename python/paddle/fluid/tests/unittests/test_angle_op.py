@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import static
-from paddle.fluid import dygraph
+from paddle.fluid import core, dygraph
 
 paddle.enable_static()
 
@@ -53,6 +53,51 @@ class TestAngleOpFloat(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+        )
+
+
+class TestAngleFP16Op(TestAngleOpFloat):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = "float16"
+        self.x = np.linspace(-5, 5, 101).astype(self.dtype)
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out_ref}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestAngleBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        self.x = np.linspace(-5, 5, 101).astype(self.np_dtype)
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out_ref}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
             ['X'],
             'Out',
             user_defined_grads=[

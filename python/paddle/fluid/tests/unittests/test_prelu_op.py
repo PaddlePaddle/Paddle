@@ -400,7 +400,7 @@ def create_test_fp16_class(
                     max_relative_error=max_relative_error,
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
     globals()[cls_name] = TestPReluFp16Case
 

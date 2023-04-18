@@ -281,7 +281,7 @@ class InstanceNorm2D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
-                'expected 4D input (got {}D input)'.format(len(input.shape))
+                f'expected 4D input (got {len(input.shape)}D input)'
             )
 
 
@@ -368,7 +368,7 @@ class InstanceNorm3D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
-                'expected 5D input (got {}D input)'.format(len(input.shape))
+                f'expected 5D input (got {len(input.shape)}D input)'
             )
 
 
@@ -790,9 +790,9 @@ class _BatchNormBase(Layer):
             self._num_features, self._momentum, self._epsilon
         )
         if self._data_format != 'NCHW':
-            main_str += ', data_format={}'.format(self._data_format)
+            main_str += f', data_format={self._data_format}'
         if self._name is not None:
-            main_str += ', name={}'.format(self._name)
+            main_str += f', name={self._name}'
         return main_str
 
 
@@ -1264,7 +1264,7 @@ class BatchNorm2D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
-                'expected 4D input (got {}D input)'.format(len(input.shape))
+                f'expected 4D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1374,7 +1374,7 @@ class BatchNorm3D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
-                'expected 5D input (got {}D input)'.format(len(input.shape))
+                f'expected 5D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1556,7 +1556,7 @@ class SyncBatchNorm(_BatchNormBase):
                 self._variance,
                 mean_out,
                 variance_out,
-                *attrs
+                *attrs,
             )
             return sync_batch_norm_out
 
@@ -1743,9 +1743,9 @@ class LocalResponseNorm(Layer):
             self.size, self.alpha, self.beta, self.k
         )
         if self.data_format != 'NCHW':
-            main_str += ', data_format={}'.format(self.data_format)
+            main_str += f', data_format={self.data_format}'
         if self.name is not None:
-            main_str += ', name={}'.format(self.name)
+            main_str += f', name={self.name}'
         return main_str
 
 

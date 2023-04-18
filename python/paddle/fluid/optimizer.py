@@ -232,7 +232,7 @@ class Optimizer:
 
             if not isinstance(self._learning_rate, _LearningRateEpochDecay):
                 var_tmp = None
-                var_temp = framework._varbase_creator(
+                var_temp = framework._create_tensor(
                     None, name='global_step', dtype='int32'
                 )
 
@@ -3215,6 +3215,7 @@ class AdadeltaOptimizer(Optimizer):
                 param_and_grad[1],
                 avg_squared_grad_acc,
                 avg_squared_update_acc,
+                self._create_param_lr(param_and_grad),
                 master_weight,
                 self._rho,
                 self._epsilon,
@@ -3227,6 +3228,7 @@ class AdadeltaOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],
@@ -4553,7 +4555,7 @@ class PipelineOptimizer:
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
@@ -5770,7 +5772,7 @@ class PipelineOptimizer:
                     # If there are some not initialized sections in the fused var,
                     # and the value in those sections are nan/inf, it will trigger the nan/inf check.
                     # To avoid these problematic triggers, set constant is needed for npu
-                    "set_constant": core.is_compiled_with_npu(),
+                    "set_constant": core.is_compiled_with_custom_device('npu'),
                     "constant": float(0.0),
                 },
             )
@@ -6387,8 +6389,8 @@ class PipelineOptimizer:
             dev_index = int(dev.split(":")[1])
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
-            elif core.is_compiled_with_npu():
-                place_list.append(core.NPUPlace(dev_index % 1))
+            elif paddle.is_compiled_with_custom_device('npu'):
+                place_list.append(paddle.CustomPlace('npu', dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(
@@ -6411,7 +6413,7 @@ class PipelineOptimizer:
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        elif core.is_compiled_with_npu():
+        elif core.is_compiled_with_custom_device('npu'):
             place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # A pass to move the recv op to the beginning of
         # the forward/backward phase

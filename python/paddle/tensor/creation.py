@@ -200,6 +200,7 @@ def create_parameter(
         [
             'bool',
             'float16',
+            'uint16',
             'float32',
             'float64',
             'int8',
@@ -1133,7 +1134,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         if isinstance(attr, ((Variable, core.eager.Tensor))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
-            raise TypeError("{} should be a non-negative int.".format(message))
+            raise TypeError(f"{message} should be a non-negative int.")
 
     _check_attr(num_rows, "num_rows")
 
@@ -1293,6 +1294,14 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
+    out_shape = None
+    if not in_dygraph_mode() and (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1324,13 +1333,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',
@@ -1348,7 +1350,7 @@ def _tril_triu_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert x is not None, f'x cannot be None in {op_type}'
     check_variable_and_dtype(
         x,
         'x',
@@ -1356,10 +1358,10 @@ def _tril_triu_op(helper):
         op_type,
     )
     if len(x.shape) < 2:
-        raise ValueError("x shape in {} must be at least 2-D".format(op_type))
+        raise ValueError(f"x shape in {op_type} must be at least 2-D")
     diagonal = helper.kwargs.get('diagonal', 0)
     if not isinstance(diagonal, (int,)):
-        raise TypeError("diagonal in {} must be a python Int".format(op_type))
+        raise TypeError(f"diagonal in {op_type} must be a python Int")
     name = helper.kwargs.get('name', None)
 
     if name is None:
@@ -1954,13 +1956,29 @@ def empty_like(x, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2246,8 +2264,6 @@ def _memcpy(input, place=None, output=None):
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
-        elif p.is_npu_place():
-            dst_place_type = 4
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(

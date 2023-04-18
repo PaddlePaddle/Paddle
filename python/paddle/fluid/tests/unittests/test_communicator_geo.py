@@ -165,11 +165,11 @@ half_run_server.run_ut()
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = str(port)
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:{}".format(port)
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = f"127.0.0.1:{port}"
 
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, server_file)
+        ps_cmd = f"{_python} {server_file}"
 
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
