@@ -130,43 +130,47 @@ void SumCsrGradKernel(const Context& dev_ctx,
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
     set_constant(dev_ctx, dx_values, value);
-  } else {
-    PADDLE_ENFORCE_EQ(axis[0],
-                      -1,
-                      phi::errors::Unimplemented(
-                          "`axis` of SumCsrKernel only support None or -1 now."
-                          "More number will be supported in the future."));
+    if (dx_values->dtype() != dx->dtype()) {
+      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    }
+    return;
+  }
+  PADDLE_ENFORCE_EQ(axis[0],
+                    -1,
+                    phi::errors::Unimplemented(
+                        "`axis` of SumCsrKernel only support None or -1 now."
+                        "More number will be supported in the future."));
 
-    if (x.dims().size() == 2) {
-      int value_index = 0;
-      for (int k = 0; k < x.dims()[0]; ++k) {
+  if (x.dims().size() == 2) {
+    int value_index = 0;
+    for (int k = 0; k < x.dims()[0]; ++k) {
+      if (x_crows_data[k] == x_crows_data[k + 1]) {
+        continue;
+      }
+      T value = dout_values.data<T>()[value_index];
+      set_constant(dev_ctx, dx_values, value);
+      value_index += 1;
+    }
+  } else {
+    int dout_value_index = 0;
+    int dx_value_index = 0;
+    for (auto batch = 0; batch < x.dims()[0]; ++batch) {
+      for (auto k = batch * (x.dims()[1] + 1);
+           k < batch * (x.dims()[1] + 1) + x.dims()[1];
+           ++k) {
         if (x_crows_data[k] == x_crows_data[k + 1]) {
           continue;
         }
-        T value = dout_values.data<T>()[value_index];
-        set_constant(dev_ctx, dx_values, value);
-        value_index += 1;
-      }
-    } else {
-      int dout_value_index = 0;
-      int dx_value_index = 0;
-      for (auto batch = 0; batch < x.dims()[0]; ++batch) {
-        for (auto k = batch * (x.dims()[1] + 1);
-             k < batch * (x.dims()[1] + 1) + x.dims()[1];
-             ++k) {
-          if (x_crows_data[k] == x_crows_data[k + 1]) {
-            continue;
-          }
-          T value = dout_values.data<T>()[dout_value_index];
-          for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-            dx_values->data<T>()[dx_value_index] = value;
-            dx_value_index++;
-          }
-          dout_value_index++;
+        T value = dout_values.data<T>()[dout_value_index];
+        for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
+          dx_values->data<T>()[dx_value_index] = value;
+          dx_value_index++;
         }
+        dout_value_index++;
       }
     }
   }
+
   if (dx_values->dtype() != dx->dtype()) {
     *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
