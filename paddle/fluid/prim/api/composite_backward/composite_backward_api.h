@@ -1594,8 +1594,9 @@ void scatter_nd_add_grad(const Tensor& index,
   }
   if (updates_grad) {
     // Gradient by Gather: dUpdates = dO[Ids]
-    auto updates_grad_out = gather<T>(out_grad, index, updates_grad);
-    set_output<T>(updates_grad_out, updates_grad);
+    Scalar tmp_zero = 0;
+    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+    set_output<T>(tmp_updates_grad, updates_grad);
   }
 }
 }  // namespace prim
