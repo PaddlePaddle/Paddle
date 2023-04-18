@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import contextlib
-import os
 import random
 from enum import Enum
 
@@ -24,19 +23,58 @@ from paddle.fluid import core
 from paddle.fluid.framework import dygraph_only
 
 __all__ = [
+    "DebugMode",
+    "TensorCheckerConfig",
     "enable_operator_stats_collection",
     "disable_operator_stats_collection",
     "collect_operator_stats",
+    "enable_tensor_checker",
+    "disable_tensor_checker",
 ]
 
 
 class DebugMode(Enum):
+    """
+    DebugMode is used to present the state of TensorCheckerConfig
+
+    The meaning of each DebugMode is as following
+
+    -**DebugMode.CHECK_NAN_INF_AND_ABORT** : Print or save Tensor key information with NaN/Inf and interrupt the program
+
+    -**DebugMode.CHECK_NAN_INF** : Print or save Tensor critical information with NaN/Inf, but continue to run
+
+    -**DebugMode.CHECK_ALL_FOR_OVERFLOW** : Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
+
+    -**DebugMode.CHECK_ALL** : Print or save output Tensor key information for all operators
+
+    """
+
     CHECK_NAN_INF_AND_ABORT = 0
     CHECK_NAN_INF = 1
     CHECK_ALL_FOR_OVERFLOW = 2
     CHECK_ALL = 3
-    CHECK_ALL_AND_ABORT = 4
-    DUMP_ALL = 5
+    # CHECK_ALL_AND_ABORT = 4
+    # DUMP_ALL = 5
+
+
+def set_checked_op_list(checked_op_list):
+    # check checked_op_list
+    if checked_op_list is not None:
+        if isinstance(checked_op_list, (list, tuple)):
+            check_op_list = ",".join(value for value in checked_op_list)
+            paddle.fluid.core.set_checked_op_list(check_op_list)
+        else:
+            raise ValueError("checked_op_list must be list or tuple")
+
+
+def set_skipped_op_list(skipped_op_list):
+    # check skipped_op_list
+    if skipped_op_list is not None:
+        if isinstance(skipped_op_list, (list, tuple)):
+            skip_op_list = ",".join(value for value in skipped_op_list)
+            paddle.fluid.core.set_skipped_op_list(skip_op_list)
+        else:
+            raise ValueError("skipped_op_list must be list or tuple")
 
 
 class TensorCheckerConfig:
@@ -48,13 +86,14 @@ class TensorCheckerConfig:
 
     * debug_mode: Debug mode,There are 6 kinds of debug mode.
         CHECK_NAN_INF_AND_ABORT(default): Print or save Tensor key information with NaN/Inf and interrupt the program
-        CHECK_NAN_INF: Print or save Tensor critical information with NaN/Inf, but continue to run
-        CHECK_ALL_AND_ABORT: Print or save the output Tensor key information of all operators, and interrupt the program if NaN/Inf occurs
-        CHECK_ALL_FOR_OVERFLOW: Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
-        CHECK_ALL: Print or save output Tensor key information for all operators
-        DUMP_ALL: Saves all Tensor data. This mode does not print on the terminal
 
-    * dump_dir: The collection data storage path. If it is None, it will be directly printed to the terminal
+        CHECK_NAN_INF: Print or save Tensor critical information with NaN/Inf, but continue to run
+
+        CHECK_ALL_FOR_OVERFLOW: Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
+
+        CHECK_ALL: Print or save output Tensor key information for all operators
+
+    * output_dir: The collection data storage path. If it is None, it will be directly printed to the terminal
 
     * checked_op_list: A list of operators you want to check
 
@@ -83,13 +122,13 @@ class TensorCheckerConfig:
     """
 
     # For module debugging
-    Current_step_id = 0
+    current_step_id = 0
 
     def __init__(
         self,
         enable,
         debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT,
-        dump_dir=None,
+        output_dir=None,
         checked_op_list=None,
         skipped_op_list=None,
         debug_step=None,
@@ -99,7 +138,7 @@ class TensorCheckerConfig:
 
         self.enable = enable
         self.debug_mode = debug_mode
-        self.dump_dir = dump_dir
+        self.output_dir = output_dir
 
         self.checked_op_list = checked_op_list
         self.skipped_op_list = skipped_op_list
@@ -146,25 +185,9 @@ class TensorCheckerConfig:
                 DebugMode.__members__,
             )
 
-        # check checked_op_list
-        if self.checked_op_list is not None:
-            if isinstance(self.checked_op_list, (list, tuple)):
-                check_op_list = ",".join(
-                    value for value in self.checked_op_list
-                )
-                os.environ["Paddle_check_nan_inf_op_list"] = str(check_op_list)
-            else:
-                raise ValueError("checked_op_list must be list or tuple")
+        set_checked_op_list(self.checked_op_list)
 
-        # check skipped_op_list
-        if self.skipped_op_list is not None:
-            if isinstance(self.skipped_op_list, (list, tuple)):
-                skipped_op_list = ",".join(
-                    value for value in self.skipped_op_list
-                )
-                os.environ["Paddle_skip_nan_inf_op_list"] = str(skipped_op_list)
-            else:
-                raise ValueError("skipped_op_list must be list or tuple")
+        set_skipped_op_list(self.skipped_op_list)
 
         if self.enable:
             self._set_seed(self.enable)
@@ -209,8 +232,8 @@ class TensorCheckerConfig:
             )
 
             # set output_dir
-            if self.dump_dir is not None:
-                paddle.fluid.core.set_nan_inf_debug_path(self.dump_dir)
+            if self.output_dir is not None:
+                paddle.fluid.core.set_nan_inf_debug_path(self.output_dir)
 
             # set stack_height_limit
             if isinstance(self.stack_height_limit, (int)):
@@ -220,16 +243,16 @@ class TensorCheckerConfig:
             else:
                 raise ValueError("stack_height_limit must be int")
 
-    def check(self):
+    def check_step_id(self):
         if self.enable:
             if self.start_step is not None and self.end_step is not None:
                 if (
-                    self.start_step > TensorCheckerConfig.Current_step_id
-                    or TensorCheckerConfig.Current_step_id >= self.end_step
+                    self.start_step > TensorCheckerConfig.current_step_id
+                    or TensorCheckerConfig.current_step_id >= self.end_step
                 ):
                     return False
                 else:
-                    TensorCheckerConfig.Current_step_id += 1
+                    TensorCheckerConfig.current_step_id += 1
             return True
         return False
 
@@ -431,7 +454,7 @@ def enable_tensor_checker(checker_config):
 
            paddle.amp.debugging.disable_tensor_checker()
     """
-    if checker_config.check():
+    if checker_config.check_step_id():
         checker_config.run()
     else:
         checker_config.end()
