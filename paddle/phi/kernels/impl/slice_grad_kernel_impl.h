@@ -271,15 +271,15 @@ void SliceGradCompute(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SliceGradRawKernel(const Context& ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& out_grad,
-                        const std::vector<int64_t>& axes,
-                        const IntArray& starts_arr,
-                        const IntArray& ends_arr,
-                        const std::vector<int64_t>& infer_flags,
-                        const std::vector<int64_t>& decrease_axis,
-                        DenseTensor* input_grad) {
+void SliceGradKernel(const Context& ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& out_grad,
+                     const std::vector<int64_t>& axes,
+                     const IntArray& starts_arr,
+                     const IntArray& ends_arr,
+                     const std::vector<int64_t>& infer_flags,
+                     const std::vector<int64_t>& decrease_axis,
+                     DenseTensor* input_grad) {
   size_t rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

@@ -111,7 +111,35 @@ class DeleteCastOpPass : public FusePassBase {
   */
   int ApplyCastIndexSamplePass(ir::Graph* graph) const;
 
-  // Delete cast if its "in_dtype" is the same with "out_dtype"
+  /*
+ Origin subgraph:
+       cast(fp16->fp32) cast(fp16->fp32)
+                  \       /
+                   scatter
+                      |
+              cast(fp32->fp16)
+
+ Optimized subgraph:
+                   scatter
+  */
+  int ApplyCastScatterPass(ir::Graph* graph) const;
+
+  /*
+ Origin subgraph:
+     ids      w(fp32)
+      \       /
+     lookup_table
+          |
+    cast(fp32->fp16)
+
+ Optimized subgraph:
+     ids      w(fp16)
+      \       /
+     lookup_table
+  */
+  int ApplyCastLookupTablePass(ir::Graph* graph) const;
+
+  // Delete cast if its "in_dtype" is the same as "out_dtype"
   int ApplyCastPass(ir::Graph* graph) const;
 
   const std::string name_scope_{"delete_cast_op_pass"};

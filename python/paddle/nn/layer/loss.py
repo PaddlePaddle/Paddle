@@ -730,8 +730,8 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means number of additional dimensions. The input ``input`` should always be the output of sigmod. Available dtype is float32, float64.
-        - label (Tensor): 2-D tensor with the same shape as ``input``. The target labels which values should be numbers between 0 and 1. Available dtype is float32, float64.
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means number of additional dimensions. The input ``input`` should always be the output of sigmod. Available dtype is float16, float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target labels which values should be numbers between 0 and 1. Available dtype is float16, float32, float64.
         - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is scalar.
 
     Returns:
@@ -2044,5 +2044,99 @@ class SoftMarginLoss(Layer):
     def forward(self, input, label):
         out = paddle.nn.functional.soft_margin_loss(
             input, label, self.reduction, self.name
+        )
+        return out
+
+
+class GaussianNLLLoss(Layer):
+    r"""Create a callable object of 'GaussianNLLLoss' to calculate Gaussian negative log likelihood loss.
+
+    This class create a callable object of Gaussian negative log likelihood loss among ``input``, ``variance`` and
+    ``label``. Note that the ``label`` is treated as samples from Gaussian distributions.
+    This class is used to train a neural network predicts
+    the ``input`` and ``variance`` of a gaussian distribution that ``label`` are supposed to
+    be coming from. This means ``input`` and ``variance`` should be functions(the neural network) of some inputs.
+
+    For a ``label`` having Gaussian distribution with ``input`` and ``variance`` predicted by neural network
+    the loss is calculated as follows:
+
+    .. math::
+        \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
+        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{label}\right)^2}
+        {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
+
+    where :attr:`epsilon` is used for stability. By default, the constant term of
+    the loss function is omitted unless :attr:`full` is ``True``. If ``variance`` is not the same
+    size as ``input`` (due to a homoscedastic assumption), it must either have a final dimension
+    of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
+
+    Args:
+        full (bool, optional): include the constant term in the loss
+            calculation. Default: ``False``, means omit the constant term.
+        epsilon (float, optional): value used to clamp ``variance`` (see note below), for
+            stability. Default: 1e-6.
+        reduction (str, optional): specifies the reduction to apply to the
+            output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
+            will be applied, ``'mean'``: the output is the average of all batch
+            member losses, ``'sum'``: the output is the sum of all batch member
+            losses. Default: ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - Input(Tensor): :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
+          dimensions. Available dtype is float32, float64.
+        - Label(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+          but with one dimension equal to 1 (to allow for broadcasting). Available dtype is float32, float64.
+        - Variance(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+          with one dimension equal to 1, or same shape as the input but with one fewer
+          dimension (to allow for broadcasting). Available dtype is float32, float64.
+        - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
+          ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
+          shape as the input
+
+    Returns:
+        A callable object of GaussianNLLLoss.
+
+    Examples::
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            variance = paddle.ones([5, 2], dtype=paddle.float32)
+
+            gs_nll_loss = nn.GaussianNLLLoss(full=False, epsilon=1e-6, reduction='none')
+            loss = gs_nll_loss(input, label, variance)
+            print(loss)
+
+    Note:
+        The clamping of ``variance`` is ignored with respect to autograd, and so the
+        gradients are unaffected by it.
+    """
+
+    def __init__(self, full=False, epsilon=1e-6, reduction='mean', name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in GaussianNLLLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction
+            )
+
+        super().__init__()
+        self.full = full
+        self.epsilon = epsilon
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label, variance):
+        out = F.gaussian_nll_loss(
+            input,
+            label,
+            variance,
+            self.full,
+            self.epsilon,
+            self.reduction,
+            self.name,
         )
         return out

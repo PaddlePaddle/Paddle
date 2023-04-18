@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -61,4 +63,6 @@ PD_REGISTER_KERNEL(dot,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
