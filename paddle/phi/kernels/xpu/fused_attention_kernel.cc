@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/xpu/fused_attention_kernel.h"
+#include "paddle/phi/kernels/fused_attention_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,16 +24,16 @@ namespace phi {
 template <typename T, typename Context>
 void FusedAttentionKernel(const Context &dev_ctx,
                           const DenseTensor &x,
-                          const DenseTensor &ln_scale,
-                          const DenseTensor &ln_bias,
+                          const paddle::optional<DenseTensor> &ln_scale,
+                          const paddle::optional<DenseTensor> &ln_bias,
                           const DenseTensor &qkv_weight,
-                          const DenseTensor &qkv_bias,
-                          const DenseTensor &cache_kv,
-                          const DenseTensor &src_mask,
+                          const paddle::optional<DenseTensor> &qkv_bias,
+                          const paddle::optional<DenseTensor> &cache_kv,
+                          const paddle::optional<DenseTensor> &src_mask,
                           const DenseTensor &out_linear_weight,
-                          const DenseTensor &out_linear_bias,
-                          const DenseTensor &ln_scale_2,
-                          const DenseTensor &ln_bias_2,
+                          const paddle::optional<DenseTensor> &out_linear_bias,
+                          const paddle::optional<DenseTensor> &ln_scale_2,
+                          const paddle::optional<DenseTensor> &ln_bias_2,
                           int num_heads,
                           bool transpose_qkv_wb,
                           bool pre_layer_norm,
@@ -73,17 +73,17 @@ void FusedAttentionKernel(const Context &dev_ctx,
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
   // shape [batch_size, 1, 1, seq_len]
-  const phi::DenseTensor *src_mask_p = &src_mask;
+  const phi::DenseTensor *src_mask_p = src_mask.get_ptr();
 
   const phi::DenseTensor *ln_scale_p = nullptr;
   const phi::DenseTensor *ln_bias_p = nullptr;
 
   if (pre_layer_norm) {
-    ln_scale_p = &ln_scale;
-    ln_bias_p = &ln_bias;
+    ln_scale_p = ln_scale.get_ptr();
+    ln_bias_p = ln_bias.get_ptr();
   } else {
-    ln_scale_p = &ln_scale_2;
-    ln_bias_p = &ln_bias_2;
+    ln_scale_p = ln_scale_2.get_ptr();
+    ln_bias_p = ln_bias_2.get_ptr();
     epsilon = ln_epsilon;
   }
 
@@ -129,24 +129,26 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   const XPUTypeT *qkv_weight_ptr =
       reinterpret_cast<const XPUTypeT *>(qkv_weight.data<T>());
+  const DenseTensor *qkv_bias_p = qkv_bias.get_ptr();
   const XPUTypeT *qkv_bias_ptr =
-      reinterpret_cast<const XPUTypeT *>(qkv_bias.data<T>());
+      reinterpret_cast<const XPUTypeT *>(qkv_bias_p->data<T>());
   const XPUTypeT *src_mask_ptr =
       (src_mask_p == nullptr)
           ? (nullptr)
-          : (reinterpret_cast<const XPUTypeT *>(src_mask.data<T>()));
+          : (reinterpret_cast<const XPUTypeT *>(src_mask_p->data<T>()));
 
   const XPUTypeT *out_linear_weight_ptr =
       reinterpret_cast<const XPUTypeT *>(out_linear_weight.data<T>());
 
+  const DenseTensor *out_linear_bias_p = out_linear_bias.get_ptr();
   const XPUTypeT *out_linear_bias_ptr =
-      reinterpret_cast<const XPUTypeT *>(out_linear_bias.data<T>());
+      reinterpret_cast<const XPUTypeT *>(out_linear_bias_p->data<T>());
 
   const float *ln_scale_ptr =
-      (ln_scale_p == nullptr) ? (nullptr) : ln_scale.data<float>();
+      (ln_scale_p == nullptr) ? (nullptr) : ln_scale_p->data<float>();
 
   const float *ln_bias_ptr =
-      (ln_bias_p == nullptr) ? (nullptr) : ln_bias.data<float>();
+      (ln_bias_p == nullptr) ? (nullptr) : ln_bias_p->data<float>();
 
   // 输出指针
   XPUTypeT *qkv_transpose_out_ptr =
