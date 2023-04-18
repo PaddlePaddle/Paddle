@@ -759,7 +759,7 @@
   output : Tensor(out)
   infer_meta :
     func : MatrixRankInferMeta
-    param : [x, tol, use_default_tol, hermitian]
+    param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
 
