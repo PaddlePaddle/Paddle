@@ -286,7 +286,7 @@ class TestDistRunnerBase:
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
         print_to_err(type(self).__name__, f"dist losses: {out_losses}")
@@ -382,7 +382,7 @@ class TestDistRunnerBase:
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
@@ -619,7 +619,7 @@ class TestDistRunnerBase:
             (loss,) = exe.run(
                 binary, fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
             if lr_scheduler is not None:
                 lr_scheduler.step()
