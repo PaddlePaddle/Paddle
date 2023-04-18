@@ -83,7 +83,9 @@ class TestUpdateLossScalingOp(OpTest):
         self.incr_ratio = 2.0
         self.decr_ratio = 0.8
         self.init_dtype()
-        self.prev_loss_scaling = np.array([2048]).astype(self.dtype)
+        self.prev_loss_scaling = np.array([2048]).astype(
+            self.loss_scaling_dtype
+        )
         self.num_good_steps = np.array([999], dtype=np.int32)
         self.num_bad_steps = np.array([1], dtype=np.int32)
         self.zero_steps = np.array([0], dtype=np.int32)
@@ -97,6 +99,7 @@ class TestUpdateLossScalingOp(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+        self.loss_scaling_dtype = np.float32
 
     def test_check_output(self):
         self.check_output(no_check_set=['Out'])
@@ -105,6 +108,7 @@ class TestUpdateLossScalingOp(OpTest):
 class TestUpdateLossScalingFP16Op(TestUpdateLossScalingOp):
     def init_dtype(self):
         self.dtype = np.float16
+        self.loss_scaling_dtype = np.float32
 
 
 @unittest.skipIf(
