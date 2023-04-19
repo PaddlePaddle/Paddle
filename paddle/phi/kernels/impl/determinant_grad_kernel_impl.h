@@ -128,11 +128,11 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
   phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    mat_inv(dev_ctx, x, &inverse_A);
-  } else {
     mat_inv(dev_ctx,
             phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
             &inverse_A);
+  } else {
+    mat_inv(dev_ctx, x, &inverse_A);
   }
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
