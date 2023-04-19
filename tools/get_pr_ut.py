@@ -330,9 +330,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith(PADDLE_ROOT + 'paddle/infrt'):
-                    filterFiles.append(filename)
-                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                if filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
                         (
                             PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
@@ -345,7 +343,6 @@ class PRChecker:
                 elif (
                     ('/xpu/' in filename.lower())
                     or ('/npu/' in filename.lower())
-                    or ('/mlu/' in filename.lower())
                     or ('/ipu/' in filename.lower())
                 ):
                     filterFiles.append(filename)
@@ -408,7 +405,7 @@ class PRChecker:
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif (
-                        'tests/unittests/xpu' in f_judge
+                        'test/xpu' in f_judge
                         or 'tests/unittests/npu' in f_judge
                         or 'op_npu.cc' in f_judge
                     ):

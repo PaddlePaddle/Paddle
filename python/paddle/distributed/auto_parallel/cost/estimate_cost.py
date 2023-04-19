@@ -606,8 +606,8 @@ def get_cost_from_engine(engine, mode):
     )
 
     serial_startup_prog = (
-        engine._serial_startup_progs[mode].clone()
-        if mode in engine._serial_startup_progs
+        engine._fwd_dist_contexts[mode]._original_serial_main_program.clone()
+        if mode in engine._fwd_dist_contexts
         else engine._orig_startup_prog.clone()
     )
     losses = (

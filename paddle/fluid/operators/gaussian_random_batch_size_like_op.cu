@@ -47,7 +47,7 @@ struct GaussianGenerator {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -78,9 +78,12 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    gaussian_random_batch_size_like,
-    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
-        paddle::platform::float16>,
-    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
-    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(gaussian_random_batch_size_like,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GPUGaussianRandomBatchSizeLikeKernel,
+                          float,
+                          double,
+                          plat::float16) {}

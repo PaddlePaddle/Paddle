@@ -204,14 +204,19 @@ REGISTER_OPERATOR(partial_sum,
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
-REGISTER_OP_CPU_KERNEL(partial_sum,
-                       ops::PartialSumKernel<phi::CPUContext, float>,
-                       ops::PartialSumKernel<phi::CPUContext, int>,
-                       ops::PartialSumKernel<phi::CPUContext, double>,
-                       ops::PartialSumKernel<phi::CPUContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(partial_sum_grad,
-                       ops::PartialSumGradientOpKernel<float>,
-                       ops::PartialSumGradientOpKernel<int>,
-                       ops::PartialSumGradientOpKernel<double>,
-                       ops::PartialSumGradientOpKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(partial_sum,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialSumKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(partial_sum_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialSumGradientOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

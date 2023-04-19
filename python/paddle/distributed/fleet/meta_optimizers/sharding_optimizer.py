@@ -743,7 +743,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             )
 
     def _init_npu_pipeline_comm(self, startup_block):
-        # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
         assert (self.pp_degree % 2) == 0
 
         max_ring_id = -1
