@@ -20,8 +20,6 @@
 
 namespace ir {
 
-#define GET_BUILT_IN_OP_LIST ir::FakeConvOp
-
 class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
  public:
   explicit ReadOnlyTrait(Operation *op) : OpTraitBase<ReadOnlyTrait>(op) {}
@@ -58,35 +56,5 @@ class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
-
-class FakeConvOp : public Op<FakeConvOp, ReadOnlyTrait, InferShapeInterface> {
- public:
-  using Op::Op;
-
-  ///
-  /// \brief Op name.
-  ///
-  static const char *name() { return "fake_conv"; }
-
-  ///
-  /// \brief Op attributes name.
-  ///
-  static const char *attributes_name_[];
-
-  ///
-  /// \brief This Op definition template parameter contains InterfaceInterface,
-  /// therefore it must define the InferShape function.
-  ///
-  static void InferShape() {
-    std::cout << "this is a fake conv op interface" << std::endl;
-  }
-};
-
-const char *FakeConvOp::attributes_name_[] = {"strides",
-                                              "paddings",
-                                              "padding_algorithm",
-                                              "dilations",
-                                              "groups",
-                                              "data_format"};
 
 }  // namespace ir

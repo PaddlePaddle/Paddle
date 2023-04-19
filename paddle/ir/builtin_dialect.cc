@@ -27,7 +27,7 @@ void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
   RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
   RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
-  RegisterOperations<GET_BUILT_IN_OP_LIST>();
+  // RegisterOperations<GET_BUILT_IN_OP_LIST>();
 }
 
 }  // namespace ir
