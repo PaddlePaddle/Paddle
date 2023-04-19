@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

@@ -22,6 +22,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 DECLARE_string(throw_strided_error_op);
 

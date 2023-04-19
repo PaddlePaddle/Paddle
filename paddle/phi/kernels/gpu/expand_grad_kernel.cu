@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"

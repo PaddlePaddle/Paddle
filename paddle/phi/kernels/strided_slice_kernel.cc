@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 DECLARE_string(throw_strided_error_op);

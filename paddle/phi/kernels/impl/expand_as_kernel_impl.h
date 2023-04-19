@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <vector>
 

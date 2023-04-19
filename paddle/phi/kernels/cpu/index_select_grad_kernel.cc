@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"

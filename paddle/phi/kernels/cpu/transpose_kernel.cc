@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/transpose_kernel.h"
 
+#include <glog/logging.h>
 #include <vector>
 
 #include "gflags/gflags.h"

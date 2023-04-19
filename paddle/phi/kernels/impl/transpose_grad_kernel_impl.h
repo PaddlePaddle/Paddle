@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_grad_kernel.h"

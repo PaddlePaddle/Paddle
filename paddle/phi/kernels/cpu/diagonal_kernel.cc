@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/diagonal_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

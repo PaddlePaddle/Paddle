@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/phi/kernels/split_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/unbind_kernel.h"

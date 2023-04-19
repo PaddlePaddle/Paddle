@@ -16,6 +16,7 @@
 
 #include "paddle/phi/kernels/as_real_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"

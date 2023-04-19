@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/expand_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"

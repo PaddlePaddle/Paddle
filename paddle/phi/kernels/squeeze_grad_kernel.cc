@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/squeeze_grad_kernel.h"
 
+#include <glog/logging.h>
 #include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
