@@ -26,9 +26,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-DECLARE_string(throw_inplace_error_op, "", "");
+DECLARE_string(throw_inplace_error_op);
 
-DECLARE_string(throw_use_error_op, "", "");
+DECLARE_string(throw_use_error_op);
 
 namespace paddle {
 namespace experimental {

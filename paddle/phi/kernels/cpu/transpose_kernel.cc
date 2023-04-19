@@ -21,7 +21,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 

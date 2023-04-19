@@ -21,7 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 template <typename T, typename Context>

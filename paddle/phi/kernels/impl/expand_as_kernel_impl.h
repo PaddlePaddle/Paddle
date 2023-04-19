@@ -20,7 +20,7 @@
 #include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 #define MAX_RANK_SUPPORTED 6
 

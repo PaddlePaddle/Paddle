@@ -16,7 +16,7 @@
 #include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/strided_slice_grad_kernel.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 

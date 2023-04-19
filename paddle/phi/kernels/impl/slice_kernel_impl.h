@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 

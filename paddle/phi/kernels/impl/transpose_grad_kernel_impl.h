@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 

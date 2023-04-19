@@ -64,9 +64,9 @@ typedef SSIZE_T ssize_t;
 
 DECLARE_bool(set_to_1d);
 
-DECLARE_string(throw_inplace_error_op, "", "");
+DECLARE_string(throw_inplace_error_op);
 
-DECLARE_string(throw_use_error_op, "", "");
+DECLARE_string(throw_use_error_op);
 
 PADDLE_DEFINE_EXPORTED_string(throw_strided_error_op, "", "");
 

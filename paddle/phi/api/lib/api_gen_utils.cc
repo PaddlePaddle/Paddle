@@ -17,9 +17,9 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
-DECLARE_string(throw_inplace_error_op, "", "");
+DECLARE_string(throw_inplace_error_op);
 
-DECLARE_string(throw_use_error_op, "", "");
+DECLARE_string(throw_use_error_op);
 namespace paddle {
 namespace experimental {
 

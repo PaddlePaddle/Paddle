@@ -23,7 +23,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 #include "gflags/gflags.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 

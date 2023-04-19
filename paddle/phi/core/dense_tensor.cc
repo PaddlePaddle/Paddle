@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 
 #include "gflags/gflags.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 /**
  * [ Why still include the fluid headers? ]
  *

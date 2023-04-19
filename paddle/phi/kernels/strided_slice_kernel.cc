@@ -16,7 +16,7 @@
 
 #include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
-DECLARE_string(throw_strided_error_op, "", "");
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
