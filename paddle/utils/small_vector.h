@@ -440,7 +440,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   void growAndAssign(size_t NumElts, const T &Elt) {
     // Grow manually in case Elt is an internal reference.
-    size_t NewCapacity;
+    size_t NewCapacity = 0;
     T *NewElts = mallocForGrow(NumElts, NewCapacity);
     std::uninitialized_fill_n(NewElts, NumElts, Elt);
     this->destroy_range(this->begin(), this->end());
