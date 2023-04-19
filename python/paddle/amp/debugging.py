@@ -437,11 +437,12 @@ def enable_tensor_checker(checker_config):
     """
     enable_tensor_checker(checker_config) is enables model level accuracy checking, which is used together with disables_tensor_checker() to achieve model level precision checking through the combination of these two APIs, checking the output Tensors of all operators within the specified range.
 
+
     Attention:
 
-    * If disable is called before loss. backward()_tensor_checker(), the gradient operator is not checked;
+    * If disable_tensor_checker() is called before loss.backward(), the gradient operator is not checked;
 
-    * If disable is called before optimizer.step() tensor_checker(), the optimizer and other weight update related operators will not be checked
+    * If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked
 
     Examples:
 
