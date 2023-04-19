@@ -64,12 +64,7 @@ const Place& DenseTensor::place() const {
 
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const DataLayout layout) {
-  if (product(meta_.strides) <= 0 || meta_.layout != layout) {
-    meta_.strides = meta_.calc_strides(meta_.dims, layout);
-  }
-  meta_.layout = layout;
-}
+void DenseTensor::set_layout(const DataLayout layout) { meta_.update(layout); }
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
@@ -162,7 +157,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   if (product(meta_.dims) >= 0 && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
                       true,
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
@@ -173,8 +168,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                           meta_.strides,
                           dims));
   }
-  meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  meta_.update(dims);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -269,7 +263,7 @@ size_t DenseTensor::NumElements(size_t level) const {
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   if (product(meta_.dims) > 0 && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
                       true,
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
@@ -280,8 +274,7 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
                           meta_.strides,
                           dims));
   }
-  meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  meta_.update(dims);
   return *this;
 }
 

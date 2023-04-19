@@ -1982,25 +1982,17 @@ static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.is_dense_tensor()) {
-    phi::DataLayout layout = phi::DataLayout::NCHW;
-    Py_ssize_t args_num = PyTuple_Size(args);
-    if (args_num == (Py_ssize_t)1) {
-      std::string str_layout =
-          CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
-      layout = phi::StringToDataLayout(str_layout);
-    }
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    if (dense_tensor->meta().is_contiguous(layout)) {
+    if (dense_tensor->is_contiguous()) {
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
-    } else {
-      eager_gil_scoped_release guard;
-      return ToPyObject(
-          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
     }
 
+    eager_gil_scoped_release guard;
+    return ToPyObject(
+        paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
+            paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
   } else {
     Py_INCREF(self);
     return reinterpret_cast<PyObject*>(self);
@@ -2013,7 +2005,7 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.is_dense_tensor()) {
-    phi::DataLayout layout = phi::DataLayout::NCHW;
+    phi::DataLayout layout = self->tensor.layout();
     Py_ssize_t args_num = PyTuple_Size(args);
     if (args_num == (Py_ssize_t)1) {
       std::string str_layout =
@@ -2022,7 +2014,8 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
     }
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    return ToPyObject(dense_tensor->meta().is_contiguous(layout));
+    return ToPyObject(phi::is_contiguous(
+        dense_tensor->meta().dims, dense_tensor->meta().strides, layout));
   } else {
     return ToPyObject(true);
   }

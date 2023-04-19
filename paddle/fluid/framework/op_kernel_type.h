@@ -165,7 +165,7 @@ inline bool NeedTransform(const phi::KernelKey& kernel_type_for_var,
          NeedTransformDataType(kernel_type_for_var, expected_kernel_key) ||
          NeedTransformLayout(kernel_type_for_var.layout(),
                              expected_kernel_key.layout()) ||
-         NeedTransform2Contiguous(tensor.meta().is_contiguous(tensor.layout()));
+         NeedTransform2Contiguous(tensor.is_contiguous());
 }
 
 }  // namespace framework

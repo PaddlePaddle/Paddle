@@ -254,7 +254,7 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
 }
 
 void CheckAndTrans2Contiguous(phi::DenseTensor* tensor) {
-  if (!tensor->meta().is_contiguous(tensor->layout())) {
+  if (!tensor->is_contiguous()) {
     phi::DenseTensor tmp = Trans2Contiguous(*tensor);
     tensor->ShareDataWith(tmp);
   }
@@ -268,8 +268,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   bool trans_layout = false;
   bool trans_dtype = false;
 
-  if (NeedTransform2Contiguous(is_stride_kernel,
-                               out.meta().is_contiguous(out.layout()))) {
+  if (NeedTransform2Contiguous(is_stride_kernel, out.is_contiguous())) {
     out = Trans2Contiguous(out);
   }
 
@@ -278,8 +277,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                           tensor->place(),
                           transform_flag) &&
       tensor->dims().size() != 1) {
-    if (NeedTransform2Contiguous(false,
-                                 out.meta().is_contiguous(out.layout()))) {
+    if (NeedTransform2Contiguous(false, out.is_contiguous())) {
       out = Trans2Contiguous(out);
     }
     out = TransDataLayout(out, target_args_def.layout);
@@ -288,8 +286,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
 
   if (NeedTransformDataType(
           tensor->dtype(), target_args_def.dtype, transform_flag)) {
-    if (NeedTransform2Contiguous(false,
-                                 out.meta().is_contiguous(out.layout()))) {
+    if (NeedTransform2Contiguous(false, out.meta().is_contiguous())) {
       out = Trans2Contiguous(out);
     }
     out = TransDataType(out, target_args_def.dtype);
@@ -325,9 +322,8 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                               target_args_def.layout,
                               dense_tensor.place(),
                               transform_flag) &&
-         !NeedTransform2Contiguous(
-             is_stride_kernel,
-             dense_tensor.meta().is_contiguous(dense_tensor.layout())))) {
+         !NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.is_contiguous()))) {
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
@@ -370,9 +366,8 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
                               tensor_in->place(),
                               transform_flag) &&
          !(dense_tensor &&
-           NeedTransform2Contiguous(
-               is_stride_kernel,
-               dense_tensor->meta().is_contiguous(dense_tensor->layout()))))) {
+           NeedTransform2Contiguous(is_stride_kernel,
+                                    dense_tensor->is_contiguous())))) {
       pt_tensors->emplace_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {

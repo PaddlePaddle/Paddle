@@ -61,13 +61,13 @@ void MetaTensor::set_dims(const DDim& dims) {
   if (phi::DenseTensor::classof(tensor_)) {
     auto meta =
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
-    meta->dims = dims;
-    meta->strides = meta->calc_strides(dims, meta->layout);
+    meta->update(dims);
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
   } else if (phi::SelectedRows::classof(tensor_)) {
     static_cast<SelectedRows*>(tensor_)->set_height(dims[0]);
+    // TODO(liudongxue01): update strides?
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->dims = dims;
@@ -109,15 +109,13 @@ void MetaTensor::set_layout(DataLayout layout) {
   if (phi::DenseTensor::classof(tensor_)) {
     auto meta =
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
-    meta->layout = layout;
-    meta->strides = meta->calc_strides(meta->dims, layout);
+    meta->update(layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
     auto meta = DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value());
-    meta->layout = layout;
-    meta->strides = meta->calc_strides(meta->dims, layout);
+    meta->update(layout);
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->layout = layout;
@@ -199,8 +197,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
       selected_rows_out->set_height(selected_rows_in->height());
       auto meta = DenseTensorUtils::GetMutableMeta(
           static_cast<SelectedRows*>(tensor_)->mutable_value());
-      meta->dims = selected_rows_in->mutable_value()->dims();
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      meta->update(selected_rows_in->mutable_value()->dims());
     } else {
       set_dims(meta_tensor.dims());
     }

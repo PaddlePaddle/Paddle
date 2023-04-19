@@ -49,7 +49,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   const DataLayout lin = kernel_type_for_var.layout();
   const DataLayout lout = expected_kernel_type.layout();
 
-  if (NeedTransform2Contiguous(in.meta().is_contiguous(in.layout()))) {
+  if (NeedTransform2Contiguous(in.is_contiguous())) {
     out = paddle::experimental::Trans2Contiguous(in);
     transformed = true;
     PassTensorData(&out, &in);

@@ -42,6 +42,11 @@ namespace phi {
  */
 using LoD = std::vector<std::vector<size_t>>;
 
+DDim calc_strides(const DDim& dims, DataLayout layout = DataLayout::NCHW);
+bool is_contiguous(const DDim& dims,
+                   const DDim& strides,
+                   DataLayout layout = DataLayout::NCHW);
+
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
@@ -64,14 +69,30 @@ struct DenseTensorMeta {
   DenseTensorMeta& operator=(const DenseTensorMeta& other);
   DenseTensorMeta& operator=(DenseTensorMeta&& other);
 
-  static DDim calc_strides(const DDim& dims,
-                           DataLayout layout = DataLayout::NCHW);
+  /// \brief Re-calculate the strides by the current dims and layout.
+  /// It need to be called on initializing or after dims and/or layout changed.
+  void sync_strides();
+
+  /// \brief Update the dims according to the new dimensions
+  /// and re-calculation the strides by the new dims.
+  void update(DDim dims);
+
+  /// \brief Update the layout according to the new layout
+  /// and re-calculation the strides by the new layout.
+  void update(DataLayout layout);
+
+  /// \brief Update the dims and layout
+  /// according to the new dimensions and the layout
+  /// and re-calculation the strides by the new dims and layout.
+  void update(DDim dims, DataLayout layout);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  bool is_contiguous(DataLayout layout = DataLayout::NCHW) const noexcept;
+  /// \brief Test whether the metadata is contigous. Does not throw exceptions.
+  /// \return Whether the metadata is contigous.
+  bool is_contiguous() const noexcept;
 
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.

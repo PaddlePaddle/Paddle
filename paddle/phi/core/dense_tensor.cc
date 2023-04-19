@@ -212,18 +212,12 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
       meta.valid(),
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
-  meta_.dims = meta.dims;
   meta_.dtype = meta.dtype;
   meta_.is_scalar = meta.is_scalar;
-  meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
-  if (product(meta.strides) <= 0) {
-    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
-  } else {
-    meta_.strides = meta.strides;
-  }
+  meta_.update(meta.dims, meta.layout);
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -238,7 +232,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
   if (product(meta_.dims) >= 0 && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
                       true,
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
@@ -249,9 +243,8 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
                           meta_.strides,
                           dims));
   }
-  meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
 
+  meta_.update(dims);
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }

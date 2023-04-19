@@ -94,6 +94,10 @@ class DenseTensor : public TensorBase,
   /// \param meta The strides of the tensor.
   void set_strides(const DDim& strides) { meta_.strides = strides; }
 
+  /// \brief Returns the tensor is contiguous or not by the meta.
+  /// \return Whether th tensor is contiguous.
+  bool is_contiguous() const noexcept { return meta_.is_contiguous(); }
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }

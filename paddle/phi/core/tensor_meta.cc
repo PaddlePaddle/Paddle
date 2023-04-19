@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 
-DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
+DDim calc_strides(const DDim& dims, DataLayout layout) {
   if (product(dims) <= 0) {
     return dims;
   }
@@ -35,20 +35,59 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
     strides[2] = strides[3] * dims[3];
     strides[0] = strides[2] * dims[2];
   } else {
-    strides[dims.size() - 1] = 1;
-    for (int i = dims.size() - 2; i >= 0; --i) {
-      strides[i] = strides[i + 1] * dims[i + 1];
-    }
+    strides = ::phi::stride(dims);
   }
 
   return strides;
 }
 
+bool is_contiguous(const DDim& dims, const DDim& strides, DataLayout layout) {
+  // TODO(liudongxue01): optimize this
+  return strides == calc_strides(dims, layout);
+}
+
+void DenseTensorMeta::sync_strides() {
+  if (dims.size() == 4 && layout == DataLayout::NHWC) {
+    strides[1] = 1;
+    strides[3] = dims[1];
+    strides[2] = strides[3] * dims[3];
+    strides[0] = strides[2] * dims[2];
+  } else if (dims.size() == 5 && layout == DataLayout::NDHWC) {
+    strides[1] = 1;
+    strides[4] = dims[1];
+    strides[3] = strides[4] * dims[4];
+    strides[2] = strides[3] * dims[3];
+    strides[0] = strides[2] * dims[2];
+  } else {
+    if (product(dims) <= 0) {
+      this->strides = DDim();
+    } else {
+      this->strides = ::phi::stride(this->dims);
+    }
+  }
+}
+
+void DenseTensorMeta::update(DDim dims) {
+  this->dims = dims;
+  sync_strides();
+}
+
+void DenseTensorMeta::update(DataLayout layout) {
+  this->layout = layout;
+  sync_strides();
+}
+
+void DenseTensorMeta::update(DDim dims, DataLayout layout) {
+  this->dims = dims;
+  this->layout = layout;
+  sync_strides();
+}
+
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
-    : dims(dims), dtype(dtype) {
-  strides = calc_strides(dims);
+    : dtype(dtype) {
+  update(dims);
   use_gpudnn = true;
 }
 
@@ -63,8 +102,8 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), offset(offset) {
-  strides = calc_strides(dims, layout);
+    : dtype(dtype), offset(offset) {
+  update(dims, layout);
   use_gpudnn = true;
 }
 
@@ -73,55 +112,40 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  DataLayout layout,
                                  const LoD& lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
-  strides = calc_strides(dims, layout);
+    : dtype(dtype), lod(lod), offset(offset) {
+  update(dims, layout);
   use_gpudnn = true;
 }
 
 DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
-  dims = other.dims;
   dtype = other.dtype;
-  layout = other.layout;
   lod = other.lod;
   offset = other.offset;
-  if (product(other.strides) <= 0) {
-    strides == calc_strides(dims, layout);
-  } else {
-    strides = other.strides;
-  }
+  dims = other.dims;
+  layout = other.layout;
+  strides = other.strides;
 }
 
 DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
-  dims = other.dims;
   dtype = other.dtype;
-  layout = other.layout;
   lod = other.lod;
   offset = other.offset;
-  if (product(other.strides) <= 0) {
-    strides == calc_strides(dims, layout);
-  } else {
-    strides = other.strides;
-  }
+  update(other.dims, other.layout);
   return *this;
 }
 
 DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
-  dims = std::move(other.dims);
   dtype = other.dtype;
-  layout = other.layout;
   lod = std::move(other.lod);
   offset = other.offset;
-  if (product(other.strides) <= 0) {
-    strides == calc_strides(dims, layout);
-  } else {
-    strides = std::move(other.strides);
-  }
+
+  update(other.dims, other.layout);
 
   return *this;
 }
@@ -134,8 +158,8 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-bool DenseTensorMeta::is_contiguous(DataLayout exp_layout) const noexcept {
-  return strides == calc_strides(dims, exp_layout);
+bool DenseTensorMeta::is_contiguous() const noexcept {
+  return phi::is_contiguous(dims, strides, layout);
 }
 
 StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}

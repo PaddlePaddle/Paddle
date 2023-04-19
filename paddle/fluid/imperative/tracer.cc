@@ -413,7 +413,7 @@ void Tracer::TraceOp(const std::string& type,
       auto var = inputs_iter->second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+        if (!dense_tensor->is_contiguous()) {
           auto outputs_iter = outs.find(iter.first);
           outputs_iter->second[i]->MutableVar()->Clear();
           need_backup_inputs2outputs[dense_tensor] =
@@ -464,7 +464,7 @@ void Tracer::TraceOp(const std::string& type,
       auto var = inputs_iter->second[i]->MutableVar();
       if (var->IsType<phi::DenseTensor>()) {
         auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+        if (!dense_tensor->is_contiguous()) {
           auto outputs_iter = outs.find(iter.first);
           outputs_iter->second[i]->MutableVar()->Clear();
           need_backup_inputs2outputs[dense_tensor] =
