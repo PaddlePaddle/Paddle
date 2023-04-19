@@ -59,6 +59,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.dY2 = np.random.random(self.input_size).astype(self.dtype) - 0.5
 
         paddle.disable_static()
+        paddle.seed(0)
         paddle.set_default_dtype(self.dtype)
         self.bn1 = nn.BatchNorm(
             self.input_size[-1],

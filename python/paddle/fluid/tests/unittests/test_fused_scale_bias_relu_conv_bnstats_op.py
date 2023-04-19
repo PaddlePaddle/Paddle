@@ -87,6 +87,7 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
         self.x_input_prologue = self.x_input_prologue.astype(self.dtype)
 
         paddle.disable_static()
+        paddle.seed(0)
         paddle.set_default_dtype(self.dtype)
 
         self.conv = nn.Conv2D(

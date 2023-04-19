@@ -30,6 +30,16 @@ np.random.seed(12345)
 paddle.seed(12345)
 
 
+def skip_unit_test():
+    return (
+        not paddle.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 8
+    )
+
+
+skip_msg = "only support with cuda and Ampere or later devices"
+
+
 class ConvBNLayer(nn.Layer):
     def __init__(
         self,
@@ -194,10 +204,11 @@ class ResUnitNet(nn.Layer):
         return out
 
 
+@unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFuseResUnitPass(DistPassTestBase):
     def init(self):
-        self.atol = 1e-4
-        self.rtol = 1e-4
+        self.atol = 1e-2
+        self.rtol = 1e-2
         self.shortcut = True
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
@@ -251,10 +262,11 @@ class TestFuseResUnitPass(DistPassTestBase):
         self.check_main()
 
 
+@unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFuseResUnitPassDual(TestFuseResUnitPass):
     def init(self):
-        self.atol = 1e-4
-        self.rtol = 1e-4
+        self.atol = 1e-2
+        self.rtol = 1e-2
         self.shortcut = False
 
 

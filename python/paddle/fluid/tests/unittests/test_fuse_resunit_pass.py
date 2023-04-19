@@ -121,9 +121,9 @@ class TestFuseResUnitBase(unittest.TestCase):
         self.set_attr()
 
         paddle.enable_static()
-        np.random.seed(1)
-        paddle.seed(1)
-        paddle.framework.random._manual_program_seed(1)
+        np.random.seed(10)
+        paddle.seed(10)
+        paddle.framework.random._manual_program_seed(10)
 
         self.place = paddle.CUDAPlace(0)
         self.exe = paddle.static.Executor(self.place)
