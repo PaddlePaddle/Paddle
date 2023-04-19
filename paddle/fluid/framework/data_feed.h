@@ -31,7 +31,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -42,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/macros.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -1159,29 +1159,29 @@ class DataFeed {
   }
 
   // This function will do nothing at default
-  virtual void SetInputPvChannel(void* channel) {}
+  virtual void SetInputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetOutputPvChannel(void* channel) {}
+  virtual void SetOutputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetConsumePvChannel(void* channel) {}
+  virtual void SetConsumePvChannel(void* channel UNUSED) {}
 
   // This function will do nothing at default
-  virtual void SetInputChannel(void* channel) {}
+  virtual void SetInputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetOutputChannel(void* channel) {}
+  virtual void SetOutputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetConsumeChannel(void* channel) {}
+  virtual void SetConsumeChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetThreadId(int thread_id) {}
+  virtual void SetThreadId(int thread_id UNUSED) {}
   // This function will do nothing at default
-  virtual void SetThreadNum(int thread_num) {}
+  virtual void SetThreadNum(int thread_num UNUSED) {}
   // This function will do nothing at default
-  virtual void SetParseInsId(bool parse_ins_id) {}
-  virtual void SetParseUid(bool parse_uid) {}
-  virtual void SetParseContent(bool parse_content) {}
-  virtual void SetParseLogKey(bool parse_logkey) {}
-  virtual void SetEnablePvMerge(bool enable_pv_merge) {}
-  virtual void SetCurrentPhase(int current_phase) {}
+  virtual void SetParseInsId(bool parse_ins_id UNUSED) {}
+  virtual void SetParseUid(bool parse_uid UNUSED) {}
+  virtual void SetParseContent(bool parse_content UNUSED) {}
+  virtual void SetParseLogKey(bool parse_logkey UNUSED) {}
+  virtual void SetEnablePvMerge(bool enable_pv_merge UNUSED) {}
+  virtual void SetCurrentPhase(int current_phase UNUSED) {}
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
