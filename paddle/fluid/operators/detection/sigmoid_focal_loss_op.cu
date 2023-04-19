@@ -190,12 +190,12 @@ namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss,
                           GPU,
                           ALL_LAYOUT,
-                          ops::SigmoidFocalLossKernel,
+                          ops::GPUSigmoidFocalLossKernel,
                           float,
                           double) {}
 PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss_grad,
                           GPU,
                           ALL_LAYOUT,
-                          ops::SigmoidFocalLossGradKernel,
+                          ops::GPUSigmoidFocalLossGradKernel,
                           float,
                           double) {}
