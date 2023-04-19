@@ -146,9 +146,10 @@ class TestClassCenterSampleV2(unittest.TestCase):
         self.dtype = np.int64
 
     def test_static(self):
-        with paddle_static_guard():
-            for place in self.places:
-                self.check_static_result(place=place)
+        paddle.enable_static()
+        for place in self.places:
+            self.check_static_result(place=place)
+        paddle.disable_static()
 
     def check_static_result(self, place):
         with paddle_static_guard():
