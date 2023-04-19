@@ -706,7 +706,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                                 (0D-Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (1D-Tensor)
+                                        (0D-Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
@@ -735,17 +735,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         x = paddle.to_tensor(1, stop_gradient=False)
         print(x)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
+        #        1)
 
         paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
         # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
