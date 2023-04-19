@@ -23,6 +23,7 @@ from paddle.fluid.dygraph.base import (
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow
 from paddle.fluid.layers.control_flow import while_loop
+from functools import partial
 
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -38,6 +39,8 @@ __all__ = []
 def convert_attr(x, attr):
     if isinstance(x, Variable) and attr == "size":
         return x.size()
+    elif isinstance(x, Variable) and attr == "__len__":
+        return partial(convert_len, x)
     else:
         return getattr(x, attr)
 
