@@ -765,8 +765,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
-
 # dist xpu tests:
 if(WITH_XPU_BKCL)
   py_test(test_collective_allreduce_api_xpu
