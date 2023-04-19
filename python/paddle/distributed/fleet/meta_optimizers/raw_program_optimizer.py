@@ -437,7 +437,10 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if not self.calc_comm_same_stream:
             for i in range(len(grad_param_segments)):
                 op = block.ops[idx]
-                while op.type != 'c_allreduce_sum' and fused_vars[i].name not in op.input_arg_names:
+                while (
+                    op.type != 'c_allreduce_sum'
+                    and fused_vars[i].name not in op.input_arg_names
+                ):
                     idx += 1
                 grad_segment, param_segment = grad_param_segments[i]
                 for grad in grad_segment:
