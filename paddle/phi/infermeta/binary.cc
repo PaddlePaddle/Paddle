@@ -1152,7 +1152,6 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-
   if (x_dims.size() == 2 && x.numel() == 0) {
     x_dims[x_dims.size() - 1] = 1;
   } else {
