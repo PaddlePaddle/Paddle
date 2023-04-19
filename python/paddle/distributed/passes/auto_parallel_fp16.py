@@ -822,7 +822,7 @@ class FP16Pass(AMPPass):
             cast_startup_program()
 
         if is_train:
-            if self.target_dtype == "fp16":
+            if self.target_dtype == "float16":
                 with paddle.static.program_guard(main_program, startup_program):
                     # TODO (JZ-LIANG)support cast forward program only when inference
                     self._init_amp_var()
@@ -935,7 +935,7 @@ class FP16Pass(AMPPass):
             if self.use_optimizer_fp16:
                 base_opt._multi_precision = False
 
-            if self.target_dtype == "fp16":
+            if self.target_dtype == "float16":
                 if isinstance(
                     base_opt, (paddle.static.Adam, paddle.optimizer.AdamW)
                 ):
