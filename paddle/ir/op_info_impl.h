@@ -30,15 +30,18 @@ template <typename ConcreteOp, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
-  static void interface(std::pair<TypeId, void *> *p_interface) {
+  static std::pair<TypeId, void *> *interface(
+      std::pair<TypeId, void *> *p_interface) {
     (void)std::initializer_list<int>{
         0, (PlacementConstrctInterface<Args>(p_interface), 0)...};
+    return p_interface;
   }
 
   /// Construct method for traits.
-  static void trait(TypeId *p_trait) {
+  static TypeId *trait(TypeId *p_trait) {
     (void)std::initializer_list<int>{
         0, (PlacementConstrctTrait<Args>(p_trait), 0)...};
+    return p_trait;
   }
 
  private:
@@ -68,13 +71,14 @@ template <typename ConcreteOp, typename... Args>
 class ConstructInterfacesOrTraits<ConcreteOp, std::tuple<Args...>> {
  public:
   /// Construct method for interfaces.
-  static void interface(std::pair<TypeId, void *> *p_interface) {
+  static std::pair<TypeId, void *> *interface(
+      std::pair<TypeId, void *> *p_interface) {
     return ConstructInterfacesOrTraits<ConcreteOp, Args...>::interface(
         p_interface);
   }
 
   /// Construct method for traits.
-  static void trait(TypeId *p_trait) {
+  static TypeId *trait(TypeId *p_trait) {
     return ConstructInterfacesOrTraits<ConcreteOp, Args...>::trait(p_trait);
   }
 };
@@ -99,24 +103,31 @@ class OpInfoImpl {
     size_t base_size = sizeof(std::pair<ir::TypeId, void *>) * interfaces_num +
                        sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl);
     void *base_ptr = malloc(base_size);
-    std::pair<ir::TypeId, void *> *p_first_interface =
-        reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
-    ir::TypeId *p_first_trait =
-        reinterpret_cast<ir::TypeId *>(p_first_interface + interfaces_num);
-    OpInfoImpl *p_opinfo_impl =
-        reinterpret_cast<OpInfoImpl *>(p_first_trait + traits_num);
 
     // (2) Construct interfaces and sort by TypeId.
-    ConstructInterfacesOrTraits<
-        ConcreteOp,
-        typename ConcreteOp::InterfaceList>::interface(p_first_interface);
-    std::sort(p_first_interface, p_first_interface + interfaces_num);
+    std::pair<ir::TypeId, void *> *p_first_interface = nullptr;
+    if (interfaces_num > 0) {
+      p_first_interface =
+          reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
+      ConstructInterfacesOrTraits<
+          ConcreteOp,
+          typename ConcreteOp::InterfaceList>::interface(p_first_interface);
+      std::sort(p_first_interface, p_first_interface + interfaces_num);
+      base_ptr = reinterpret_cast<void *>(p_first_interface + interfaces_num);
+    }
+
     // (3) Construct traits and sort by TypeId.
-    ConstructInterfacesOrTraits<ConcreteOp, typename ConcreteOp::TraitList>::
-        trait(p_first_trait);
-    std::sort(p_first_trait, p_first_trait + traits_num);
+    ir::TypeId *p_first_trait = nullptr;
+    if (traits_num > 0) {
+      p_first_trait = reinterpret_cast<ir::TypeId *>(base_ptr);
+      ConstructInterfacesOrTraits<ConcreteOp, typename ConcreteOp::TraitList>::
+          trait(p_first_trait);
+      std::sort(p_first_trait, p_first_trait + traits_num);
+      base_ptr = reinterpret_cast<void *>(p_first_trait + traits_num);
+    }
 
     // (4) Construct opinfo_impl.
+    OpInfoImpl *p_opinfo_impl = reinterpret_cast<OpInfoImpl *>(base_ptr);
     OpInfoImpl *op_info =
         new (p_opinfo_impl) OpInfoImpl(p_first_interface,
                                        p_first_trait,
