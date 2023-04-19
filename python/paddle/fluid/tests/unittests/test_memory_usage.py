@@ -16,7 +16,7 @@ import contextlib
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def train_simulator(test_batch_size=10):
@@ -26,9 +26,9 @@ def train_simulator(test_batch_size=10):
             "but got batch_size={}".format(test_batch_size)
         )
 
-    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+    x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
     y_predict = paddle.static.nn.fc(x, size=1, activation=None)
-    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+    y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
     cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)

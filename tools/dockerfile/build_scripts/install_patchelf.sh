@@ -16,8 +16,16 @@ set -e
 
 TMP_DIR=patchelf_tmp
 
+gcc_version=$(gcc --version |awk 'NR==1{print $3}')
+if [ "$gcc_version" == "5.4.0" ];then
+    patchelf_version=0.10
+else
+    patchelf_version=0.15.0
+fi
+
 rm -rf "$TMP_DIR"
-git clone -b 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR"
+
+git clone -b $patchelf_version https://github.com/NixOS/patchelf "$TMP_DIR"
 
 cd "$TMP_DIR"
 ./bootstrap.sh

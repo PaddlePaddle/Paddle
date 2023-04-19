@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <unordered_map>
@@ -51,12 +55,6 @@ typedef SSIZE_T ssize_t;
 
 namespace paddle {
 namespace pybind {
-
-extern PyTypeObject* p_tensor_type;
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
 
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000
@@ -168,11 +166,10 @@ void SetDevice(paddle::platform::Place place) {
 
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
-paddle::experimental::Tensor CallScalarFuction(
-    const paddle::experimental::Tensor& self_tensor,
-    double other,
-    std::string op_type) {
-  paddle::experimental::Tensor ret;
+paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
+                                 double other,
+                                 std::string op_type) {
+  paddle::Tensor ret;
   if (op_type == "add" || op_type == "radd") {
     ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
   } else if (op_type == "sub") {
@@ -205,8 +202,8 @@ static PyObject* tensor__add__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -232,12 +229,12 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -307,8 +304,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
   // 1. scalar exists cases
@@ -333,12 +330,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
     return ToPyObject(ret);
   }
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -404,8 +401,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -430,12 +427,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -502,8 +499,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -529,20 +526,20 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
       other_tensor = full_ad_func(
@@ -608,8 +605,8 @@ static PyObject* tensor__div__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -635,12 +632,12 @@ static PyObject* tensor__div__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -723,8 +720,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -749,7 +746,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -760,7 +757,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -842,8 +839,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -867,7 +864,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -878,7 +875,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -932,8 +929,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -957,7 +954,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -968,7 +965,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1022,8 +1019,8 @@ static PyObject* tensor__mod__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1048,7 +1045,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1059,7 +1056,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1112,8 +1109,8 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1138,7 +1135,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func({1},
@@ -1149,7 +1146,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1221,8 +1218,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1246,7 +1243,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1257,7 +1254,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1311,8 +1308,8 @@ static PyObject* tensor__le__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1336,7 +1333,7 @@ static PyObject* tensor__le__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1347,7 +1344,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1400,8 +1397,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1427,7 +1424,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1438,7 +1435,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1495,8 +1492,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1522,12 +1519,12 @@ static PyObject* tensor__pow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1581,8 +1578,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1608,7 +1605,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1619,7 +1616,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1673,8 +1670,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1698,7 +1695,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1709,7 +1706,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1763,8 +1760,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1788,7 +1785,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1799,7 +1796,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =

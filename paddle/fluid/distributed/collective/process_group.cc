@@ -36,5 +36,16 @@ ProcessGroupIdMap& ProcessGroupIdMap::GetInstance() {
   return instance;
 }
 
+void ProcessGroupIdMap::DestroyProcessGroup() {
+  auto& id_map = ProcessGroupIdMap::GetInstance();
+  for (auto iter = id_map.begin(); iter != id_map.end(); ++iter) {
+    auto use_count = iter->second.use_count();
+    for (int i = 0; i < use_count; ++i) {
+      iter->second.reset();
+    }
+  }
+  id_map.clear();
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

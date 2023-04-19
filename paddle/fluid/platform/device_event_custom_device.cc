@@ -76,7 +76,7 @@ bool DeviceEventQueryCustomDevice(const DeviceEvent* event) {
 void DeviceEventFinishCustomDevice(const DeviceEvent* event) {
   auto* wrapper =
       static_cast<CustomDeviceEventWrapper*>(event->GetEvent().get());
-  wrapper->inner_event_->Synchonrize();
+  wrapper->inner_event_->Synchronize();
 }
 
 void DeviceEventCustomDeviceWaitCustomDevice(const DeviceEvent* event,

@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
@@ -33,9 +32,11 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
         for branch_num in range(2, 10):
             program = Program()
             with program_guard(program):
-                x = layers.data(name='x', shape=[2], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
                 x.stop_gradient = False  # For test gradient
-                mask = layers.data(name='mask', shape=[1], dtype='int32')
+                mask = paddle.static.data(
+                    name='mask', shape=[-1, 1], dtype='int32'
+                )
 
                 outputs = []
                 for i in range(branch_num):
@@ -78,8 +79,8 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
 class TestSelectInputOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            mask = layers.data(name='mask', shape=[1], dtype='int32')
-            in1 = layers.data(name='in1', shape=[1], dtype='int32')
+            mask = paddle.static.data(name='mask', shape=[-1, 1], dtype='int32')
+            in1 = paddle.static.data(name='in1', shape=[-1, 1], dtype='int32')
 
             # 1. The type of inputs in select_input must be list or tuple.
             def test_inputs_type():
@@ -95,7 +96,9 @@ class TestSelectInputOpError(unittest.TestCase):
 
             # 3. The dtype of mask in select_input must be int32 or int64.
             def test_mask_dtype():
-                mask = layers.data(name='mask2', shape=[1], dtype='float32')
+                mask = paddle.static.data(
+                    name='mask2', shape=[-1, 1], dtype='float32'
+                )
                 select_input([in1], mask)
 
             self.assertRaises(TypeError, test_mask_dtype)
@@ -105,14 +108,14 @@ class TestSelectOutput_Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
-            in1 = layers.data(name='in1', shape=[1], dtype='int32')
-            mask_int32 = layers.data(
-                name='mask_int32', shape=[1], dtype='int32'
+            in1 = paddle.static.data(name='in1', shape=[-1, 1], dtype='int32')
+            mask_int32 = paddle.static.data(
+                name='mask_int32', shape=[-1, 1], dtype='int32'
             )
-            mask_float32 = layers.data(
-                name='mask_float32', shape=[1], dtype='float32'
+            mask_float32 = paddle.static.data(
+                name='mask_float32', shape=[-1, 1], dtype='float32'
             )
-            out1 = layers.data(name='out1', shape=[1], dtype='int32')
+            out1 = paddle.static.data(name='out1', shape=[-1, 1], dtype='int32')
 
             # 1. The type of input in select_output must Variable.
             def test_input_type():

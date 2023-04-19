@@ -17,8 +17,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestException(unittest.TestCase):
@@ -40,8 +40,8 @@ class TestExceptionNoCStack(unittest.TestCase):
         fluid.set_flags({'FLAGS_call_stack_level': 1})
 
     def test_exception_in_static_mode(self):
-        x = fluid.layers.data(name='X', shape=[-1, 13], dtype='float32')
-        y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
+        x = paddle.static.data(name='X', shape=[-1, 13], dtype='float32')
+        y = paddle.static.data(name='Y', shape=[-1, 1], dtype='float32')
         predict = paddle.static.nn.fc(x, size=1)
         loss = paddle.nn.functional.square_error_cost(input=predict, label=y)
         avg_loss = paddle.mean(loss)

@@ -100,6 +100,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../platform/init_phi.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
@@ -109,6 +110,8 @@ set(SHARED_INFERENCE_SRCS
     ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
+list(REMOVE_ITEM fluid_modules standalone_executor
+     interpretercore_garbage_collector)
 set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
                           ${utils_modules})
 
@@ -154,14 +157,8 @@ set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
-  if(WITH_CUSTOM_DEVICE)
-    set(LINK_FLAGS
-        "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_custom_device.map"
-    )
-  else()
-    set(LINK_FLAGS
-        "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
-  endif()
+  set(LINK_FLAGS
+      "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
   set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
                                                            "${LINK_FLAGS}")
   # check symbol hidden

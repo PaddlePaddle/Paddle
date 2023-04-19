@@ -26,6 +26,7 @@ namespace cub = hipcub;
 #endif
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -35,8 +36,6 @@ namespace cub = hipcub;
 
 namespace phi {
 namespace funcs {
-
-using DataLayout = phi::DataLayout;
 
 // math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,
 // axis=(n,h,w)) *
@@ -670,5 +669,122 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
 }
+
+template <typename T, typename BnT>
+__device__ __forceinline__ void BlockReduceByVetical(BnT x_sum,
+                                                     BnT x_square_sum,
+                                                     BnT *smem_sum,
+                                                     BnT *smem_square_sum,
+                                                     BnT *x_sum_out,
+                                                     BnT *x_square_sum_out) {
+  int tid = threadIdx.x + threadIdx.y * blockDim.x;
+#pragma unroll
+  for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
+    if (threadIdx.y < offset * 2) {
+      smem_sum[tid] = x_sum;
+      smem_square_sum[tid] = x_square_sum;
+    }
+    __syncthreads();
+    if (threadIdx.y < offset) {
+      int pair_tid = tid + offset * blockDim.x;
+      x_sum += smem_sum[pair_tid];
+      x_square_sum += smem_square_sum[pair_tid];
+    }
+  }
+  if (threadIdx.y == 0) {
+    *x_sum_out = x_sum;
+    *x_square_sum_out = x_square_sum;
+  }
+}
+
+template <typename T, typename BnT>
+__device__ __forceinline__ void ReduceSumPost(const int C,  // channels
+                                              const int c,  // channel index
+                                              BnT *sum1,
+                                              BnT *sum2,
+                                              bool *is_last_block_done,
+                                              BnT *cache1,
+                                              BnT *cache2,
+                                              BnT *block_data_ptr,
+                                              int *flag_ptr) {
+  volatile BnT *staging_sum = block_data_ptr;
+  volatile BnT *staging_sum2 = &block_data_ptr[C * gridDim.y];
+  // write block data to global memory
+  if (threadIdx.y == 0) {
+    staging_sum[c + blockIdx.y * C] = *sum1;
+    staging_sum2[c + blockIdx.y * C] = *sum2;
+  }
+
+  // make sure write is visible to all blocks
+  __threadfence();
+  __syncthreads();
+
+  // mark block done
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
+    *is_last_block_done = (old == (gridDim.y - 1));
+  }
+
+  __syncthreads();
+
+  if (*is_last_block_done) {
+    *sum1 = static_cast<BnT>(0);
+    *sum2 = static_cast<BnT>(0);
+    // thread sum
+    for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
+      *sum1 += staging_sum[c + y * C];
+      *sum2 += staging_sum2[c + y * C];
+    }
+
+    // vertical block sum
+    funcs::BlockReduceByVetical<T, BnT>(
+        *sum1, *sum2, &cache1[0], &cache2[0], sum1, sum2);
+  }
+}
+
+template <typename T, typename BnT, typename Context>
+void SetLaunchConfigInfoForChannelLast(const Context &ctx,
+                                       DenseTensor *block_data_tensor,
+                                       DenseTensor *flag_tensor,
+                                       BnT **block_data_ptr,
+                                       int **flag_ptr,
+                                       const int N,
+                                       const int H,
+                                       const int W,
+                                       const int D,
+                                       const int C,
+                                       const int block_size,
+                                       dim3 *block,
+                                       dim3 *grid) {
+  const int MAX_GRID_SIZE = 128;
+  const int WARP_SIZE = 32;
+
+  int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
+  int block_y = std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
+                         block_size / block_x);
+  if (block_x * block_y != block_size) {
+    block_x =
+        std::min(phi::funcs::details::GetLastPow2(C), block_size / block_y);
+  }
+  int grid_x = (C + block_x - 1) / block_x;
+  int grid_y = std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
+                        MAX_GRID_SIZE);
+
+  block->x = block_x;
+  block->y = block_y;
+  grid->x = grid_x;
+  grid->y = grid_y;
+
+  if (grid->y > 1) {
+    *block_data_tensor = phi::Empty<BnT, Context>(ctx, {2 * C * grid->y});
+    *flag_tensor = phi::Empty<int, Context>(ctx, {grid->x});
+
+    *block_data_ptr = block_data_tensor->data<BnT>();
+    *flag_ptr = flag_tensor->data<int>();
+    funcs::SetConstant<Context, int> set_zero;
+    set_zero(ctx, flag_tensor, static_cast<int>(0));
+  }
+}
+
 }  // namespace funcs
 }  // namespace phi

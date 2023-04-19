@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
@@ -75,7 +75,7 @@ class GRUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     phi::DenseTensor ordered_h0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
@@ -133,9 +133,8 @@ class GRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(gru,
-                        ops::GRUKernel<phi::GPUContext, float>,
-                        ops::GRUKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(gru_grad,
-                        ops::GRUGradKernel<phi::GPUContext, float>,
-                        ops::GRUGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(gru, GPU, ALL_LAYOUT, ops::GRUKernel, float, double) {
+}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_grad, GPU, ALL_LAYOUT, ops::GRUGradKernel, float, double) {}

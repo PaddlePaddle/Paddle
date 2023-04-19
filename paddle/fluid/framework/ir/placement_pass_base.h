@@ -35,10 +35,7 @@ class PlacementPassBase : public Pass {
   virtual const std::string GetPlacementName() const = 0;
   virtual const std::string GetAttrName() const = 0;
   virtual const std::unordered_set<std::string> GetOpTypesList() const = 0;
-
- private:
-  bool IsSupport(const std::string& op_type) const;
-  bool IsDefaultOpTypes(const std::string& op_type) const;
+  virtual bool IsSupport(const Node* op) const = 0;
 
 #if PADDLE_WITH_TESTING
   friend class PlacementPassTest;

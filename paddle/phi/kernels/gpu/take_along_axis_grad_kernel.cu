@@ -31,7 +31,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on GPU."));
 
@@ -68,4 +68,5 @@ PD_REGISTER_KERNEL(take_along_axis_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

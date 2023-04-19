@@ -49,11 +49,13 @@ class GraphPsService_Stub : public PsService_Stub {
   }
   virtual ~GraphPsService_Stub() {}
 
+  GraphPsService_Stub(const GraphPsService_Stub&);
+  GraphPsService_Stub& operator=(const GraphPsService_Stub&);
+
   // implements PsService ------------------------------------------
   GraphBrpcService* graph_service;
   std::shared_ptr<::ThreadPool> task_pool;
   ::google::protobuf::RpcChannel* local_channel;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(GraphPsService_Stub);
   void service(::google::protobuf::RpcController* controller,
                const ::paddle::distributed::PsRequestMessage* request,
                ::paddle::distributed::PsResponseMessage* response,
@@ -69,31 +71,33 @@ class GraphBrpcClient : public BrpcPsClient {
       int idx,
       std::vector<int64_t> node_ids,
       int sample_size,
-      std::vector<std::vector<int64_t>>& res,
-      std::vector<std::vector<float>>& res_weight,
+      std::vector<std::vector<int64_t>>& res,       // NOLINT
+      std::vector<std::vector<float>>& res_weight,  // NOLINT
       bool need_weight,
       int server_index = -1);
 
-  virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
-                                               int type_id,
-                                               int idx,
-                                               int server_index,
-                                               int start,
-                                               int size,
-                                               int step,
-                                               std::vector<FeatureNode>& res);
-  virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
-                                                   int type_id,
-                                                   int idx,
-                                                   int server_index,
-                                                   int sample_size,
-                                                   std::vector<int64_t>& ids);
+  virtual std::future<int32_t> pull_graph_list(
+      uint32_t table_id,
+      int type_id,
+      int idx,
+      int server_index,
+      int start,
+      int size,
+      int step,
+      std::vector<FeatureNode>& res);  // NOLINT
+  virtual std::future<int32_t> random_sample_nodes(
+      uint32_t table_id,
+      int type_id,
+      int idx,
+      int server_index,
+      int sample_size,
+      std::vector<int64_t>& ids);  // NOLINT
   virtual std::future<int32_t> get_node_feat(
       const uint32_t& table_id,
       int idx,
       const std::vector<int64_t>& node_ids,
       const std::vector<std::string>& feature_names,
-      std::vector<std::vector<std::string>>& res);
+      std::vector<std::vector<std::string>>& res);  // NOLINT
 
   virtual std::future<int32_t> set_node_feat(
       const uint32_t& table_id,
@@ -108,10 +112,12 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> add_graph_node(
       uint32_t table_id,
       int idx,
-      std::vector<int64_t>& node_id_list,
-      std::vector<bool>& is_weighted_list);
+      std::vector<int64_t>& node_id_list,    // NOLINT
+      std::vector<bool>& is_weighted_list);  // NOLINT
   virtual std::future<int32_t> remove_graph_node(
-      uint32_t table_id, int idx_, std::vector<int64_t>& node_id_list);
+      uint32_t table_id,
+      int idx_,
+      std::vector<int64_t>& node_id_list);  // NOLINT
   virtual int32_t Initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }

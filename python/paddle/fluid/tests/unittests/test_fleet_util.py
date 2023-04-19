@@ -20,8 +20,8 @@ import unittest
 
 import numpy as np
 
-import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.dataset.common import download
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestFleetUtil(unittest.TestCase):
@@ -32,7 +32,7 @@ class TestFleetUtil(unittest.TestCase):
     train_dir = os.path.join("fleet_util_data", "train_program")
 
     def test_util_base(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         util = fleet.UtilBase()
         strategy = fleet.DistributedStrategy()
@@ -41,7 +41,7 @@ class TestFleetUtil(unittest.TestCase):
         util._set_role_maker(role_maker)
 
     def test_util_factory(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         factory = fleet.base.util_factory.UtilFactory()
         strategy = fleet.DistributedStrategy()
@@ -55,15 +55,15 @@ class TestFleetUtil(unittest.TestCase):
         self.assertIsNone(util.role_maker)
 
     def test_get_util(self):
-        import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
+        from paddle.distributed import fleet
+        from paddle.distributed.fleet.base import role_maker
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         self.assertIsNotNone(fleet.util)
 
     def test_set_user_defined_util(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         class UserDefinedUtil(fleet.UtilBase):
             def __init__(self):
@@ -72,7 +72,7 @@ class TestFleetUtil(unittest.TestCase):
             def get_user_id(self):
                 return 10
 
-        import paddle.distributed.fleet.base.role_maker as role_maker
+        from paddle.distributed.fleet.base import role_maker
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -82,7 +82,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
         from paddle.distributed.fleet.utils import LocalFS
 
         fs = LocalFS()
@@ -102,7 +102,7 @@ class TestFleetUtil(unittest.TestCase):
         return unzip_folder
 
     def test_get_file_shard(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         self.assertRaises(Exception, fleet.util.get_file_shard, "files")
 
@@ -120,7 +120,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertTrue(len(files) == 2 and "1" in files and "2" in files)
 
     def test_program_type_trans(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         data_dir = self.download_files()
         program_dir = os.path.join(data_dir, self.pruned_dir)
@@ -140,7 +140,7 @@ class TestFleetUtil(unittest.TestCase):
         )
 
     def test_prams_check(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         data_dir = self.download_files()
 
@@ -208,7 +208,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertTrue(len(results) == 1)
 
     def test_proto_check(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         data_dir = self.download_files()
 
@@ -246,7 +246,7 @@ class TestFleetUtil(unittest.TestCase):
         self.assertTrue(res)
 
     def test_visualize(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass

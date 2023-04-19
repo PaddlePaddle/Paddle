@@ -29,9 +29,10 @@ __global__ void LinspaceKernelInner(
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(start + step * index);
+      out[index] = static_cast<T>(static_cast<double>(start) + step * index);
     } else {
-      out[index] = static_cast<T>(stop - step * (size - index - 1));
+      out[index] =
+          static_cast<T>(static_cast<double>(stop) - step * (size - index - 1));
     }
   }
 }
@@ -39,19 +40,6 @@ __global__ void LinspaceKernelInner(
 template <typename T>
 __global__ void LinspaceSpecialKernel(T start, T* out) {
   out[0] = static_cast<T>(start);
-}
-
-template <typename T, typename Context>
-T GetValue(const Context& ctx, const DenseTensor& x) {
-  T value = static_cast<T>(0);
-  if (x.place() != CPUPlace()) {
-    DenseTensor cpu_x;
-    Copy(ctx, x, CPUPlace(), true, &cpu_x);
-    value = cpu_x.data<T>()[0];
-  } else {
-    value = x.data<T>()[0];
-  }
-  return value;
 }
 
 template <typename T, typename Context>
@@ -124,7 +112,9 @@ PD_REGISTER_KERNEL(linspace,
                    float,
                    int32_t,
                    int64_t,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

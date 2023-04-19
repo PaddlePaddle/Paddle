@@ -15,9 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
 #include "paddle/phi/api/include/dll_decl.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 enum class PlaceType;
 }
@@ -37,11 +38,21 @@ enum class AllocationType : int8_t {
   CUSTOM = 9,
 };
 
+class CustomRegisteredDeviceMap {
+ public:
+  static CustomRegisteredDeviceMap& Instance();
+
+  size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+
+  std::string GetGlobalDeviceType(size_t device_type_id_);
+
+ private:
+  CustomRegisteredDeviceMap() = default;
+  std::unordered_map<std::string, size_t> registered_device_type_id_;
+  std::unordered_map<size_t, std::string> registered_device_type_;
+};
+
 const char* AllocationTypeStr(AllocationType type);
-
-size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
-
-std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {
@@ -53,12 +64,14 @@ class PADDLE_API Place {
                  const std::string& dev_type = "")
       : device(id),
         alloc_type_(type),
-        device_type_id_(GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
   explicit Place(AllocationType type, const std::string& dev_type = "")
       : device(0),
         alloc_type_(type),
-        device_type_id_(GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
@@ -69,7 +82,8 @@ class PADDLE_API Place {
     alloc_type_ = type;
     device = device_id;
     if (!dev_type.empty()) {
-      device_type_id_ = GetOrRegisterGlobalDeviceTypeId(dev_type);
+      device_type_id_ = phi::CustomRegisteredDeviceMap::Instance()
+                            .GetOrRegisterGlobalDeviceTypeId(dev_type);
     }
   }
 
@@ -78,7 +92,8 @@ class PADDLE_API Place {
   int8_t GetDeviceId() const { return device; }
 
   std::string GetDeviceType() const {
-    return GetGlobalDeviceType(device_type_id_);
+    return phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+        device_type_id_);
   }
 
   std::string DebugString() const;
@@ -117,7 +132,7 @@ class CPUPlace : public Place {
   CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
+  CPUPlace(const Place& place UNUSED) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
@@ -135,7 +150,7 @@ class GPUPinnedPlace : public Place {
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 
   GPUPinnedPlace(const GPUPinnedPlace&) = default;
-  GPUPinnedPlace(const Place& place)  // NOLINT
+  GPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::GPUPINNED) {}
 };
 
@@ -164,7 +179,7 @@ class NPUPinnedPlace : public Place {
   NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
 
   NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place)  // NOLINT
+  NPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::NPUPINNED) {}
 };
 
@@ -176,16 +191,6 @@ class IPUPlace : public Place {
   IPUPlace(const IPUPlace&) = default;
   IPUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::IPU, place.GetDeviceId()) {}
-};
-
-class MLUPlace : public Place {
- public:
-  MLUPlace() : Place(AllocationType::MLU, 0) {}
-  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
-
-  MLUPlace(const MLUPlace&) = default;
-  MLUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::MLU, place.GetDeviceId()) {}
 };
 
 class CustomPlace : public Place {

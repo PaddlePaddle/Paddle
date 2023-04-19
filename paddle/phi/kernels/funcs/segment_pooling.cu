@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
@@ -417,8 +418,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
       DenseTensor mean_grad;
       mean_grad.Resize(input.dims());
       dev_ctx.template Alloc<T>(&mean_grad);
-      paddle::framework::TensorCopy(
-          out_grad, dev_ctx.GetPlace(), dev_ctx, &mean_grad);
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &mean_grad);
       int len = output.dims()[0];
       int dim = output.numel() / len;
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len);

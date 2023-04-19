@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -298,11 +298,10 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                    \
-  using DeviceContext = phi::CPUContext;                     \
   auto* x = ctx.Input<phi::DenseTensor>("X");                \
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
   auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \
@@ -320,35 +319,35 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   const int D = wh_dims[0];                                  \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                     \
-  const T* x_data = x->data<T>();                                              \
-  const T* wx_data = wx->data<T>();                                            \
-  const T* wh_data = wh->data<T>();                                            \
-  /* diagonal weight*/                                                         \
-  const T* wp_data = bias->data<T>() + D4;                                     \
-  /* for peephole only*/                                                       \
-  T* checked_cell_data = nullptr;                                              \
-  auto place = ctx.GetPlace();                                                 \
-  if (use_peepholes) {                                                         \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");          \
-    checked_cell_data = checked_cell->mutable_data<T>(place);                  \
-  }                                                                            \
-  const jit::lstm_attr_t attr(                                                 \
-      D,                                                                       \
-      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),            \
-      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
-      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
-      use_peepholes);                                                          \
-  jit::lstm_t one_step;                                                        \
-  one_step.wp = wp_data;                                                       \
-  one_step.checked = checked_cell_data;                                        \
-  auto ComputeC1H1 =                                                           \
-      jit::KernelFuncs<jit::LSTMC1H1Tuple<T>, platform::CPUPlace>::Cache().At( \
-          attr);                                                               \
-  auto ComputeCtHt =                                                           \
-      jit::KernelFuncs<jit::LSTMCtHtTuple<T>, platform::CPUPlace>::Cache().At( \
-          attr)
+#define INIT_OTHER_DEFINES                                                    \
+  const T* x_data = x->data<T>();                                             \
+  const T* wx_data = wx->data<T>();                                           \
+  const T* wh_data = wh->data<T>();                                           \
+  /* diagonal weight*/                                                        \
+  const T* wp_data = bias->data<T>() + D4;                                    \
+  /* for peephole only*/                                                      \
+  T* checked_cell_data = nullptr;                                             \
+  auto place = ctx.GetPlace();                                                \
+  if (use_peepholes) {                                                        \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                          \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");         \
+    checked_cell_data = checked_cell->mutable_data<T>(place);                 \
+  }                                                                           \
+  const phi::jit::lstm_attr_t attr(                                           \
+      D,                                                                      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")), \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),      \
+      use_peepholes);                                                         \
+  phi::jit::lstm_t one_step;                                                  \
+  one_step.wp = wp_data;                                                      \
+  one_step.checked = checked_cell_data;                                       \
+  auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr);                                           \
+  auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr)
 
 // Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out) \
@@ -377,9 +376,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D4, M, x_data, wx_data, xx_data, bias->data<T>());
 
@@ -580,6 +579,5 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm,
-                       ops::FuisonLSTMKernel<float>,
-                       ops::FuisonLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_lstm, CPU, ALL_LAYOUT, ops::FuisonLSTMKernel, float, double) {}

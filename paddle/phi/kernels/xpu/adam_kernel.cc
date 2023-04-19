@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -22,8 +24,6 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 
 namespace phi {
-
-using float16 = dtype::float16;
 
 template <typename T, typename Context>
 void AdamDenseKernel(const Context& dev_ctx,
@@ -124,7 +124,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -133,8 +133,10 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -180,7 +182,6 @@ void AdamDenseKernel(const Context& dev_ctx,
       epsilon_,
       param.numel());
 
-  xpu_wait(dev_ctx.x_context()->xpu_stream);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
   funcs::FreeData<float>(grad, grad_c);
@@ -213,7 +214,6 @@ void AdamDenseKernel(const Context& dev_ctx,
                        false,
                        beta1_,
                        0.0f);
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
 
@@ -231,7 +231,6 @@ void AdamDenseKernel(const Context& dev_ctx,
                        false,
                        beta2_,
                        0.0f);
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
     }
@@ -249,4 +248,7 @@ PD_REGISTER_KERNEL(
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

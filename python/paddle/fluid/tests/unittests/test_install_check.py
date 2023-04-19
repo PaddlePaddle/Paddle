@@ -19,9 +19,6 @@ import paddle
 
 
 class TestInstallCheck(unittest.TestCase):
-    def test_paddle_fluid(self):
-        paddle.fluid.install_check.run_check()
-
     def test_paddle_utils(self):
         paddle.utils.run_check()
 

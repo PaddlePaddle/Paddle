@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -105,7 +105,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
   memcpy(leaf_mask_data, &item_mask_vec[0], sizeof(OutT) * output_nums);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TDMChildKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

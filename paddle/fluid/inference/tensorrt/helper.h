@@ -26,6 +26,7 @@
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -189,6 +190,10 @@ inline void PrintITensorShape(nvinfer1::ITensor* X) {
 template <typename T>
 inline std::string Vec2Str(const std::vector<T>& vec) {
   std::ostringstream os;
+  if (vec.empty()) {
+    os << "()";
+    return os.str();
+  }
   os << "(";
   for (size_t i = 0; i < vec.size() - 1; ++i) {
     os << vec[i] << ",";

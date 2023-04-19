@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-
 #include "paddle/phi/backends/device_manager.h"
 
 namespace phi {
@@ -46,5 +44,3 @@ class DeviceGuard {
 };
 
 }  // namespace phi
-
-#endif

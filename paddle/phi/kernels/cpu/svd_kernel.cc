@@ -105,6 +105,14 @@ void SvdKernel(const Context& dev_ctx,
   // int k = std::min(rows, cols);
   // int col_u = full ? rows : k;
   // int col_v = full ? cols : k;
+  PADDLE_ENFORCE_LT(
+      0,
+      rows,
+      errors::InvalidArgument("The row of Input(X) should be greater than 0."));
+  PADDLE_ENFORCE_LT(
+      0,
+      cols,
+      errors::InvalidArgument("The col of Input(X) should be greater than 0."));
   int batches = numel / (rows * cols);
   auto* U_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
   auto* VH_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);

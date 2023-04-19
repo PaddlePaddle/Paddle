@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -27,7 +28,6 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -61,6 +61,8 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/generator.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -144,6 +146,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
     case paddle_infer::PlaceType::kIPU:
       return phi::Backend::IPU;
+    case paddle_infer::PlaceType::kCUSTOM:
+      return phi::Backend::CUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -151,11 +155,10 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
   }
 }
-}  // namespace
 
-bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
-                             phi::DenseTensor *t,
-                             const platform::Place &place) {
+bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
+                               phi::DenseTensor *t,
+                               const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
   if (pt.dtype == PaddleDType::INT64) {
@@ -186,7 +189,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
             "The data contained in the input PaddleTensor is illegal."));
     PADDLE_ENFORCE_EQ(
         pt.data.length(),
-        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        t->numel() * phi::SizeOf(t->dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
   }
@@ -236,9 +239,27 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUSTOM_DEVICE, should not reach here."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -248,6 +269,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
   t->set_lod(lod);
   return true;
 }
+}  // namespace
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -354,14 +376,6 @@ void AnalysisPredictor::InitPlace() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
-  } else if (config_.use_npu()) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use NPU forward propagation, but Paddle was not compiled "
-        "with WITH_ASCEND_CL."));
-#endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
       place_ = paddle::platform::CPUPlace();
@@ -437,8 +451,8 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .GetZeroAllocator(platform::CPUPlace())
                   .get());
           gpu_context->SetGenerator(
-              framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
-          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+              phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
           gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
@@ -488,14 +502,18 @@ void *AnalysisPredictor::GetExecStream() const {
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
-  } else {
-    return nullptr;
   }
-  return nullptr;
-#else
+#endif
+#if defined(PADDLE_WITH_XPU)
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
-#endif
 }
 
 const void *AnalysisPredictor::GetDeviceContexts() const {
@@ -519,6 +537,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
+    paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
@@ -558,9 +577,7 @@ bool AnalysisPredictor::PrepareProgram(
       OptimizeInferenceProgram();
     }
   }
-
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-
   return true;
 }
 
@@ -781,6 +798,30 @@ void AnalysisPredictor::InsertCommOp(
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
+  } else if (config_.use_xpu()) {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint",
+                            config_.dist_config().current_endpoint());
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
   } else {
     LOG(WARNING) << "DistModelInf doesn't init comm.";
     // TODO(fleet exe dev): comm init for more devices
@@ -873,6 +914,17 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
   std::vector<std::vector<int>> inputs_shape;
   for (size_t i = 0; i < inputs.size(); ++i) {
     inputs_shape.emplace_back(inputs[i].shape);
+  }
+  MkldnnPreSet(inputs_shape);
+#endif
+}
+
+void AnalysisPredictor::MkldnnPreSet(
+    const std::vector<paddle::Tensor> &inputs) {
+#ifdef PADDLE_WITH_MKLDNN
+  std::vector<std::vector<int>> inputs_shape;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    inputs_shape.emplace_back(phi::vectorize<int>(inputs[i].dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -992,6 +1044,70 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
+bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
+                            std::vector<paddle::Tensor> *outputs) {
+  inference::DisplayMemoryInfo(place_, "before run");
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+#endif
+  VLOG(3) << "predict start";
+  // set feed variable
+  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::PreconditionNotMet("The scope should not be nullptr."));
+  if (!SetFeed(inputs, scope)) {
+    LOG(ERROR) << "fail to set feed";
+    return false;
+  }
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
+  // Run the inference program
+  // if share variables, we need not create variables
+  executor_->Run();
+
+  inference::DisplayMemoryInfo(place_, "after run");
+
+  // get fetch variable
+  if (!GetFetch(outputs, scope)) {
+    LOG(ERROR) << "fail to get fetches";
+    return false;
+  }
+
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
+#if defined(PADDLE_WITH_MKLML)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+#endif
+  return true;
+}
+
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
@@ -1006,7 +1122,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     phi::DenseTensor *input = &feed_tensors_[i];
-    if (!PaddleTensorToLoDTensor(inputs[i], input, place_)) {
+    if (!PaddleTensorToDenseTensor(inputs[i], input, place_)) {
       return false;
     }
     int idx = -1;
@@ -1020,7 +1136,41 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
-    framework::SetFeedVariable(scope, *input, "feed", idx);
+    framework::SetFeedVariable(scope, *input, framework::kFeedOpType, idx);
+  }
+  return true;
+}
+
+bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
+                                framework::Scope *scope) {
+  VLOG(3) << "Predictor::set_feed";
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    feeds_.size(),
+                    platform::errors::InvalidArgument(
+                        "wrong feed input size, need %d but get %d.",
+                        feeds_.size(),
+                        inputs.size()));
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    PADDLE_ENFORCE_EQ(inputs[i].initialized(),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The input Tensor expected to be initialized."));
+  }
+
+  if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
+        return !t.name().empty() && feed_names_.count(t.name());
+      })) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      auto &t = framework::GetVariableTensor(*scope, inputs[i].name());
+      t.ShareDataWith(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+    }
+  } else {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      auto &t = framework::GetVariableTensor(*scope, idx2feeds_[i]);
+      t.ShareDataWith(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+    }
   }
   return true;
 }
@@ -1059,7 +1209,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             idx,
             i));
     framework::FetchType &fetch_var =
-        framework::GetFetchVariable(*scope, "fetch", idx);
+        framework::GetFetchVariable(*scope, framework::kFetchOpType, idx);
     auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
@@ -1084,7 +1234,20 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   return true;
 }
 
+bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
+                                 framework::Scope *scope) {
+  VLOG(3) << "Predictor::get_fetch";
+  outputs->resize(fetches_.size());
+  for (size_t i = 0; i < fetches_.size(); ++i) {
+    auto const &name = idx2fetches_[i];
+    auto &t = framework::GetVariableTensor(*scope, name);
+    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+  }
+  return true;
+}
+
 void AnalysisPredictor::PrepareArgument() {
+  VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
   argument_.reset(new Argument);
   argument_->SetUseGPU(config_.use_gpu());
@@ -1155,6 +1318,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
+  argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1162,7 +1326,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetUseXpu(config_.use_xpu_);
     argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     argument_->SetXpuLocked(config_.xpu_locked_);
     argument_->SetXpuAutotune(config_.xpu_autotune_);
@@ -1253,27 +1416,43 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  argument_->SetUseXpu(config_.use_xpu_);
+  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+  argument_->SetXpuLocked(config_.xpu_locked_);
+  argument_->SetXpuAutotune(config_.xpu_autotune_);
+  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
+  argument_->SetXpuPrecision(config_.xpu_precision_);
+  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+  argument_->SetXpuDeviceId(config_.xpu_device_id_);
+  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+#endif
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
   // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
-              << ", we will use a new PassStrategy. Note that only the GPU "
+              << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
-      pass_builder->ClearPasses();
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kTrtLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
       } else if (config_.use_gpu()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
+      } else if (config_.use_xpu()) {
+        // All passes support fp16. Not reset pass_builder.
+      } else {
+        pass_builder->ClearPasses();
       }
     }
   }
@@ -1298,6 +1477,15 @@ void AnalysisPredictor::PrepareArgument() {
       LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
     }
   }
+
+  argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
+  if (config_.enable_custom_device_mixed_) {
+    argument_->SetEnableIrOptim(true);
+    pass_builder->ClearPasses();
+    pass_builder->AppendPass("auto_mixed_precision_pass");
+    LOG(INFO) << "This model run in Custom Device mixed precision mode.";
+  }
+
   argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
@@ -1314,7 +1502,6 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
-
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1323,9 +1510,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
-
   Analyzer().Run(argument_.get());
-
   PADDLE_ENFORCE_EQ(
       argument_->scope_valid(),
       true,
@@ -1384,13 +1569,6 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     const AnalysisConfig &config) {
-  // TODO(NHZlX): Should add the link to the doc of
-  // paddle_infer::CreatePredictor<paddle_infer::Config>
-  if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
-    FLAGS_minloglevel = 2;  // GLOG_ERROR
-  }
-  VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
@@ -1403,83 +1581,86 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   std::call_once(custom_operators_registered,
                  []() { inference::RegisterAllCustomOperator(); });
 
-  if (config.use_gpu()) {
-    static std::once_flag gflags_initialized;
-    static bool process_level_allocator_enabled;
-
-    std::call_once(gflags_initialized, [&]() {
-      std::vector<std::string> gflags;
-      PADDLE_ENFORCE_GE(
-          config.memory_pool_init_size_mb(),
-          0.f,
+  auto SetGflags = [](const AnalysisConfig &config) {
+    auto SetGflag = [](const char *name, const char *value) {
+      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      PADDLE_ENFORCE_EQ(
+          ret.empty(),
+          false,
           platform::errors::InvalidArgument(
-              "The size of memory pool should be greater than 0."));
-      PADDLE_ENFORCE_GE(
-          config.gpu_device_id(),
-          0,
-          platform::errors::InvalidArgument(
-              "Invalid device id (%d). The device id should be greater than 0.",
-              config.gpu_device_id()));
-      gflags.push_back("dummy");
-
-      float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
-      if (fraction_of_gpu_memory > 0.95f) {
-        LOG(ERROR)
-            << "Allocate too much memory for the GPU memory pool, assigned "
-            << config.memory_pool_init_size_mb() << " MB";
-        LOG(ERROR) << "Try to shink the value by setting "
-                      "AnalysisConfig::EnableGpu(...)";
-      }
-
-      if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-        std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                           std::to_string(fraction_of_gpu_memory);
-        VLOG(3) << "set flag: " << flag;
-        gflags.push_back(flag);
-      }
-
-      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
-      // allocator when multi-stream is enabled.
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
-      // support set flags from enviorment.
-      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-      std::ostringstream os;
-      os << "--tryfromenv=";
-      for (auto &pair : env_map) {
-        os << pair.second.name << ",";
-      }
-      auto tryfromenv_str = os.str();
-      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
-
-      if (framework::InitGflags(gflags)) {
-        VLOG(3) << "The following gpu analysis configurations only take effect "
-                   "for the first predictor: ";
-        for (size_t i = 1; i < gflags.size(); ++i) {
-          VLOG(3) << gflags[i];
-        }
-      } else {
-        LOG(WARNING) << "The one-time configuration of analysis predictor "
-                        "failed, which may be due to native predictor called "
-                        "first and its configurations taken effect.";
-      }
-    });
-
-    if (config.thread_local_stream_enabled() &&
-        process_level_allocator_enabled) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "When binding threads and streams, the use of "
-          "process-level allocators will result in undefined result "
-          "errors due to memory asynchronous operations."
-          "The thread and stream binding configuration of all "
-          "predictors should be the same in a single process."));
+              "Fail to set gflag: %s, please make sure the gflag exists.",
+              name));
+      VLOG(3) << "set gflag: --" << name << "=" << value;
+    };
+    // TODO(NHZlX): Should add the link to the doc of
+    // paddle_infer::CreatePredictor<paddle_infer::Config>
+    if (config.glog_info_disabled()) {
+      FLAGS_logtostderr = 1;
+      FLAGS_minloglevel = 2;  // GLOG_ERROR
     }
-  }
+
+    if (config.use_gpu()) {
+      static std::once_flag gflags_initialized;
+      static bool process_level_allocator_enabled;
+
+      std::call_once(gflags_initialized, [&]() {
+        PADDLE_ENFORCE_GE(
+            config.memory_pool_init_size_mb(),
+            0.f,
+            platform::errors::InvalidArgument(
+                "The size of memory pool should be greater than 0."));
+        PADDLE_ENFORCE_GE(config.gpu_device_id(),
+                          0,
+                          platform::errors::InvalidArgument(
+                              "Invalid device id (%d). The device id should be "
+                              "greater than 0.",
+                              config.gpu_device_id()));
+
+        float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
+        if (fraction_of_gpu_memory > 0.95f) {
+          LOG(ERROR)
+              << "Allocate too much memory for the GPU memory pool, assigned "
+              << config.memory_pool_init_size_mb() << " MB";
+          LOG(ERROR) << "Try to shink the value by setting "
+                        "AnalysisConfig::EnableUseGpu(...)";
+        }
+        if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
+          std::string value = std::to_string(fraction_of_gpu_memory);
+          SetGflag("fraction_of_gpu_memory_to_use", value.data());
+        }
+
+        // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+        // allocator when multi-stream is enabled.
+        if (config.thread_local_stream_enabled()) {
+          SetGflag("allocator_strategy", "thread_local");
+          process_level_allocator_enabled = false;
+        } else {
+          process_level_allocator_enabled = true;
+        }
+
+        // for inference, the following default values are better.
+        if (std::getenv("FLAGS_conv_workspace_size_limit") == nullptr) {
+          SetGflag("conv_workspace_size_limit", "32");
+        }
+        if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
+          SetGflag("initial_cpu_memory_in_mb", "0");
+        }
+      });
+
+      if (config.thread_local_stream_enabled() &&
+          process_level_allocator_enabled) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "When binding threads and streams, the use of "
+            "process-level allocators will result in undefined result "
+            "errors due to memory asynchronous operations."
+            "The thread and stream binding configuration of all "
+            "predictors should be the same in a single process."));
+      }
+    }
+  };
+  SetGflags(config);
+
+  VLOG(3) << "create AnalysisPredictor";
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.
@@ -1519,7 +1700,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
                               "The sub_scope should not be nullptr."));
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
-    if (op->Type() == "feed") {
+    if (op->Type() == framework::kFeedOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
@@ -1527,7 +1708,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
-    } else if (op->Type() == "fetch") {
+    } else if (op->Type() == framework::kFetchOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
@@ -1542,9 +1723,9 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument("The scope should not be nullptr."));
-  auto *var = scope->Var("feed");
+  auto *var = scope->Var(framework::kFeedOpType);
   var->GetMutable<framework::FeedList>();
-  var = scope->Var("fetch");
+  var = scope->Var(framework::kFetchOpType);
   var->GetMutable<framework::FetchList>();
 }
 
@@ -1609,6 +1790,51 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   return output_names;
 }
 
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetOutputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> output_shapes;
+  std::vector<std::string> names = GetOutputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::PreconditionNotMet(
+                                "Output %s does not exist.", name));
+    output_shapes[name] = var->GetShape();
+  }
+  return output_shapes;
+}
+
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetOutputTypes() {
+  std::map<std::string, paddle_infer::DataType> output_type;
+  std::vector<std::string> names = GetOutputNames();
+  for (const auto &name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Output %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      output_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      output_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      output_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      output_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      output_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get output dtype ", dtype));
+    }
+  }
+  return output_type;
+}
+
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope;
@@ -1655,8 +1881,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1710,8 +1938,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(paddleplace, custom_place.GetDeviceId());
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(
+        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1819,16 +2049,16 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
+    auto *dev_ctx = pool.Get(place_);
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(dev_ctx->stream());
+    hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(dev_ctx->stream());
+    cudaStreamSynchronize(stream);
 #endif
 #endif
   }
@@ -1840,6 +2070,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
       continue;
     }
     auto tensor = var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) continue;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
@@ -1851,22 +2082,40 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+    if ((tensor.dtype() == phi::DataType::INT32 ||
+         tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
-      if (tensor.place() == platform::CPUPlace()) {
+
+      if (platform::is_cpu_place(tensor.place())) {
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CPUPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int));
-      } else if (tensor.place() == platform::CUDAPlace()) {
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
+      } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA)
+        auto *dev_ctx = pool.Get(tensor.place());
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
-                             platform::CUDAPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int),
+                             int32_tensor.place(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int),
                              nullptr);
 #endif
       }
@@ -2058,7 +2307,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
       const std::string name = var->Name();
       auto *variable = executor_->GetScope()->FindVar(name);
       if (variable != nullptr && variable->IsType<phi::DenseTensor>() &&
-          name != "feed" && name != "fetch") {
+          name != framework::kFeedOpType && name != framework::kFetchOpType) {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
         auto *t = variable->GetMutable<phi::DenseTensor>();
         t->clear();
@@ -2176,10 +2425,12 @@ AnalysisPredictor::~AnalysisPredictor() {
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
+  VLOG(3) << "AnalysisPredictor::Clone";
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
   x->root_predictor_id_ = this->root_predictor_id_;
+  x->config_.apply_optim_ = false;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
@@ -2279,6 +2530,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_mod_weight);
 USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
@@ -2288,29 +2540,32 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(elementwise_mod_tensor);
 USE_TRT_CONVERTER(less_than);
 USE_TRT_CONVERTER(greater_than);
 USE_TRT_CONVERTER(logical_or);
 USE_TRT_CONVERTER(logical_xor);
 USE_TRT_CONVERTER(logical_and);
 USE_TRT_CONVERTER(less_equal);
+USE_TRT_CONVERTER(greater_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
-USE_TRT_CONVERTER(matmul);
-USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(matrix_multiply);
 USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(pad3d);
+#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -2320,6 +2575,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(where);
+USE_TRT_CONVERTER(bitwise_not);
 USE_TRT_CONVERTER(one_hot);
 USE_TRT_CONVERTER(one_hot_v2);
 USE_TRT_CONVERTER(swish);
@@ -2393,7 +2649,7 @@ USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
-USE_TRT_CONVERTER(preln_residual_bias)
+USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
@@ -2419,16 +2675,33 @@ USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
+USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+USE_TRT_CONVERTER(cumsum)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+USE_TRT_CONVERTER(qk_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8510)
+USE_TRT_CONVERTER(grid_sampler)
+#endif
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
+USE_TRT_CONVERTER(index_select);
+USE_TRT_CONVERTER(temporal_shift)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2473,6 +2746,10 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
+std::map<std::string, std::vector<int64_t>> Predictor::GetInputTensorShape() {
+  return predictor_->GetInputTensorShape();
+}
+
 std::map<std::string, DataType> Predictor::GetInputTypes() {
   return predictor_->GetInputTypes();
 }
@@ -2489,7 +2766,20 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
   return predictor_->GetOutputTensor(name);
 }
 
+std::map<std::string, std::vector<int64_t>> Predictor::GetOutputTensorShape() {
+  return predictor_->GetOutputTensorShape();
+}
+
+std::map<std::string, DataType> Predictor::GetOutputTypes() {
+  return predictor_->GetOutputTypes();
+}
+
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+
+bool Predictor::Run(const std::vector<paddle::Tensor> &inputs,
+                    std::vector<paddle::Tensor> *outputs) {
+  return predictor_->Run(inputs, outputs);
+}
 
 std::unique_ptr<Predictor> Predictor::Clone(void *stream) {
   auto analysis_pred = predictor_->Clone(stream);

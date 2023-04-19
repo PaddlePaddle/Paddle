@@ -170,11 +170,11 @@ void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy,
   // snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
   //         MemcpyKind(memcpy->copyKind));
   snprintf(event.memcpy_info.src_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy->srcKind));
   snprintf(event.memcpy_info.dst_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy->dstKind));
   collector->AddDeviceEvent(std::move(event));
@@ -199,11 +199,11 @@ void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2,
   // snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
   // MemcpyKind(memcpy2->copyKind));
   snprintf(event.memcpy_info.src_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy2->srcKind));
   snprintf(event.memcpy_info.dst_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy2->dstKind));
   collector->AddDeviceEvent(std::move(event));
@@ -226,7 +226,7 @@ void AddMemsetRecord(const CUpti_ActivityMemset* memset,
   event.correlation_id = memset->correlationId;
   event.memset_info.num_bytes = memset->bytes;
   snprintf(event.memset_info.memory_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemoryKind(memset->memoryKind));
   event.memset_info.value = memset->value;

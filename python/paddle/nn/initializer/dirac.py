@@ -20,7 +20,7 @@ from ...fluid import framework
 from ...fluid.core import VarDesc
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place
-from ...fluid.initializer import Initializer
+from .initializer import Initializer
 
 __all__ = []
 
@@ -205,7 +205,7 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = framework._varbase_creator()
+                tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
                     [len(idx_list)],
@@ -234,7 +234,7 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = framework._varbase_creator()
+                tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
                     [len(value_list)],

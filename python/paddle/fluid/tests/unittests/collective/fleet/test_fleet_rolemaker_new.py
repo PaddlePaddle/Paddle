@@ -16,7 +16,7 @@
 import os
 import unittest
 
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestRoleMakerBase(unittest.TestCase):
@@ -443,9 +443,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         def net():
-            x = paddle.fluid.layers.data(name='x', shape=[13], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
-            y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )

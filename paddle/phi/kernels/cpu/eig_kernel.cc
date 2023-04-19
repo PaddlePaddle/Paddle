@@ -31,6 +31,11 @@ void EigKernel(const Context& dev_ctx,
     int batch_count = BatchCount(x);
     int order = x.dims()[x.dims().size() - 1];
 
+    PADDLE_ENFORCE_LT(0,
+                      order,
+                      errors::InvalidArgument(
+                          "The order of Input(X) should be greater than 0."));
+
     DenseTensor real_w;
     DenseTensor real_v;
 
@@ -99,4 +104,10 @@ PD_REGISTER_KERNEL(eig,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT32 ||
+      kernel_key.dtype() == phi::DataType::FLOAT64) {
+    kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+    kernel->OutputAt(1).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+  }
+}

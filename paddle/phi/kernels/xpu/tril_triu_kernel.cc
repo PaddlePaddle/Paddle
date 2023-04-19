@@ -64,7 +64,14 @@ void TriuKernel(const Context& ctx,
 
 }  // namespace phi
 
+PD_REGISTER_KERNEL(tril_triu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilTriuKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    tril_triu, XPU, ALL_LAYOUT, phi::TrilTriuKernel, int, float) {}
-PD_REGISTER_KERNEL(tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float) {}
-PD_REGISTER_KERNEL(triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float) {}
+    tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float, phi::dtype::float16) {}

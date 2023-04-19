@@ -32,7 +32,7 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
           0,
           phi::errors::InvalidArgument(
               "Each value of attribute 'shape' is expected to be no less "
-              "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+              "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,
               data[i],
               phi::make_ddim(data)));
@@ -119,6 +119,47 @@ void RandintInferMeta(
     tensor_shape.push_back(static_cast<int64_t>(dim));
   }
   out->set_dims(make_ddim(tensor_shape));
+  out->set_dtype(dtype);
+}
+
+void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for p_recv op must be non-negative.", peer));
+  // auto data_type = phi::TransToPhiDataType(dtype);
+  out->set_dtype(dtype);
+}
+
+void PRecvArrayInferMeta(int peer,
+                         DataType dtype,
+                         const std::vector<int>& out_shape,
+                         MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for p_recv op must be non-negative.", peer));
+
+  PADDLE_ENFORCE_GE(out_shape.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of the output shape must be greater than 0 "
+                        "but the value given is %d.",
+                        out_shape.size()));
+
+  for (size_t i = 0; i < out_shape.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        out_shape[i],
+        1,
+        errors::InvalidArgument("The shape attribute for recv must be set "
+                                "explicitly, but the %dth element is %d which "
+                                "is less than 1. Or dynamic_shape should be "
+                                "set to True for both send_v2 and recv_v2.",
+                                i,
+                                out_shape[i]));
+  }
   out->set_dtype(dtype);
 }
 

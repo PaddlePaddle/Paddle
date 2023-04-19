@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/top_k_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
@@ -46,6 +46,11 @@ void TopkGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* out_grad_data = out_grad.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
+
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
 
   int pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
@@ -84,4 +89,5 @@ PD_REGISTER_KERNEL(topk_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

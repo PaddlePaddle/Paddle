@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -63,7 +64,7 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
     TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
-    TypePair<prim::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
+    TypePair<prim::CompositeGradOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
     TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
@@ -161,7 +162,7 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
+  OperatorRegistrarRecursive(const char* op_type UNUSED, OpInfo* info UNUSED) {}
 };
 
 template <typename T>
@@ -262,7 +263,7 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
         info->grad_comp_op_maker_,
         nullptr,
         platform::errors::AlreadyExists(
-            "GradCompositeOpMakerBase of %s has been registered", op_type));
+            "CompositeGradOpMakerBase of %s has been registered", op_type));
 
     info->grad_comp_op_maker_ =
         [](const OpDesc& fwd_op,

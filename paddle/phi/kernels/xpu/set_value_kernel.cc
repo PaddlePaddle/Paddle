@@ -119,8 +119,6 @@ void SetValueImpl(const Context& dev_ctx,
     slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
   }
 
-  auto place = dev_ctx.GetPlace();
-
   // Here copy data from input to avoid data loss at PE and Graph level.
   // TODO(liym27): Speed up in the future version.
   // - Q: Why don't call ShareDataWith to speed up?
@@ -132,7 +130,14 @@ void SetValueImpl(const Context& dev_ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  Copy(dev_ctx, in, place, false, out);
+  int r = XPU_SUCCESS;
+  out->Resize(in.dims());
+  dev_ctx.template Alloc<T>(out);
+  r = xpu::copy(dev_ctx.x_context(),
+                reinterpret_cast<const XPUType*>(in.data<T>()),
+                reinterpret_cast<XPUType*>(out->data<T>()),
+                in.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
   DenseTensor slice_tensor =
       Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
@@ -179,7 +184,6 @@ void SetValueImpl(const Context& dev_ctx,
 
   auto out_shape = phi::vectorize<int>(out->dims());
   auto slice_shape = phi::vectorize<int>(slice_dims);
-  int r = XPU_SUCCESS;
   r = xpu::strided_slice(dev_ctx.x_context(),
                          reinterpret_cast<const XPUType*>(out->data<T>()),
                          reinterpret_cast<XPUType*>(slice_tensor.data<T>()),
@@ -361,7 +365,7 @@ void SetValueKernel(const Context& dev_ctx,
     assgin_values.push_back(val.to<T>());
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  paddle::framework::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
+  phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
   value_tensor.Resize(phi::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,

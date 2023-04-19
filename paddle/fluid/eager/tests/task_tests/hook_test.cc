@@ -32,8 +32,7 @@ PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
-paddle::experimental::Tensor hook_function(
-    const paddle::experimental::Tensor& t) {
+paddle::Tensor hook_function(const paddle::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
 
   auto ret_meta = phi::DenseTensorMeta(
@@ -50,7 +49,7 @@ paddle::experimental::Tensor hook_function(
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
-  paddle::experimental::Tensor ret = paddle::experimental::Tensor();
+  paddle::Tensor ret = paddle::Tensor();
   ret.set_impl(ret_impl);
 
   return ret;
@@ -60,11 +59,11 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor tensor =
+  paddle::Tensor tensor =
       egr_utils_api::CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -72,7 +71,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
                                            1.0 /*value*/,
                                            false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  paddle::experimental::Tensor& target_tensor = target_tensors[0];
+  paddle::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -92,7 +91,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+        std::dynamic_pointer_cast<paddle::AbstractAutogradMeta>(
             auto_grad_meta));
 
     egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook_function);
@@ -103,10 +102,10 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
+  paddle::Tensor leaf_tensor = paddle::Tensor();
   {
     // AccumulationNode Hook: +3
-    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto tmp_tensor0 = paddle::Tensor();
     auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
 
     auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
@@ -118,7 +117,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     leaf_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+        std::dynamic_pointer_cast<paddle::AbstractAutogradMeta>(
             tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook_function);
@@ -136,11 +135,11 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor tensor =
+  paddle::Tensor tensor =
       egr_utils_api::CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
@@ -148,7 +147,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
                                            1.0 /*value*/,
                                            false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  paddle::experimental::Tensor& target_tensor = target_tensors[0];
+  paddle::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -167,7 +166,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     auto_grad_meta->SetStopGradient(false);
     target_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+        std::dynamic_pointer_cast<paddle::AbstractAutogradMeta>(
             auto_grad_meta));
 
     egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
@@ -175,10 +174,10 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
+  paddle::Tensor leaf_tensor = paddle::Tensor();
   {
     // AccumulationNode Hook: +3
-    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto tmp_tensor0 = paddle::Tensor();
     auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
     auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
     auto_grad_meta->SetGradNode(acc_node_ptr);
@@ -187,7 +186,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     leaf_tensor.set_autograd_meta(
-        std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
+        std::dynamic_pointer_cast<paddle::AbstractAutogradMeta>(
             tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook_function);

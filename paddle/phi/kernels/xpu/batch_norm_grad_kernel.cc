@@ -128,6 +128,9 @@ void BatchNormGradKernel(const Context &dev_ctx,
   C = (C == 0) ? 1 : C;
   H = (H == 0) ? 1 : H;
   W = (W == 0) ? 1 : W;
+  D = (D == 0) ? 1 : D;
+
+  W = W * D;
 
   const auto *x_data = x.data<T>();
   const auto *d_y_data = y_grad.data<T>();

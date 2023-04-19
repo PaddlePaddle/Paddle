@@ -17,15 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -34,7 +25,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid preln_groupnorm_act op to tensorrt "
+    VLOG(4) << "convert a preln_groupnorm_act op to tensorrt "
                "preln_groupnorm_act plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -45,6 +36,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
 
     int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    bool with_silu = PADDLE_GET_CONST(bool, op_desc.GetAttr("with_silu"));
 
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
@@ -75,6 +67,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
               bias_weights.get().count,
               epsilon,
               groups,
+              with_silu,
               with_fp16);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(inputs.data(), 2, plugin);

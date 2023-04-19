@@ -16,12 +16,12 @@ import unittest
 
 import numpy
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import core
 
 
 def calculate_momentum_by_numpy(
@@ -54,9 +54,38 @@ def calculate_momentum_by_numpy(
     return param_out, velocity_out
 
 
+def momentum_wrapper(
+    param,
+    grad,
+    velocity,
+    learning_rate=1.0,
+    master_param=None,
+    mu=0.0,
+    use_nesterov=False,
+    regularization_method="",
+    regularization_coeff=0.0,
+    multi_precision=False,
+    rescale_grad=1.0,
+):
+    return paddle._C_ops.momentum_(
+        param,
+        grad,
+        velocity,
+        learning_rate,
+        master_param,
+        mu,
+        use_nesterov,
+        regularization_method,
+        regularization_coeff,
+        multi_precision,
+        rescale_grad,
+    )
+
+
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.init_dtype()
 
@@ -107,6 +136,7 @@ class TestMomentumOp2(OpTest):
 
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
@@ -221,7 +251,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
     def config(self):
         self.params_num = 1
@@ -528,8 +558,8 @@ class TestMomentumV2(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -561,6 +591,7 @@ class TestMomentumV2(unittest.TestCase):
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.use_nesterov = True
         self.regularization_method = 'l2_decay'
@@ -666,8 +697,8 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -32,6 +32,7 @@ class TestElementwiseOp(OpTest):
         self.op_type = "elementwise_heaviside"
         x = np.random.random((13, 17)).astype("float64")
         y = np.random.random((13, 17)).astype("float64")
+        self.python_api = paddle.heaviside
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
@@ -181,7 +182,6 @@ class TestHeavisideAPI_float16(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
         )
 
 

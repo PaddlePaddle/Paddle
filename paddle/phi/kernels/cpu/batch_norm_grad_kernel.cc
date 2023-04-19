@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
@@ -163,7 +164,7 @@ void BatchNormGradRawKernel(const Context& ctx,
   }
 
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-    paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+    phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
     return;
   }
 
@@ -663,7 +664,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    float,
                    double) {}
 
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,

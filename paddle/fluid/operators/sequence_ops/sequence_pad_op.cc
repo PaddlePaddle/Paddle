@@ -56,6 +56,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE_EQ(
         pad_value_dims == phi::make_ddim({1}) ||
+            pad_value_dims == phi::make_ddim({}) ||
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
@@ -93,7 +94,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
                             static_cast<int64_t>(x_lod_0.back())));
 
       int seq_num = x_lod_0.size() - 1;
-      int max_seq_len = math::MaximumSequenceLength(x_lod_0);
+      int max_seq_len = phi::funcs::MaximumSequenceLength(x_lod_0);
       if (padded_length == -1) {
         padded_length = max_seq_len;
       }
@@ -284,13 +285,20 @@ REGISTER_OPERATOR(sequence_pad,
 REGISTER_OPERATOR(sequence_pad_grad,
                   ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(sequence_pad,
-                       ops::SequencePadOpKernel<phi::CPUContext, float>,
-                       ops::SequencePadOpKernel<phi::CPUContext, double>,
-                       ops::SequencePadOpKernel<phi::CPUContext, int>,
-                       ops::SequencePadOpKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(sequence_pad_grad,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, float>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, double>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, int>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(sequence_pad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_pad_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

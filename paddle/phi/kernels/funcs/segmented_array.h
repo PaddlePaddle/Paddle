@@ -14,37 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/fast_divmod.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
-
-template <typename IndexT>
-struct GeneralDivMod {
- public:
-  explicit GeneralDivMod(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
-  __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
-    return divmoder.Divmod(val);
-  }
-
-  phi::funcs::FastDivMod divmoder;
-};
-
-template <>
-struct GeneralDivMod<int64_t> {
- public:
-  using DivModT = phi::AlignedVector<int64_t, 2>;
-
-  explicit GeneralDivMod(int64_t d) { divisor = d; }
-  __device__ inline DivModT div_mod(int64_t val) {
-    DivModT data;
-    data[0] = val / divisor;
-    data[1] = val - data[0] * divisor;
-    return data;
-  }
-
-  int64_t divisor;
-};
 
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
@@ -59,6 +34,26 @@ enum class SegmentedArraySize {
   kFixed16 = 16,
   kFixed32 = 32,
   kFixed64 = 64,
+};
+
+template <typename T, SegmentedArraySize Size, int Num = static_cast<int>(Size)>
+struct PADDLE_ALIGN(256) ValueArray {
+ public:
+  T data[Num];
+
+  void Set(T* ptr, const int num) {
+    for (auto i = 0; i < num; ++i) {
+      data[i] = ptr[i];
+    }
+  }
+};
+
+template <typename T>
+struct PADDLE_ALIGN(256) ValueArray<T, SegmentedArraySize::kVariableLength, 0> {
+ public:
+  T* data{nullptr};
+
+  void Set(T* ptr, const int num) { data = ptr; }
 };
 
 template <typename T, SegmentedArraySize Size>
@@ -89,8 +84,8 @@ struct PADDLE_ALIGN(256) PointerArray {
  public:
   T* data[static_cast<int>(Size)];
 
-  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
-    for (auto i = 0; i < ptrs.size(); ++i) {
+  void Set(T** ptrs, const int num, T** dev_ptr = nullptr) {
+    for (auto i = 0; i < num; ++i) {
       data[i] = ptrs[i];
     }
   }
@@ -101,9 +96,7 @@ struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
  public:
   T** data{nullptr};
 
-  void Set(const std::vector<T*>& ptrs, T** dev_ptr = nullptr) {
-    data = dev_ptr;
-  }
+  void Set(T** ptrs, const int num, T** dev_ptr = nullptr) { data = dev_ptr; }
 };
 
 #undef PADDLE_ALIGN
@@ -111,17 +104,27 @@ struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
 template <typename Context>
 struct ArraySetterBase {
  protected:
-  void* AllocAndCopy(const Context& ctx, void* src, size_t num_bytes) {
-    allocation = paddle::memory::Alloc(
+  void* AllocAndCopy(const Context& ctx,
+                     void* src,
+                     size_t num_bytes,
+                     bool use_cuda_graph = false) {
+    allocation = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-    paddle::memory::Copy(ctx.GetPlace(),
-                         allocation->ptr(),
-                         phi::CPUPlace(),
-                         src,
-                         num_bytes,
-                         ctx.stream());
+
+    int8_t* restored = reinterpret_cast<int8_t*>(src);
+#ifdef PADDLE_WITH_CUDA
+    if (use_cuda_graph) {
+      restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph<int8_t>(
+          restored, num_bytes);
+    }
+#endif
+    phi::backends::gpu::GpuMemcpyAsync(allocation->ptr(),
+                                       restored,
+                                       num_bytes,
+                                       phi::gpuMemcpyHostToDevice,
+                                       ctx.stream());
     return allocation->ptr();
   }
 
@@ -143,9 +146,8 @@ struct ConstPointerArraySetter : public ArraySetterBase<Context> {
     const T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t.size() * sizeof(T*);
-      dev_ptr =
-          reinterpret_cast<const T**>(ArraySetterBase<Context>::AllocAndCopy(
-              ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+      dev_ptr = reinterpret_cast<const T**>(this->AllocAndCopy(
+          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
     }
 
     array.Set(ptrs, dev_ptr);
@@ -160,24 +162,38 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   PointerArray<T, Size> array;
 
-  PointerArraySetter(const Context& ctx, std::vector<DenseTensor*>* t) {
+  // need_alloc : tensor data needs extra buffer or not.
+  // use_cuda_graph: tensor data shall be captured by cuda_graph or not.
+  // pre_alloc_host_buf: tensor data is temporaily stored by pinned memory or
+  // not.
+  PointerArraySetter(const Context& ctx,
+                     std::vector<DenseTensor*>* t,
+                     bool need_alloc = false,
+                     bool use_cuda_graph = false,
+                     T** pre_alloc_host_buf = nullptr) {
     ptrs.resize(t->size());
+    T** data_ptr = ptrs.data();
+#ifdef PADDLE_WITH_HIP
+    if (pre_alloc_host_buf) {
+      data_ptr = pre_alloc_host_buf;
+    }
+#endif
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
-        ptrs[i] = ctx.template Alloc<T>(t->at(i));
+        data_ptr[i] =
+            need_alloc ? ctx.template Alloc<T>(t->at(i)) : t->at(i)->data<T>();
       } else {
-        ptrs[i] = nullptr;
+        data_ptr[i] = nullptr;
       }
     }
 
     T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t->size() * sizeof(T*);
-      dev_ptr = reinterpret_cast<T**>(ArraySetterBase<Context>::AllocAndCopy(
-          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+      dev_ptr = reinterpret_cast<T**>(this->AllocAndCopy(
+          ctx, reinterpret_cast<void*>(data_ptr), num_bytes, use_cuda_graph));
     }
-
-    array.Set(ptrs, dev_ptr);
+    array.Set(data_ptr, t->size(), dev_ptr);
   }
 
  private:
@@ -199,6 +215,7 @@ inline SegmentedArraySize CalcArraySize(int n) {
     return SegmentedArraySize::kVariableLength;
   }
 }
+
 }  // namespace funcs
 
 #define _SEGMENTED_ARRAY_KERNEL_CASE(size, ...) \

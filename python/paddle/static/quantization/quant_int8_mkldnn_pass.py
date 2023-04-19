@@ -161,7 +161,7 @@ class QuantInt8MkldnnPass:
         }
 
         conv_op_node = graph.create_op_node(
-            op_type='conv2d',
+            op_type='fused_conv2d',
             attrs=attrs,
             inputs={'Input': input_var_node, 'Filter': weight_var_node},
             outputs={'Output': output_var_node},
@@ -280,11 +280,10 @@ class QuantInt8MkldnnPass:
                 all_used_vars.add(output_node)
 
         all_used_vars = {n.node for n in all_used_vars}
-        all_unused_vars = {
-            n
-            for n in filter(
+        all_unused_vars = set(
+            filter(
                 lambda node: node.node not in all_used_vars,
                 graph.all_var_nodes(),
             )
-        }
+        )
         graph.safe_remove_nodes(all_unused_vars)

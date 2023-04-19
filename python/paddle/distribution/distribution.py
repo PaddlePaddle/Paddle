@@ -134,7 +134,11 @@ class Distribution:
         Returns:
             Tensor: generated sample data shape
         """
-        return sample_shape + self._batch_shape + self._event_shape
+        return (
+            tuple(sample_shape)
+            + tuple(self._batch_shape)
+            + tuple(self._event_shape)
+        )
 
     def _validate_args(self, *args):
         """
@@ -173,11 +177,11 @@ class Distribution:
         tmp = 0.0
 
         for arg in args:
-            if isinstance(arg, float):
-                arg = [arg]
-            if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
+            if not isinstance(
+                arg, (float, list, tuple, np.ndarray, tensor.Variable)
+            ):
                 raise TypeError(
-                    "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".format(
+                    "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)
                     )
                 )
@@ -200,7 +204,7 @@ class Distribution:
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
             arg_variable = paddle.tensor.create_tensor(dtype=dtype)
-            tensor.assign(arg_broadcasted, arg_variable)
+            paddle.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
         return tuple(variable_args)
@@ -235,7 +239,7 @@ class Distribution:
             warnings.warn(
                 "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
             )
-            return tensor.cast(value, dtype=param.dtype)
+            return paddle.cast(value, dtype=param.dtype)
         return value
 
     def _probs_to_logits(self, probs, is_binary=False):

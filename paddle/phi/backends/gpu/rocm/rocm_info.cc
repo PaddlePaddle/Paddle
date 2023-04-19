@@ -200,6 +200,13 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
   return ret;
 }
 
+std::pair<int, int> GetGpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
+}
+
 const gpuDeviceProp &GetDeviceProperties(int id) {
   std::call_once(g_device_props_size_init_flag, [&] {
     int gpu_num = 0;

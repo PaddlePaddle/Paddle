@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +39,7 @@ static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   return start_index;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PartialConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -84,7 +84,7 @@ class PartialConcatKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

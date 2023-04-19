@@ -240,12 +240,15 @@ REGISTER_OPERATOR(rank_loss,
                   ops::RankLossGradMaker<paddle::framework::OpDesc>,
                   ops::RankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
-REGISTER_OP_CPU_KERNEL(rank_loss, ops::RankLossKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(rank_loss_grad,
-                       ops::RankLossGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    rank_loss, paddle::operators::RankLossKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    rank_loss_grad,
-    paddle::operators::RankLossGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    rank_loss, CPU, ALL_LAYOUT, ops::RankLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    rank_loss_grad, CPU, ALL_LAYOUT, ops::RankLossGradKernel, float) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(
+    rank_loss, GPU, ALL_LAYOUT, ops::RankLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    rank_loss_grad, GPU, ALL_LAYOUT, ops::RankLossGradKernel, float) {}
+#endif

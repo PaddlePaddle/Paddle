@@ -15,7 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -52,6 +54,35 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseSubCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite sub_grad but we got: ",
+            axis));
+    VLOG(6) << "Runing sub_grad composite func";
+    prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
+  }
+};
+
 template <typename T>
 class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -84,6 +115,7 @@ REGISTER_OPERATOR(elementwise_sub,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_subGradMaker<::paddle::framework::OpDesc>,
                   elementwise_subGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseSubCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(

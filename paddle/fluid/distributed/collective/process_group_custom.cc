@@ -16,11 +16,13 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 
 DECLARE_bool(xccl_blocking_wait);
 
@@ -36,8 +38,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    cclEvents[i].Record(*dev_ctx[i]);
-    cclEvents[i].Block(*default_ctx);
+    cclEvents[i].Record(*default_ctx);
+    cclEvents[i].Block(*dev_ctx[i]);
   }
 }
 
@@ -72,8 +74,7 @@ void ProcessGroupCustom::CustomTask::SynchronizeStreams() {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
     phi::DeviceGuard guard(default_ctx->GetPlace());
-    phi::stream::Stream stream(default_ctx->GetPlace(), default_ctx->stream());
-    stream.WaitEvent(control_events_[i].GetCustomEvent());
+    control_events_[i].Block(*default_ctx);
   }
 }
 
@@ -98,13 +99,25 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
+void ProcessGroupCustom::CustomTask::UpdateWaitChain(
+    const phi::DeviceContext& ctx) {
+  PADDLE_ENFORCE_NE(
+      std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()),
+      places_.cend(),
+      phi::errors::NotFound("Cannot find the device context in this task."));
+  auto index = std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()) -
+               places_.cbegin();
+  control_events_[index].Record(
+      reinterpret_cast<const phi::CustomContext&>(ctx));
+}
+
 ProcessGroupCustom::ProcessGroupCustom(
     const std::shared_ptr<phi::distributed::Store>& store,
     const std::string& device_type,
     int rank,
     int size,
     int gid)
-    : ProcessGroupWithoutStream(rank, size, gid),
+    : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       device_type_(device_type) {}
 
@@ -153,12 +166,10 @@ void ProcessGroupCustom::CreateCustomManagerCache(
   std::vector<std::unique_ptr<CustomDeviceContext>> dev_ctx;
   dev_ctx.resize(places.size());
 
-  std::unique_ptr<phi::ccl::CCLComm> comms(
-      new phi::ccl::CCLComm[places.size()]);
   for (size_t i = 0; i < places.size(); ++i) {
     phi::DeviceGuard guard(places[i]);
     ccl_comms[i] = CustomCCLCommManager::Create(
-        device_type, GetSize(), GetRank(), &ccl_id, comms.get() + i);
+        device_type, GetSize(), GetRank(), &ccl_id, new phi::ccl::CCLComm);
     dev_ctx[i].reset(new CustomDeviceContext(places[i]));
   }
 
@@ -176,7 +187,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     Fn fn,
-    CommType op_type) {
+    CommType op_type,
+    bool sync_op,
+    bool use_calc_stream) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
 
@@ -188,40 +201,48 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   }
 
   auto& ccl_comms = places_to_customcomm_[key];
-  SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  if (!use_calc_stream) {
+    SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  }
   auto task = CreateTask(places, rank_, op_type, inputs);
   task->SetOutputs(outputs);
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     phi::DeviceGuard guard(places[i]);
-    const auto& ccl_stream = places_to_ctx_[key][i]->stream();
+    const auto& ccl_stream =
+        use_calc_stream ? reinterpret_cast<phi::CustomContext*>(
+                              phi::DeviceContextPool::Instance().Get(places[i]))
+                              ->stream()
+                        : places_to_ctx_[key][i]->stream();
     phi::stream::Stream stream(places[i], ccl_stream);
     fn(inputs[i], outputs[i], ccl_comms[i]->GetCustomCCLComm(), stream);
   }
 
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    phi::DeviceGuard guard(places[i]);
-    task->control_events_[i].Record(*places_to_ctx_[key][i]);
+  if (!use_calc_stream) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      phi::DeviceGuard guard(places[i]);
+      task->control_events_[i].Record(*places_to_ctx_[key][i]);
+    }
   }
   return task;
 }
 
 void* XcclGetPointerByOffset(void* raw_pointer,
                              size_t offset,
-                             experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+                             phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT64) {
+  } else if (type == phi::DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
                                    offset);
   } else {
@@ -236,10 +257,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     const phi::DenseTensor& in_tensor,
     int64_t offset,
     int64_t numel,
-    bool sync_op  // for compatibility, no use now
-) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+    bool sync_op,  // for compatibility, no use now
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  const phi::DenseTensor& in_tensor_maybe_partial =
+      numel > 0
+          ? paddle::distributed::GetPartialTensor(in_tensor, offset, numel)
+          : in_tensor;
+  phi::distributed::CommStaticCheck::GatherLikeShape(
+      *out_tensor,
+      in_tensor_maybe_partial,
+      /*dst_rank*/ rank_,
+      /*cur_rank*/ rank_,
+      size_,
+      phi::AllocationType::CUSTOM);
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor_maybe_partial};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+
   return Collective(
       in_wrapper,
       out_wrapper,
@@ -249,80 +283,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
           const phi::stream::Stream& stream) {
         return phi::DeviceManager::CCLAllGather(
             device_type_,
-            XcclGetPointerByOffset(input.data(), offset, input.dtype()),
+            input.data(),
             output.data(),
-            numel,
+            input.numel(),
             phi::ccl::ToCCLDataType(input.dtype()),
             comm,
             stream);
       },
-      CommType::ALLGATHER);
+      CommType::ALLGATHER,
+      sync_op,
+      use_calc_stream);
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
-    const AllreduceOptions& opts,
-    bool sync_op  // for compatibility, no use now
-) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return AllReduce(in_wrapper, out_wrapper, opts);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
-    const BroadcastOptions& opts,
-    bool sync_op  // for compatibility, no use now
-) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return Broadcast(in_wrapper, out_wrapper, opts);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
-    const BarrierOptions& opts) {
-  // Only support single card single process
-  PADDLE_ENFORCE_GE(opts.device_id,
-                    0,
-                    platform::errors::PreconditionNotMet(
-                        "The barrier device id must greater or equal than 0."));
-  platform::CustomPlace place(device_type_, opts.device_id);
-  auto allocator = std::unique_ptr<phi::Allocator>(
-      new paddle::experimental::DefaultAllocator(place));
-  phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
-  phi::DenseTensor barrier_tensor{allocator.get(), meta};
-
-  auto task = ProcessGroupCustom::AllReduce(&barrier_tensor,
-                                            barrier_tensor,
-                                            {},
-                                            /*sync_op*/ true);
-  auto xccl_task = dynamic_cast<ProcessGroupCustom::CustomTask*>(task.get());
-  xccl_task->barrierTensors_ = {barrier_tensor};
-  return task;
-}
-
-phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
-    const Place& place) const {
-  const std::string key = GetKeyFromPlace(place);
-  const auto& iter = places_to_ctx_.find(key);
-  PADDLE_ENFORCE_NE(
-      iter,
-      places_to_ctx_.end(),
-      platform::errors::NotFound(
-          "Cannot find the device context in this process group."));
-  return iter->second[0].get();
-}
-
-phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
-  std::vector<Place> places = {place};
-  const auto& iter = places_to_customcomm_.find(GetKeyFromPlaces(places));
-  PADDLE_ENFORCE_NE(iter,
-                    places_to_customcomm_.end(),
-                    platform::errors::InvalidArgument(
-                        "Cannot find nccl comm in process group."));
-  return iter->second[0]->GetCustomCCLComm();
+    int64_t offset,
+    int64_t numel,
+    bool sync_op) {
+  return AllGather(out_tensor, in_tensor, offset, numel, sync_op, false);
 }
 
 // TODO(sunyilun): methods below will be removed later
@@ -355,7 +334,58 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
             comm,
             stream);
       },
-      CommType::ALLGATHER);
+      CommType::ALLGATHER,
+      false,
+      false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op,  // for compatibility, no use now
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_wrapper, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_wrapper, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_wrapper,
+      out_wrapper,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        return phi::DeviceManager::CCLAllReduce(
+            device_type_,
+            input.data(),
+            output.data(),
+            input.numel(),
+            phi::ccl::ToCCLDataType(input.dtype()),
+            ToCustomCCLRedType(opts.reduce_op),
+            comm,
+            stream);
+      },
+      CommType::ALLREDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  return AllReduce(out_tensor, in_tensor, opts, sync_op, false);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
@@ -389,7 +419,113 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             comm,
             stream);
       },
-      CommType::ALLREDUCE);
+      CommType::ALLREDUCE,
+      false,
+      false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const BroadcastOptions& opts,
+    bool sync_op,  // for compatibility, no use now
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_wrapper, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_wrapper, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_wrapper,
+      out_wrapper,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        int root = opts.source_rank * in_wrapper.size() + opts.source_root;
+        if (rank_ == root) {
+          return phi::DeviceManager::CCLBroadcast(
+              device_type_,
+              input.data(),
+              input.numel(),
+              phi::ccl::ToCCLDataType(input.dtype()),
+              root,
+              comm,
+              stream);
+        } else {
+          return phi::DeviceManager::CCLBroadcast(
+              device_type_,
+              output.data(),
+              output.numel(),
+              phi::ccl::ToCCLDataType(output.dtype()),
+              root,
+              comm,
+              stream);
+        }
+      },
+      CommType::BROADCAST,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const BroadcastOptions& opts,
+    bool sync_op) {
+  return Broadcast(out_tensor, in_tensor, opts, sync_op, false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
+    const BarrierOptions& opts) {
+  // Only support single card single process
+  PADDLE_ENFORCE_GE(opts.device_id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The barrier device id must greater or equal than 0."));
+  platform::CustomPlace place(device_type_, opts.device_id);
+  auto allocator = std::unique_ptr<phi::Allocator>(
+      new paddle::experimental::DefaultAllocator(place));
+  phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
+  phi::DenseTensor barrier_tensor{allocator.get(), meta};
+
+  auto task = ProcessGroupCustom::AllReduce(&barrier_tensor,
+                                            barrier_tensor,
+                                            {},
+                                            /*sync_op*/ true,
+                                            false);
+  auto xccl_task = dynamic_cast<ProcessGroupCustom::CustomTask*>(task.get());
+  xccl_task->barrierTensors_ = {barrier_tensor};
+  return task;
+}
+
+phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
+    const Place& place) const {
+  const std::string key = GetKeyFromPlace(place);
+  const auto& iter = places_to_ctx_.find(key);
+  PADDLE_ENFORCE_NE(
+      iter,
+      places_to_ctx_.end(),
+      platform::errors::NotFound(
+          "Cannot find the device context in this process group."));
+  return iter->second[0].get();
+}
+
+phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
+  std::vector<Place> places = {place};
+  const auto& iter = places_to_customcomm_.find(GetKeyFromPlaces(places));
+  PADDLE_ENFORCE_NE(iter,
+                    places_to_customcomm_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find nccl comm in process group."));
+  return iter->second[0]->GetCustomCCLComm();
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
@@ -434,7 +570,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
               stream);
         }
       },
-      CommType::BROADCAST);
+      CommType::BROADCAST,
+      false,
+      false);
 }
 
 std::shared_ptr<ProcessGroupCustom>

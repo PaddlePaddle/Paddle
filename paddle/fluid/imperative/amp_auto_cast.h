@@ -54,6 +54,9 @@ class AmpOperators {
 
   std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
+  std::shared_ptr<std::unordered_set<std::string>> GetMutableUnsupportedOps(
+      const phi::DataType& data_type);
+
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
 

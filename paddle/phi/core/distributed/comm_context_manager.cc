@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_GLOO)
-#include "gloo/rendezvous/prefix_store.h"
+#include <gloo/rendezvous/prefix_store.h>
 
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 #include "paddle/phi/core/distributed/gloo_utils.h"

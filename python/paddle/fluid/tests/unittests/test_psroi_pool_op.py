@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -174,10 +174,10 @@ class TestPSROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
@@ -337,6 +337,22 @@ class TestPSROIPoolChannelError(unittest.TestCase):
             )
 
         self.assertRaises(ValueError, test_channel_error)
+
+
+class TestPSROIPoolZeroDivError(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x = paddle.uniform([2, 490, 28, 28], dtype='float32')
+        self.boxes = paddle.to_tensor(
+            [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32'
+        )
+        self.boxes_num = paddle.to_tensor([1, 2], dtype='int32')
+
+    def test_errors(self):
+        def test_zero_div_error():
+            paddle.vision.ops.psroi_pool(self.x, self.boxes, self.boxes_num, 0)
+
+        self.assertRaises(ValueError, test_zero_div_error)
 
 
 class TestPSROIPoolStaticAPI(unittest.TestCase):

@@ -31,7 +31,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         self._sync_batch_norm = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -44,9 +44,9 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
 
 class FleetCollectiveTest(unittest.TestCase):
     def test_open_sync_batch_norm(self):
-        import paddle.fluid as fluid
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        from paddle.fluid.incubate.fleet.collective import (
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet import role_maker
+        from paddle.incubate.distributed.fleet.collective import (
             DistributedStrategy,
             fleet,
         )
@@ -55,7 +55,7 @@ class FleetCollectiveTest(unittest.TestCase):
             # Operator "gen_nccl_id" has not been registered
             return
 
-        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+        data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
 

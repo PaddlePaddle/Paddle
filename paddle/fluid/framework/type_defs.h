@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/imperative/type_defs.h"
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
@@ -59,30 +60,10 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<double>,
                                   VarDesc*,
                                   std::vector<VarDesc*>,
-                                  double>;
+                                  double,
+                                  paddle::experimental::Scalar,
+                                  std::vector<paddle::experimental::Scalar>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
-
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUAttribute = paddle::variant<paddle::blank,
-                                     int,
-                                     float,
-                                     std::string,
-                                     std::vector<int>,
-                                     std::vector<float>,
-                                     std::vector<std::string>,
-                                     bool,
-                                     std::vector<bool>,
-                                     BlockDesc*,
-                                     int64_t,
-                                     std::vector<BlockDesc*>,
-                                     std::vector<int64_t>,
-                                     std::vector<double>,
-                                     VarDesc*,
-                                     std::vector<VarDesc*>,
-                                     std::vector<std::vector<int64_t>>>;
-
-using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
-#endif
 
 using OpCreator =
     std::function<OperatorBase*(const std::string& /*type*/,
@@ -96,7 +77,7 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
 
-using GradCompositeOpMakerFN =
+using CompositeGradOpMakerFN =
     std::function<std::vector<std::unique_ptr<OpDesc>>(
         const OpDesc&,
         const std::unordered_set<std::string>& /*no_grad_set*/,

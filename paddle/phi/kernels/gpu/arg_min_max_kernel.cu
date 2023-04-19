@@ -30,6 +30,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
 namespace {  // NOLINT
@@ -180,6 +181,12 @@ struct VisitDataCudaArgMinMaxFunctor {
       x_dims = x.dims();
       if (axis < 0) new_axis = axis + x.dims().size();
     }
+    // For 0D Tensor
+    if (x.dims().size() == 0) {
+      dev_ctx.template Alloc<IndType>(out);
+      phi::funcs::set_constant(dev_ctx, out, 0);
+      return;
+    }
 
     int64_t numel = x.numel();
     int64_t groups = numel / x_dims[new_axis];
@@ -259,7 +266,9 @@ PD_REGISTER_KERNEL(argmin,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(argmax,
                    GPU,
@@ -272,4 +281,6 @@ PD_REGISTER_KERNEL(argmax,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

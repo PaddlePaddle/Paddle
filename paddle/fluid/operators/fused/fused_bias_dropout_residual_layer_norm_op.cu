@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -54,8 +54,12 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
     auto *ln_var_data = dev_ctx.Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
-    auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
-        dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
+    auto *dropout_mask_out_data =
+        (dropout_mask_out == nullptr)
+            ? nullptr
+            : dev_ctx.Alloc<uint8_t>(
+                  dropout_mask_out,
+                  dropout_mask_out->numel() * sizeof(uint8_t));
     auto *y_data = dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     const auto input_x_dims = input_x->dims();
@@ -87,7 +91,7 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -172,12 +176,18 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_bias_dropout_residual_layer_norm,
-                        ops::FusedBiasDropoutResidualLnOpKernel<float>,
-                        ops::FusedBiasDropoutResidualLnOpKernel<double>,
-                        ops::FusedBiasDropoutResidualLnOpKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_bias_dropout_residual_layer_norm_grad,
-    ops::FusedBiasDropoutResidualLnGradKernel<float>,
-    ops::FusedBiasDropoutResidualLnGradKernel<double>,
-    ops::FusedBiasDropoutResidualLnGradKernel<plat::float16>);
+
+PD_REGISTER_STRUCT_KERNEL(fused_bias_dropout_residual_layer_norm,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBiasDropoutResidualLnOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBiasDropoutResidualLnGradKernel,
+                          float,
+                          double,
+                          plat::float16) {}

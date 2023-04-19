@@ -62,7 +62,7 @@ __global__ void SetOutput(const T* in_dat,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -97,7 +97,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Copy LoD to GPU
     auto last_lod = lod[lod.size() - 1];
     auto lod_len = last_lod.size();
-    paddle::framework::MixVector<size_t> mixv_last_lod(&last_lod);
+    phi::MixVector<size_t> mixv_last_lod(&last_lod);
     const size_t* dev_in_lod_ptr = mixv_last_lod.CUDAData(ctx.GetPlace());
     // Calc output LoD
     thrust::device_vector<size_t> dev_out_lod(lod_len);
@@ -129,6 +129,10 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(sequence_erase,
-                        paddle::operators::SequenceEraseOpCUDAKernel<int32_t>,
-                        paddle::operators::SequenceEraseOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_erase,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceEraseOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

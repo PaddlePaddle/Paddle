@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -80,11 +83,84 @@ ProcessGroupBKCL::ProcessGroupBKCL(
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
+  VLOG(3) << "bkcl_group_start";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
 }
 
 void ProcessGroupBKCL::GroupEnd() {
+  VLOG(3) << "bkcl_group_end";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
+    phi::DenseTensor* tensor,
+    int src_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  phi::DenseTensor partial_tensor;
+  if (numel > 0) {
+    partial_tensor = GetPartialTensor(*tensor, offset, numel);
+    tensor = &partial_tensor;
+  }
+
+  return Collective(
+      tensor,
+      // have to pass a tensor here
+      // TODO(zhangxiaoci) catch up with nccl's api
+      *tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        VLOG(3) << "bkcl_recv";
+        int r = bkcl_recv(comm,
+                          output->data(),
+                          output->numel(),
+                          src_rank,
+                          platform::ToBKCLDataType(
+                              framework::TransToProtoVarType(output->type())),
+                          stream);
+        return r;
+      },
+      CommType::RECV,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
+    const phi::DenseTensor& tensor,
+    int dst_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  const phi::DenseTensor& tensor_maybe_partial =
+      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
+
+  return Collective(
+      nullptr,
+      tensor_maybe_partial,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        VLOG(3) << "bkcl_send";
+        int r = bkcl_send(comm,
+                          input.data(),
+                          input.numel(),
+                          dst_rank,
+                          platform::ToBKCLDataType(
+                              framework::TransToProtoVarType(input.type())),
+                          stream);
+        return r;
+      },
+      CommType::SEND,
+      sync_op,
+      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroupBKCL::BKCLTask> ProcessGroupBKCL::CreateTask(
@@ -128,9 +204,16 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  // set allocator
+  comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place)
+                             .get());
+
   BKCLContext_t bkcl_comm;
   BKCLCHECK(bkcl_init_rank(&bkcl_comm, GetRank(), GetSize(), &bkcl_id));
   comm_ctx->SetBkclContext(bkcl_comm);
+  // comm context creates a separate XPU stream for communication
+  comm_ctx->CreateStream();
 
   place_to_calc_ctx_[place_key] = calc_ctx;
   place_to_comm_ctx_[place_key] = std::move(comm_ctx);
@@ -193,15 +276,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "bkcl_all_reduce";
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       sync_op,
@@ -222,14 +307,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           BKCLContext_t comm,
           const XPUStream& stream) {
         int root = opts.source_rank + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "bkcl_broadcast";
+        int r =
+            bkcl_broadcast(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           root,
+                           stream);
+        return r;
       },
       CommType::BROADCAST,
       sync_op,
@@ -239,10 +327,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
-    int64_t offset,  // for compatibility, no use now
-    int64_t numel,   // for compatibility, no use now
+    int64_t offset,
+    int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
+  const phi::DenseTensor& in_tensor_maybe_partial =
+      numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
+  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
+                                                     in_tensor_maybe_partial,
+                                                     /*dst_rank*/ rank_,
+                                                     /*cur_rank*/ rank_,
+                                                     size_,
+                                                     phi::AllocationType::XPU);
   return Collective(
       out_tensor,
       in_tensor,
@@ -250,14 +346,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "bkcl_all_gather";
+        int r =
+            bkcl_all_gather(comm,
+                            in_tensor_maybe_partial.data(),
+                            in_tensor_maybe_partial.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       sync_op,
@@ -277,40 +375,49 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        phi::DenseTensor output_t(*output);
-        const auto& place = input.place();
-        auto* calc_ctx = static_cast<phi::XPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-        switch (input.dtype()) {
-          case phi::DataType::FLOAT32:
-            calc_ctx->template Alloc<float>(&output_t);
-            break;
-          case phi::DataType::FLOAT16:
-            calc_ctx->template Alloc<float16>(&output_t);
-            break;
-          case phi::DataType::INT32:
-            calc_ctx->template Alloc<int>(&output_t);
-            break;
-          default:
-            VLOG(0) << "Error: type " << input.dtype() << " not supported for "
-                    << GetBackendName();
-            break;
-        }
-        int ret =
-            bkcl_all_reduce(comm,
+        VLOG(3) << "bkcl_reduce";
+        int r = bkcl_reduce(comm,
                             input.data(),
-                            output_t.data(),
+                            output->data(),
                             input.numel(),
                             platform::ToBKCLDataType(
                                 framework::TransToProtoVarType(input.type())),
                             ToBKCLRedType(opts.reduce_op),
+                            opts.root_rank,
                             stream);
-        if (rank_ == opts.root_rank) {
-          *output = output_t;
-        }
-        return ret;
+        return r;
       },
-      CommType::ALLREDUCE,
+      CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        VLOG(3) << "bkcl_reduce_scatter";
+        int r = bkcl_reduce_scatter(
+            comm,
+            input.data(),
+            output->data(),
+            output->numel(),
+            platform::ToBKCLDataType(
+                framework::TransToProtoVarType(input.type())),
+            ToBKCLRedType(opts.reduce_op),
+            stream);
+        return r;
+      },
+      CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
 }
@@ -384,15 +491,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "bkcl_all_reduce";
+
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       /*sync_op*/ true,
@@ -425,15 +535,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "bkcl_all_reduce";
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       sync_op,
@@ -468,14 +580,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           const XPUStream& stream) {
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "bkcl_broadcast";
+        int r =
+            bkcl_broadcast(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           root,
+                           stream);
+        return r;
       },
       CommType::BROADCAST,
       /*sync_op*/ true,
@@ -511,14 +626,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           const XPUStream& stream) {
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "bkcl_broadcast";
+        int r =
+            bkcl_broadcast(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           root,
+                           stream);
+        return r;
       },
       CommType::BROADCAST,
       sync_op,
@@ -553,14 +671,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "bkcl_all_gather";
+        int r =
+            bkcl_all_gather(comm,
+                            input.data(),
+                            input.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       /*sync_op*/ true,
@@ -592,14 +712,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "bkcl_all_gather";
+        int r =
+            bkcl_all_gather(comm,
+                            input.data(),
+                            input.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       sync_op,

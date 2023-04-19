@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -345,19 +345,16 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-  blas.GEMM(false,
-            false,
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
             M,
             N,
             K,
             static_cast<T>(1.0),
             X,
-            K,
             W,
-            N,
             static_cast<T>(0.0),
-            Y,
-            N);
+            Y);
   if (B == NULL) {
     return;
   }

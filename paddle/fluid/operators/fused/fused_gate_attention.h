@@ -715,7 +715,7 @@ class FMHAGateRef {
                       softmax_out->dims(),
                       platform::errors::InvalidArgument(
                           "The shape of qk_out_grad and softmax_out is "
-                          "expected to be the same. But recieved qk_out_grad's "
+                          "expected to be the same. But received qk_out_grad's "
                           "shape = %s, softmax_out's shape = %s.",
                           qk_out_grad->dims(),
                           softmax_out->dims()));

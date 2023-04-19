@@ -17,8 +17,8 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -46,11 +46,11 @@ void DropoutRawKernel(const Context& dev_ctx,
     int seed_data = 0;
     if (seed_tensor.get_ptr() != nullptr) {
       if ((seed_tensor->place()).GetType() == phi::AllocationType::XPU) {
-        paddle::memory::Copy(phi::CPUPlace(),
-                             &seed_data,
-                             seed_tensor->place(),
-                             seed_tensor->data<int>(),
-                             sizeof(int));
+        memory_utils::Copy(phi::CPUPlace(),
+                           &seed_data,
+                           seed_tensor->place(),
+                           seed_tensor->data<int>(),
+                           sizeof(int));
       } else {
         seed_data = *(seed_tensor->data<int>());
       }

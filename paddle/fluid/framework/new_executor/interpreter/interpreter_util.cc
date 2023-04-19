@@ -21,11 +21,13 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
+#include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -37,11 +39,6 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
-
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_static_build,
-    false,
-    "Build the interpreterCore statically without running.");
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
@@ -144,6 +141,10 @@ bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
+bool IsGradOp(const std::string& op_name) {
+  return paddle::string::ends_with(op_name, "_grad");
+}
+
 bool IsSupportedHeterPlace(const phi::Place& place) {
   return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
          platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
@@ -160,33 +161,6 @@ bool IsMemcpyH2D(const Instruction& instr) {
 
 bool IsMemcpyOp(const Instruction& instr) {
   return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
-}
-
-bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
-  bool res = true;
-  for (auto& op : block.AllOps()) {
-    auto op_type = op->Type();
-    if (op_type == "feed" || op_type == "fetch_v2") {
-      continue;
-    }
-    auto has_phi_kernel =
-        !phi::KernelFactory::Instance()
-             .SelectKernelMap(phi::TransToPhiKernelName(op_type))
-             .empty();
-
-    if (!has_phi_kernel) {
-      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
-      if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
-        VLOG(4) << op_type << " has no phi kernel, but has fluid kernel.";
-        res = false;
-      } else {
-        VLOG(4) << op_type << " has no phi kernel, and no fluid kernel.";
-      }
-    } else {
-      VLOG(4) << op_type << " has phi kernel";
-    }
-  }
-  return res;
 }
 
 void AddFetch(const std::vector<std::string>& fetch_names,
@@ -275,53 +249,6 @@ GetUnusedVars(const BlockDesc& block,
   return result;
 }
 
-void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope) {
-  VLOG(3) << "Creating Variables";
-  auto inner_scope = var_scope->GetMutableScope();
-
-  // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
-  // created in var_scope.scope_ , and other scope is created in local scope.
-  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
-                                       : var_scope->GetMutableScope();
-
-  for (auto& var_desc : block.AllVars()) {
-    auto var_name = var_desc->Name();
-    // TODO(xiongkun): user may create a variable with name that exists before.
-    // under such circumstances, we should raise a error. Currently we can't
-    // get the var_desc of startup_program, so leave it later.
-    if (var_name == framework::kEmptyVarName) {
-      continue;
-    }
-
-    if (var_desc->Persistable()) {
-      // In principle, we should put all trainable parameters in global scope,
-      // which means the root of the scope tree. Some cases like quantization
-      // will look up these parameters in global scope.
-      const Scope* ancestor_scope = inner_scope;
-      while (ancestor_scope->parent()) {
-        ancestor_scope = ancestor_scope->parent();
-      }
-      auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
-
-      VLOG(3) << "Initialize Variable " << var_name;
-      // NOTE(zhiqiu): if var exists in scope and the type is right,
-      // InitializeVariable will not create a new variable.
-      InitializeVariable(ptr, var_desc->GetType());
-      VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
-              << ptr << " type is " << static_cast<int>(var_desc->GetType());
-    } else {
-      auto* ptr = local_scope->Var(var_name);
-      InitializeVariable(ptr, var_desc->GetType());
-      VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-              << ptr << "Variable Type "
-              << static_cast<int>(var_desc->GetType());
-    }
-    var_scope->AddVar(var_name, var_desc);
-  }
-}
-
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
                              const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
@@ -338,6 +265,8 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
+      (!platform::is_xpu_place(place) ||
+       op->Attr<bool>("persist_output") == false) &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
     return OpFuncType::kGpuSync;
@@ -456,21 +385,6 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
-    } else if (op_device.find("npu") != std::string::npos &&
-               platform::is_npu_place(place)) {
-      // when the Op that does not have NPUKernel is assigned to NPU, the
-      // CPUKernel will be executed and a warning will be given at the same
-      // time.
-      if (op_base->SupportNPU()) {
-        expected_kernel_key->place_ = place;
-      } else {
-        expected_kernel_key->place_ = platform::CPUPlace();
-        LOG_FIRST_N(WARNING, 1)
-            << "Op(" << op_base->Type()
-            << ") has no NPU implementation. It will be assigned to CPUPlace.";
-      }
-      VLOG(3) << "Switch into " << expected_kernel_key->place_
-              << " by device_guard.";
     } else if (op_device.find("xpu") != std::string::npos &&
                platform::is_xpu_place(place)) {
       // when the Op that does not have XPUKernel is assigned to XPU, the
@@ -494,86 +408,36 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 void HandleOperatorBase(const platform::Place& place,
-                        const VariableScope* var_scope,
-                        std::shared_ptr<OperatorBase> op_base,
+                        std::shared_ptr<OperatorBase> op,
                         OpFuncNode* op_func_node,
-                        Scope* local_scope) {
+                        Scope* scope,
+                        bool static_build) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
-  op_func_node->operator_base_ = op_base;
+  op_func_node->operator_base_ = op;
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
-  op_base->Run(*local_scope, place);  // Run without data transformer.
+  if (static_build) {
+    if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
+      op->Run(*scope, place);
+    }
+    FakeInitializeOutputsForOperatorBase(*op, place, scope);
+  } else {
+    op->Run(*scope, place);  // Run without data transformer.
+  }
+
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void FakeInitializeOutputs(phi::Kernel* phi_kernel,
-                           phi::KernelSignature* kernel_sig,
-                           phi::KernelContext* phi_kernel_context) {
-  auto output_defs = phi_kernel->args_def().output_defs();
-  auto out_names = kernel_sig->output_names;
-
-  for (size_t i = 0; i < out_names.size(); ++i) {
-    VLOG(4) << out_names[i];
-    // calcute the start and end index of the output tensors
-    size_t start_idx = phi_kernel_context->OutputRangeAt(i).first;
-    size_t end_idx = phi_kernel_context->OutputRangeAt(i).second;
-    for (size_t j = start_idx; j < end_idx; ++j) {
-      auto* out_tensor = phi_kernel_context->MutableOutputAt(j);
-      if (out_tensor == nullptr) {
-        VLOG(4) << "Output" << out_names[i] << " is nullptr";
-        continue;
-      }
-      auto backend = output_defs[j].backend;
-      auto* dev_ctx =
-          &(phi_kernel_context->GetDeviceContext<phi::DeviceContext>());
-
-      if (phi::DenseTensor::classof(out_tensor)) {
-        if (!out_tensor->initialized()) {
-          VLOG(4) << "DenseTensor fake alloc 0 bytes of type "
-                  << out_tensor->dtype() << " on backend " << backend << " "
-                  << out_tensor;
-          if (backend == phi::TransToPhiBackend(dev_ctx->GetPlace())) {
-            dev_ctx->Alloc(out_tensor,
-                           out_tensor->dtype(),
-                           /*requested_size=*/0,
-                           /*pinned=*/false,
-                           /*fake_alloc=*/true);
-          } else {
-            if (backend == phi::Backend::CPU ||
-                backend == phi::Backend::ONEDNN) {
-              dev_ctx->HostAlloc(out_tensor,
-                                 out_tensor->dtype(),
-                                 /*requested_size=*/0,
-                                 /*fake_alloc=*/true);
-            }
-          }
-        }
-      } else if (phi::SparseCooTensor::classof(out_tensor)) {
-        // todo
-        VLOG(4) << "SparseCooTensor";
-      } else if (phi::SparseCsrTensor::classof(out_tensor)) {
-        // todo
-        VLOG(4) << "SparseCsrTensor";
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Only support "
-            "DenseTensor/SparseCooTensor/SparseCsrTensor "
-            "now"));
-        VLOG(4) << "SparseCooTensor";
-      }
-    }
-  }
-}
-
-bool BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
                      const ExecutionConfig& execution_config,
-                     bool use_local_scope) {
+                     bool use_local_scope,
+                     bool static_build) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -581,9 +445,7 @@ bool BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  auto skip_run =
-      FLAGS_new_executor_static_build && IsBlockContainsOnlyPhiKernel(block);
-  VLOG(4) << "Static build: " << skip_run;
+  VLOG(4) << "Static build: " << static_build;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -666,42 +528,40 @@ bool BuildOpFuncList(const platform::Place& place,
     op_func_node.output_index = outs_name2id;
 
     const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
-    if (dist_attr &&
-        dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
-      op_func_node.execution_stream_ = dist_attr->execution_stream();
+    if (dist_attr) {
+      if (dist_attr->execution_stream() !=
+          distributed::auto_parallel::kDefault) {
+        op_func_node.execution_stream_ = dist_attr->execution_stream();
+      }
+      op_func_node.stream_priority_ = dist_attr->stream_priority();
+      op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
+    } else {
+      if (interpreter::IsCommunicationOp(op_type)) {
+        // NOTE(Ruibiao): Dispatching computation before communication improves
+        // multi-stream overlap when the time cost of communication less than
+        // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+        // training).
+        op_func_node.scheduling_priority_ = 1;
+      }
     }
 
-    if (dist_attr) {
-      op_func_node.priority_ = dist_attr->scheduling_priority();
-    } else if (interpreter::IsCommunicationOp(op_type)) {
-      // NOTE(Ruibiao): Dispatching computation before communication improves
-      // multi-stream overlap when the time cost of communication less than that
-      // of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32 training).
-      op_func_node.priority_ = 1;
-    }
-    VLOG(6) << "scheduling priority of " << op_type << " : "
-            << op_func_node.priority_;
+    VLOG(6) << op_type
+            << " : [execution_stream, stream_priority, scheduling_priority] = ["
+            << op_func_node.execution_stream_ << ", "
+            << op_func_node.stream_priority_ << ", "
+            << op_func_node.scheduling_priority_ << "]";
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
-    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-    if (FLAGS_check_nan_inf) {
-      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
-    }
-#endif
 
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
         HandleOperatorBase(
-            place, var_scope, ops[i], &op_func_node, local_scope);
+            place, ops[i], &op_func_node, local_scope, static_build);
+        vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";
         auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
@@ -728,6 +588,7 @@ bool BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
+        SetDeviceCommContext(op, dev_ctx);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
@@ -752,12 +613,22 @@ bool BuildOpFuncList(const platform::Place& place,
                 op_with_kernel->Type())) {
           auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
           auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
-          if (op_with_kernel->PhiKernel()->IsValid()) {
+          bool in_custom_back_list = false;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          in_custom_back_list =
+              phi::backends::custom_device::is_in_custom_black_list(
+                  phi_kernel_name);
+#endif
+          if (op_with_kernel->PhiKernel()->IsValid() && !in_custom_back_list) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                    exec_ctx)) {
+            if ((!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                     exec_ctx)) ||
+                in_custom_back_list) {
+              std::string info = in_custom_back_list ? "fluid in black list "
+                                                     : "fluid missing ";
+              VLOG(3) << info << phi_kernel_key
+                      << " kernel: " << phi_kernel_name;
               auto phi_cpu_kernel_key =
                   FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
@@ -805,54 +676,73 @@ bool BuildOpFuncList(const platform::Place& place,
                            &op_func_node,
                            vec_func_list,
                            use_local_scope,
-                           skip_run);
+                           static_build);
         VLOG(4) << "apply data transform done. ";
-        // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
-        // for why.
-        if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-              op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+
+        // step 4. infershape
+        if (!static_build) {
           VLOG(4) << "infer shape";
-          InterpretercoreInferShapeContext infer_shape_ctx(*op,
-                                                           runtime_context);
-          // TODO(Aurelius84): In case of control flow ops, they are NOT
-          // inheritted from OperatorWithKernel.
-          op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+          // see kAllKernelsMustComputeRuntimeShape in operator.h for why
+          if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+                op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+            RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
+            // TODO(Aurelius84): In case of control flow ops, they are NOT
+            // inheritted from OperatorWithKernel.
+            op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+          }
         }
 
         // step 5. run kernel
-        if (run_phi_kernel) {
-          phi::KernelContext phi_kernel_context;
-          op_with_kernel->BuildPhiKernelContext(
-              runtime_context, dev_ctx, &phi_kernel_context);
-          if (!skip_run) {
-            (*op_func_node.phi_kernel_)(&phi_kernel_context);
+        if (run_phi_kernel &&
+            op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                phi::KernelRegisteredType::FUNCTION) {
+          VLOG(6) << op_type << " run function kernel";
+          if (static_build) {
+            FakeInitializeOutputsForFunctionKernel(
+                *op,
+                *(op_func_node.phi_kernel_),
+                *(op_with_kernel->PhiKernelSignature()),
+                runtime_context,
+                *dev_ctx);
           } else {
-            FakeInitializeOutputs(op_func_node.phi_kernel_,
-                                  op_with_kernel->PhiKernelSignature(),
-                                  &phi_kernel_context);
+            phi::KernelContext phi_kernel_context;
+            op_with_kernel->BuildPhiKernelContext(
+                runtime_context, dev_ctx, &phi_kernel_context);
+            (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          }
+        } else if (run_phi_kernel &&
+                   op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                       phi::KernelRegisteredType::STRUCTURE) {
+          VLOG(6) << op_type << " run structure kernel";
+          ExecutionContext execution_context(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+          if (static_build) {
+            FakeInitializeOutputsForStructureKernel(kernel_type,
+                                                    &execution_context);
+          } else {
+            (*op_func_node.phi_kernel_)(&execution_context);
           }
         } else {
+          VLOG(6) << op_type << " run fluid kernel";
           // the place of exec_ctx maybe has changed.
-          if (!skip_run) {
-            op_func_node.kernel_func_(ExecutionContext(
-                *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          ExecutionContext execution_context(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+          if (static_build) {
+            FakeInitializeOutputsForStructureKernel(kernel_type,
+                                                    &execution_context);
           } else {
-            // TODO(zhiqiu): is it needed to support fluid kernel?
+            op_func_node.kernel_func_(execution_context);
           }
         }
 
-        // post-process grad_op.outputs if need cast complex grad into real
-        // grad.
-        // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
-        if (framework::IsComplexType(kernel_type.data_type_)) {
-          interpreter::HandleComplexGradToRealGrad(op_func_node,
-                                                   place,
-                                                   output_name_map,
-                                                   &runtime_context.outputs,
-                                                   var_scope,
-                                                   vec_func_list,
-                                                   local_scope);
+        // for debug nan/inf
+        if (FLAGS_check_nan_inf) {
+          VLOG(4) << "Check nan/inf";
+          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
         }
+
+        vec_func_list->emplace_back(op_func_node);
+
         if (!op_func_node.inplace_back_map.empty()) {
           auto& m = op_func_node.inplace_back_map;
           // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in
@@ -864,17 +754,46 @@ bool BuildOpFuncList(const platform::Place& place,
             auto* original_tensor =
                 GetMutableLoDTensorOrSelectedRowsValueFromVar(
                     local_scope->FindVar(var_scope->GetNameById(p.second)));
-            original_tensor->ShareDataWith(*transformed_tensor);
+
+            // avoid overwriting valid data
+            if (static_build && original_tensor->initialized()) {
+              const phi::Place& target_place = transformed_tensor->place();
+              platform::DeviceContext* dev_ctx_for_copy;
+              if (target_place.GetType() != AllocationType::CPU) {
+                dev_ctx_for_copy = pool.Get(target_place);
+              } else {
+                dev_ctx_for_copy = pool.Get(original_tensor->place());
+              }
+
+              phi::Copy(*dev_ctx_for_copy,
+                        *original_tensor,
+                        target_place,
+                        /*blocking=*/true,
+                        original_tensor);
+              original_tensor->set_type(transformed_tensor->dtype());
+              original_tensor->set_layout(transformed_tensor->layout());
+            } else {
+              original_tensor->ShareDataWith(*transformed_tensor);
+            }
             VLOG(4) << "Transfer inplace variable back form "
                     << var_scope->GetNameById(p.first) << " to "
                     << var_scope->GetNameById(p.second);
           }
         }
 
-        // for debug nan/inf
-        if (FLAGS_check_nan_inf) {
-          VLOG(4) << "Check nan/inf";
-          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
+        // post-process grad_op.outputs if need cast complex grad into real
+        // grad.
+        // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
+        if (IsGradOp(op_type) &&
+            framework::IsComplexType(kernel_type.data_type_)) {
+          interpreter::HandleComplexGradToRealGrad(op_func_node,
+                                                   place,
+                                                   output_name_map,
+                                                   &runtime_context.outputs,
+                                                   var_scope,
+                                                   vec_func_list,
+                                                   local_scope,
+                                                   static_build);
         }
       }
     } catch (platform::EnforceNotMet& ex) {
@@ -895,36 +814,83 @@ bool BuildOpFuncList(const platform::Place& place,
     VLOG(4) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
 
-    vec_func_list->emplace_back(op_func_node);
-
-    // gc---------------------------------------------
-    auto iter = unused_var_map.find(op);
-    if (iter == unused_var_map.end()) {
-      interpreter::LogDeviceMemoryStats(place);
-      continue;
-    }
-
-    auto& delete_vars = iter->second;
-    std::deque<std::shared_ptr<memory::Allocation>>* garbages =
-        new std::deque<std::shared_ptr<memory::Allocation>>();
-
-    for (auto& var_name : delete_vars) {
-      auto* var = local_scope->FindVar(var_name);
-      if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
+    if (!static_build) {
+      // gc---------------------------------------------
+      auto iter = unused_var_map.find(op);
+      if (iter == unused_var_map.end()) {
+        interpreter::LogDeviceMemoryStats(place);
         continue;
       }
 
-      VLOG(6) << "Erase variable " << var_name;
-      if (var->IsType<phi::DenseTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
-      }
-    }
-    delete garbages;  // free mem
+      auto& delete_vars = iter->second;
+      std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+          new std::deque<std::shared_ptr<memory::Allocation>>();
 
-    interpreter::LogDeviceMemoryStats(place);
+      for (auto& var_name : delete_vars) {
+        auto* var = local_scope->FindVar(var_name);
+        if (var == nullptr ||
+            skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
+          continue;
+        }
+
+        VLOG(6) << "Erase variable " << var_name;
+        if (var->IsType<phi::DenseTensor>()) {
+          garbages->emplace_back(
+              var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        }
+      }
+      delete garbages;  // free mem
+
+      interpreter::LogDeviceMemoryStats(place);
+    }
   }
-  return skip_run;
+}
+
+void BuildVariableScope(const framework::BlockDesc& block,
+                        const ExecutionConfig& execution_config,
+                        VariableScope* var_scope) {
+  VLOG(3) << "Creating Variables";
+  auto inner_scope = var_scope->GetMutableScope();
+
+  // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
+  // created in var_scope.scope_ , and other scope is created in local scope.
+  Scope* local_scope = execution_config.create_local_scope
+                           ? var_scope->GetMutableLocalScope()
+                           : var_scope->GetMutableScope();
+
+  for (auto& var_desc : block.AllVars()) {
+    auto var_name = var_desc->Name();
+    // TODO(xiongkun): user may create a variable with name that exists before.
+    // under such circumstances, we should raise a error. Currently we can't
+    // get the var_desc of startup_program, so leave it later.
+    if (var_name == framework::kEmptyVarName) {
+      continue;
+    }
+
+    if (var_desc->Persistable() ||
+        execution_config.force_root_scope_vars.count(var_name)) {
+      // In principle, we should put all trainable parameters in global scope,
+      // which means the root of the scope tree. Some cases like quantization
+      // will look up these parameters in global scope.
+      const Scope* ancestor_scope = inner_scope;
+      while (ancestor_scope->parent()) {
+        ancestor_scope = ancestor_scope->parent();
+      }
+      auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
+
+      // NOTE(zhiqiu): if var exists in scope and the type is right,
+      // InitializeVariable will not create a new variable.
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
+    } else {
+      auto* ptr = local_scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
+    }
+    var_scope->AddVar(var_name, var_desc);
+  }
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
@@ -939,6 +905,24 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB";
+  }
+}
+
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx) {
+  if (operator_base->HasAttr("ring_id")) {
+    int ring_id = operator_base->Attr<int>("ring_id");
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(ring_id)) {
+      auto comm_context = comm_context_manager.Get(ring_id);
+      if (!dev_ctx->GetCommContext()) {
+        dev_ctx->SetCommContext(comm_context);
+      }
+    } else {
+      VLOG(3) << "op: " << operator_base->Type() << ", ring_id: " << ring_id
+              << ", get comm_context failed!";
+    }
   }
 }
 

@@ -47,7 +47,7 @@ __global__ void CalcOutPut(const T* in_data,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -76,7 +76,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
     // Copy LoD to GPU
-    paddle::framework::MixVector<size_t> mixv_lod0(&lod0);
+    phi::MixVector<size_t> mixv_lod0(&lod0);
     const size_t* dev_in_lod_ptr = mixv_lod0.CUDAData(context.GetPlace());
     // Calc output tensor
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
@@ -91,7 +91,10 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_enumerate,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int32_t>,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_enumerate,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceEnumerateOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

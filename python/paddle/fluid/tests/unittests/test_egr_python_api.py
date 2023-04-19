@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import (
     EagerParamBase,
     _current_expected_place,
@@ -911,19 +911,19 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.fluid.initializer.Uniform(),
+            weight_attr=paddle.nn.initializer.Uniform(),
         )
         linear3 = paddle.nn.Linear(
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.fluid.initializer.TruncatedNormalInitializer(),
+            weight_attr=paddle.nn.initializer.TruncatedNormal(),
         )
         linear4 = paddle.nn.Linear(
             1,
             3,
             bias_attr=False,
-            weight_attr=paddle.fluid.initializer.MSRAInitializer(),
+            weight_attr=paddle.nn.initializer.KaimingUniform(),
         )
         res = [
             linear1.weight.numpy(),

@@ -14,12 +14,13 @@
 
 import numpy as np
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
 )
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -700,3 +701,51 @@ def reshape(x, shape, name=None):
 
     """
     return _C_ops.sparse_reshape(x, shape)
+
+
+def isnan(x, name=None):
+    """
+
+    Return whether every element of input tensor is `NaN` or not, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    Args:
+        x (Tensor): The input tensor (SparseCooTensor or SparseCsrTensor), it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same shape as ``x``,  the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            format = "coo"
+            np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
+            dense_x = paddle.to_tensor(np_x)
+
+            if format == "coo":
+                sparse_x = dense_x.to_sparse_coo(len(np_x.shape))
+            else:
+                sparse_x = dense_x.to_sparse_csr()
+
+            sparse_out = paddle.sparse.isnan(sparse_x)
+            print(sparse_out)
+            # Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
+            #        indices=[[0, 0, 1, 1],
+            #                 [1, 1, 1, 1],
+            #                 [0, 1, 0, 1]],
+            #        values=[False, False, False, True ])
+
+    """
+    if in_dynamic_mode():
+        return _C_ops.sparse_isnan(x)
+    else:
+        op_type = 'sparse_isnan'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
+        return out

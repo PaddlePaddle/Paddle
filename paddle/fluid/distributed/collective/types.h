@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #pragma once
+
 #include <chrono>
 #include <cstdint>
 #include <vector>
+
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
@@ -43,6 +45,10 @@ struct ReduceOptions {
 };
 
 struct ScatterOptions {
+  int root_rank = 0;
+};
+
+struct GatherOptions {
   int root_rank = 0;
 };
 

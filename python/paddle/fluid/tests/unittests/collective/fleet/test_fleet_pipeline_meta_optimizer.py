@@ -16,10 +16,9 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -33,14 +32,12 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def net(self):
         with static.device_guard("gpu:0"):
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
-            input_z = paddle.fluid.layers.data(
-                name="z", shape=[1], dtype="float32"
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            input_z = paddle.static.data(
+                name="z", shape=[-1, 1], dtype="float32"
             )
             with static.device_guard("gpu:all"):
                 input_z = input_z * 1.0

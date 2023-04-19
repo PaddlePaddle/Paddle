@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from test_imperative_resnet import ResNet
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 
@@ -170,10 +170,12 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 batch_size=batch_size,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = resnet(img)
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False

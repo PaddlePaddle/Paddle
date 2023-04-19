@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/roi_align_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -62,11 +62,11 @@ void RoiAlignKernel(const Context& dev_ctx,
             batch_size));
 
     std::vector<int> rois_num_list(rois_batch_size);
-    paddle::memory::Copy(cplace,
-                         rois_num_list.data(),
-                         xplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * rois_batch_size);
+    memory_utils::Copy(cplace,
+                       rois_num_list.data(),
+                       xplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * rois_batch_size);
     cpu_lod = new int[rois_batch_size + 1];
     cpu_lod[0] = 0;
     for (int i = 0; i < rois_batch_size; i++) {
@@ -115,11 +115,11 @@ void RoiAlignKernel(const Context& dev_ctx,
   int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
                      (rois_batch_size + 1) * sizeof(int));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  paddle::memory::Copy(xplace,
-                       roi_id_data,
-                       cplace,
-                       cpu_lod,
-                       (rois_batch_size + 1) * sizeof(int));
+  memory_utils::Copy(xplace,
+                     roi_id_data,
+                     cplace,
+                     cpu_lod,
+                     (rois_batch_size + 1) * sizeof(int));
   delete[] cpu_lod;
   r = xpu::roi_align<T, int>(dev_ctx.x_context(),
                              x.data<T>(),

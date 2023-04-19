@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_unpad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    sequence_unpad,
-    ops::SequenceUnpadOpKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(sequence_unpad,
+                       ops::SequenceUnpadOpKernel<phi::XPUContext, float>);
 
 #endif

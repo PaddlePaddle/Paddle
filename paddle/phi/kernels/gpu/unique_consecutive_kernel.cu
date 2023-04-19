@@ -54,6 +54,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
   } else {
     // 'axis' is required.
     int valid_axis = axis[0];
+    if (valid_axis < 0) valid_axis += x.dims().size();
     phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveDimsCUDAFunctor<Context, T>(dev_ctx,
@@ -76,4 +77,7 @@ PD_REGISTER_KERNEL(unique_consecutive,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(kernel_key.dtype());
+  kernel->OutputAt(2).SetDataType(kernel_key.dtype());
+}

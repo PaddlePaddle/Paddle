@@ -13,11 +13,11 @@
 // limitations under the License.
 #pragma once
 
-#include <memory>
+#include <gloo/rendezvous/context.h>
+#include <gloo/rendezvous/store.h>
+#include <gloo/transport/tcp/device.h>
 
-#include "gloo/rendezvous/context.h"
-#include "gloo/rendezvous/store.h"
-#include "gloo/transport/tcp/device.h"
+#include <memory>
 
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
@@ -36,6 +36,16 @@ class GlooCommContext final : public CommContext {
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  int root);
+  void AllReduce(phi::DenseTensor* out_tensor,
+                 const phi::DenseTensor& in_tensor,
+                 int reduce_type);
+  void Reduce(phi::DenseTensor* out_tensor,
+              const phi::DenseTensor& in_tensor,
+              int reduce_type,
+              int root);
+
+  void AllGather(phi::DenseTensor* out_tensor,
+                 const phi::DenseTensor& in_tensor);
 
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);

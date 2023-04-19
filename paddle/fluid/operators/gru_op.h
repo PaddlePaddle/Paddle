@@ -28,7 +28,7 @@ namespace operators {
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
-                             framework::Vector<size_t> index_lod,
+                             phi::Vector<size_t> index_lod,
                              phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
@@ -36,7 +36,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
@@ -79,7 +79,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor ordered_h0, ordered_h0_grad;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       ReorderInitState<DeviceContext, T>(

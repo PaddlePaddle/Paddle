@@ -17,8 +17,8 @@
 
 #include "paddle/phi/kernels/svd_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -77,7 +77,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -104,12 +104,12 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -158,7 +158,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -185,12 +185,12 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -216,6 +216,15 @@ void SvdKernel(const Context& dev_ctx,
   int rank = dims.size();
   int m = dims[rank - 2];
   int n = dims[rank - 1];
+
+  PADDLE_ENFORCE_LT(
+      0,
+      m,
+      errors::InvalidArgument("The row of Input(X) should be greater than 0."));
+  PADDLE_ENFORCE_LT(
+      0,
+      n,
+      errors::InvalidArgument("The col of Input(X) should be greater than 0."));
 
   auto* u_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
   auto* vh_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);

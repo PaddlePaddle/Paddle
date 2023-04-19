@@ -104,6 +104,29 @@ class TestDiagFlatAPI(unittest.TestCase):
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
 
+    def test_fp16_with_gpu(self, use_gpu=False):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([10, 10]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float16"
+                )
+
+                y = paddle.diagflat(x)
+                expected = np.diagflat(input)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

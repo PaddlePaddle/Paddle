@@ -81,7 +81,7 @@ __global__ void CvmGradComputeKernel(const bool use_cvm,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CVMCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -122,7 +122,7 @@ class CVMCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CVMGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -166,7 +166,7 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
           lod[lod.size() - 1],
           platform::errors::PreconditionNotMet(
               "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
-      paddle::framework::MixVector<size_t> mixv_lod(&lod);
+      phi::MixVector<size_t> mixv_lod(&lod);
       CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                  PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS,
@@ -187,9 +187,8 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(cvm,
-                        ops::CVMCUDAKernel<float>,
-                        ops::CVMCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(cvm_grad,
-                        ops::CVMGradCUDAKernel<float>,
-                        ops::CVMGradCUDAKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    cvm, GPU, ALL_LAYOUT, ops::CVMCUDAKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    cvm_grad, GPU, ALL_LAYOUT, ops::CVMGradCUDAKernel, float, double) {}

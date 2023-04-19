@@ -38,6 +38,7 @@ _prim2orig = Registry('prim2orig')
 _primop_jvp = Registry('primop_jvp')
 _primop_transpose = Registry('primop_transpose')
 _primop_position_argnames = Registry('primop_position_argnames')
+_composite_ops = Registry('composite')
 
 
 def lookup_fn(optype):
@@ -58,6 +59,10 @@ def lookup_jvp(optype):
 
 def lookup_transpose(optype):
     return _primop_transpose.lookup(optype)
+
+
+def lookup_composite(optype):
+    return _composite_ops.lookup(optype)
 
 
 def op_position_inputs(op):
@@ -142,7 +147,7 @@ def REGISTER_FN(op_type, *position_argnames):
 
     Args:
         op_type(str): The op name
-        position_argnames(list[str]): Input and ouput names of the op
+        position_argnames(list[str]): Input and output names of the op
 
     Returns:
         wrapper: Inner wrapper function
@@ -196,6 +201,41 @@ def REGISTER_ORIG2PRIM(op_type):
             return f(op, *args, **kwargs)
 
         _orig2prim.register(op_type, _lower)
+
+    return wrapper
+
+
+def REGISTER_COMPOSITE(op_type):
+    """
+    Decorator for registering the lower function for an original op into sequence of primitive ops.
+
+    Args:
+        op_type(str): The op name
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples:
+        .. code-block:: python
+            @REGISTER_COMPOSITE('softmax')
+            def softmax_composite(x, axis):
+                molecular = exp(x)
+                denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
+                res = divide(molecular, denominator)
+                return res
+
+    """
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
+
+    def wrapper(f):
+        def _lower(op, *args, **kwargs):
+            assert (
+                op.type == op_type
+            ), f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
+            return f(*args, **kwargs)
+
+        _composite_ops.register(op_type, _lower)
 
     return wrapper
 

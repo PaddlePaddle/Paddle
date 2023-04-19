@@ -154,10 +154,10 @@ class OpHandleBase {
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;
-  // NOTE(Aurelius84): Indicate whether scope held in OpHandle is chanageable.
-  // Ophandle's scope noramlly keep same in most cases, except running
+  // NOTE(Aurelius84): Indicate whether scope held in OpHandle is changeable.
+  // Ophandle's scope normally keep same in most cases, except running
   // run_program_op from @to_static.
-  // The scope may be chanaged while each training iteration.
+  // The scope may be changed while each training iteration.
   // See https://github.com/PaddlePaddle/Paddle/pull/32283
   bool is_variant_scope_ = false;
 

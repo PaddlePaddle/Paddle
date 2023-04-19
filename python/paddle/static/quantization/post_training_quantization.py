@@ -75,12 +75,11 @@ def _remove_unused_var_nodes(graph):
             all_used_vars.add(output_node)
 
     all_used_vars = {n.node for n in all_used_vars}
-    all_unused_vars = {
-        n
-        for n in filter(
+    all_unused_vars = set(
+        filter(
             lambda node: node.node not in all_used_vars, graph.all_var_nodes()
         )
-    }
+    )
     graph.safe_remove_nodes(all_unused_vars)
     return graph
 
@@ -109,7 +108,7 @@ def _apply_pass(
             ir_pass.set(attr, value)
     ir_pass.apply(cpp_graph)
     if debug:
-        graph.draw('.', 'qat_fp32_{}'.format(pass_name), graph.all_op_nodes())
+        graph.draw('.', f'qat_fp32_{pass_name}', graph.all_op_nodes())
     _remove_unused_var_nodes(graph)
     return graph
 
@@ -702,6 +701,10 @@ class PostTrainingQuantization:
                     in self.quant_config.activation_quant_operation_types
                     or is_conv1d_quant
                 ):
+                    trans_y = (op_type == 'matmul_v2') and op.op().attr(
+                        'trans_y'
+                    )
+                    op_type = op_type + '_trans_y' if trans_y else op_type
                     collect_var_name(
                         utils._get_op_input_var_names(op),
                         persistable_var_names,
@@ -789,7 +792,7 @@ class PostTrainingQuantization:
         _logger.info("MSE searching stage ...")
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = var_tensor.flatten()
@@ -843,7 +846,7 @@ class PostTrainingQuantization:
         _logger.info("EMD searching stage ...")
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = var_tensor.flatten()
@@ -899,7 +902,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -940,7 +943,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -975,7 +978,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             min_value = float(np.min(var_tensor))
@@ -992,7 +995,7 @@ class PostTrainingQuantization:
     def _sample_histogram(self):
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if (not var_tensor.any()) or (
+            if (var_tensor.size == 0) or (
                 var_name not in self._sampling_act_histogram
             ):
                 self._zero_size_var_names.add(var_name)
@@ -1031,7 +1034,7 @@ class PostTrainingQuantization:
 
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -1094,7 +1097,7 @@ class PostTrainingQuantization:
         '''
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
-            if not var_tensor.any():
+            if var_tensor.size == 0:
                 self._zero_size_var_names.add(var_name)
                 continue
             var_tensor = np.abs(var_tensor)
@@ -1132,7 +1135,7 @@ class PostTrainingQuantization:
         '''
         Calculate the KL or hist threshold of quantized variables.
         '''
-        _logger.info("Calculate {} threshold ...".format(self._algo))
+        _logger.info(f"Calculate {self._algo} threshold ...")
         assert self._algo in ["KL", "hist"], "The algo should be KL or hist."
 
         # Abs_max threshold for weights

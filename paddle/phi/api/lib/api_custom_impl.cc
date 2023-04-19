@@ -91,7 +91,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     phi::AddNInferMeta(x_metas, &meta_out);
 
     using kernel_signature =
-        void (*)(const platform::DeviceContext&,
+        void (*)(const phi::DeviceContext&,
                  const std::vector<const phi::SelectedRows*>&,
                  phi::SelectedRows*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
@@ -119,7 +119,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     phi::AddNInferMeta(x_metas, &meta_out);
 
     using kernel_signature =
-        void (*)(const platform::DeviceContext&,
+        void (*)(const phi::DeviceContext&,
                  const std::vector<const phi::TensorBase*>&,
                  phi::DenseTensor*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
@@ -136,6 +136,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   Tensor out;
   copy(x, place, blocking, &out);
+  out.set_name(x.name());
   return out;
 }
 
@@ -177,7 +178,7 @@ void embedding_grad_impl(const Tensor& x,
       meta_out.set_dtype(input_weight->dtype());
       kernel_out->set_height(input_weight->dims()[0]);
 
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
@@ -194,7 +195,7 @@ void embedding_grad_impl(const Tensor& x,
       auto* kernel_out = SetKernelOutput(weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
@@ -229,7 +230,7 @@ void embedding_grad_impl(const Tensor& x,
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
                                         const phi::DenseTensor&,
@@ -247,7 +248,7 @@ void embedding_grad_impl(const Tensor& x,
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->GetCompleteDims());
       meta_out.set_dtype(input_weight->dtype());
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
                                         const phi::DenseTensor&,

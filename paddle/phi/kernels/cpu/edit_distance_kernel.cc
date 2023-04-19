@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/edit_distance_kernel.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -34,8 +34,8 @@ void EditDistanceKernel(const Context& ctx,
   int64_t* seq_num_data = ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  paddle::framework::Vector<size_t> hyp_lod(batch_size + 1);
-  paddle::framework::Vector<size_t> ref_lod(batch_size + 1);
+  phi::Vector<size_t> hyp_lod(batch_size + 1);
+  phi::Vector<size_t> ref_lod(batch_size + 1);
 
   bool use_length = hypslength.get_ptr() != nullptr;
 
@@ -121,4 +121,6 @@ void EditDistanceKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    edit_distance, CPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {}
+    edit_distance, CPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

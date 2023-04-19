@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -25,7 +25,7 @@ namespace platform = paddle::platform;
 TEST(DenseTensor, Dims) {
   phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
-  framework::DDim dims = tt.dims();
+  phi::DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
     EXPECT_EQ(i + 2, dims[i]);
@@ -143,35 +143,6 @@ TEST(DenseTensor, MutableData) {
     EXPECT_EQ(p1, p2);
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  {
-    phi::DenseTensor src_tensor;
-    float* p1 = nullptr;
-    float* p2 = nullptr;
-    // initialization
-    p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}),
-                                        platform::NPUPlace(0));
-    auto p1_holder = src_tensor.Holder();
-    EXPECT_NE(p1, nullptr);
-    // set src_tensor a new dim with large size
-    // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}),
-                                        platform::NPUPlace(0));
-    auto p2_holder = src_tensor.Holder();
-    EXPECT_NE(p2, nullptr);
-    EXPECT_NE(p1_holder.get(), p2_holder.get());
-    // set src_tensor a new dim with same size
-    // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}),
-                                        platform::NPUPlace(0));
-    EXPECT_EQ(p1, p2);
-    // set src_tensor a new dim with smaller size
-    // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}),
-                                        platform::NPUPlace(0));
-    EXPECT_EQ(p1, p2);
-  }
-#endif
 }
 
 TEST(DenseTensor, ShareDataWith) {
@@ -207,16 +178,6 @@ TEST(DenseTensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  {
-    phi::DenseTensor src_tensor;
-    phi::DenseTensor dst_tensor;
-    src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
-                                 platform::NPUPlace(0));
-    dst_tensor.ShareDataWith(src_tensor);
-    ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
-  }
-#endif
 }
 
 TEST(DenseTensor, Slice) {
@@ -225,7 +186,7 @@ TEST(DenseTensor, Slice) {
     src_tensor.mutable_data<int>(phi::make_ddim({5, 3, 4}),
                                  platform::CPUPlace());
     phi::DenseTensor slice_tensor = src_tensor.Slice(1, 3);
-    framework::DDim slice_dims = slice_tensor.dims();
+    phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
     EXPECT_EQ(slice_dims[1], 3);
@@ -251,7 +212,7 @@ TEST(DenseTensor, Slice) {
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::CUDAPlace(0));
     phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
-    framework::DDim slice_dims = slice_tensor.dims();
+    phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
     EXPECT_EQ(slice_dims[1], 9);
@@ -271,33 +232,6 @@ TEST(DenseTensor, Slice) {
     EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
   }
 #endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  {
-    phi::DenseTensor src_tensor;
-    src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
-                                    platform::NPUPlace(0));
-    phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
-    framework::DDim slice_dims = slice_tensor.dims();
-    ASSERT_EQ(arity(slice_dims), 2);
-    EXPECT_EQ(slice_dims[0], 4);
-    EXPECT_EQ(slice_dims[1], 9);
-
-    uintptr_t src_data_address =
-        reinterpret_cast<uintptr_t>(src_tensor.data<double>());
-    uintptr_t src_mutable_data_address =
-        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
-            src_tensor.dims(), platform::NPUPlace(0)));
-    uintptr_t slice_data_address =
-        reinterpret_cast<uintptr_t>(slice_tensor.data<double>());
-    uintptr_t slice_mutable_data_address =
-        reinterpret_cast<uintptr_t>(slice_tensor.mutable_data<double>(
-            slice_tensor.dims(), platform::NPUPlace(0)));
-    EXPECT_EQ(src_data_address, src_mutable_data_address);
-    EXPECT_EQ(slice_data_address, slice_mutable_data_address);
-    EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
-  }
-#endif
 }
 
 TEST(DenseTensor, ReshapeToMatrix) {
@@ -306,7 +240,7 @@ TEST(DenseTensor, ReshapeToMatrix) {
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  phi::DenseTensor res = framework::ReshapeToMatrix(src, 2);
+  phi::DenseTensor res = phi::ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }

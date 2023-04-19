@@ -202,77 +202,6 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")
-      .IsBoolEQ(false)
-      .End();
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsNumGE(0.99f)
-      .IsNumLE(1.01f)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")
-      .IsBoolEQ(false)
-      .End();
-  AddOpCompat(OpCompat("fc"))
-      .AddInput("Input")
-      .IsTensor()
-      .End()
-      .AddInput("W")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("in_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("activation_type")
-      .IsStringIn({"relu", ""})
-      .End();
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -379,10 +308,8 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
       if (quantized_op_type == "conv2d" ||
           quantized_op_type == "conv2d_fusion" ||
           quantized_op_type == "depthwise_conv2d" ||
-          quantized_op_type == "fc" ||
           quantized_op_type == "conv2d_transpose" ||
-          quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-          quantized_op_type == "matmul_v2") {
+          quantized_op_type == "matrix_multiply") {
         op_desc->SetAttr("Input_scale", scale_value);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -411,22 +338,21 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
   std::string input_name = "";
   if (quantized_op_type == "conv2d" ||
       quantized_op_type == "depthwise_conv2d" ||
+      quantized_op_type == "fused_conv2d" ||
       quantized_op_type == "conv2d_fusion" ||
       quantized_op_type == "conv2d_transpose") {
     weight_name = "Filter";
     input_name = "Input";
-  } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-             quantized_op_type == "matmul_v2") {
+  } else if (quantized_op_type == "matrix_multiply") {
     weight_name = "Y";
     input_name = "X";
-  } else if (quantized_op_type == "fc") {
-    weight_name = "W";
-    input_name = "Input";
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "QuantDequantFuse: We only support conv2d, conv2d_fusion, "
-        "conv2d_transpose, fc, mul, matmul, matmul_v2 for "
-        "now."));
+        "QuantDequantFuse: We only support conv2d, conv2d_fusion, fused_conv2d,"
+        "conv2d_transpose, matrix_multiply(mul/matmul/matmul_v2) for now, but "
+        "received: "
+        "%s.",
+        quantized_op_type));
   }
   const std::string pattern_name = "dequant_fuse";
   GraphPatternDetector gpd;
@@ -512,16 +438,16 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     //  re-write it again when this weight tensor is shared among many ops.
     if (!quantized_op_weight_node_set.count(quantized_op_weight_node)) {
       quantized_op_weight_node_set.insert(quantized_op_weight_node);
-      // If quantized op is fc, weight scale size = 1;
+      // If quantized op is matrix_multiply, weight scale size = 1;
       // If quantized op is conv2d, weight scale size = weight dims[0]
       // If quantized op is conv2d_transpose, weight scale size = weight dims[1]
-      if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-          quantized_op_type == "matmul_v2" || quantized_op_type == "fc") {
+      if (quantized_op_type == "matrix_multiply") {
         if (dequant_type == "fake_dequantize_max_abs") {
           PADDLE_ENFORCE_EQ(weight_scale.size(),
                             1,
                             platform::errors::InvalidArgument(
-                                "mul/matmul/matmul_v2 op weight dequantized by "
+                                "matrix_multiply(mul/matmul/matmul_v2) op "
+                                "weight dequantized by "
                                 "[fake_dequantize_max_abs] "
                                 "requires weight scale size = 1, but got %d.",
                                 weight_scale.size()));
@@ -536,29 +462,33 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
                 quant_axis == 1,
                 true,
                 platform::errors::InvalidArgument(
-                    "'quant_axis' of mul/matmul/fc/matmul_v2 op weight "
+                    "'quant_axis' of matrix_multiply(mul/matmul/matmul_v2) op "
+                    "weight "
                     "dequantized by "
                     "[fake_channel_wise_dequantize_max_abs]should be 1, but "
                     "the received is %d",
                     quant_axis));
           }
-          PADDLE_ENFORCE_EQ(weight_scale.size(),
-                            static_cast<size_t>(w_dims[1]),
-                            platform::errors::InvalidArgument(
-                                "mul/matmul/matmul_v2 op weight dequantized by "
-                                "[fake_channel_wise_dequantize_max_abs] "
-                                "requires weight scale "
-                                "size = 2nd dim of mul/matmul/matmul_v2's "
-                                "weight, which is %d, "
-                                "but got "
-                                "%d.",
-                                static_cast<size_t>(w_dims[1]),
-                                weight_scale.size()));
+          PADDLE_ENFORCE_EQ(
+              weight_scale.size(),
+              static_cast<size_t>(w_dims[1]),
+              platform::errors::InvalidArgument(
+                  "matrix_multiply(mul/matmul/matmul_v2) op weight dequantized "
+                  "by "
+                  "[fake_channel_wise_dequantize_max_abs] "
+                  "requires weight scale "
+                  "size = 2nd dim of matrix_multiply(mul/matmul/matmul_v2)'s "
+                  "weight, which is %d, "
+                  "but got "
+                  "%d.",
+                  static_cast<size_t>(w_dims[1]),
+                  weight_scale.size()));
           for (int j = 0; j < weight_tensor->numel(); j++) {
             quantized_weight_data[j] *= weight_scale[j % w_dims[1]];
           }
         }
       } else if (quantized_op_type == "conv2d" ||
+                 quantized_op_type == "fusd_conv2d" ||
                  quantized_op_type == "depthwise_conv2d") {
         PADDLE_ENFORCE_EQ(
             dequant_type,
@@ -642,15 +572,12 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     new_op_desc.SetType(quantized_op_type);
     new_op_desc.SetAttr("enable_int8", true);
     if (quantized_op_type == "conv2d" || quantized_op_type == "conv2d_fusion" ||
+        quantized_op_type == "fused_conv2d" ||
         quantized_op_type == "depthwise_conv2d" ||
         quantized_op_type == "conv2d_transpose") {
       new_op_desc.SetInput("Input", {new_input});
       new_op_desc.SetOutput("Output", {new_output});
-    } else if (quantized_op_type == "fc") {
-      new_op_desc.SetInput("Input", {new_input});
-      new_op_desc.SetOutput("Out", {new_output});
-    } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-               quantized_op_type == "matmul_v2") {
+    } else if (quantized_op_type == "matrix_multiply") {
       new_op_desc.SetInput("X", {new_input});
       new_op_desc.SetOutput("Out", {new_output});
     }
@@ -677,12 +604,10 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
       "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
   std::unordered_set<std::string> quantized_op_types = {
       "conv2d",
-      "mul",
-      "matmul",
+      "fused_conv2d",
+      "matrix_multiply",
       "depthwise_conv2d",
       "conv2d_transpose",
-      "fc",
-      "matmul_v2",
   };
   auto* scope = param_scope();
 
@@ -707,7 +632,6 @@ REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("fc", 0)
             .LE("conv2d_transpose", 2)
             .EQ("fake_quantize_abs_max", 0)
             .EQ("fake_quantize_range_abs_max", 0)

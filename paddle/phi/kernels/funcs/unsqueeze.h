@@ -103,7 +103,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
   return phi::make_ddim(output_shape);
 }
 
-inline DDim GetUnsqueezeShape(const std::vector<int> unsqz_dims,
+inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
                               const DDim& in_dims) {
   int output_size = in_dims.size() + static_cast<int>(unsqz_dims.size());
   int cur_output_size = in_dims.size();

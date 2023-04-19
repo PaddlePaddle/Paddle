@@ -26,7 +26,6 @@ from .. import unique_name
 from ..framework import (
     Variable,
     Parameter,
-    ParamBase,
     _getitem_impl_,
     _setitem_impl_,
     EagerParamBase,
@@ -34,7 +33,6 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -54,7 +52,9 @@ class TensorHookRemoveHelper:
 
     def __init__(self, tensor, hook_id):
         self._tensor = (
-            tensor if framework._in_eager_mode_ else weakref.ref(tensor)
+            tensor
+            if framework.global_var._in_eager_mode_
+            else weakref.ref(tensor)
         )
         self._hook_id = hook_id
 
@@ -65,7 +65,11 @@ class TensorHookRemoveHelper:
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = self._tensor if framework._in_eager_mode_ else self._tensor()
+        tensor = (
+            self._tensor
+            if framework.global_var._in_eager_mode_
+            else self._tensor()
+        )
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -89,12 +93,12 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Transform a VarBase into static Variable with same attributes. It's a low level interface used
+        Transform a Tensor into static Variable with same attributes. It's a low level interface used
         in dy2static and shall not be called directly.
 
         Args:
-            to_parameter (bool): It takes effect only if the input a VarBase. If set True,
-                                 the VarBase will be converted into framework.Parameters. Otherwise, it will
+            to_parameter (bool): It takes effect only if the input a Tensor. If set True,
+                                 the Tensor will be converted into framework.Parameters. Otherwise, it will
                                  be converted into framework.Variable. Default False.
 
         Examples:
@@ -115,7 +119,7 @@ def monkey_patch_varbase():
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
         param_keys = ['stop_gradient', 'trainable']
-        if isinstance(self, (ParamBase, EagerParamBase)):
+        if isinstance(self, EagerParamBase):
             attr_kwargs = self.__dict__.copy()
             for key in param_keys:
                 attr_kwargs[key] = getattr(self, key)
@@ -139,7 +143,7 @@ def monkey_patch_varbase():
 
         attr_kwargs.update(kwargs)
 
-        if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
+        if to_parameter or isinstance(self, EagerParamBase):
             del attr_kwargs['persistable']
             # NOTE(Aurelius84): All parameters should be placed into global block.
             attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
@@ -178,13 +182,10 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        if framework._in_eager_mode_:
-            base_tensor = core.eager.Tensor
-        else:
-            base_tensor = core.VarBase
+        base_tensor = core.eager.Tensor
         assert isinstance(
             value, (np.ndarray, base_tensor, dict, str)
-        ), "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
+        ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
@@ -214,8 +215,7 @@ def monkey_patch_varbase():
                 self.name, self.dtype, dtype
             )
 
-            # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
-            # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
+            # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             self.value().get_tensor().set(
@@ -227,7 +227,7 @@ def monkey_patch_varbase():
         """
         Run backward of current Graph which starts from current Tensor.
 
-        The new gradient will accumulat on previous gradient.
+        The new gradient will accumulate on previous gradient.
 
         You can clear gradient by ``Tensor.clear_grad()`` .
 
@@ -235,11 +235,11 @@ def monkey_patch_varbase():
             grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
             the initial gradient values of the current Tensor would be Tensor filled with 1.0;
             if `grad_tensor` is not None, it must have the same length as the current Tensor.
-            Teh default value is None.
+            The default value is None.
 
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
         Returns:
             NoneType: None
@@ -275,6 +275,8 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
+        from paddle.distributed.parallel import scale_loss
+
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -282,7 +284,7 @@ def monkey_patch_varbase():
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     assert isinstance(
                         grad_tensor, core.eager.Tensor
                     ), "The type of grad_tensor must be paddle.Tensor"
@@ -296,7 +298,7 @@ def monkey_patch_varbase():
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
 
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 if grad_tensor is None:
                     grad_tensor = []
                 else:
@@ -304,14 +306,10 @@ def monkey_patch_varbase():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if (
-                paddle.is_compiled_with_xpu()
-                or paddle.is_compiled_with_npu()
-                or paddle.is_compiled_with_mlu()
-            ):
+            if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     core.eager.run_backward(
                         [scaled_loss], grad_tensor, retain_graph
                     )
@@ -323,7 +321,7 @@ def monkey_patch_varbase():
                         framework._dygraph_tracer(),
                     )
             else:
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     core.eager.run_backward([self], grad_tensor, retain_graph)
                 else:
                     core.dygraph_run_backward(
@@ -368,12 +366,12 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             if self.grad is None:
                 return None
             if self.grad.is_selected_rows():
-                return (np.array(self.grad.numpy()), np.array(self.grad.rows()))
-            return self.grad.numpy()
+                return (np.array(self.grad), np.array(self.grad.rows()))
+            return np.array(self.grad)
         else:
             if self._grad_ivar() is None:
                 return None
@@ -658,7 +656,7 @@ def monkey_patch_varbase():
 
     def __str__(self):
         """
-        Convert a VarBase object to a readable string.
+        Convert a Tensor object to a readable string.
 
         Returns(str): A readable string.
 
@@ -673,14 +671,9 @@ def monkey_patch_varbase():
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        if framework._in_eager_mode_:
-            from paddle.tensor.to_string import tensor_to_string
+        from paddle.tensor.to_string import tensor_to_string
 
-            return tensor_to_string(self)
-        else:
-            from paddle.tensor.to_string import to_string
-
-            return to_string(self)
+        return tensor_to_string(self)
 
     def __deepcopy__(self, memo):
         """
@@ -707,10 +700,7 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        if framework._in_eager_mode_:
-            new_varbase = core.eager.Tensor()
-        else:
-            new_varbase = core.VarBase()
+        new_varbase = core.eager.Tensor()
         new_varbase.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_varbase
         new_varbase.copy_(self, True)
@@ -721,17 +711,18 @@ def monkey_patch_varbase():
         return framework.default_main_program().global_block()
 
     def __nonzero__(self):
-        numel = np.prod(self.shape)
+        # np.prod([]) -> np.float64, so use int
+        numel = int(np.prod(self.shape))
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
-            return bool(np.all(self.numpy() > 0))
+            return bool(np.array(self) > 0)
         else:
             tensor = self.value().get_tensor()
             assert tensor._is_initialized(), "tensor not initialized"
-            return bool(np.all(tensor.__array__() > 0))
+            return bool(np.array(tensor) > 0)
 
     def __bool__(self):
         return self.__nonzero__()
@@ -757,7 +748,7 @@ def monkey_patch_varbase():
                 print(type(x_array))      #<class 'numpy.ndarray'>
                 print(x_array.shape)      #(2, 2)
         """
-        array = self.numpy()
+        array = self.numpy(False)
         if dtype:
             array = array.astype(dtype)
         return array
@@ -850,18 +841,11 @@ def monkey_patch_varbase():
             return _setitem_impl_(self, item, value)
 
         else:
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 return self.__setitem_eager_tensor__(item, value)
             else:
                 # Call c++ func __setitem_varbase__ to speedup.
                 return self.__setitem_varbase__(item, value)
-
-    @framework.dygraph_only
-    def _grad_ivar(self):
-        if self.grad is not None:
-            if self.grad._is_initialized():
-                return self.grad
-        return None
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -1027,7 +1011,7 @@ def monkey_patch_varbase():
     def __hash__(self):
         return hash(id(self))
 
-    if framework._in_eager_mode_ and not hasattr(core, "eager"):
+    if framework.global_var._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
     for method_name, method in (
@@ -1054,34 +1038,26 @@ def monkey_patch_varbase():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
     ):
-        if framework._in_eager_mode_:
-            setattr(core.eager.Tensor, method_name, method)
-        else:
-            setattr(core.VarBase, method_name, method)
+        setattr(core.eager.Tensor, method_name, method)
 
-    if framework._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
-        setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "value", value)
-        setattr(core.eager.Tensor, "cpu", cpu)
-        setattr(core.eager.Tensor, "cuda", cuda)
-        setattr(core.eager.Tensor, "pin_memory", pin_memory)
-        setattr(core.eager.Tensor, "_slice", _slice)
-        setattr(core.eager.Tensor, "_numel", _numel)
-        setattr(core.eager.Tensor, "_uva", _uva)
-        setattr(core.eager.Tensor, "_clear_data", _clear_data)
-        setattr(core.eager.Tensor, "__hash__", __hash__)
-        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
-    else:
-        setattr(core.VarBase, "__name__", "Tensor")
-        setattr(core.VarBase, "grad", grad)
+    setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
+    setattr(core.eager.Tensor, "value", value)
+    setattr(core.eager.Tensor, "cpu", cpu)
+    setattr(core.eager.Tensor, "cuda", cuda)
+    setattr(core.eager.Tensor, "pin_memory", pin_memory)
+    setattr(core.eager.Tensor, "_slice", _slice)
+    setattr(core.eager.Tensor, "_numel", _numel)
+    setattr(core.eager.Tensor, "_uva", _uva)
+    setattr(core.eager.Tensor, "_clear_data", _clear_data)
+    setattr(core.eager.Tensor, "__hash__", __hash__)
+    setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
 
     global _already_patch_repr
     if not _already_patch_repr:
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__repr__")
+        origin = getattr(core.VarDesc.VarType, "__str__")
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1094,7 +1070,7 @@ def monkey_patch_varbase():
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__repr__", dtype_str)
+        setattr(core.VarDesc.VarType, "__str__", dtype_str)
         _already_patch_repr = True
 
     # patch math methods for varbase

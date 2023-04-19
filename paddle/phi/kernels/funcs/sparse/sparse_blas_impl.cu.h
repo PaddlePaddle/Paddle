@@ -14,10 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/malloc.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -337,7 +339,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
@@ -381,11 +383,15 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
+#if CUDA_VERSION >= 11040
+                                          CUSPARSE_SPMV_ALG_DEFAULT,
+#else
                                           CUSPARSE_MV_ALG_DEFAULT,
+#endif
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
@@ -399,7 +405,11 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
+#if CUDA_VERSION >= 11040
+                               CUSPARSE_SPMV_ALG_DEFAULT,
+#else
                                CUSPARSE_MV_ALG_DEFAULT,
+#endif
                                tmp_buffer_ptr);
   });
 }
@@ -435,7 +445,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));

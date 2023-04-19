@@ -15,10 +15,8 @@ register_unity_group(
   argsort_op.cc
   array_to_lod_tensor_op.cc
   assert_op.cc
-  assign_op.cc
   assign_value_op.cc
   attention_lstm_op.cc
-  average_accumulates_op.cc
   batch_fc_op.cc
   bce_loss_op.cc
   beam_search_op.cc
@@ -64,6 +62,7 @@ register_unity_group(
   cudnn_lstm_op.cc
   cumsum_op.cc
   cvm_op.cc
+  unzip_op.cc
   data_norm_op.cc
   deformable_conv_op.cc
   deformable_conv_v1_op.cc
@@ -82,7 +81,6 @@ register_unity_group(
   diag_v2_op.cc
   dot_op.cc
   edit_distance_op.cc
-  empty_op.cc
   enqueue_op.cc
   erf_op.cc
   py_func_op.cc
@@ -112,7 +110,6 @@ register_unity_group(
   gather_op.cc
   gather_tree_op.cc
   gaussian_random_batch_size_like_op.cc
-  gaussian_random_op.cc
   mkldnn/gaussian_random_mkldnn_op.cc
   group_norm_op.cc
   gru_op.cc)
@@ -204,7 +201,6 @@ register_unity_group(
   pad_op.cc)
 register_unity_group(
   cc
-  modified_huber_loss_op.cc
   partial_sum_op.cc
   pixel_shuffle_op.cc
   pool_op.cc
@@ -224,9 +220,7 @@ register_unity_group(
   quantize_op.cc
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
-  randint_op.cc
   random_crop_op.cc
-  randperm_op.cc
   range_op.cc
   rank_attention_op.cc
   rank_loss_op.cc
@@ -297,14 +291,12 @@ register_unity_group(
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
   tril_triu_op.cc
-  truncated_gaussian_random_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(
   cc
   smooth_l1_loss_op.cc
   uniform_random_batch_size_like_op.cc
-  uniform_random_op.cc
   unique_op.cc
   unique_with_counts_op.cc
   unpool_op.cc
@@ -336,7 +328,6 @@ register_unity_group(
   pool_op.cu.cc
   pool_cudnn_op.cu.cc
   pool_with_index_op.cu.cc
-  run_program_op.cu.cc
   softmax_op.cu.cc
   softmax_cudnn_op.cu.cc
   spp_op.cu.cc
@@ -362,7 +353,6 @@ register_unity_group(
   rnn_op.cu.cc
   split_op.cu.cc
   assign_value_op.cu.cc
-  run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
   cu
@@ -392,7 +382,6 @@ register_unity_group(
   conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
-  average_accumulates_op.cu
   conj_op.cu
   correlation_op.cu)
 register_unity_group(
@@ -402,6 +391,7 @@ register_unity_group(
   ctc_align_op.cu
   cumsum_op.cu
   cvm_op.cu
+  unzip_op.cu
   data_norm_op.cu
   deformable_conv_op.cu
   deformable_conv_v1_op.cu
@@ -424,7 +414,7 @@ register_unity_group(
   gather_nd_op.cu
   gather_op.cu
   gather_tree_op.cu
-  gaussian_random_op.cu
+  gaussian_random_batch_size_like_op.cu
   grid_sampler_op.cu
   group_norm_op.cu)
 register_unity_group(
@@ -500,13 +490,12 @@ register_unity_group(
   pixel_shuffle_op.cu
   prelu_op.cu
   prroi_pool_op.cu
+  run_program_op.cu
   pull_box_extended_sparse_op.cu
   pull_box_sparse_op.cu)
 register_unity_group(
   cu
-  randint_op.cu
   random_crop_op.cu
-  randperm_op.cu
   range_op.cu
   reverse_op.cu
   partial_concat_op.cu
@@ -548,14 +537,13 @@ register_unity_group(
   row_conv_op.cu
   tree_conv_op.cu
   tril_triu_op.cu
-  truncated_gaussian_random_op.cu
   unfold_op.cu
   arg_min_op.cu
   crop_tensor_op.cu)
 register_unity_group(
   cu
   smooth_l1_loss_op.cu
-  uniform_random_op.cu
+  uniform_random_batch_size_like_op.cu
   unstack_op.cu
   where_index_op.cu
   where_op.cu
@@ -579,3 +567,5 @@ register_unity_group(cu expand_op.cu)
 register_unity_group(cu matmul_v2_op.cu)
 register_unity_group(cu top_k_v2_op.cu)
 register_unity_group(cu set_value_op.cu)
+register_unity_group(cu unzip.cu)
+register_unity_group(cc unzip.cc)

@@ -15,7 +15,7 @@
 import logging
 
 from . import framework
-from .framework import _non_static_mode, _varbase_creator, in_dygraph_mode
+from .framework import _non_static_mode, in_dygraph_mode
 from . import core
 from paddle import _C_ops, _legacy_C_ops
 
@@ -74,8 +74,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                data = paddle.static.data(name='image', shape=[-1, 3, 28, 28], dtype='float32')
+                label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
                 hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
                 prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
                 loss = paddle.nn.functional.cross_entropy(
@@ -193,8 +193,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                data = paddle.static.data(name='image', shape=[-1, 3, 28, 28], dtype='float32')
+                label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
                 hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
                 prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
                 loss = paddle.nn.functional.cross_entropy(

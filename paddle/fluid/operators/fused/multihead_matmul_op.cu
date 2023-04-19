@@ -21,6 +21,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -269,7 +270,7 @@ __global__ void broadcast_batch_head_number(const T *src,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -343,10 +344,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     // (B*S, hidden)
     const phi::DenseTensor input_matrix =
-        framework::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
+        phi::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
     // (hidden, 3 * all_head_size)
     const phi::DenseTensor w_matrix =
-        framework::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
+        phi::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
 
     phi::DenseTensor temp_out_tensor;
     auto temp_out_dims =
@@ -422,12 +423,15 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-REGISTER_OP_CUDA_KERNEL(
-    multihead_matmul,
-    ops::MultiHeadMatMulV2Kernel<phi::GPUContext, paddle::platform::float16>,
-    ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(multihead_matmul,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::MultiHeadMatMulV2Kernel,
+                          float,
+                          plat::float16) {}
 #else
-REGISTER_OP_CUDA_KERNEL(multihead_matmul,
-                        ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    multihead_matmul, GPU, ALL_LAYOUT, ops::MultiHeadMatMulV2Kernel, float) {}
 #endif

@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/core/errors.h"
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -190,12 +190,12 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
   std::vector<int> error_info(batch_size);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int) * batch_size,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     error_info.data(),
+                     dev_ctx.GetPlace(),
+                     info,
+                     sizeof(int) * batch_size,
+                     dev_ctx.stream());
   dev_ctx.Wait();
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);
@@ -354,12 +354,6 @@ struct MatrixEighFunctor<GPUContext, T> {
         has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    auto info = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        sizeof(int) * batch_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
-
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
@@ -410,11 +404,13 @@ struct MatrixEighFunctor<GPUContext, T> {
                 out_value,
                 &workspace_size);
     }
-    auto work = paddle::memory::Alloc(
+    size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) * batch_size;
+    auto work = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
-        sizeof(T) * workspace_size,
+        total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
+    auto *info_ptr = reinterpret_cast<int *>(work_ptr + workspace_size);
 
     for (auto i = 0; i < batch_size; ++i) {
       auto *input_data = input_vector + i * vector_stride;

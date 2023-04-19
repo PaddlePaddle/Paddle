@@ -20,8 +20,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def bow_net(
@@ -42,7 +42,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
@@ -105,10 +107,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost = model(data, label, self.word_len)
 
@@ -129,10 +133,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost_l2 = model(data, label, self.word_len)
 
@@ -141,7 +147,7 @@ class TestRegularizer(unittest.TestCase):
             for para in param_list:
                 para_mul = paddle.square(x=para)
                 para_sum.append(paddle.sum(para_mul))
-            avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
+            avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)

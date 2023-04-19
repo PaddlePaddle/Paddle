@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -22,7 +23,7 @@ namespace framework {
 namespace ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto &matmul_type : matmul_types) {
     Fuse(graph,
@@ -102,6 +103,25 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
                                               matmul_type + " encountered.");
     }
 
+    // Return if input of fused_matmul is already fused
+    if (matmul_type == "fused_matmul") {
+      auto is_already_fused_X =
+          matmul_desc->HasAttr("fused_reshape_X")
+              ? !(PADDLE_GET_CONST(std::vector<int>,
+                                   matmul_desc->GetAttr("fused_reshape_X"))
+                      .empty())
+              : false;
+      if (is_already_fused_X && matmul_input_name == "X") return;
+
+      auto is_already_fused_Y =
+          matmul_desc->HasAttr("fused_reshape_Y")
+              ? !(PADDLE_GET_CONST(std::vector<int>,
+                                   matmul_desc->GetAttr("fused_reshape_Y"))
+                      .empty())
+              : false;
+      if (is_already_fused_Y && matmul_input_name == "Y") return;
+    }
+
     auto reshape_shape =
         paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
@@ -123,6 +143,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       return;
     }
 
+    ConvertToFusedOp(matmul_desc);
     matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
@@ -220,6 +241,27 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .AddAttr("trans_y")
       .IsType<bool>()
       .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
 }
 
 }  // namespace ir
@@ -234,5 +276,6 @@ REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
+            .EQ("fused_matmul", 0)
             .EQ("matmul", 1)
             .EQ("matmul_v2", 0));

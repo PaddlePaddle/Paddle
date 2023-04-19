@@ -16,8 +16,8 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -38,8 +38,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def test_gradient_merge_optimizer(self):
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 

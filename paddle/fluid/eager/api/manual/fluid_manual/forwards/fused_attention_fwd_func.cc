@@ -20,38 +20,38 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
 fused_attention_dygraph_function(
-    const paddle::experimental::Tensor& X,
-    const paddle::experimental::Tensor& LnScale,
-    const paddle::experimental::Tensor& LnBias,
-    const paddle::experimental::Tensor& QKVW,
-    const paddle::experimental::Tensor& QKVBias,
-    const paddle::experimental::Tensor& CacheKV,
-    const paddle::experimental::Tensor& SrcMask,
-    const paddle::experimental::Tensor& OutLinearW,
-    const paddle::experimental::Tensor& OutLinearBias,
-    const paddle::experimental::Tensor& Ln2Scale,
-    const paddle::experimental::Tensor& Ln2Bias,
+    const paddle::Tensor& X,
+    const paddle::Tensor& LnScale,
+    const paddle::Tensor& LnBias,
+    const paddle::Tensor& QKVW,
+    const paddle::Tensor& QKVBias,
+    const paddle::Tensor& CacheKV,
+    const paddle::Tensor& SrcMask,
+    const paddle::Tensor& OutLinearW,
+    const paddle::Tensor& OutLinearBias,
+    const paddle::Tensor& Ln2Scale,
+    const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_attention dygraph",
@@ -64,8 +64,7 @@ fused_attention_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {QKVW}, {OutLinearW}};
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
     if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
@@ -280,47 +279,47 @@ fused_attention_dygraph_function(
       true,
       {});
 
-  paddle::experimental::Tensor LnMean;
+  paddle::Tensor LnMean;
   egr::EagerUtils::GetOutput(outs["LnMean"][0], &LnMean);
-  paddle::experimental::Tensor LnVariance;
+  paddle::Tensor LnVariance;
   egr::EagerUtils::GetOutput(outs["LnVariance"][0], &LnVariance);
-  paddle::experimental::Tensor LnOut;
+  paddle::Tensor LnOut;
   egr::EagerUtils::GetOutput(outs["LnOut"][0], &LnOut);
-  paddle::experimental::Tensor QKVOut;
+  paddle::Tensor QKVOut;
   egr::EagerUtils::GetOutput(outs["QKVOut"][0], &QKVOut);
-  paddle::experimental::Tensor QKVBiasOut;
+  paddle::Tensor QKVBiasOut;
   egr::EagerUtils::GetOutput(outs["QKVBiasOut"][0], &QKVBiasOut);
-  paddle::experimental::Tensor TransposeOut2;
+  paddle::Tensor TransposeOut2;
   egr::EagerUtils::GetOutput(outs["TransposeOut2"][0], &TransposeOut2);
-  paddle::experimental::Tensor QKOut;
+  paddle::Tensor QKOut;
   egr::EagerUtils::GetOutput(outs["QKOut"][0], &QKOut);
-  paddle::experimental::Tensor QKTVOut;
+  paddle::Tensor QKTVOut;
   egr::EagerUtils::GetOutput(outs["QKTVOut"][0], &QKTVOut);
-  paddle::experimental::Tensor SoftmaxOut;
+  paddle::Tensor SoftmaxOut;
   egr::EagerUtils::GetOutput(outs["SoftmaxOut"][0], &SoftmaxOut);
-  paddle::experimental::Tensor AttnDropoutMaskOut;
+  paddle::Tensor AttnDropoutMaskOut;
   egr::EagerUtils::GetOutput(outs["AttnDropoutMaskOut"][0],
                              &AttnDropoutMaskOut);
-  paddle::experimental::Tensor AttnDropoutOut;
+  paddle::Tensor AttnDropoutOut;
   egr::EagerUtils::GetOutput(outs["AttnDropoutOut"][0], &AttnDropoutOut);
-  paddle::experimental::Tensor SrcMaskOut;
+  paddle::Tensor SrcMaskOut;
   egr::EagerUtils::GetOutput(outs["SrcMaskOut"][0], &SrcMaskOut);
-  paddle::experimental::Tensor FMHAOut;
+  paddle::Tensor FMHAOut;
   egr::EagerUtils::GetOutput(outs["FMHAOut"][0], &FMHAOut);
-  paddle::experimental::Tensor OutLinearOut;
+  paddle::Tensor OutLinearOut;
   egr::EagerUtils::GetOutput(outs["OutLinearOut"][0], &OutLinearOut);
-  paddle::experimental::Tensor DropoutMaskOut;
+  paddle::Tensor DropoutMaskOut;
   egr::EagerUtils::GetOutput(outs["DropoutMaskOut"][0], &DropoutMaskOut);
-  paddle::experimental::Tensor Ln2Mean;
+  paddle::Tensor Ln2Mean;
   egr::EagerUtils::GetOutput(outs["Ln2Mean"][0], &Ln2Mean);
-  paddle::experimental::Tensor Ln2Variance;
+  paddle::Tensor Ln2Variance;
   egr::EagerUtils::GetOutput(outs["Ln2Variance"][0], &Ln2Variance);
-  paddle::experimental::Tensor BiasDropoutResidualOut;
+  paddle::Tensor BiasDropoutResidualOut;
   egr::EagerUtils::GetOutput(outs["BiasDropoutResidualOut"][0],
                              &BiasDropoutResidualOut);
-  paddle::experimental::Tensor CacheKVOut;
+  paddle::Tensor CacheKVOut;
   egr::EagerUtils::GetOutput(outs["CacheKVOut"][0], &CacheKVOut);
-  paddle::experimental::Tensor Y;
+  paddle::Tensor Y;
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
@@ -432,7 +431,6 @@ fused_attention_dygraph_function(
         egr::EagerUtils::SetHistory(p_autograd_QKVBiasOut,
                                     QKVBiasOut_accumulation_node);
         QKVBiasOut_accumulation_node->SetGradInMeta(QKVBiasOut, 0);
-        egr::EagerUtils::CheckAndRetainGrad(QKVBiasOut);
         grad_node->SetGradOutMeta(QKVBiasOut, 11);
       }
 
@@ -446,7 +444,6 @@ fused_attention_dygraph_function(
         egr::EagerUtils::SetHistory(p_autograd_SrcMaskOut,
                                     SrcMaskOut_accumulation_node);
         SrcMaskOut_accumulation_node->SetGradInMeta(SrcMaskOut, 0);
-        egr::EagerUtils::CheckAndRetainGrad(SrcMaskOut);
         grad_node->SetGradOutMeta(SrcMaskOut, 12);
       }
 
@@ -473,7 +470,6 @@ fused_attention_dygraph_function(
           egr::EagerUtils::SetHistory(p_autograd_LnOut,
                                       LnOut_accumulation_node);
           LnOut_accumulation_node->SetGradInMeta(LnOut, 0);
-          egr::EagerUtils::CheckAndRetainGrad(LnOut);
           grad_node->SetGradOutMeta(LnOut, 13);
         }
         if (LnMean.initialized()) {
@@ -505,7 +501,6 @@ fused_attention_dygraph_function(
                                     BiasDropoutResidualOut_accumulation_node);
         BiasDropoutResidualOut_accumulation_node->SetGradInMeta(
             BiasDropoutResidualOut, 0);
-        egr::EagerUtils::CheckAndRetainGrad(BiasDropoutResidualOut);
         grad_node->SetGradOutMeta(BiasDropoutResidualOut, 14);
       }
 
@@ -524,17 +519,14 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_CacheKVOut, 18);
       egr::EagerUtils::SetHistory(p_autograd_CacheKVOut, grad_node);
       grad_node->SetGradInMeta(CacheKVOut, 18);
-      egr::EagerUtils::CheckAndRetainGrad(CacheKVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Y, 19);
       egr::EagerUtils::SetHistory(p_autograd_Y, grad_node);
       grad_node->SetGradInMeta(Y, 19);
-      egr::EagerUtils::CheckAndRetainGrad(Y);
       auto QKVOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKVOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_QKVOut, QKVOut_accumulation_node);
       QKVOut_accumulation_node->SetGradInMeta(QKVOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(QKVOut);
       grad_node->SetGradOutMeta(QKVOut, 15);
 
       auto QKTVOut_accumulation_node =
@@ -543,7 +535,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_QKTVOut,
                                   QKTVOut_accumulation_node);
       QKTVOut_accumulation_node->SetGradInMeta(QKTVOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(QKTVOut);
       grad_node->SetGradOutMeta(QKTVOut, 16);
 
       auto TransposeOut2_accumulation_node =
@@ -552,7 +543,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_TransposeOut2,
                                   TransposeOut2_accumulation_node);
       TransposeOut2_accumulation_node->SetGradInMeta(TransposeOut2, 0);
-      egr::EagerUtils::CheckAndRetainGrad(TransposeOut2);
       grad_node->SetGradOutMeta(TransposeOut2, 17);
 
       auto QKOut_accumulation_node =
@@ -560,7 +550,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_QKOut, QKOut_accumulation_node);
       QKOut_accumulation_node->SetGradInMeta(QKOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(QKOut);
       grad_node->SetGradOutMeta(QKOut, 18);
 
       auto SoftmaxOut_accumulation_node =
@@ -569,7 +558,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_SoftmaxOut,
                                   SoftmaxOut_accumulation_node);
       SoftmaxOut_accumulation_node->SetGradInMeta(SoftmaxOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(SoftmaxOut);
       grad_node->SetGradOutMeta(SoftmaxOut, 19);
 
       if (AttnDropoutOut.initialized()) {
@@ -580,7 +568,6 @@ fused_attention_dygraph_function(
         egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
                                     AttnDropoutOut_accumulation_node);
         AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
-        egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
         grad_node->SetGradOutMeta(AttnDropoutOut, 20);
       }
 
@@ -590,7 +577,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_FMHAOut,
                                   FMHAOut_accumulation_node);
       FMHAOut_accumulation_node->SetGradInMeta(FMHAOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(FMHAOut);
       grad_node->SetGradOutMeta(FMHAOut, 21);
 
       auto OutLinearOut_accumulation_node =
@@ -599,7 +585,6 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_OutLinearOut,
                                   OutLinearOut_accumulation_node);
       OutLinearOut_accumulation_node->SetGradInMeta(OutLinearOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(OutLinearOut);
       grad_node->SetGradOutMeta(OutLinearOut, 22);
     }
   }

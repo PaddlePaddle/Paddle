@@ -23,19 +23,10 @@
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
-#endif
-
-#ifdef PADDLE_WITH_RCCL
-#include "paddle/phi/backends/dynload/rccl.h"
-#else
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
 
 namespace paddle {
 namespace distributed {
@@ -144,6 +135,19 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                               const ScatterOptions& opts,
                                               bool sync_op,
                                               bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Gather(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const GatherOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Gather(
+      std::vector<phi::DenseTensor>* gather_tensors_ptr,
+      const phi::DenseTensor& in_tensor,
+      const GatherOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,

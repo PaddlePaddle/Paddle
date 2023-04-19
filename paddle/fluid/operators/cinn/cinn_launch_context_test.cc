@@ -36,7 +36,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/phi/core/ddim.h"
 
-USE_OP(cinn_instruction_run);
+USE_OP_ITSELF(cinn_instruction_run);
+PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);
+#ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(cinn_instruction_run, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle {
 namespace operators::details {
 
@@ -90,6 +95,8 @@ const Graph& InitDefaultSubgraph() {
         new std::vector<std::string>({"var5"}));
     graph->GetOrInit<Name2VarInfoMap>(
         framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
+    graph->GetOrInit<std::unordered_set<std::string>>(
+        framework::paddle2cinn::kInplaceVarNames);
   });
   return *graph.get();
 }

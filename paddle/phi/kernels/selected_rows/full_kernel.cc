@@ -70,3 +70,17 @@ PD_REGISTER_KERNEL(full_sr,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(full_sr,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::sr::FullKernel,
+                   float,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
+#endif
