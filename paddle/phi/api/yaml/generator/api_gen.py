@@ -417,7 +417,7 @@ class ForwardAPI(BaseAPI):
             or inplace_flag
         ):
             return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
-   {self.gene_dist_tensor_unsupported_warning()}
+   {self.gene_dist_tensor_unsupported_warning(inplace_flag)}
    }}"""
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}
