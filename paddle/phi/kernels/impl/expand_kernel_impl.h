@@ -20,6 +20,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #define MAX_RANK_SUPPORTED 6
+#include "gflags/gflags.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 using Tensor = DenseTensor;
@@ -119,7 +121,11 @@ void ExpandKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: ExpandKernel";
 
+  if (FLAGS_throw_strided_error_op == "ExpandKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,

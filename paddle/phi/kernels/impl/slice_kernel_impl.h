@@ -16,11 +16,13 @@
 
 #include <glog/logging.h>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -115,7 +117,11 @@ void SliceKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: SliceKernel";
 
+  if (FLAGS_throw_strided_error_op == "SliceKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

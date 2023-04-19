@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/unbind_kernel.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -34,7 +36,11 @@ void UnbindKernel(const Context& dev_ctx,
     xx.can_not_uses->insert(xx.canNotUse);
     xx.can_not_uses->insert(outs[j]->canNotUse);
   }
+  VLOG(1) << "stride api call log: UnbindKernel";
 
+  if (FLAGS_throw_strided_error_op == "DenseTensor") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;
 

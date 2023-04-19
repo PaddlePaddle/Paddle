@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -35,7 +37,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(in_grad->canNotUse);
+  VLOG(1) << "stride api call log: DiagonalGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "DiagonalGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   const auto* dout = &out_grad;
   const T* dout_data = dout->data<T>();
   auto dout_dim = vectorize(dout->dims());

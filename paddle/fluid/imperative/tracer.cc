@@ -35,6 +35,10 @@ DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
 
+PADDLE_DEFINE_EXPORTED_string(throw_inplace_error_op, "", "");
+
+PADDLE_DEFINE_EXPORTED_string(throw_use_error_op, "", "");
+
 namespace paddle {
 namespace imperative {
 
@@ -413,12 +417,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 1: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 2: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -432,12 +442,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 3: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 4: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -454,6 +470,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }
@@ -465,6 +486,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }
@@ -497,12 +523,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 5: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 6: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -516,12 +548,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 7: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 8: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -538,6 +576,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }
@@ -549,6 +592,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }
@@ -575,12 +623,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 9: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 10: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -594,12 +648,18 @@ void Tracer::TraceOp(const std::string& type,
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 11: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       } else if (var->IsType<phi::SelectedRows>()) {
         auto tensor_tmp = var->GetMutable<phi::SelectedRows>()->mutable_value();
         if ((*tensor_tmp->canNotUse) == true) {
           LOG(WARNING) << "Stride Test Log 12: op_name = " << type
                        << ", var name = " << output.first;
+          if (FLAGS_throw_use_error_op == type) {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -616,6 +676,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }
@@ -627,6 +692,11 @@ void Tracer::TraceOp(const std::string& type,
                it++) {
             if (*it != tensor_tmp->canNotUse) {
               **it = true;
+              VLOG(1) << "inplace api call log: " << type << " "
+                      << output.first;
+              if (FLAGS_throw_inplace_error_op == type) {
+                PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+              }
             }
           }
         }

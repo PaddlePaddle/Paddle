@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/impl/expand_as_kernel_impl.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 template <typename Context, typename T, int Dims>
@@ -55,7 +57,11 @@ void ExpandAsGradKernel(const Context& context,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(in_grad->canNotUse);
+  VLOG(1) << "stride api call log: ExpandAsGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "ExpandAsGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto x_dims = x.dims();
 
   if (in_grad->dims() == out_grad.dims()) {

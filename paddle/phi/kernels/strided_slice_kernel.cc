@@ -14,7 +14,9 @@
 
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -34,6 +36,11 @@ void StridedSliceKernel(const Context& dev_ctx,
   xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: StridedSliceKernel";
+
+  if (FLAGS_throw_strided_error_op == "StridedSliceKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawKernel<T, Context>(

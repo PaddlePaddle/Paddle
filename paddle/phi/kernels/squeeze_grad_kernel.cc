@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/squeeze_grad_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 template <typename T, typename Context>
@@ -33,7 +35,11 @@ void SqueezeGradKernel(const Context& dev_ctx,
   xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(dx->canNotUse);
+  VLOG(1) << "stride api call log: SqueezeGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "SqueezeGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 

@@ -14,10 +14,12 @@
 
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 template <typename T, typename Context>
@@ -52,7 +54,11 @@ void UnsqueezeKernel(const Context& dev_ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: UnsqueezeKernel";
 
+  if (FLAGS_throw_strided_error_op == "UnsqueezeKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi

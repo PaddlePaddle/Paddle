@@ -16,13 +16,19 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
+
+DECLARE_string(throw_inplace_error_op, "", "");
+
+DECLARE_string(throw_use_error_op, "", "");
 
 namespace paddle {
 namespace experimental {
@@ -245,6 +251,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     if ((*dense_tensor.canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 17: op_name = " << op_name
                    << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
 
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
@@ -294,6 +303,9 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     if ((*dense_tensor.canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 18: op_name = " << op_name
                    << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
 
     if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
@@ -345,6 +357,9 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     if ((*selected_rows.mutable_value()->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 19: op_name = " << op_name
                    << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
 
     if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||

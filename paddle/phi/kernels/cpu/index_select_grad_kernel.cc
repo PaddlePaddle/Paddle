@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -34,7 +36,11 @@ void IndexSelectGradKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(x_grad->canNotUse);
+  VLOG(1) << "stride api call log: IndexSelectGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "IndexSelectGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   if (dim < 0) {
     dim += out_grad.dims().size();
   }

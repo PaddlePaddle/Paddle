@@ -16,10 +16,12 @@
 
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -35,7 +37,11 @@ void TransposeKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: TransposeKernel";
 
+  if (FLAGS_throw_strided_error_op == "TransposeKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {

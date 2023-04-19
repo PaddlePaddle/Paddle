@@ -64,6 +64,12 @@ typedef SSIZE_T ssize_t;
 
 DECLARE_bool(set_to_1d);
 
+DECLARE_string(throw_inplace_error_op, "", "");
+
+DECLARE_string(throw_use_error_op, "", "");
+
+PADDLE_DEFINE_EXPORTED_string(throw_strided_error_op, "", "");
+
 namespace paddle {
 namespace pybind {
 
@@ -777,7 +783,10 @@ static PyObject* tensor_method_detach(TensorObject* self,
       }
       tensor_src->can_not_uses->insert(tensor->canNotUse);
       tensor_src->can_not_uses->insert(tensor_src->canNotUse);
-
+      VLOG(1) << "stride api call log: detach";
+      if (FLAGS_throw_strided_error_op == "detach") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
       v->tensor.set_impl(tensor);
     } else {
       v->tensor.set_impl(self->tensor.impl());
@@ -1318,6 +1327,10 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         tensor_src->can_not_uses->insert(tensor->canNotUse);
         tensor_src->can_not_uses->insert(tensor_src->canNotUse);
       }
+      VLOG(1) << "stride api call log: _setitem_";
+      if (FLAGS_throw_strided_error_op == "_setitem_") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
 
       if (self_tensor->can_not_uses->size() > 0) {
         for (auto it = self_tensor->can_not_uses->begin();
@@ -1325,6 +1338,10 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
              it++) {
           if (*it != self_tensor->canNotUse) {
             **it = true;
+            VLOG(1) << "inplace api call log: _setitem_";
+            if (FLAGS_throw_inplace_error_op == "_setitem_") {
+              PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+            }
           }
         }
       }
@@ -1341,9 +1358,12 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   } else {
     if ((*self_tensor->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 20: op_name = "
-                   << "eager_method setitem"
+                   << "eager_method _setitem_"
                    << ", var name = "
                    << "self_tensor";
+      if (FLAGS_throw_use_error_op == "_setitem_") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
     }
 
     if (self_tensor->can_not_uses->size() > 0) {
@@ -1352,6 +1372,10 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
            it++) {
         if (*it != self_tensor->canNotUse) {
           **it = true;
+          VLOG(1) << "inplace api call log: _setitem_";
+          if (FLAGS_throw_inplace_error_op == "_setitem_") {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }

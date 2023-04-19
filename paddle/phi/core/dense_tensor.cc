@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
+#include "gflags/gflags.h"
+DECLARE_string(throw_strided_error_op, "", "");
 /**
  * [ Why still include the fluid headers? ]
  *
@@ -63,6 +65,10 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   }
   this->can_not_uses->insert(this->canNotUse);
   this->can_not_uses->insert(other.canNotUse);
+  VLOG(1) << "stride api call log: DenseTensor";
+  if (FLAGS_throw_strided_error_op == "DenseTensor") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
@@ -78,6 +84,10 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   }
   this->can_not_uses->insert(this->canNotUse);
   this->can_not_uses->insert(other.canNotUse);
+  VLOG(1) << "stride api call log: DenseTensor=";
+  if (FLAGS_throw_strided_error_op == "DenseTensor=") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
@@ -98,6 +108,10 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   }
   this->can_not_uses->insert(this->canNotUse);
   this->can_not_uses->insert(other.canNotUse);
+  VLOG(1) << "stride api call log: DenseTensor=&&";
+  if (FLAGS_throw_strided_error_op == "DenseTensor=&&") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
 #endif

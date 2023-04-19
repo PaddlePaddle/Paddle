@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/strided_slice_kernel.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -35,7 +37,11 @@ void StridedSliceRawKernel(const Context& dev_ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: StridedSliceRawKernel";
 
+  if (FLAGS_throw_strided_error_op == "StridedSliceRawKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                        \
   case Rank:                                                    \

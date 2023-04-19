@@ -20,6 +20,8 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include "gflags/gflags.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -35,7 +37,11 @@ void ReshapeGradKernel(const Context& dev_ctx,
   xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(x_grad->canNotUse);
+  VLOG(1) << "stride api call log: ReshapeGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "ReshapeGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto x_dims = x_grad->dims();
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);

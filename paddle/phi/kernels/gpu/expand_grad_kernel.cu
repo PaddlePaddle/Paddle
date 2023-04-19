@@ -14,10 +14,12 @@
 
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -34,7 +36,11 @@ void ExpandGradKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(x_grad->canNotUse);
+  VLOG(1) << "stride api call log: ExpandGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   ctx.template Alloc<T>(x_grad);
   if (x_grad->dims() == out_grad.dims()) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);

@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -32,7 +34,11 @@ void TransposeGradKernel(const Context& dev_ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(x_grad->canNotUse);
+  VLOG(1) << "stride api call log: TransposeGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "TransposeGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   size_t axis_size = axis.size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {

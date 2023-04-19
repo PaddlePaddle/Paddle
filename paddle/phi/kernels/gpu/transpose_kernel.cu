@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -23,6 +24,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 template <typename T, typename Context>
@@ -37,7 +39,11 @@ void TransposeKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: TransposeKernel";
 
+  if (FLAGS_throw_strided_error_op == "TransposeKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {

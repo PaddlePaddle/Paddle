@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -287,7 +289,11 @@ void SliceGradKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(input_grad->canNotUse);
+  VLOG(1) << "stride api call log: SliceGradKernel";
 
+  if (FLAGS_throw_strided_error_op == "SliceGradKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   size_t rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -33,7 +35,11 @@ void IndexSelectKernel(const Context& ctx,
   }
   xx.can_not_uses->insert(xx.canNotUse);
   xx.can_not_uses->insert(output->canNotUse);
+  VLOG(1) << "stride api call log: IndexSelectKernel";
 
+  if (FLAGS_throw_strided_error_op == "IndexSelectKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto inputs = x;
   if (dim < 0) {
     dim += inputs.dims().size();

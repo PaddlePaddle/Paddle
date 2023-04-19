@@ -22,6 +22,8 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include "gflags/gflags.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 
@@ -90,7 +92,11 @@ void ReshapeKernel(const Context& dev_ctx,
   xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: ReshapeKernel";
 
+  if (FLAGS_throw_strided_error_op == "ReshapeKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 

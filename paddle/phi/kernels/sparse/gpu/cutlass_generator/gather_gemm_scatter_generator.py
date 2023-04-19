@@ -582,6 +582,6 @@ if __name__ == "__main__":
     )
     manifest = GatherGemmScatterManifest(args)
 
-    GenerateSM80(manifest, args.cuda_version)
+    GenerateSM80(manifest, args.cuda_version, True)
 
     manifest.emit(GeneratorTarget.Library)

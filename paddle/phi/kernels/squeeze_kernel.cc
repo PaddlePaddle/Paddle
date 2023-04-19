@@ -14,10 +14,12 @@
 
 #include "paddle/phi/kernels/squeeze_kernel.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+DECLARE_string(throw_strided_error_op, "", "");
 
 namespace phi {
 template <typename T, typename Context>
@@ -33,7 +35,11 @@ void SqueezeInferKernel(const Context& dev_ctx,
   xx.can_not_uses->insert(xx.canNotUse);
 
   xx.can_not_uses->insert(out->canNotUse);
+  VLOG(1) << "stride api call log: SqueezeInferKernel";
 
+  if (FLAGS_throw_strided_error_op == "SqueezeInferKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
   if (x.Holder() == out->Holder()) {

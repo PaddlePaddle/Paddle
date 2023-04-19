@@ -13,7 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/phi/core/enforce.h"
+
+DECLARE_string(throw_inplace_error_op, "", "");
+
+DECLARE_string(throw_use_error_op, "", "");
 namespace paddle {
 namespace experimental {
 
@@ -196,6 +202,9 @@ phi::DenseTensor* SetKernelOutput(const std::string& op_name,
       if ((*tensor_tmp->canNotUse) == true) {
         LOG(WARNING) << "Stride Test Log 13: op_name = " << op_name
                      << ", var name = " << tensor_name;
+        if (FLAGS_throw_use_error_op == op_name) {
+          PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+        }
       }
 
       if (tensor_tmp->can_not_uses->size() > 0) {
@@ -204,6 +213,11 @@ phi::DenseTensor* SetKernelOutput(const std::string& op_name,
              it++) {
           if (*it != tensor_tmp->canNotUse) {
             **it = true;
+            VLOG(1) << "inplace api call log: " << op_name << " "
+                    << tensor_name;
+            if (FLAGS_throw_inplace_error_op == op_name) {
+              PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+            }
           }
         }
       }
@@ -242,6 +256,9 @@ std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
     if ((*tensor_tmp->canNotUse) == true) {
       LOG(WARNING) << "Stride Test Log 14: op_name = " << op_name
                    << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
 
     if (tensor_tmp->can_not_uses->size() > 0) {
@@ -250,6 +267,10 @@ std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
            it++) {
         if (*it != tensor_tmp->canNotUse) {
           **it = true;
+          VLOG(1) << "inplace api call log: " << op_name << " " << tensor_name;
+          if (FLAGS_throw_inplace_error_op == op_name) {
+            PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+          }
         }
       }
     }
@@ -272,6 +293,9 @@ std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
       if ((*tensor_tmp->canNotUse) == true) {
         LOG(WARNING) << "Stride Test Log 15: op_name = " << op_name
                      << ", var name = " << tensor_name;
+        if (FLAGS_throw_use_error_op == op_name) {
+          PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+        }
       }
 
       if (tensor_tmp->can_not_uses->size() > 0) {
@@ -280,6 +304,11 @@ std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
              it++) {
           if (*it != tensor_tmp->canNotUse) {
             **it = true;
+            VLOG(1) << "inplace api call log: " << op_name << " "
+                    << tensor_name;
+            if (FLAGS_throw_inplace_error_op == op_name) {
+              PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+            }
           }
         }
       }
@@ -317,6 +346,9 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(const std::string& op_name,
   if ((*tensor_tmp->canNotUse) == true) {
     LOG(WARNING) << "Stride Test Log 16: op_name = " << op_name
                  << ", var name = " << tensor_name;
+    if (FLAGS_throw_use_error_op == op_name) {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
 
   if (tensor_tmp->can_not_uses->size() > 0) {
@@ -325,6 +357,10 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(const std::string& op_name,
          it++) {
       if (*it != tensor_tmp->canNotUse) {
         **it = true;
+        VLOG(1) << "inplace api call log: " << op_name << " " << tensor_name;
+        if (FLAGS_throw_inplace_error_op == op_name) {
+          PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+        }
       }
     }
   }
