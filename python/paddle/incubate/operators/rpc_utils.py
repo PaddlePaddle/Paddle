@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import fluid
-from paddle.utils.unique_name import generate as id_gen
+from paddle.utils.unique_name import generate
 
 
 def rpc_call(
@@ -24,7 +24,7 @@ def rpc_call(
         fluid.default_main_program()
         .block(0)
         .create_var(
-            name=id_gen("rpc_request_id"),
+            name=generate("rpc_request_id"),
             dtype="int32",
             shape=[src_ids.shape[0]],
             persistable=False,
@@ -56,7 +56,7 @@ def rpc_result(request_ids, result_dtype):
             fluid.default_main_program()
             .block(0)
             .create_var(
-                name=id_gen("rpc_res"),
+                name=generate("rpc_res"),
                 dtype="float32",
                 shape=[request_ids.shape[0]],
                 persistable=False,
@@ -68,7 +68,7 @@ def rpc_result(request_ids, result_dtype):
             fluid.default_main_program()
             .block(0)
             .create_var(
-                name=id_gen("rpc_res"),
+                name=generate("rpc_res"),
                 dtype="uint8",
                 shape=[request_ids.shape[0]],
                 persistable=False,
@@ -82,7 +82,7 @@ def rpc_result(request_ids, result_dtype):
         fluid.default_main_program()
         .block(0)
         .create_var(
-            name=id_gen("rpc_success"),
+            name=generate("rpc_success"),
             dtype="bool",
             shape=[1],
             persistable=False,
