@@ -154,9 +154,6 @@ class TestMaxoutFP16Case2(TestMaxOutOpFP16):
         self.axis = 3
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestMaxoutStaticAPIFP16(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
