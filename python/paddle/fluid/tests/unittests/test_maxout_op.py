@@ -143,15 +143,6 @@ class TestMaxOutOpFP16(TestMaxOutOp):
     def set_attrs(self):
         self.dtype = 'float16'
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out')
-
 
 class TestMaxoutFP16Case1(TestMaxOutOpFP16):
     def set_attrs(self):
