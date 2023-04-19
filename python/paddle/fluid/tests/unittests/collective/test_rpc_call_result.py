@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
+from paddle.incubate.operators import rpc_call, rpc_result
 
 
 def rpc_test(use_ids, out_type, url):
@@ -50,14 +51,14 @@ def rpc_test(use_ids, out_type, url):
         name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32'
     )
 
-    req_ids = paddle.static.nn.rpc_call(
+    req_ids = rpc_call(
         in_query,
         url,
         "vocab.txt",
         use_ids,
     )
 
-    out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE)
+    out_data, out_succeed = rpc_result(req_ids, RES_TYPE)
     paddle.static.Print(in_query)
     paddle.static.Print(req_ids)
     paddle.static.Print(out_data.astype("float32"))
