@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -69,6 +70,7 @@ struct GateAttentionConfig {
 
   bool merge_qkv;
   bool has_gating;
+  bool use_flash_attn;
 
   int64_t batch_size;
   int64_t seq_len_m;
@@ -98,8 +100,12 @@ struct GateAttentionConfig {
                       const phi::DenseTensor* query_weight,
                       const phi::DenseTensor* qkv_weight,
                       bool merge_qkv,
-                      bool has_gating)
-      : dev_ctx(dev_ctx), merge_qkv(merge_qkv), has_gating(has_gating) {
+                      bool has_gating,
+                      bool use_flash_attn = false)
+      : dev_ctx(dev_ctx),
+        merge_qkv(merge_qkv),
+        has_gating(has_gating),
+        use_flash_attn(use_flash_attn) {
     // query: shape=[batch_size, seq_len_m, seq_len_r, q_dim]
     batch_size = query->dims()[0];
     seq_len_m = query->dims()[1];
@@ -383,16 +389,16 @@ __global__ void FlashAttRange(int start, int step, int size, T* out1, T* out2) {
 
 static void GetFlashAttnDimsString(const std::string& prefix,
                                    const phi::DDim dim_val) {
-  if (VLOG_IS_ON(4)) {
-    std::ostringstream out_string;
-    out_string << "FlashAttn - " << prefix << ".dims() is [ ";
-    for (int i = 0; i < dim_val.size(); ++i) {
-      out_string << dim_val[i] << ", ";
-    }
-    out_string << "]\n";
-    VLOG(4) << out_string.str();
-    std::cout << out_string.str();
+  // if (VLOG_IS_ON(4)) {
+  std::ostringstream out_string;
+  out_string << "FlashAttn - " << prefix << ".dims() is [ ";
+  for (int i = 0; i < dim_val.size(); ++i) {
+    out_string << dim_val[i] << ", ";
   }
+  out_string << "]\n";
+  VLOG(4) << out_string.str();
+  std::cout << out_string.str();
+  // }
 }
 
 #define DBG_WAIT                                        \
@@ -431,34 +437,26 @@ class FMHAGateRef {
       std::cout << "T is float. \n";
     }
 
-    if (config->UseFlashAttn(merge_qkv_, is_bf16)) {
+    if (config->UseFlashAttn(merge_qkv_, config->use_flash_attn && is_bf16)) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,
           platform::errors::NotFound("The input qkv_transpose_out can not be "
                                      "nullptr when merge_qkv is true."));
+
+      // 1. Dealing with qkv_out for flash_attn.
       phi::DenseTensor* qkv_out = config->GetQKVOut();
       ComputeQKVTransposeForwardForFlashAttn(*qkv_out, qkv_transpose_out);
       config->ClearQKVOut();
 
-      dev_ctx_.Wait();
-      qkv_transpose_out->Resize({3,
-                                 static_cast<int>(config->batch_size),
-                                 static_cast<int>(config->seq_len_m),
-                                 static_cast<int>(config->seq_len_r),
-                                 static_cast<int>(config->num_heads),
-                                 static_cast<int>(config->head_dim)});
-
-      // 1. Dealing with qkv_out for flash_attn.
-      auto& qkv_dims = qkv_transpose_out->dims();
-      auto rank = qkv_dims.size();
-      int64_t q_batch_size = 1;
-      int64_t rest_dim = qkv_dims[rank - 3];
-      for (int i = 1; i < (rank - 3); ++i) {
-        q_batch_size *= qkv_dims[i];
-      }
+      int seq_batch_size = static_cast<int>(config->batch_size) *
+                           static_cast<int>(config->seq_len_m);
       qkv_transpose_out->Resize(
-          {3, q_batch_size * rest_dim, config->num_heads, config->head_dim});
+          {3,
+           seq_batch_size * static_cast<int>(config->seq_len_r),
+           static_cast<int>(config->num_heads),
+           static_cast<int>(config->head_dim)});
       DBG_WAIT;
+
       // q_size == k_size
       int64_t q_size = config->GetQuerySize();
       q_ptr = qkv_transpose_out->data<T>();
@@ -467,9 +465,10 @@ class FMHAGateRef {
 
       // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
       phi::DenseTensor cu_seq_q, cu_seq_k;
-      int64_t end_size = (q_batch_size + 1);
+      int64_t end_size = (seq_batch_size + 1);
       int64_t seq_size = 0;
-      int64_t start = 0, end = end_size, step = rest_dim;
+      int64_t start = 0, end = end_size,
+              step = static_cast<int>(config->seq_len_r);
       phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
       cu_seq_q.Resize({end_size});
       cu_seq_k.Resize({end_size});
@@ -485,41 +484,32 @@ class FMHAGateRef {
 
       // 3. Dealing with mask and bias for flash_attn.
       phi::DenseTensor temp_mask, temp_bias;
-      if (src_mask) {
-        int64_t mask_first_dim = 1;
-        temp_mask.ShareDataWith(*src_mask);
-
-        auto mask_dim = temp_mask.dims();
-        for (int i = 0; i < mask_dim.size() - 3; ++i) {
-          mask_first_dim *= mask_dim[i];
+      auto dims_merge_func = [&](const phi::DenseTensor* src_tensor,
+                                 phi::DenseTensor* dst_tensor,
+                                 const std::string& prefix) {
+        if (src_tensor) {
+          int64_t first_dim = 1;
+          dst_tensor->ShareDataWith(*src_tensor);
+          auto dims_ = src_tensor->dims();
+          for (int i = 0; i < dims_.size() - 3; ++i) {
+            first_dim *= dims_[i];
+          }
+          auto dims_rank = dims_.size();
+          dst_tensor->Resize({first_dim,
+                              dims_[dims_rank - 3],
+                              dims_[dims_rank - 2],
+                              dims_[dims_rank - 1]});
+          GetFlashAttnDimsString(prefix, temp_mask.dims());
         }
-        auto mask_dim_rank = mask_dim.size();
-        temp_mask.Resize({mask_first_dim,
-                          mask_dim[mask_dim_rank - 3],
-                          mask_dim[mask_dim_rank - 2],
-                          mask_dim[mask_dim_rank - 1]});
-        GetFlashAttnDimsString("mask_dim", temp_mask.dims());
-      }
-      if (nonbatched_bias) {
-        int64_t bias_first_dim = 1;
-        temp_bias.ShareDataWith(*nonbatched_bias);
-
-        auto bias_dim = nonbatched_bias->dims();
-        for (int i = 0; i < bias_dim.size() - 3; ++i) {
-          bias_first_dim *= bias_dim[i];
-        }
-        auto bias_dim_rank = temp_bias.dims().size();
-        temp_bias.Resize({bias_first_dim,
-                          bias_dim[bias_dim_rank - 3],
-                          bias_dim[bias_dim_rank - 2],
-                          bias_dim[bias_dim_rank - 1]});
-        GetFlashAttnDimsString("bias_dim", temp_bias.dims());
-      }
+      };
+      auto& qkv_dims = qkv_transpose_out->dims();
+      dims_merge_func(src_mask, &temp_mask, "mask_dim");
+      dims_merge_func(nonbatched_bias, &temp_bias, "bias_dim");
+      GetFlashAttnDimsString("qkv_transpose_out", qkv_dims);
       DBG_WAIT;
-      GetFlashAttnDimsString("qkv_transpose_out", qkv_transpose_out->dims());
-
       // 4. flash_attn parameter setting.
-      int batch_size_ = q_batch_size;
+
+      int batch_size_ = seq_batch_size;
       int total_q_ = qkv_dims[1];    // q.dims()[0]
       int total_k_ = qkv_dims[1];    // q.dims()[0]
       int num_heads_ = qkv_dims[2];  // q.dims()[1]
@@ -527,8 +517,6 @@ class FMHAGateRef {
       int max_seqlen_q_ = batch_size_;
       int max_seqlen_k_ = batch_size_;
       int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-      DBG_WAIT;
-
       VLOG(6) << "[Flash_attn] batch_size : " << batch_size_;
       VLOG(6) << "[Flash_attn] total_q   : " << total_q_;
       VLOG(6) << "[Flash_attn] total_k   : " << total_k_;
@@ -554,6 +542,9 @@ class FMHAGateRef {
 
       GetFlashAttnDimsString("softmax_out", softmax_out->dims());
       GetFlashAttnDimsString("softmax_lse", softmax_lse.dims());
+
+      GetFlashAttnDimsString("cu_seq_q", cu_seq_q.dims());
+      GetFlashAttnDimsString("cu_seq_k", cu_seq_k.dims());
       DBG_WAIT;
 
       // 7. flas_attn part one, get temp worksapce size.
@@ -699,6 +690,27 @@ class FMHAGateRef {
       int64_t gemm_k = config->head_dim;
       // attn = torch.matmul(q, k.transpose(-1, -2))
       T alpha = static_cast<T>(1.0 / sqrt(config->head_dim));
+      // ComputeBatchedGEMM(merge_qkv_ ?
+      //                         phi::slice_ddim(qkv_transpose_out->dims(),
+      //                                         1,
+      //                                         qkv_transpose_out->dims().size()
+      //                                         - 1) : q_transpose_out->dims(),
+      //                    merge_qkv_ ?
+      //                         phi::slice_ddim(qkv_transpose_out->dims(),
+      //                                         1,
+      //                                         qkv_transpose_out->dims().size()
+      //                                         - 1) : k_transpose_out->dims(),
+      //                    q_ptr,
+      //                    k_ptr,
+      //                    qk_out_ptr,
+      //                    false,
+      //                    true,
+      //                    gemm_m,
+      //                    gemm_n,
+      //                    gemm_k,
+      //                    gemm_batch_size,
+      //                    alpha);
+
       ComputeBatchedGEMM(q_ptr,
                          k_ptr,
                          qk_out_ptr,
@@ -728,6 +740,22 @@ class FMHAGateRef {
 
       // o = torch.matmul(attn, v)
       T* softmax_out_ptr = softmax_out->data<T>();
+      // ComputeBatchedGEMM(softmax_out->dims(),
+      //                    merge_qkv_ ?
+      //                         phi::slice_ddim(qkv_transpose_out->dims(),
+      //                                         1,
+      //                                         qkv_transpose_out->dims().size()
+      //                                         - 1) : v_transpose_out->dims(),
+      //                    softmax_out_ptr,
+      //                    v_ptr,
+      //                    qktv_out_ptr,
+      //                    false,
+      //                    false,
+      //                    gemm_m,
+      //                    gemm_n,
+      //                    gemm_k,
+      //                    gemm_batch_size);
+
       ComputeBatchedGEMM(softmax_out_ptr,
                          v_ptr,
                          qktv_out_ptr,
@@ -737,6 +765,7 @@ class FMHAGateRef {
                          gemm_n,
                          gemm_k,
                          gemm_batch_size);
+
       // fmha_out = transpose(qktv_out)
       // o = o.transpose(-2, -3).contiguous()
       ComputeQKTVTransposeForward(*qktv_out, fmha_out);
@@ -1056,6 +1085,50 @@ class FMHAGateRef {
   }
 
  private:
+  void ComputeBatchedGEMM(const phi::DDim& a_dims,
+                          const phi::DDim& b_dims,
+                          const T* a_ptr,
+                          const T* b_ptr,
+                          T* c_ptr,
+                          bool trans_a,
+                          bool trans_b,
+                          int64_t m,
+                          int64_t n,
+                          int64_t k,
+                          int64_t batch_size,
+                          T alpha = static_cast<T>(1.0),
+                          T beta = static_cast<T>(0.0)) {
+    int64_t stride_a = m * k;
+    int64_t stride_b = k * n;
+    int64_t stride_out = m * n;
+
+    phi::funcs::MatmulPlanner matmul_planner(
+        vectorize(a_dims),
+        vectorize(b_dims),
+        trans_a,
+        trans_b,
+        phi::CppTypeToDataType<T>::Type(),
+        phi::funcs::MatmulFusedType::kMatmul);
+
+    using blaslt = phi::funcs::MatmulWithCublasLt<T>;
+    blaslt::RunWithBatch(dev_ctx_,
+                         a_ptr,
+                         b_ptr,
+                         c_ptr,
+                         m,
+                         n,
+                         k,
+                         trans_a,
+                         trans_b,
+                         batch_size,
+                         stride_a,
+                         stride_b,
+                         stride_out,
+                         &matmul_planner,
+                         alpha,
+                         beta);
+  }
+
   void ComputeBatchedGEMM(const T* a_ptr,
                           const T* b_ptr,
                           T* c_ptr,
@@ -1067,11 +1140,11 @@ class FMHAGateRef {
                           int64_t batch_size,
                           T alpha = static_cast<T>(1.0),
                           T beta = static_cast<T>(0.0)) {
-    CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
     int64_t stride_a = m * k;
     int64_t stride_b = k * n;
 
+    CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
+    CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.BatchedGEMM(cblas_trans_a,
                      cblas_trans_b,

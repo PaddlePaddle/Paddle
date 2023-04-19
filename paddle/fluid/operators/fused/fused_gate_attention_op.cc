@@ -162,6 +162,9 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate()
         .AsDispensable();
     AddOutput("Out", "Result after attention.");
+    AddOutput("SoftmaxLse", "Result of the gating module.")
+        .AsIntermediate()
+        .AsDispensable();
     AddAttr<bool>("has_gating",
                   "if true, the attention op uses gate architecure, "
                   "[default true].")
@@ -170,6 +173,11 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "if true, calculation with merged qkv, "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<bool>(
+        "use_flash_attn",
+        "if true, the attention op will be computed in flash_attn branch, "
+        "[default false].")
+        .SetDefault(false);
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
   {
@@ -276,6 +284,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool merge_qkv = PADDLE_GET_CONST(bool, op->GetAttr("merge_qkv"));
+
     if (merge_qkv) {
       op->SetInput("QKVWeight", this->Input("QKVWeight"));
       op->SetOutput(framework::GradVarName("QKVWeight"),

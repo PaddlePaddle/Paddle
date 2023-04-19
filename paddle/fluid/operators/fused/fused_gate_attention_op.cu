@@ -378,6 +378,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
 
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
+    const bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -389,8 +390,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
     // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-    GateAttentionConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionConfig<T> config(dev_ctx,
+                                  query,
+                                  key,
+                                  query_weight,
+                                  qkv_weight,
+                                  merge_qkv,
+                                  has_gating,
+                                  use_flash_attn);
 
     if (merge_qkv) {
       PADDLE_ENFORCE_EQ(

@@ -328,10 +328,20 @@ struct MatmulWithCublasLt {
                   const int K,
                   const bool trans_x,
                   const bool trans_y,
-                  phi::funcs::MatmulPlanner* planner = nullptr) {
+                  phi::funcs::MatmulPlanner* planner = nullptr,
+                  T alpha = static_cast<T>(1),
+                  T beta = static_cast<T>(0)) {
     auto setter = DescriptorSetter<T>(planner, M, N, K, trans_x, trans_y);
-    RunImpl(
-        ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
+
+    RunImpl(ctx,
+            &setter.desc,
+            setter.sub_key,
+            x_data,
+            y_data,
+            out_data,
+            planner,
+            static_cast<MT>(alpha),
+            static_cast<MT>(beta));
   }
 
   static void RunWithBatch(const phi::GPUContext& ctx,
@@ -347,7 +357,9 @@ struct MatmulWithCublasLt {
                            int64_t stride_x,
                            int64_t stride_y,
                            int64_t stride_out,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           phi::funcs::MatmulPlanner* planner = nullptr,
+                           T alpha = static_cast<T>(1),
+                           T beta = static_cast<T>(0)) {
     auto setter = DescriptorSetter<T>(planner,
                                       M,
                                       N,
@@ -358,8 +370,15 @@ struct MatmulWithCublasLt {
                                       stride_x,
                                       stride_y,
                                       stride_out);
-    RunImpl(
-        ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
+    RunImpl(ctx,
+            &setter.desc,
+            setter.sub_key,
+            x_data,
+            y_data,
+            out_data,
+            planner,
+            static_cast<MT>(alpha),
+            static_cast<MT>(beta));
   }
 
   static void RunWithBatch(const phi::GPUContext& ctx,
@@ -372,7 +391,9 @@ struct MatmulWithCublasLt {
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           phi::funcs::MatmulPlanner* planner = nullptr,
+                           T alpha = static_cast<T>(1),
+                           T beta = static_cast<T>(0)) {
     for (int i = 0; i < batch_size; ++i) {
       Run(ctx,
           x_data[i],
@@ -383,7 +404,9 @@ struct MatmulWithCublasLt {
           K,
           trans_x,
           trans_y,
-          planner);
+          planner,
+          alpha,
+          beta);
     }
   }
 
@@ -402,10 +425,9 @@ struct MatmulWithCublasLt {
                       const T* x_ptr,
                       const T* y_ptr,
                       T* out_ptr,
-                      phi::funcs::MatmulPlanner* planner) {
-    MT alpha = static_cast<MT>(1);
-    MT beta = static_cast<MT>(0);
-
+                      phi::funcs::MatmulPlanner* planner,
+                      MT alpha,
+                      MT beta) {
     cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
