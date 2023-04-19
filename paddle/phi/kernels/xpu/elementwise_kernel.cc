@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
+#include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
