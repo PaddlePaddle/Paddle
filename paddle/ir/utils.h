@@ -94,12 +94,12 @@ template <bool COND, typename TrueT, typename FalseT>
 using IfThenElse = typename IfThenElseT<COND, TrueT, FalseT>::Type;
 
 /// (5) Filter out all types inherited from BaseT from the tuple.
-template <template <typename> typename BaseT,
+template <template <typename> class BaseT,
           typename Tuple,
           bool Empty = IsEmpty<Tuple>::value>
 struct Filter;
 
-template <template <typename> typename BaseT, typename Tuple>
+template <template <typename> class BaseT, typename Tuple>
 struct Filter<BaseT, Tuple, false> {
  private:
   using Matched =
@@ -115,7 +115,7 @@ struct Filter<BaseT, Tuple, false> {
 };
 
 // basis case:
-template <template <typename> typename BaseT, typename Tuple>
+template <template <typename> class BaseT, typename Tuple>
 struct Filter<BaseT, Tuple, true> {
   using Type = std::tuple<>;
 };

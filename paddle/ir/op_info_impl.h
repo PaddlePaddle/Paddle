@@ -105,8 +105,6 @@ class OpInfoImpl {
         reinterpret_cast<ir::TypeId *>(p_first_interface + interfaces_num);
     OpInfoImpl *p_opinfo_impl =
         reinterpret_cast<OpInfoImpl *>(p_first_trait + traits_num);
-    ir::StrAttribute *p_first_attribute =
-        reinterpret_cast<ir::StrAttribute *>(p_opinfo_impl + 1);
 
     // (2) Construct interfaces and sort by TypeId.
     ConstructInterfacesOrTraits<
