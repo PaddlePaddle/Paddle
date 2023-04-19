@@ -117,9 +117,9 @@ set_field_default_config(QAT, "activation_bits", 8)
 set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
 
-# #########################################
+#########################################
 # auto tuning configuration
-# #########################################
+#########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
 set_field_default_config(TUNING, "batch_size", 1)
@@ -135,3 +135,12 @@ set_field_default_config(TUNING, "verbose", True)
 DATASET = "dataset"
 set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
+
+#########################################
+# data parallel configuration
+#########################################
+DP_OPTIMIZATION = "dp_optimization"
+set_field_default_config(DP_OPTIMIZATION, "enable", False)
+set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
+set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
+set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)

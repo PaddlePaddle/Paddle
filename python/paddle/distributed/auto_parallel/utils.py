@@ -1252,6 +1252,7 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle_grad",
                 "flatten_contiguous_range_grad",
                 "relu_grad",
+                "exp_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1270,6 +1271,7 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+                "exp",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1318,6 +1320,11 @@ def is_forward_op(op):
     return OP_ROLE_KEY in op.attr_names and (
         op_role == int(OpRole.Forward) or op_role == int(OpRole.Loss)
     )
+
+
+def is_fillconst_op_for_micro_batch(op):
+    op_role = int(op.attr('op_role'))
+    return OP_ROLE_KEY in op.attr_names and (op_role == int(OpRole.LRSched))
 
 
 def is_backward_op(op):
