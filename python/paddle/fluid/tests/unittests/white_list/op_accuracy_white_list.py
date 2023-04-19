@@ -87,6 +87,7 @@ NO_FP16_CHECK_GRAD_OP_LIST = [
     'pool2d',
     'pool3d',
     'softmax',
+    'reduce_min',
     'conv2d_transpose',
 ]
 
