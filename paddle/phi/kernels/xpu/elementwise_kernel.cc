@@ -53,8 +53,17 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  int axis = -1;
-  RemainderKernel<T>(dev_ctx, x, y, axis, out);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y,
+              XPUType* z,
+              const std::vector<int>& xshape,
+              const std::vector<int>& yshape) {
+    return xpu::broadcast_mod<XPUType>(ctx, x, y, z, xshape, yshape);
+  };
+
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
 }
 
 template <typename T, typename Context>
