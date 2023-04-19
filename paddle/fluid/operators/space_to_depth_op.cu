@@ -17,14 +17,19 @@
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(space_to_depth,
-                        ops::SpaceToDepthKernel<phi::GPUContext, float>,
-                        ops::SpaceToDepthKernel<phi::GPUContext, double>,
-                        ops::SpaceToDepthKernel<phi::GPUContext, int>,
-                        ops::SpaceToDepthKernel<phi::GPUContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(space_to_depth_grad,
-                        ops::SpaceToDepthGradKernel<phi::GPUContext, float>,
-                        ops::SpaceToDepthGradKernel<phi::GPUContext, double>,
-                        ops::SpaceToDepthGradKernel<phi::GPUContext, int>,
-                        ops::SpaceToDepthGradKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(space_to_depth,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SpaceToDepthKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(space_to_depth_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SpaceToDepthGradKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double) {}

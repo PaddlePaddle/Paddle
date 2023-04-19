@@ -32,6 +32,7 @@ from .fp16_utils import (
     rewrite_program,
     update_role_var_grad,
 )
+from .function_overload import FunctionType, overload
 
 
 class OptimizerWithMixedPrecision:
@@ -610,6 +611,7 @@ class OptimizerWithMixedPrecision:
         return optimize_ops, scaled_params_grads
 
 
+@overload(key=FunctionType.FP16_ONLY)
 def decorate(
     optimizer,
     amp_lists=None,
@@ -739,7 +741,8 @@ def decorate(
     return mp_optimizer
 
 
-def amp_decorate(
+@overload(key=FunctionType.COMMON)
+def decorate(
     optimizer,
     amp_lists=None,
     level='O1',

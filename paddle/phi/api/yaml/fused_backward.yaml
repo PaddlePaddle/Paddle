@@ -5,7 +5,7 @@
 # otherwise the operator only could be used in static mode.
 
 - backward_op : fused_dropout_add_grad
-  forward : fused_dropout_add (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(seed_offset)
+  forward : fused_dropout_add (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(seed_offset)
   args : (Tensor seed_offset, Tensor out_grad, Scalar p, bool is_test, str mode, bool fix_seed)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
