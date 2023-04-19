@@ -49,18 +49,17 @@ enum class AlgorithmType {
   kGatherGemmScatterFP32NN = 7,
   kGatherGemmScatterFP32TN = 8,
   kGatherGemmScatterFP32NT = 9,
-#if !defined(PADDLE_WITH_CUDNN_FRONTEND)
-  kAlgorithmCount = 10
-#else
-  kConvForwardV8 = 10,
-  kConvBackwardDataV8 = 11,
-  kConvBackwardFilterV8 = 12,
-  kScaleBiasReluConvBNstats = 13,
-  kBNFinalize = 14,
-  kScaleBiasAddRelu = 15,
-  kDgradDreluBnBwdWeight = 16,
-  kBnActWgrad = 17,
-  kDbnApply = 18,
+  kAlgorithmCount = 10,
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  kConvForwardV8 = 11,
+  kConvBackwardDataV8 = 12,
+  kConvBackwardFilterV8 = 13,
+  kScaleBiasReluConvBNstats = 14,
+  kBNFinalize = 15,
+  kScaleBiasAddRelu = 16,
+  kDgradDreluBnBwdWeight = 17,
+  kBnActWgrad = 18,
+  kDbnApply = 19,
 #endif
 };
 
