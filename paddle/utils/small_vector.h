@@ -129,7 +129,7 @@ class small_vector_base {
   /// update the size later. This avoids the cost of value initializing elements
   /// which will only be overwritten.
   void set_size(size_t size) {
-    assert(N <= capacity());
+    assert(size <= capacity());
     Size = size;
   }
 };
