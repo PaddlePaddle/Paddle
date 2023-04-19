@@ -152,10 +152,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -762,6 +758,31 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fused_feedforward = True
+                     )DOC")
+      .def_property(
+          "sequential_run",
+          [](const BuildStrategy &self) { return self.sequential_run_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.sequential_run_ = b;
+          },
+          R"DOC((bool, optional): sequential_run is used to let the `StandaloneExecutor` run ops by the
+          order of `ProgramDesc`. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.sequential_run = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

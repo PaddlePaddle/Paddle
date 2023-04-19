@@ -575,6 +575,9 @@ class CompositeGradOpMakerBase {
 
   const std::unordered_map<std::string, framework::Attribute>& RuntimeAttrs()
       const {
+    LOG(WARNING) << "CompositeGradOpMaker doesn't support use runtime attrs, "
+                    "but find the op"
+                 << fwd_op_.Type() << "use runtime attr.";
     return fwd_op_.GetRuntimeAttrMap();
   }
 

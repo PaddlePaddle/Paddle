@@ -74,6 +74,12 @@ class Controller {
 
   void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
 
+  void SetPythonStack(std::string stack_str) {
+    tracer_->SetPythonStack(stack_str);
+  }
+
+  std::string GetPythonStack() { return tracer_->GetPythonStack(); }
+
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
   std::string GenerateUniqueName(std::string key = "eager_in_tmp") {

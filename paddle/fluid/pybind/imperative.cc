@@ -41,10 +41,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/bkcl_context.h"
-#include "paddle/fluid/imperative/cncl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
-#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -151,8 +149,6 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
-  } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
-    return place_obj.cast<platform::MLUPlace>();
   } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
     return place_obj.cast<platform::CustomPlace>();
   } else {
@@ -207,8 +203,6 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
     SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_ipu_place(place)) {
     SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_mlu_place(place)) {
-    SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
     SetTensorFromPyArray<platform::CustomPlace>(
         tensor, array, place, zero_copy);
@@ -728,14 +722,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::MLUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
            &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
            py::arg("value"),
            py::arg("place"),
@@ -770,11 +756,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "")
       .def("__init__",
            &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::MLUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("name") = "")
@@ -920,11 +901,28 @@ void BindImperative(py::module *m_ptr) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
                     value = pybind11::detail::CastNumpyArray<bool>(value_obj);
                   }
+                } else if (self->DataType() ==
+                           framework::proto::VarType::COMPLEX64) {
+                  if (!py::isinstance<py::array_t<std::complex<float>>>(
+                          value_obj)) {
+                    value =
+                        pybind11::detail::CastNumpyArray<std::complex<float>>(
+                            value_obj);
+                  }
+                } else if (self->DataType() ==
+                           framework::proto::VarType::COMPLEX128) {
+                  if (!py::isinstance<py::array_t<std::complex<double>>>(
+                          value_obj)) {
+                    value =
+                        pybind11::detail::CastNumpyArray<std::complex<double>>(
+                            value_obj);
+                  }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(
                       "When assign a numpy.np value to a paddle.Tensor, "
                       "the data type of the paddle.Tensor must be bool, "
-                      "float32, int32 or int64, "
+                      "float32, float64, complex64, complex128, int32 or "
+                      "int64, "
                       "please check the type of tensor."));
                 }
 
@@ -939,35 +937,45 @@ void BindImperative(py::module *m_ptr) {
                 // convert the value to self data type
                 if (py::isinstance<py::float_>(value_obj) ||
                     py::isinstance<py::int_>(value_obj) ||
-                    py::isinstance<py::bool_>(value_obj)) {
+                    py::isinstance<py::bool_>(value_obj) ||
+                    PyComplex_Check(value_obj.ptr())) {
                   if (self->DataType() == framework::proto::VarType::FP32) {
-                    attrs["fp32_values"] =
-                        std::vector<float>{value_obj.cast<float>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<float>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::FP64) {
-                    attrs["fp64_values"] =
-                        std::vector<double>{value_obj.cast<double>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<double>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::INT32) {
-                    attrs["int32_values"] =
-                        std::vector<int32_t>{value_obj.cast<int32_t>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<int32_t>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::INT64) {
-                    attrs["int64_values"] =
-                        std::vector<int64_t>{value_obj.cast<int64_t>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<int64_t>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::BOOL) {
-                    attrs["bool_values"] =
-                        std::vector<int>{value_obj.cast<bool>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<bool>()};
                   } else if (self->DataType() ==
                              framework::proto::VarType::FP16) {
-                    attrs["fp16_values"] =
-                        std::vector<float>{value_obj.cast<float>()};
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<float>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::COMPLEX64) {
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<std::complex<float>>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::COMPLEX128) {
+                    attrs["values"] = std::vector<paddle::experimental::Scalar>{
+                        value_obj.cast<std::complex<double>>()};
                   } else {
                     PADDLE_THROW(platform::errors::InvalidArgument(
                         "When assign a value to a paddle.Tensor, "
                         "the data type of the paddle.Tensor must be bool, "
-                        "float32, int32, int64 or float16, "
+                        "float32, float64, complex64, complex128, int32, int64 "
+                        "or float16, "
                         "please check the type of tensor."));
                   }
                   attrs["shape"] = std::vector<int64_t>{1};
@@ -1881,18 +1889,6 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::MLUPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::CustomPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
@@ -2217,11 +2213,6 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::MLUPlace>(obj)) {
-              auto p = obj.cast<platform::MLUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CustomPlace>(obj)) {
               auto p = obj.cast<platform::CustomPlace *>();
               self.SetExpectedPlace(*p);
@@ -2418,28 +2409,6 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
-              const platform::MLUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
               const platform::CPUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
@@ -2505,7 +2474,6 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -2547,9 +2515,8 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
-    defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2613,19 +2580,6 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
-           py::arg("ring_id"));
-#endif
-
-#if defined(PADDLE_WITH_CNCL)
-  py::class_<imperative::CNCLParallelContext,
-             imperative::ParallelContext,
-             std::shared_ptr<imperative::CNCLParallelContext>>(
-      m, "CNCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::MLUPlace &>())
-      .def("init", [](imperative::CNCLParallelContext &self) { self.Init(); })
-      .def("init_with_ring_id",
-           &imperative::CNCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
 

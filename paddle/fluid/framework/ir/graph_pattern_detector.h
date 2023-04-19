@@ -2146,6 +2146,17 @@ struct MergeLayernormPattern : public PatternBase {
   PATTERN_DECL_NODE(layernorm_40_out);
 };
 
+// MulMatmulMatmulV2: ops(mul, matmul, matmul_v2)
+// Forward pass for ops(mul, matmul, matmul_v2) convert to matrix_multiply.
+struct MulMatmulMatmulV2 : public PatternBase {
+  MulMatmulMatmulV2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mul_matmul_matmul_v2") {}
+
+  void operator()(const std::unordered_set<std::string>& ops_type);
+  PATTERN_DECL_NODE(ops);
+  PATTERN_DECL_NODE(ops_out);
+};
+
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)

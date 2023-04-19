@@ -72,11 +72,10 @@ from .core import (
     CUDAPlace,
     CUDAPinnedPlace,
     IPUPlace,
-    MLUPlace,
     CustomPlace,
 )
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
-from . import profiler
+
 from . import unique_name
 from . import compiler
 from .compiler import *
@@ -127,12 +126,10 @@ __all__ = (
         'CUDAPlace',
         'CUDAPinnedPlace',
         'IPUPlace',
-        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
         'DataFeeder',
-        'profiler',
         'unique_name',
         'Scope',
         '_cuda_synchronize',
@@ -226,3 +223,4 @@ atexit.register(core.clear_executor_cache)
 # Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)
+atexit.register(core.ProcessGroupIdMap.destroy)

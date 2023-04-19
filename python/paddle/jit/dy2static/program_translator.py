@@ -19,7 +19,6 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import (
@@ -46,8 +45,10 @@ from .origin_info import (
 from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
+    NO_SHAPE_VAR_TYPE,
     ast_to_func,
     ast_to_source_code,
+    backend_guard,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -334,7 +335,7 @@ class StaticFunction:
             self._class_instance = None
 
         if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None)
+            kwargs.get("build_strategy", None), kwargs.get("backend", None)
         ):
             from paddle.static import InputSpec
 
@@ -1184,11 +1185,9 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
 
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
                 func_spec=cache_key.function_spec,
@@ -1216,9 +1215,10 @@ class ProgramCache:
             else:
                 raise
 
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+        backend = cache_key.kwargs['backend']
+        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
             for var in concrete_program.main_program.list_vars():
-                if -1 in var.shape:
+                if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
                         "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
                             var.name, var.shape
@@ -1228,10 +1228,11 @@ class ProgramCache:
         partial_program = partial_program_from(
             concrete_program, cache_key.class_instance is not None
         )
-        if core._is_fwd_prim_enabled() and not _in_amp_guard():
-            partial_program.set_hooker(
-                PrimHooker(concrete_program.main_program)
-            )
+        with backend_guard(backend):
+            if core._is_fwd_prim_enabled():
+                partial_program.set_hooker(
+                    PrimHooker(concrete_program.main_program, backend)
+                )
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1291,39 +1292,46 @@ class ProgramCache:
 
 
 class PrimHooker(PartialProgramLayerHook):
-    def __init__(self, original_program):
+    def __init__(self, original_program, backend):
         if len(original_program.blocks) > 1:
             raise ValueError(
                 'The primitive mode only support one block currently.'
             )
+        self.backend = backend
         self.custom_vjps = set()
-        if core._is_all_prim_enabled():
-            self.custom_vjps = {
-                op.type
-                for op in original_program.block(0).ops
-                if core.has_comp_grad_op_maker(op.type)
-            }
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.type
+                    for op in original_program.block(0).ops
+                    if core.has_comp_grad_op_maker(op.type)
+                }
 
     def before_append_backward(self, forward_program):
-        if core._is_fwd_prim_enabled():
-            _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
-        return forward_program
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
+            return forward_program
 
     def after_append_backward(self, whole_program, backward_start_idx):
-        backward_length = len(whole_program.block(0).ops) - backward_start_idx
-        if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
-            # only process backward part of block
-            _to_prim(whole_program.blocks, backward_length=backward_length)
-        new_start_index = len(whole_program.block(0).ops) - backward_length
-        if backward_length > 0:
-            # only process forward part of block
-            _to_prim(whole_program.blocks, start_idx=new_start_index)
-        return whole_program, new_start_index
+        with backend_guard(self.backend):
+            backward_length = (
+                len(whole_program.block(0).ops) - backward_start_idx
+            )
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                # only process backward part of block
+                _to_prim(whole_program.blocks, backward_length=backward_length)
+            new_start_index = len(whole_program.block(0).ops) - backward_length
+            if backward_length > 0:
+                # only process forward part of block
+                _to_prim(whole_program.blocks, start_idx=new_start_index)
+            return whole_program, new_start_index
 
     def after_infer(self, infer_program):
-        if core._is_fwd_prim_enabled():
-            _to_prim(infer_program.block(0))
-        return infer_program
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                _to_prim(infer_program.block(0))
+            return infer_program
 
 
 class ProgramTranslator:

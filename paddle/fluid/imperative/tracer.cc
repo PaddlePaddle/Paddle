@@ -37,6 +37,7 @@ DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace paddle {
 namespace imperative {
+thread_local std::string Tracer::python_stack_ = "";
 
 thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
@@ -147,15 +148,6 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
-#endif
-    } else if (platform::is_mlu_place(place)) {
-#if defined(PADDLE_WITH_MLU)
-      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
-      VLOG(10) << "Created GarbageCollector at " << place;
-#else
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use MLU device since it's not compiled with MLU,"
-          "Please recompile or reinstall Paddle with MLU support."));
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -300,13 +292,6 @@ void Tracer::TraceOpImpl(const std::string& type,
     } else if (platform::is_npu_place(place)) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
-    } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-      platform::SetMLUDeviceId(place.device);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with MLU if use MLUPlace."));
-#endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);

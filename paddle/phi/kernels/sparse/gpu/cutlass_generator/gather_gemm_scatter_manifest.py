@@ -41,12 +41,12 @@ namespace sparse {
 }  // namespace phi
 #endif
 """
-        self.fp16_kernels_list = (
-            "static std::vector<fp16_gather_gemm_scatter> fp16_kernels = {\n"
-        )
-        self.fp32_kernels_list = (
-            "static std::vector<fp32_gather_gemm_scatter> fp32_kernels = {\n"
-        )
+        self.kernels_lists = {
+            "hnn": "static std::vector<fp16_gather_gemm_scatter> fp16_nn_kernels = {",
+            "snn": "static std::vector<fp32_gather_gemm_scatter> fp32_nn_kernels = {",
+            "snt": "static std::vector<fp32_gather_gemm_scatter> fp32_nt_kernels = {",
+            "stn": "static std::vector<fp32_gather_gemm_scatter> fp32_tn_kernels = {",
+        }
 
     def __enter__(self):
         self.operation_path = os.path.join(
@@ -78,19 +78,25 @@ namespace sparse {
             self.source_files.append(configuration_emitter.configuration_path)
 
         self.configurations.append(configuration_name)
-        if 'h' == operations[0].short_math_name():
-            self.fp16_kernels_list += (
+
+        if operations[0].layout_name() == 'tn':
+            self.kernels_lists[
+                operations[0].short_math_name() + operations[0].layout_name()
+            ] += (
                 """
 launchKernel<"""
                 + configuration_name
-                + "::Gemm>,"
+                + "<cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel"
+                + ">>,"
             )
-        if 's' == operations[0].short_math_name():
-            self.fp32_kernels_list += (
+        else:
+            self.kernels_lists[
+                operations[0].short_math_name() + operations[0].layout_name()
+            ] += (
                 """
 launchKernel<"""
                 + configuration_name
-                + "::Gemm>,"
+                + "<>>,"
             )
 
         self.top_level_file.write(
@@ -117,11 +123,11 @@ launchKernel<"""
                 )
             )
 
-        self.fp16_kernels_list += "\n};\n"
-        self.fp32_kernels_list += "\n};\n"
+        for k, v in self.kernels_lists.items():
+            self.kernels_lists[k] += "\n};\n"
         self.top_level_file.write(self.namespace_template)
-        self.top_level_file.write(self.fp16_kernels_list)
-        self.top_level_file.write(self.fp32_kernels_list)
+        for k, v in self.kernels_lists.items():
+            self.top_level_file.write(v)
         self.top_level_file.write(self.epilogue_template)
         self.top_level_file.close()
 

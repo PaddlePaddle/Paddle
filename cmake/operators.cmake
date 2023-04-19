@@ -62,8 +62,6 @@ function(op_library TARGET)
   set(hip_cc_srcs)
   set(xpu_cc_srcs)
   set(xpu_kp_cc_srcs)
-  set(npu_cc_srcs)
-  set(mlu_cc_srcs)
   set(cudnn_cu_cc_srcs)
   set(miopen_cu_cc_srcs)
   set(cudnn_cu_srcs)
@@ -74,9 +72,6 @@ function(op_library TARGET)
   set(MKLDNN_FILE)
   set(op_common_deps operator op_registry math_function layer
                      common_infer_shape_functions)
-  if(WITH_MLU)
-    set(op_common_deps ${op_common_deps} mlu_baseop)
-  endif()
 
   # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
   set(options UNITY)
@@ -169,12 +164,6 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${TARGET}.kps)
       endif()
     endif()
-    if(WITH_MLU)
-      string(REPLACE "_op" "_op_mlu" MLU_FILE "${TARGET}")
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MLU_FILE}.cc)
-        list(APPEND mlu_cc_srcs ${MLU_FILE}.cc)
-      endif()
-    endif()
   else()
     foreach(src ${op_library_SRCS})
       if(WITH_ROCM AND ${src} MATCHES ".*_cudnn_op.cu$")
@@ -201,8 +190,6 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${src})
       elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.kps$")
         list(APPEND xpu_kp_cc_srcs ${src})
-      elseif(WITH_MLU AND ${src} MATCHES ".*_op_mlu.cc$")
-        list(APPEND mlu_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
         list(APPEND cc_srcs ${src})
       elseif((WITH_ROCM OR WITH_GPU) AND ${src} MATCHES ".*\\.kps$")
@@ -319,14 +306,8 @@ function(op_library TARGET)
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc source files.
-      compose_unity_target_sources(
-        ${UNITY_TARGET}
-        cc
-        ${cc_srcs}
-        ${mkldnn_cc_srcs}
-        ${xpu_cc_srcs}
-        ${npu_cc_srcs}
-        ${mlu_cc_srcs})
+      compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs}
+                                   ${mkldnn_cc_srcs} ${xpu_cc_srcs})
       if(TARGET ${UNITY_TARGET})
         # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
         target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -342,8 +323,7 @@ function(op_library TARGET)
     else()
       cc_library(
         ${TARGET}
-        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs}
-             ${mlu_cc_srcs}
+        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   endif()
@@ -355,8 +335,6 @@ function(op_library TARGET)
   list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
-  list(LENGTH npu_cc_srcs npu_cc_srcs_len)
-  list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
 
   # Define operators that don't need pybind here.
   foreach(
@@ -387,7 +365,8 @@ function(op_library TARGET)
     # Add PHI Kernel Registry Message
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
@@ -439,7 +418,8 @@ function(op_library TARGET)
     # Add PHI Kernel Registry Message
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
@@ -455,7 +435,8 @@ function(op_library TARGET)
     find_register(${hip_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
       set(pybind_flag 1)
@@ -514,18 +495,6 @@ function(op_library TARGET)
       if(NOT ${op_name} EQUAL "")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
         message(STATUS "Building KP Target: ${op_name}")
-        set(pybind_flag 1)
-      endif()
-    endforeach()
-  endif()
-
-  # pybind USE_OP_DEVICE_KERNEL for MLU
-  if(WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
-    foreach(mlu_src ${mlu_cc_srcs})
-      set(op_name "")
-      find_register(${mlu_src} "REGISTER_OP_MLU_KERNEL" op_name)
-      if(NOT ${op_name} EQUAL "")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MLU);\n")
         set(pybind_flag 1)
       endif()
     endforeach()
@@ -590,8 +559,6 @@ function(register_operators)
     "*_op.cc")
   string(REPLACE "_mkldnn" "" OPS "${OPS}")
   string(REPLACE "_xpu" "" OPS "${OPS}")
-  string(REPLACE "_npu" "" OPS "${OPS}")
-  string(REPLACE "_mlu" "" OPS "${OPS}")
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)
   list(LENGTH register_operators_DEPS register_operators_DEPS_len)

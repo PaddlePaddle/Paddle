@@ -152,10 +152,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -252,10 +248,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self, paddle::platform::NPUPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("_alloc_float",
-           [](phi::DenseTensor &self, paddle::platform::MLUPlace &place) {
-             self.mutable_data<float>(place);
-           })
       .def("_alloc_double",
            [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<double>(place);
@@ -274,10 +266,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_alloc_int",
            [](phi::DenseTensor &self, paddle::platform::CUDAPlace &place) {
-             self.mutable_data<int>(place);
-           })
-      .def("_alloc_int",
-           [](phi::DenseTensor &self, paddle::platform::MLUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def(
@@ -325,13 +313,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
-      .def("_mutable_data",
-           [](phi::DenseTensor &self,
-              paddle::platform::MLUPlace &place,
-              paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(
-                 self.mutable_data(place, framework::TransToPhiDataType(type)));
-           })
       .def("_clear", &phi::DenseTensor::clear)
       .def("_mutable_data",
            [](phi::DenseTensor &self,
@@ -367,11 +348,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("batch_size") = -1)
       .def("_copy_from",
            &TensorCopyFrom<paddle::platform::CUDAPinnedPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("batch_size") = -1)
-      .def("_copy_from",
-           &TensorCopyFrom<paddle::platform::MLUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -416,11 +392,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<paddle::platform::MLUPlace>,
-           py::arg("array"),
-           py::arg("place"),
-           py::arg("zero_copy") = false)
-      .def("set",
            SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
@@ -430,7 +401,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
           Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.

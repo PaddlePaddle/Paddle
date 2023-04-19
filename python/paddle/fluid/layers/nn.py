@@ -28,7 +28,7 @@ from ..framework import (
     dygraph_only,
     _dygraph_tracer,
     default_main_program,
-    _varbase_creator,
+    _create_tensor,
     static_only,
     _global_flags,
     in_dygraph_mode,
@@ -41,7 +41,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import zeros
+
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
