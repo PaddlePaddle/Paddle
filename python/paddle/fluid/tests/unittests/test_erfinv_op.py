@@ -110,5 +110,10 @@ class TestErfinvAPI(unittest.TestCase):
             run(place)
 
 
+class TestErfinvFP16OP(TestErfinv):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 if __name__ == "__main__":
     unittest.main()

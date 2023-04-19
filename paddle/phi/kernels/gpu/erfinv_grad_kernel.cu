@@ -19,8 +19,9 @@
 #include "paddle/phi/kernels/erfinv_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/erfinv_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    erfinv_grad, GPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double) {}
+    erfinv_grad, GPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double, float16) {}
