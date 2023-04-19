@@ -22,9 +22,12 @@ set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
 set(PYBIND_PATCH_COMMAND "")
-file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch native_dst)
-set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
-                         ${native_dst})
+if(NOT WIN32)
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
+       native_dst)
+  set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
+                           ${native_dst})
+endif()
 
 ExternalProject_Add(
   extern_pybind
