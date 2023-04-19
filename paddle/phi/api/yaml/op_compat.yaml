@@ -1441,6 +1441,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mean_all (mean)
+  backward : mean_all_grad (mean_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : merge_selected_rows
   inputs :
     x : X
@@ -2382,6 +2389,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: reindex_graph (graph_reindex)
+  inputs :
+    {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
+  outputs :
+    {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
