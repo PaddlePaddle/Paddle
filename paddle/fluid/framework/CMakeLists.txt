@@ -383,7 +383,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog)
+  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
