@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_conv import seqconv
+
+sys.path.append("../../../../../test/sequence")
+from test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):

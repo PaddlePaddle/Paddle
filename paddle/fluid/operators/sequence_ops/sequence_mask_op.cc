@@ -102,9 +102,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_mask,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_mask,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceMaskKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
