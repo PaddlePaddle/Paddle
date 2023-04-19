@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
 from paddle.incubate.operators import rpc_call, rpc_result
 
 
@@ -59,10 +58,6 @@ def rpc_test(use_ids, out_type, url):
     )
 
     out_data, out_succeed = rpc_result(req_ids, RES_TYPE)
-    paddle.static.Print(in_query)
-    paddle.static.Print(req_ids)
-    paddle.static.Print(out_data.astype("float32"))
-
     query_tensor = np.array(
         [
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 1, 2],
@@ -71,21 +66,24 @@ def rpc_test(use_ids, out_type, url):
     ).astype("int32")
 
     # run
-    exe = fluid.Executor(fluid.CUDAPlace(0))
-    exe.run(fluid.default_startup_program())
+    exe = paddle.static.Executor(paddle.CUDAPlace(0))
+    exe.run(paddle.static.default_startup_program())
 
     for _ in range(1):
         succeed, data, = exe.run(
-            fluid.default_main_program(),
+            paddle.static.default_main_program(),
             feed={
                 'X': query_tensor,
             },
             fetch_list=[out_succeed, out_data],
         )
     if out_type == "str":
-        print(data[0].tobytes().decode("utf-8", "ignore"))
+        assert (
+            data[0].tobytes().decode("utf-8", "ignore")
+            == '''{"result":["0.66943359375"]}'''
+        )
     else:
-        print(data[0])
+        assert np.abs(data[0] - 0.6694336) < 1e-7
 
 
 class RPCCallTest(unittest.TestCase):
