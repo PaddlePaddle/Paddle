@@ -423,6 +423,7 @@ class TestMinFP16Op(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.prim_op_type = "prim"
         self.python_api = paddle.min
         self.public_python_api = paddle.min
         self.init_dtype()
