@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 // This file copy from llvm/ADT/SmallVector.h, version: 12.0.0
 // Modified the following points
 // 1. remove  macro
@@ -36,6 +36,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+
 #include "paddle/phi/core/macros.h"
 
 namespace paddle {
@@ -49,12 +50,12 @@ class iterator_range {
   IteratorT begin_iterator, end_iterator;
 
  public:
-  // TODO(others) : Add SFINAE to test that the Container's iterators match the
+  // TODO(others): Add SFINAE to test that the Container's iterators match the
   // range's
   //      iterators.
   template <typename Container>
   explicit iterator_range(Container &&c)
-      // TODO(others) : Consider ADL/non-member begin/end calls.
+      // TODO(others): Consider ADL/non-member begin/end calls.
       : begin_iterator(c.begin()), end_iterator(c.end()) {}
   iterator_range(IteratorT begin_iterator, IteratorT end_iterator)
       : begin_iterator(std::move(begin_iterator)),
@@ -222,7 +223,7 @@ class small_vector_template_common
   /// Check whether Elt will be invalidated by resizing the vector to NewSize.
   void assertSafeToReferenceAfterResize(const void *Elt, size_t NewSize) {
     (void)Elt;
-    (void)NewSize;  // nothing to do, just remove [-Wunused-parameter] warning.
+    (void)NewSize;  // remove [-Wunused-parameter] warning
     assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
@@ -429,8 +430,13 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
-
   const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
+    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
+  }
+
+  /// Reserve enough space to add one element, and return the updated element
+  /// pointer in case it was a reference to the storage.
+  T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
     return const_cast<T *>(
         this->reserveForParamAndGetAddressImpl(this, Elt, N));
   }
@@ -571,6 +577,12 @@ class small_vector_template_base<T, true>
   /// Double the size of the allocated memory, guaranteeing space for at
   /// least one more element or MinSize if specified.
   void grow(size_t MinSize = 0) { this->grow_pod(MinSize, sizeof(T)); }
+
+  /// Reserve enough space to add one element, and return the updated element
+  /// pointer in case it was a reference to the storage.
+  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
+    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
+  }
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
