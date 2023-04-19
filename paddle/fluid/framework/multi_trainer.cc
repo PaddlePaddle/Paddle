@@ -21,6 +21,11 @@ limitations under the License. */
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
+#include "paddle/fluid/framework/program_utils.h"
+
+PADDLE_DEFINE_EXPORTED_bool(enable_dump_main_program,
+                            false,
+                            "enable dump main program, default false");
 
 namespace paddle {
 namespace framework {
@@ -114,6 +119,9 @@ void MultiTrainer::InitDumpEnv() {
 // call only after all resources are set in current trainer
 void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                   const platform::Place& place) {
+  if (FLAGS_enable_dump_main_program) {
+    DumpProgramDescFile("main_program", main_program);
+  }
   for (int i = 0; i < thread_num_; ++i) {
 #ifdef PADDLE_WITH_HETERPS
     workers_[i]->SetPlace(places_[i]);
@@ -129,6 +137,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     workers_[i]->BindingDataFeedMemory();
     workers_[i]->CacheProgram(main_program);
   }
+#ifndef PADDLE_WITH_GPU_GRAPH
 #ifdef PADDLE_WITH_HETERPS
   for (int num = 0; num < thread_num_; ++num) {
     auto place = places_[num];
@@ -169,6 +178,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       }
     }
   }
+#endif
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -309,11 +319,17 @@ void MultiTrainer::MergeWorkerVars(void) {
     }
   }
 }
+
 void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-#ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // graph copy dense param to root scope
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->Finalize();
+  }
+#elif PADDLE_WITH_HETERPS
   MergeDenseParam();
 #endif
 #if defined PADDLE_WITH_PSCORE

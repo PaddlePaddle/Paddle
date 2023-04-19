@@ -218,6 +218,7 @@ class DeviceWorker {
 
   virtual Scope* GetThreadScope() { return thread_scope_; }
   DataFeed* device_reader_ = nullptr;
+  virtual void Finalize() {}
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
@@ -273,10 +274,9 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
+  virtual void Finalize();
   template <typename T>
-  void SetZero(phi::DenseTensor* tensor,
-               phi::DenseTensor* root_tensor,
-               int tensor_dim);
+  void SetZero(phi::DenseTensor* tensor, const phi::DenseTensor& root_tensor);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
@@ -284,6 +284,9 @@ class HogwildWorker : public CPUWorkerBase {
   // check batch num
   bool CheckBatchNum(int flag);
   bool GetPassEnd(int flag);
+  // build thread sharding depends
+  void BuildShardingDepends(const ProgramDesc& program);
+  int IsParameter(const std::string& name, bool full_match);
 
   std::vector<std::string> op_names_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
@@ -298,6 +301,17 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> skip_vars_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
+  int ring_id_ = 0;
+  int nccl_rank_id_ = 0;
+  std::unordered_map<std::string, int> params2rootid_;
+  std::multiset<std::string> remove_vars_;
+  std::multiset<std::string> unpersist_vars_;
+  std::multiset<std::string> persist_param_vars_;
+  std::multiset<OpDesc*> remove_ops_;
+  std::vector<std::string> need_copy_vars_;
+  std::vector<std::string> shard_dump_params_;
+  std::vector<std::string> shard_dump_fields_;
+  bool sharding_mode_ = false;
 };
 
 class DownpourWorker : public HogwildWorker {

@@ -131,7 +131,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
-        self.inner_opt.minimize(
+        optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
         if startup_program is None:
@@ -145,7 +145,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             self.pass_ctx
         )
         ps_builder._build_programs()
-        return None, None
+        return optimize_ops, params_grads
 
     def minimize_losses_impl(
         self,

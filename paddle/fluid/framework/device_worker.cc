@@ -235,20 +235,27 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
+  int device_id = int(place_.GetDeviceId());
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);
-    if (var == nullptr) {
+    if (var == nullptr || !var->IsInitialized()) {
+      continue;
+    }
+    if (!var->IsType<phi::DenseTensor>()) {
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    if (tensor == nullptr || !tensor->IsInitialized()) {
+      continue;
+    }
     phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
     int64_t len = tensor->numel();
-    os << "(" << batch_id << "," << param << ")"
+    os << "(" << device_id << "," << batch_id << "," << param << ")"
        << PrintLodTensor(tensor, 0, len);
     writer_ << os.str();
   }
@@ -290,13 +297,13 @@ void DeviceWorker::DumpField(const Scope& scope,
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
       if (var == nullptr) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
@@ -338,13 +345,13 @@ void DeviceWorker::DumpField(const Scope& scope,
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
       if (var == nullptr) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
@@ -356,11 +363,11 @@ void DeviceWorker::DumpField(const Scope& scope,
       }
       auto& dims = tensor->dims();
       if (dims.size() != 2 || dims[0] <= 0) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot pass check, so it was "
                    "skipped. Maybe the dimension is "
                    "wrong ";
-        VLOG(0) << dims.size() << " " << dims[0] << " * " << dims[1];
+        VLOG(3) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
       size_t acutal_thread_num =
@@ -421,13 +428,18 @@ void DeviceWorker::DumpField(const Scope& scope,
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
     if (var == nullptr) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] cannot be find in scope, so it was skipped.";
+      continue;
+    }
+    if (!var->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "Note: field[" << field
+              << "] is not dense tensor, so it was skipped.";
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (!tensor->IsInitialized()) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
@@ -438,7 +450,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] cannot pass check, so it was "
                  "skipped. Maybe the dimension is "
                  "wrong ";

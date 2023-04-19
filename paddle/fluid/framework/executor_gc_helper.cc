@@ -64,14 +64,22 @@ bool OpInOutInfo::IsInArgBufferNeeded(const std::string &in_arg_name) const {
 
 static bool VarCanBeDeleted(const std::string &name,
                             const BlockDesc &block,
-                            const std::unordered_set<std::string> &skip_vars) {
+                            const std::unordered_set<std::string> &skip_vars,
+                            const std::multiset<std::string> *unpersist_vars) {
   if (skip_vars.count(name) != 0) {
     return false;
   }
 
   auto *var_desc = block.FindVar(name);
   if (var_desc == nullptr || var_desc->Persistable()) {
-    return false;
+    if (unpersist_vars != nullptr) {
+      // unpersist vars
+      if (unpersist_vars->find(name) == unpersist_vars->end()) {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 
   auto type = var_desc->Proto()->type().type();
@@ -84,7 +92,8 @@ static bool VarCanBeDeleted(const std::string &name,
 std::unordered_map<const OperatorBase *, std::vector<std::string>>
 GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
-              const std::vector<std::string> &skip_var_list) {
+              const std::vector<std::string> &skip_var_list,
+              const std::multiset<std::string> *unpersist_vars) {
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
@@ -96,7 +105,7 @@ GetUnusedVars(const BlockDesc &block,
     OpInOutInfo info;
     for (auto &name_pair : op->Inputs()) {
       for (auto &name : name_pair.second) {
-        if (!VarCanBeDeleted(name, block, skip_vars)) {
+        if (!VarCanBeDeleted(name, block, skip_vars, unpersist_vars)) {
           continue;
         }
 
@@ -118,7 +127,7 @@ GetUnusedVars(const BlockDesc &block,
 
     for (auto &name_pair : op->Outputs()) {
       for (auto &name : name_pair.second) {
-        if (VarCanBeDeleted(name, block, skip_vars)) {
+        if (VarCanBeDeleted(name, block, skip_vars, unpersist_vars)) {
           // Update the last living op of variable to current op
           var_op_idx_map[name] = i;
         }

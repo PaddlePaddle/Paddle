@@ -2561,7 +2561,7 @@ int GraphTable::parse_feature(int idx,
       return 0;
     }
   } else {
-    VLOG(4) << "feature_name[" << name << "] is not in feat_id_map, ntype_id["
+    VLOG(10) << "feature_name[" << name << "] is not in feat_id_map, ntype_id["
             << idx << "] feat_id_map_size[" << feat_id_map.size() << "]";
   }
 

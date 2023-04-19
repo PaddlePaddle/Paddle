@@ -27,6 +27,7 @@ from .dgc_optimizer import DGCMomentumOptimizer
 from .lamb_optimizer import LambOptimizer
 from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .sharding_optimizer import ShardingOptimizer
+from .sharding_optimizer import ThreadShardingOptimizer
 from .dygraph_optimizer import HybridParallelOptimizer
 from .dygraph_optimizer import HeterParallelOptimizer
 from .dygraph_optimizer import HybridParallelGradScaler

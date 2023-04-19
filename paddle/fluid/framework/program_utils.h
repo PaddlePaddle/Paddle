@@ -33,5 +33,7 @@ class ProgramProcessor {
   void AddDepToBlockOp(const BlockDesc &block);
 };
 
+void DumpProgramDescFile(const std::string &name, const ProgramDesc &program);
+
 }  // namespace framework
 }  // namespace paddle
