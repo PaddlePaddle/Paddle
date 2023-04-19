@@ -46,7 +46,9 @@ def rpc_test(use_ids, out_type, url):
         voc.write("[gEnd] 14\n")
 
     # network
-    in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
+    in_query = paddle.static.data(
+        name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32'
+    )
 
     req_ids = paddle.static.nn.rpc_call(
         in_query,
