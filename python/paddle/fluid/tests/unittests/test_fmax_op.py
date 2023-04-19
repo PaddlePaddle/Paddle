@@ -251,8 +251,9 @@ class TestFmaxBF16OP(OpTest):
         self.op_type = "elementwise_fmax"
         self.python_api = paddle.fmax
         self.dtype = np.uint16
-        x = np.random.randn(11, 17).astype('float32')
-        y = np.random.randn(11, 17).astype('float32')
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float32")
         out = np.fmax(x, y)
         self.inputs = {
             'X': convert_float_to_uint16(x),
@@ -261,10 +262,12 @@ class TestFmaxBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":
