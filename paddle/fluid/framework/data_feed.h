@@ -928,6 +928,27 @@ struct BufState {
   }
 };
 
+struct GraphDataGeneratorConfig {
+  bool need_walk_ntype;
+  int batch_size;
+  int slot_num;
+  bool enable_pair_label;
+  std::shared_ptr<phi::Allocation> d_pair_label_conf;
+  int walk_degree;
+  int walk_len;
+  int window;
+  std::vector<int> window_step;
+  int gpuid;
+  int thread_id;
+  int once_sample_startid_len;
+  int node_type_num;
+  int debug_mode;
+  int excluded_train_pair_len;
+  std::shared_ptr<phi::Allocation> d_excluded_train_pair;
+  bool gpu_graph_training;
+  bool sage_mode;
+};
+
 class GraphDataGenerator {
  public:
   GraphDataGenerator() {}
@@ -936,7 +957,6 @@ class GraphDataGenerator {
   void AllocResource(int thread_id, std::vector<phi::DenseTensor*> feed_vec);
   void AllocTrainResource(int thread_id);
   void SetFeedVec(std::vector<phi::DenseTensor*> feed_vec);
-  int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf();
   int FillWalkBufMultiPath();
@@ -950,8 +970,7 @@ class GraphDataGenerator {
                    int len,
                    NeighborSampleResult& sample_res,  // NOLINT
                    int cur_degree,
-                   int step,
-                   int* len_per_row);
+                   int step);
   int FillInsBuf(cudaStream_t stream);
   int FillIdShowClkTensor(int total_instance,
                           bool gpu_graph_training,
@@ -964,14 +983,13 @@ class GraphDataGenerator {
       bool gpu_graph_training,
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
   int FillSlotFeature(uint64_t* d_walk, size_t key_num);
-  int MakeInsPair(cudaStream_t stream);
   uint64_t CopyUniqueNodes();
   int GetPathNum() { return total_row_; }
   void ResetPathNum() { total_row_ = 0; }
-  int GetGraphBatchsize() {return batch_size_;};
+  int GetGraphBatchsize() {return conf_.batch_size;};
   void SetNewBatchsize(int batch_num) {
-    if (!gpu_graph_training_ && !sage_mode_) {
-      batch_size_ = (total_row_ + batch_num - 1) / batch_num;
+    if (!conf_.gpu_graph_training && !conf_.sage_mode) {
+      conf_.batch_size = (total_row_ + batch_num - 1) / batch_num;
     } else {
       return;
     }
@@ -1019,13 +1037,8 @@ class GraphDataGenerator {
 
  protected:
   HashTable<uint64_t, uint64_t>* table_;
-  int walk_degree_;
-  int walk_len_;
-  int window_;
-  int once_sample_startid_len_;
-  int gpuid_;
+  GraphDataGeneratorConfig conf_;
   size_t cursor_;
-  int thread_id_;
   size_t jump_rows_;
   int edge_to_id_len_;
   int64_t* id_tensor_ptr_;
@@ -1046,10 +1059,8 @@ class GraphDataGenerator {
 
   std::shared_ptr<phi::Allocation> d_walk_;
   std::shared_ptr<phi::Allocation> d_walk_ntype_;
-  std::shared_ptr<phi::Allocation> d_excluded_train_pair_;
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
-  std::shared_ptr<phi::Allocation> d_len_per_row_;
   std::shared_ptr<phi::Allocation> d_random_row_;
   std::shared_ptr<phi::Allocation> d_random_row_col_shift_;
   std::shared_ptr<phi::Allocation> d_uniq_node_num_;
@@ -1064,7 +1075,6 @@ class GraphDataGenerator {
   int sample_keys_len_;
 
   std::shared_ptr<phi::Allocation> d_pair_label_buf_;
-  std::shared_ptr<phi::Allocation> d_pair_label_conf_;
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
@@ -1090,29 +1100,19 @@ class GraphDataGenerator {
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
   std::vector<std::vector<std::vector<int>>> edges_split_num_vec_;
 
-  int excluded_train_pair_len_;
   int64_t reindex_table_size_;
   int sage_batch_count_;
   int sage_batch_num_;
   int ins_buf_pair_len_;
-  bool enable_pair_label_;
-  int node_type_num_;
-  bool need_walk_ntype_;
   int id_offset_of_feed_vec_;
 
   // size of a d_walk buf
   size_t buf_size_;
   int repeat_time_;
-  std::vector<int> window_step_;
   BufState buf_state_;
-  int batch_size_;
-  int slot_num_;
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
   int shuffle_seed_;
-  int debug_mode_;
-  bool gpu_graph_training_;
-  bool sage_mode_;
   std::vector<int> samples_;
   bool epoch_finish_;
   int pass_end_ = 0;
