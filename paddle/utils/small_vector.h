@@ -430,12 +430,6 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
-  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
-    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
-  }
-
-  /// Reserve enough space to add one element, and return the updated element
-  /// pointer in case it was a reference to the storage.
   T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
     return const_cast<T *>(
         this->reserveForParamAndGetAddressImpl(this, Elt, N));
@@ -577,12 +571,6 @@ class small_vector_template_base<T, true>
   /// Double the size of the allocated memory, guaranteeing space for at
   /// least one more element or MinSize if specified.
   void grow(size_t MinSize = 0) { this->grow_pod(MinSize, sizeof(T)); }
-
-  /// Reserve enough space to add one element, and return the updated element
-  /// pointer in case it was a reference to the storage.
-  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
-    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
-  }
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
