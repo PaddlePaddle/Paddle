@@ -15,9 +15,8 @@
 #include "paddle/fluid/operators/tree_conv_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(tree_conv,
-                        ops::TreeConvKernel<phi::GPUContext, float>,
-                        ops::TreeConvKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(tree_conv_grad,
-                        ops::TreeConvGradKernel<phi::GPUContext, float>,
-                        ops::TreeConvGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv, GPU, ALL_LAYOUT, ops::TreeConvKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv_grad, GPU, ALL_LAYOUT, ops::TreeConvGradKernel, float, double) {}

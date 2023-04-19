@@ -88,7 +88,7 @@ __global__ void ComputeIoUCUDAKernel(
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -166,7 +166,5 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(mean_iou,
-                        ops::MeanIoUCUDAOpKernel<int>,
-                        ops::MeanIoUCUDAOpKernel<int64_t>,
-                        ops::MeanIoUCUDAOpKernel<int32_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    mean_iou, GPU, ALL_LAYOUT, ops::MeanIoUCUDAOpKernel, int, int64_t) {}
