@@ -515,12 +515,12 @@ def _elementwise_op(helper):
     else:
         data_type = [
             'float16',
+            'uint16',
             'float32',
             'float64',
             'int32',
             'int64',
             'bool',
-            'uint16',
         ]
     check_variable_and_dtype(
         x,
@@ -3131,9 +3131,9 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
                     'int32',
                     'int64',
                     'float16',
+                    'uint16',
                     'float32',
                     'float64',
-                    'uint16',
                 ],
                 'diagonal',
             )
@@ -3293,7 +3293,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'cumsum',
         )
         check_type(x, 'x', (Variable), 'cumsum')
@@ -3444,11 +3444,12 @@ def cumprod(x, dim=None, dtype=None, name=None):
             [
                 'complex64',
                 'complex128',
+                'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
                 'int64',
-                'uint16',
             ],
             'cumprod',
         )
@@ -4019,11 +4020,11 @@ def conj(x, name=None):
                 'complex64',
                 'complex128',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
                 'int64',
-                'uint16',
             ],
             'conj',
         )
