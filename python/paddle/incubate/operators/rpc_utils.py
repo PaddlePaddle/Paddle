@@ -13,28 +13,13 @@
 # limitations under the License.
 
 from paddle import fluid
-
-
-class IDGen:
-    def __init__(self) -> None:
-        self.ids = {}
-
-    def gen_name_with_idx(self, name):
-        if name not in self.ids:
-            self.ids[name] = -1
-        self.ids[name] += 1
-        return name + "_" + str(self.ids[name])
-
-    def __call__(self, name) -> str:
-        return self.gen_name_with_idx(name)
-
-
-id_gen = IDGen()
+from paddle.utils.unique_name import generate as id_gen
 
 
 def rpc_call(
     src_ids=None, url="", voc_path="", cvt2str=True, timeout=3000, retry=100
 ):
+    ''' '''
     request_id = (
         fluid.default_main_program()
         .block(0)
