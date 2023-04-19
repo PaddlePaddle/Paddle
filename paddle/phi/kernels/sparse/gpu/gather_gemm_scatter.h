@@ -107,7 +107,7 @@ EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(75,
                                                phi::dtype::float16,
                                                sm75_fp16_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    75, false, false, void, float, sm75_fp32_nn_kernels)
+    75, false, false, phi::dtype::float16, float, sm75_fp32_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(80,
                                                false,
                                                false,
@@ -115,7 +115,7 @@ EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(80,
                                                phi::dtype::float16,
                                                sm80_fp16_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
-    80, false, false, void, float, sm80_fp32_nn_kernels)
+    80, false, false, float, float, sm80_fp32_nn_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(
     80, false, true, float, float, sm80_fp32_nt_kernels)
 EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(

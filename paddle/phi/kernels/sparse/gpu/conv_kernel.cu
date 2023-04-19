@@ -51,8 +51,8 @@ namespace sparse {
       GatherGemmScatterDriver<arch, false, false>(                       \
           dev_ctx,                                                       \
           key,                                                           \
-          reinterpret_cast<const void*>(x_nnz_ptr),                      \
-          reinterpret_cast<const void*>(tmp_kernel_ptr),                 \
+          x_nnz_ptr,                                                     \
+          tmp_kernel_ptr,                                                \
           out_values_ptr,                                                \
           out_values_ptr,                                                \
           M,                                                             \

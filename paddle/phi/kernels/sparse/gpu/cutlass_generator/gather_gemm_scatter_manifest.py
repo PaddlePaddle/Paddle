@@ -43,7 +43,7 @@ namespace sparse {
 """
         self.kernels_lists = {
             "hnn75": "static std::vector<gather_hgemm_scatter> sm75_fp16_nn_kernels = {",
-            "snn75": "static std::vector<gather_sgemm_scatter> sm75_fp32_nn_kernels = {",
+            "snn75": "static std::vector<gather_sgemm_f16_scatter> sm75_fp32_nn_kernels = {",
             "hnn80": "static std::vector<gather_hgemm_scatter> sm80_fp16_nn_kernels = {",
             "snn80": "static std::vector<gather_sgemm_scatter> sm80_fp32_nn_kernels = {",
             "snt80": "static std::vector<gather_sgemm_scatter> sm80_fp32_nt_kernels = {",

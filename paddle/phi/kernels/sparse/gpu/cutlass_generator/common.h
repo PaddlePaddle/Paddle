@@ -185,10 +185,12 @@ static size_t workspace_size =
   }
 
 TYPEDEF_KERNEL_POINTER(gather_hgemm_scatter, phi::dtype::float16, phi::float16)
-TYPEDEF_KERNEL_POINTER(gather_sgemm_scatter, void, float)
+TYPEDEF_KERNEL_POINTER(gather_sgemm_scatter, float, float)
+TYPEDEF_KERNEL_POINTER(gather_sgemm_f16_scatter, phi::dtype::float16, float)
 
 DEFINE_LAUNCH_KERNEL(phi::dtype::float16, phi::dtype::float16)
-DEFINE_LAUNCH_KERNEL(void, float)
+DEFINE_LAUNCH_KERNEL(float, float)
+DEFINE_LAUNCH_KERNEL(phi::dtype::float16, float)
 
 }  // namespace sparse
 }  // namespace phi
