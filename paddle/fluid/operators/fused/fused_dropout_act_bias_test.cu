@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cfloat>
-#define FLT_MAX __FLT_MAX__
-
 #include <time.h>
 
 #include <random>
