@@ -128,9 +128,9 @@ class small_vector_base {
   /// of the buffer when they know that more elements are available, and only
   /// update the size later. This avoids the cost of value initializing elements
   /// which will only be overwritten.
-  void set_size(size_t N) {
+  void set_size(size_t size) {
     assert(N <= capacity());
-    Size = N;
+    Size = size;
   }
 };
 
