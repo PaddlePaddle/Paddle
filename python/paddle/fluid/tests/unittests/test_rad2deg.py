@@ -65,8 +65,8 @@ class TestRad2degAPI(unittest.TestCase):
 
 class TestRad2degAPI2(TestRad2degAPI):
     def setUp(self):
-        self.x_np = np.pi / 2
-        self.x_shape = []
+        self.x_np = [np.pi / 2]
+        self.x_shape = [1]
         self.out_np = 90
         self.x_dtype = 'float32'
 
