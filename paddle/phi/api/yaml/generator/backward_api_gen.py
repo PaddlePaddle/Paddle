@@ -303,7 +303,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
            5、support invoke
            6、add sharding inference and re-sharding logic
         """
-        if inplace_flag:
+        if not self.inputs["names"]:
             return ""
         # not supported yet
         if (
@@ -311,9 +311,11 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             or not self.outputs_plain_tensor()
             or self.inplace_map
             or self.view_map
-            or not self.inputs["names"]
+            or inplace_flag
         ):
-            return ""
+            return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
+    {self.gene_dist_tensor_unsupported_warning(inplace_flag)}
+  }}"""
 
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}

@@ -1284,6 +1284,20 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     def outputs_plain_tensor(self):
         return all([type == "Tensor" for type in self.outputs["types"]])
 
+    def gene_dist_tensor_unsupported_warning(self, inplace_flag):
+        warning_str = ""
+        if not self.inputs_plain_tensor():
+            warning_str = (
+                "vector or optional input is not supported for dtensor yet"
+            )
+        elif not self.outputs_plain_tensor():
+            warning_str = (
+                "vector or optional output is not supported for dtensor yet"
+            )
+        elif self.inplace_map or self.view_map or inplace_flag:
+            warning_str = "view of inplace is not supported for dtensor yet"
+        return f"""PADDLE_THROW(phi::errors::Unimplemented("{warning_str}"));"""
+
     # TODO(liuzhenhai):to support inplace
     def gene_dist_tensor_hijack(self, inplace_flag):
         return ""
