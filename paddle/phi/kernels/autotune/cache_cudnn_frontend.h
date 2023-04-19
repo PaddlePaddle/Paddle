@@ -17,6 +17,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -68,8 +69,8 @@ class CudnnFrontendPlanCache {
                 cudnnHandle_t handle) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[handle];
-    if (local_map.count(feature) > 0) {
+    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    if (local_map.count(GetExtendedFeature(feature, handle)) > 0) {
       cache_hits_++;
       ret = true;
     } else {
@@ -83,14 +84,12 @@ class CudnnFrontendPlanCache {
                int64_t *workspace_size,
                cudnnHandle_t handle) {
     // Note(tizheng): CUDNNv8 execution plan is not thread-safe.
-    // A shared plan being executed by different threads with the
-    // same CUDNN handle is generally not safe (for now).
-    // But somehow having thread-local copies of plans work fine,
-    // even with the same handle.
+    // A shared plan being executed by different threads is
+    // generally not safe (for now).
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[handle];
+    auto &local_map = map_[hasher(std::this_thread::get_id())];
 
-    auto it = local_map.find(feature);
+    auto it = local_map.find(GetExtendedFeature(feature, handle));
     if (it == local_map.end()) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "[cudnn_frontend] Cached Plan Not Found."));
@@ -107,8 +106,8 @@ class CudnnFrontendPlanCache {
                   cudnnHandle_t handle) {
     VLOG(4) << "[cudnn_frontend] cache: Insert plan: " << plan.getTag();
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[handle];
-    local_map.insert(std::make_pair(feature, plan));
+    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    local_map.insert(std::make_pair(GetExtendedFeature(feature, handle), plan));
   }
 
   bool IsStable(const cudnn_frontend::feature_vector_t &feature,
@@ -118,12 +117,13 @@ class CudnnFrontendPlanCache {
       return true;
     }
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto &local_map = map_[handle];
-    auto &local_tracker = tracker_[handle];
-    if (local_map.count(feature)) {
+    auto &local_map = map_[hasher(std::this_thread::get_id())];
+    auto &local_tracker = tracker_[hasher(std::this_thread::get_id())];
+    auto ext_feature = GetExtendedFeature(feature, handle);
+    if (local_map.count(ext_feature)) {
       return false;
     }
-    int cnt = local_tracker[std::make_pair(feature, tag)] += 1;
+    int cnt = local_tracker[std::make_pair(ext_feature, tag)] += 1;
     VLOG(4) << "[cudnn_frontend] SaturationTracker: " << tag << " " << cnt;
     return cnt >= saturation_count_;
   }
@@ -153,16 +153,24 @@ class CudnnFrontendPlanCache {
   }
 
  private:
+  cudnn_frontend::feature_vector_t GetExtendedFeature(
+      cudnn_frontend::feature_vector_t feat, cudnnHandle_t handle) {
+    int64_t val = 0;
+    memcpy(&val, &handle, sizeof(int64_t));
+    feat.push_back(val);
+    return feat;
+  }
   using FeatureVectorToPlanMap =
       std::map<cudnn_frontend::feature_vector_t, cudnn_frontend::ExecutionPlan>;
-  std::map<cudnnHandle_t, FeatureVectorToPlanMap> map_;
+  std::map<std::size_t, FeatureVectorToPlanMap> map_;
+  std::hash<std::thread::id> hasher;
 
   std::shared_ptr<std::mutex> cache_mutex_;
   int saturation_count_;
 
   using SaturationTracker =
       std::map<std::pair<cudnn_frontend::feature_vector_t, std::string>, int>;
-  std::map<cudnnHandle_t, SaturationTracker> tracker_;
+  std::map<std::size_t, SaturationTracker> tracker_;
 
   int64_t cache_hits_{0};
   int64_t cache_misses_{0};
