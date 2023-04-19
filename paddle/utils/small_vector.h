@@ -630,7 +630,7 @@ class small_vector_impl : public small_vector_template_base<T> {
   explicit small_vector_impl(unsigned N) : small_vector_template_base<T>(N) {}
 
  public:
-  small_vector_impl(const small_vector_impl &) = delete;
+  explicit small_vector_impl(const small_vector_impl &) = delete;
 
   ~small_vector_impl() {
     // Subclass has already destructed this vector's elements.
