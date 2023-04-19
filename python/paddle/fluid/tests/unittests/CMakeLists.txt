@@ -1194,6 +1194,11 @@ set(STATIC_BUILD_TESTS
     test_while_op
     test_one_hot_v2_op)
 
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+endif()
+
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
@@ -1214,9 +1219,3 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      120)
-if(NOT WITH_GPU)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_static_build)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api_static_build)
-endif()
