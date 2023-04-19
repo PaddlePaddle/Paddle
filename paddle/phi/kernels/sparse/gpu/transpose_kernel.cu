@@ -177,7 +177,7 @@ void TransposeCooKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(dev_ctx.GetPlace(),
+  memory_utils::Copy(phi::CPUPlace(),
                      d_perm,
                      dev_ctx.GetPlace(),
                      perm.data(),
@@ -252,7 +252,7 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(dev_ctx.GetPlace(),
+  memory_utils::Copy(phi::CPUPlace(),
                      d_perm,
                      dev_ctx.GetPlace(),
                      perm.data(),
@@ -263,7 +263,7 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int64_t) * x.dims().size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
-  memory_utils::Copy(dev_ctx.GetPlace(),
+  memory_utils::Copy(phi::CPUPlace(),
                      d_x_dims,
                      dev_ctx.GetPlace(),
                      x.dims().Get(),
@@ -274,7 +274,7 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int64_t) * out_dims.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
-  memory_utils::Copy(dev_ctx.GetPlace(),
+  memory_utils::Copy(phi::CPUPlace(),
                      d_out_dims,
                      dev_ctx.GetPlace(),
                      out_dims.Get(),
