@@ -19,9 +19,6 @@
 #include "paddle/ir/op_info_impl.h"
 
 namespace ir {
-///
-/// \brief OpInfo class.
-///
 class OpInfo {
  public:
   constexpr OpInfo() = default;

@@ -61,9 +61,9 @@ class Op : public OpBase {
  public:
   using OpBase::OpBase;
 
-  // 利用TraitOrInterface中是OpTraitBase还是OpTraitInterface的基类，分别拆出TraitList和InterfaceList.
   using TraitList =
       typename Filter<OpTraitBase, std::tuple<TraitOrInterface...>>::Type;
+
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 };

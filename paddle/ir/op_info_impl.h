@@ -25,7 +25,7 @@
 
 namespace ir {
 ///
-/// \brief Tool template classe for construct interfaces or Traits.
+/// \brief Tool template class for construct interfaces or Traits.
 ///
 template <typename ConcreteOp, typename... Args>
 class ConstructInterfacesOrTraits {
@@ -61,6 +61,7 @@ class ConstructInterfacesOrTraits {
            sizeof(std::pair<ir::TypeId, void *>));
     p_interface += 1;
   }
+
   /// Placement new trait.
   template <typename T>
   static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
@@ -110,6 +111,7 @@ class OpInfoImpl {
                        sizeof(ir::TypeId) * traits_num + sizeof(OpInfoImpl);
     void *base_ptr = malloc(base_size);
     VLOG(4) << "Malloc " << base_size << " Bytes at " << base_ptr;
+
     // (2) Construct interfaces and sort by TypeId.
     std::pair<ir::TypeId, void *> *p_first_interface = nullptr;
     if (interfaces_num > 0) {
@@ -119,13 +121,7 @@ class OpInfoImpl {
       ConstructInterfacesOrTraits<
           ConcreteOp,
           typename ConcreteOp::InterfaceList>::interface(p_first_interface);
-      VLOG(4) << "Sort interfaces at " << p_first_interface << " ......";
       std::sort(p_first_interface, p_first_interface + interfaces_num);
-      for (size_t i = 0; i < interfaces_num; i++) {
-        VLOG(4) << "Interface at " << (p_first_interface + i) << " : id["
-                << (p_first_interface + i)->first.storage() << "], interface["
-                << (p_first_interface + i)->second << "].";
-      }
       base_ptr = reinterpret_cast<void *>(p_first_interface + interfaces_num);
     }
 
@@ -136,12 +132,7 @@ class OpInfoImpl {
       VLOG(4) << "Construct traits at " << p_first_trait << " ......";
       ConstructInterfacesOrTraits<ConcreteOp, typename ConcreteOp::TraitList>::
           trait(p_first_trait);
-      VLOG(4) << "Sort traits at " << p_first_trait << " ......";
       std::sort(p_first_trait, p_first_trait + traits_num);
-      for (size_t i = 0; i < traits_num; i++) {
-        VLOG(4) << "Trait at " << (p_first_trait + i) << " : id["
-                << (p_first_trait + i)->storage() << "].";
-      }
       base_ptr = reinterpret_cast<void *>(p_first_trait + traits_num);
     }
 
@@ -155,7 +146,6 @@ class OpInfoImpl {
                                        attributes_num,
                                        ir::TypeId::get<ConcreteOp>(),
                                        ConcreteOp::name());
-    VLOG(4) << "Op_info_impl is " << op_info;
     return op_info;
   }
 
@@ -163,9 +153,7 @@ class OpInfoImpl {
     VLOG(4) << "Destroy op_info impl at " << this;
     // (1) free interfaces
     if (p_first_interface_) {
-      VLOG(4) << "Destroy " << GetInterfacesNum() << " interface....";
       for (size_t i = 0; i < GetInterfacesNum(); i++) {
-        VLOG(4) << "free " << (p_first_interface_ + i)->second;
         free((p_first_interface_ + i)->second);
       }
     }

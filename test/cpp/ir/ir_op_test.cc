@@ -72,7 +72,7 @@ TEST(op_test, op_test) {
   ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
   std::cout << test_dialect << std::endl;
 
-  // (2) Get registered operations
+  // (2) Get registered operations.
   std::unordered_map<ir::TypeId, ir::OpInfoImpl *> operations =
       ctx->registed_operation();
   EXPECT_EQ(operations.count(ir::TypeId::get<Operation1>()) == 1, true);
@@ -84,7 +84,7 @@ TEST(op_test, op_test) {
   EXPECT_EQ(op2_info->HasTrait<ir::ReadOnlyTrait>(), true);
   EXPECT_EQ(op2_info->HasInterface<ir::InferShapeInterface>(), true);
 
-  // 1. Construct OP1: a = OP1()
+  // (3) Test use for op.
   std::vector<ir::OpResult> op1_inputs = {};
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op1 =
