@@ -1215,6 +1215,8 @@ set_tests_properties(test_sync_batch_norm_op_static_build
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      120)
 if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_static_build)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api_static_build)
 endif()
