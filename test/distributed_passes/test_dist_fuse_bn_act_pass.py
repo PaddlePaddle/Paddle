@@ -61,7 +61,9 @@ class TestFuseBatchNormActPass(DistPassTestBase):
         model = BatchNormActNet()
         pred_out = model(image)
         loss = paddle.mean(pred_out)
-        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=1e-3, multi_precision=True
+        )
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False

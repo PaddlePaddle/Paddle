@@ -239,8 +239,8 @@ class TestProgramBF16(AmpTestBase):
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
         expected_bf16_calls = {
             "matmul_v2": 1,
-            "elementwise_add": 1,
-            "dropout": 1,
+            "elementwise_add": 0,
+            "dropout": 0,
             "lookup_table_v2": 0,
             "squared_l2_norm": 0,
             "adamw": 0,
