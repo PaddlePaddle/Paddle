@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #ifndef PADDLE_WITH_XPU_KP
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #endif
@@ -127,6 +128,7 @@ PD_REGISTER_KERNEL(fmin,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_raw,
