@@ -15,10 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/kernels/arange_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -287,14 +285,16 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
                           const phi::DenseTensor* query_weight,
                           const phi::DenseTensor* qkv_weight,
                           bool merge_qkv,
-                          bool has_gating)
+                          bool has_gating,
+                          bool use_flash_attn)
       : GateAttentionConfig<T>(dev_ctx,
                                query,
                                key,
                                query_weight,
                                qkv_weight,
                                merge_qkv,
-                               has_gating) {}
+                               has_gating,
+                               use_flash_attn) {}
 
   phi::DenseTensor* GetQKVOutGrad() {
     if (!qkv_out_grad.IsInitialized()) {
@@ -401,6 +401,16 @@ static void GetFlashAttnDimsString(const std::string& prefix,
   // }
 }
 
+#define DBGPTR(ptr, prefix)                                              \
+  do {                                                                   \
+    std::ostringstream out_string;                                       \
+    void* data = static_cast<void*>(ptr);                                \
+    out_string << "[" << __func__ << ", " << __LINE__ << "]: " << prefix \
+               << "`s addr is ";                                         \
+    out_string << ptr << std::endl;                                      \
+    std::cout << out_string.str();                                       \
+  } while (0);
+
 #define DBG_WAIT                                        \
   do {                                                  \
     printf("[%s, %d] Run here.\n", __func__, __LINE__); \
@@ -472,8 +482,8 @@ class FMHAGateRef {
       phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
       cu_seq_q.Resize({end_size});
       cu_seq_k.Resize({end_size});
-      AllocWithDebugInfo<int32_t>(dev_ctx_, "flash_attn: cu_seq_q", &cu_seq_q);
-      AllocWithDebugInfo<int32_t>(dev_ctx_, "flash_attn: cu_seq_k", &cu_seq_k);
+      AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_q", &cu_seq_q);
+      AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_k", &cu_seq_k);
       int64_t block = std::min(seq_size, static_cast<int64_t>(256));
       int64_t grid = (seq_size + block - 1) / block;
       FlashAttRange<int32_t><<<grid, block, 0, dev_ctx_.stream()>>>(
@@ -538,11 +548,10 @@ class FMHAGateRef {
       uint64_t inc = batch_size_ * num_heads_ * 32;
       auto seed_offset_pair = gen->IncrementOffset(inc);
       uint64_t seed = seed_offset_pair.first;
-      uint64_t offset = seed_offset_pair.second;
+      uint64_t offset = 1908576;  // seed_offset_pair.second;
 
       GetFlashAttnDimsString("softmax_out", softmax_out->dims());
       GetFlashAttnDimsString("softmax_lse", softmax_lse.dims());
-
       GetFlashAttnDimsString("cu_seq_q", cu_seq_q.dims());
       GetFlashAttnDimsString("cu_seq_k", cu_seq_k.dims());
       DBG_WAIT;
@@ -587,18 +596,23 @@ class FMHAGateRef {
         PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
       }
       DBG_WAIT;
+
       phi::DenseTensor workspace;
+      printf("workspace_size = %d\n", workspace_size);
       if (workspace_size > 0) {
-        workspace = phi::Empty<float>(
+        workspace = phi::Empty<float, phi::GPUContext>(
             dev_ctx_, {int64_t(workspace_size / sizeof(float))});
+        DBGPTR(workspace.data(), "workspace");
       }
       DBG_WAIT;
+
       // 8. flas_attn part two, run impl.
       succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
           static_cast<const void*>(q_ptr),
           static_cast<const void*>(k_ptr),
           static_cast<const void*>(v_ptr),
-          static_cast<void*>(fmha_out),  // for calculation workspace size
+          static_cast<void*>(
+              fmha_out->data()),  // for calculation workspace size
           static_cast<const void*>(cu_seq_q.data<int32_t>()),
           static_cast<const void*>(cu_seq_k.data<int32_t>()),
           total_q_,
@@ -616,7 +630,7 @@ class FMHAGateRef {
           num_splits,
           softmax_lse.data(),
           softmax_out->data(),
-          workspace_size > 0 ? static_cast<void*>(workspace.data()) : nullptr,
+          (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
           &workspace_size,
           stream,
           seed,
@@ -798,6 +812,29 @@ class FMHAGateRef {
     phi::DenseTensor k_transpose_out_grad;
     phi::DenseTensor v_transpose_out_grad;
     phi::DenseTensor qkv_transpose_out_grad;
+
+    bool is_bf16 =
+        qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
+
+    // if (config->UseFlashAttn(merge_qkv_, config->use_flash_attn && is_bf16))
+    // {
+    //   PADDLE_ENFORCE_NOT_NULL(
+    //       qkv_transpose_out,
+    //       platform::errors::NotFound("The input qkv_transpose_out can not be
+    //       "
+    //                                  "nullptr when merge_qkv is true."));
+    //   int64_t q_size = config->GetQuerySize();
+    //   q_ptr = qkv_transpose_out->data<T>();
+    //   k_ptr = q_ptr + q_size;
+    //   v_ptr = k_ptr + q_size;
+
+    //   qkv_transpose_out_grad.Resize(config->qkv_transpose_out_dims);
+    //   AllocWithDebugInfo<T>(
+    //       dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
+
+    // } else {
+
+    // }
     if (merge_qkv_) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,

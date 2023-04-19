@@ -484,13 +484,20 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
+    const bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
-    GateAttentionGradConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionGradConfig<T> config(dev_ctx,
+                                      query,
+                                      key,
+                                      query_weight,
+                                      qkv_weight,
+                                      merge_qkv,
+                                      has_gating,
+                                      use_flash_attn);
 
     phi::DenseTensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
