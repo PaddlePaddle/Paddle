@@ -2804,7 +2804,15 @@ def unbind(input, axis=0):
         check_dtype(
             dtype,
             'unbind',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'unbind',
         )
         outs = [

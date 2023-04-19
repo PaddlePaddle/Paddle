@@ -184,7 +184,7 @@ def gelu(x, approximate=False, name=None):
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'gelu'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'gelu'
         )
         helper = LayerHelper("gelu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)

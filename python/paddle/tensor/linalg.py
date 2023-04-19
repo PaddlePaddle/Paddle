@@ -1112,10 +1112,16 @@ def dot(x, y, name=None):
         assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
+            x,
+            'x',
+            ['flaot16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], op_type
+            y,
+            'y',
+            ['flaot16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
 
         helper = LayerHelper(op_type, **locals())
@@ -1374,13 +1380,13 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
