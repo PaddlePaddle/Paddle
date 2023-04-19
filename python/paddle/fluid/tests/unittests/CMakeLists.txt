@@ -1160,6 +1160,8 @@ set(STATIC_BUILD_TESTS
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_fused_attention_op
+    test_fused_attention_op_api
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1185,6 +1187,11 @@ set(STATIC_BUILD_TESTS
     test_update_loss_scaling_op
     test_while_op
     test_one_hot_v2_op)
+
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
