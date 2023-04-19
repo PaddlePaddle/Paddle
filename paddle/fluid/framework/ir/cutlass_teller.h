@@ -20,9 +20,9 @@ namespace framework {
 namespace ir {
 
 typedef enum {
-  cba,     // conv + bias + act
-  cbaa,    // this servers for conv_elementwise_add2_act_fuse_pass
-  cbaele,  // conv + bias + act + elementwise_op
+  cba,     // This servers for conv_elementwise_add_fuse_pass
+  cbaa,    // This servers for conv_elementwise_add2_act_fuse_pass
+  cbaele,  // This servers for conv2d_fusion_cutlass_elementwise
 } CutlassFusionType;
 
 class CutlassTeller {
@@ -34,6 +34,7 @@ class CutlassTeller {
 
 #if defined(PADDLE_WITH_CUTLASS)
   // Determine this NCHW conv2d + bias can be fused with activation by cutlass?
+  // This servers for conv_elementwise_add_fuse_pass.
   // will not set or change any attribute in op_desc
   bool CbaCanSupport(OpDesc *op_desc,
                      Scope *scope,
@@ -86,7 +87,8 @@ class CutlassTeller {
   }
 
   // Determine this NCHW conv2d + bias + elewise_add + act can be fused by
-  // cutlass? will not set or change any attribute in op_desc
+  // cutlass?, this is for conv_elementwise_add_fuse_pass
+  // will not set or change any attribute in op_desc
   bool CbaaCanSupport(OpDesc *op_desc,
                       Scope *scope,
                       std::string act_type,
@@ -138,7 +140,9 @@ class CutlassTeller {
   }
 
   // Determine this NCHW conv2d_fusion + elewise_op + act1 can be fused by
-  // cutlass? will not set or change any attribute in op_desc
+  // cutlass?
+  //  This servers for conv2d_fusion_cutlass_elementwise.
+  // will not set or change any attribute in op_desc
   bool CbaeleCanSupport(OpDesc *op_desc,
                         Scope *scope,
                         std::string ele_type,
