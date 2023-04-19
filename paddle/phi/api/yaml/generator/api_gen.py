@@ -353,9 +353,11 @@ class ForwardAPI(BaseAPI):
     auto {var}_unwrapped = DistTensorHijackHelper::UnWrap({var});"""
         return unwrap_code
 
-    def get_output_names_without_intermediate(self):
+    def get_output_names(self):
         return [
-            e for e in self.outputs["names"] if e not in self.intermediate_outs
+            e
+            for e in self.outputs["names"]
+            if self.is_dygraph_api or e not in self.intermediate_outs
         ]
 
     def gen_local_tensor_call(self):
@@ -364,7 +366,7 @@ class ForwardAPI(BaseAPI):
         args = ",".join(inputs)
         local_call = """  // gen_local_tensor_call
 """
-        output_names = self.get_output_names_without_intermediate()
+        output_names = self.get_output_names()
         for output in output_names:
             local_call += f"""    Tensor {output}_local;
 """
@@ -374,13 +376,15 @@ class ForwardAPI(BaseAPI):
             if len(outputs) > 1
             else outputs[0]
         )
-        local_call += f"""    {output_arg} = {self.api}({args});"""
+        local_call += (
+            f"""    {output_arg} = {self.get_api_func_name()}({args});"""
+        )
         return local_call
 
     def gen_dist_tensor_wrap_code(self):
         wrap_code = """   // gen_dist_tensor_wrap_code
 """
-        output_names = self.get_output_names_without_intermediate()
+        output_names = self.get_output_names()
         for output in output_names:
             wrap_code += f"""    Tensor {output}_wrapped = DistTensorHijackHelper::Wrap({output}_local);
 """

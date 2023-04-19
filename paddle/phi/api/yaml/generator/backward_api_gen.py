@@ -311,6 +311,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             or not self.outputs_plain_tensor()
             or self.inplace_map
             or self.view_map
+            or not self.inputs["names"]
         ):
             return ""
 
