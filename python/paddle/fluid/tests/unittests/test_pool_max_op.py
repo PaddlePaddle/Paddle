@@ -153,8 +153,8 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_dtype()
 
         if self.is_bfloat16_op():
-            input = np.random.random(self.shape).astype(np.float32)
-            input = np.round(input * 100.0, 2)
+            input = np.random.random(self.shape).astype(np.uint16)
+            input = np.round(input * 100.0, 2).astype(np.float32)
         else:
             input = np.random.random(self.shape).astype(self.dtype)
             input = np.round(input * 100.0, 2)
