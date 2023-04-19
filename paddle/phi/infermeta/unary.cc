@@ -2006,8 +2006,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),
@@ -4436,6 +4436,13 @@ void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
   TrilTriuInferMeta(x, diagonal, false, out);
 }
 
+// Some operator having oneDnn kernel will be set layout in kernel.
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -4824,13 +4831,16 @@ void UniqueRawInferMeta(const MetaTensor& x,
     out->set_dims(out_dims);
     if (return_inverse) {
       index->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+      index->set_dtype(dtype);
     }
   }
   if (return_index) {
     indices->set_dims(phi::make_ddim({-1}));
+    indices->set_dtype(dtype);
   }
   if (return_counts) {
     counts->set_dims(phi::make_ddim({-1}));
+    counts->set_dtype(dtype);
   }
 }
 

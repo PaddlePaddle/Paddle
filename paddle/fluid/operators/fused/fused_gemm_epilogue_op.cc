@@ -36,7 +36,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto bias_dims = ctx->GetInputDim("Bias");
-
     auto trans_x = ctx->Attrs().Get<bool>("trans_x");
     auto trans_y = ctx->Attrs().Get<bool>("trans_y");
 
@@ -88,27 +87,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
             K_from_x,
             K_from_y));
 
-    auto activation = ctx->Attrs().Get<std::string>("activation");
-    if (activation == "none" && ctx->HasOutput("ReserveSpace")) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The ReserveSpace would not be used when activation = \"none\""));
-    }
-
-    // cublasLt's restriction for auxiliary.
-    if (ctx->HasOutput("ReserveSpace") && activation != "none") {
-      int min_size_of_n = activation == "relu" ? 128 : 8;
-      int N_size = trans_y ? y_dims[0] : y_dims[1];
-      PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
-                            "should be multiple of %d when auxiliary_key given "
-                            "and activation=%s, but got N = %d.",
-                            min_size_of_n,
-                            activation,
-                            N_size));
-    }
-
     std::vector<int64_t> out_dims;
     out_dims.reserve(static_cast<size_t>(x_dims.size()));
     if (trans_x) {
@@ -122,11 +100,29 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     } else {
       out_dims.push_back(y_dims[1]);
     }
-
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
 
+    auto activation = ctx->Attrs().Get<std::string>("activation");
     if (ctx->HasOutput("ReserveSpace")) {
       ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
+
+      if (activation == "none") {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The ReserveSpace would not be used when activation = \"none\""));
+      } else {
+        int min_size_of_n = activation == "relu" ? 128 : 8;
+        int N_size = trans_y ? y_dims[0] : y_dims[1];
+        PADDLE_ENFORCE_EQ(
+            N_size % min_size_of_n,
+            0,
+            platform::errors::InvalidArgument(
+                "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
+                "should be multiple of %d when auxiliary_key given "
+                "and activation=%s, but got N = %d.",
+                min_size_of_n,
+                activation,
+                N_size));
+      }
     }
   }
 
@@ -202,7 +198,6 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim("DOut");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-
     auto trans_x = ctx->Attrs().Get<bool>("trans_x");
     auto trans_y = ctx->Attrs().Get<bool>("trans_y");
 
@@ -241,7 +236,6 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             x_dims.size()));
 
     auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
-
     auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
@@ -268,25 +262,17 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
                         false,
                         platform::errors::InvalidArgument(
                             "The ReserveSpace should not be empty. "
-                            "when activation_grad == {relu_grad, gelu_grad}."));
+                            "when activation == {relu_grad, gelu_grad}."));
     }
 
     if (ctx->HasOutput("DX")) {
-      std::vector<int64_t> dx_dims;
-      dx_dims.reserve(static_cast<size_t>(x_dims.size()));
-      for (int i = 0; i < x_dims.size(); ++i) {
-        dx_dims.push_back(x_dims[i]);
-      }
-      ctx->SetOutputDim("DX", phi::make_ddim(dx_dims));
+      ctx->SetOutputDim("DX", x_dims);
     }
-
-    std::vector<int64_t> dy_dims(y_dims.Get(), y_dims.Get() + y_dims.size());
-    ctx->SetOutputDim("DY", phi::make_ddim(dy_dims));
+    ctx->SetOutputDim("DY", y_dims);
 
     if (ctx->HasOutput("DBias")) {
-      std::vector<int64_t> dbias_dims;
-      dbias_dims.push_back(trans_y ? y_dims[0] : y_dims[1]);
-      ctx->SetOutputDim("DBias", phi::make_ddim(dbias_dims));
+      int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
+      ctx->SetOutputDim("DBias", phi::make_ddim({dbias_dim}));
     }
   }
 

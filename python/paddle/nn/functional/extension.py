@@ -28,7 +28,6 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
-from ...tensor.layer_function_generator import templatedoc
 
 __all__ = []
 
@@ -338,13 +337,44 @@ def gather_tree(ids, parents):
         return out
 
 
-@templatedoc()
 def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
 
-    ${comment}
+    Calculate the temporal shifting features for Input(X).
+
+    Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while
+    N is the batch size, T is the temporal segment number specified by
+    :attr:`seg_num`, C is the channel number, H and W is the height and
+    width of features.
+
+    Temporal Shifting is calculated as follows when data format is NCHW:
+
+    Step 1: Reshape Input(X) to [N, T, C, H, W].
+
+    Step 2: Pad 0 to reshaping result in the 2nd(T) dimension with
+    padding width as 1 on each side, padding result will be in shape
+    of [N, T+2, C, H, W].
+
+    Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding
+    result as follows:
+
+    $$
+    slice1 = x[:, :T, :C/4, :, :]
+    $$
+    $$
+    slice2 = x[:, 2:T+2, C/4:C/2, :, :]
+    $$
+    $$
+    slice3 = x[:, 1:T+1, C/2:, :, :]
+    $$
+
+    Step 4: Concatenate three slices along the 3rd(C) dimension and
+    reshape result to [N*T, C, H, W].
+
+    For details of temporal shifting, please refer to paper:
+    `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
 
     Args:
         x(Tensor): ${x_comment}
