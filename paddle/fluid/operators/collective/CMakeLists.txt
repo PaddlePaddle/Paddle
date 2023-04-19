@@ -13,6 +13,7 @@ file(
 list(REMOVE_DUPLICATES OPS)
 
 foreach(src ${OPS})
+  message("set cgg flags: " ${src} " flags: " ${COLLECTIVE_COMPILE_FLAGS})
   set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS
                                                 ${COLLECTIVE_COMPILE_FLAGS})
 endforeach()
@@ -27,8 +28,15 @@ register_operators(
   gen_bkcl_id_op
   c_gen_nccl_id_op
   gen_nccl_id_op
+  rpc_call_op
+  rpc_result_op
   DEPS
   ${COLLECTIVE_DEPS})
+
+if(WITH_GPU)
+  op_library(rpc_call_op DEPS rpc_utils ${COLLECTIVE_DEPS})
+  op_library(rpc_result_op DEPS rpc_utils ${COLLECTIVE_DEPS})
+endif()
 
 if(WITH_NCCL OR WITH_RCCL)
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper
