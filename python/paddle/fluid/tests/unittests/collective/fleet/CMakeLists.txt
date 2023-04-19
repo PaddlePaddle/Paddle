@@ -309,12 +309,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     "FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer
     START_BASH
@@ -325,12 +320,7 @@ if((WITH_GPU
     "PADDLE_DIST_UT_PORT=21236;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer MODULES
     test_fleet_gradient_merge_meta_optimizer ENVS
@@ -346,12 +336,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_raw_program_meta_optimizer
     START_BASH
@@ -427,12 +412,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT
                                                                          "350")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND (LINUX))
+if((WITH_GPU OR WITH_XPU) AND (LINUX))
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -457,12 +437,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
                        PROPERTIES TIMEOUT "60")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_fleet_pipeline_meta_optimizer_with_recompute
     START_BASH
@@ -473,12 +448,7 @@ if((WITH_GPU
     "PADDLE_DIST_UT_PORT=21252;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND (LINUX OR WIN32))
+if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS
@@ -526,12 +496,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT
                                                                          "200")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -583,12 +548,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT "120")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND (LINUX OR WIN32))
+if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_recompute_meta_optimizer MODULES
     test_fleet_recompute_meta_optimizer ENVS
@@ -599,12 +559,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_private_function MODULES test_fleet_private_function ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_new_group
     START_BASH
@@ -614,12 +569,7 @@ if((WITH_GPU
     ENVS
     "PADDLE_DIST_UT_PORT=21268;http_proxy=;https_proxy=")
 endif()
-if((WITH_GPU
-    OR WITH_XPU
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND (LINUX))
+if((WITH_GPU OR WITH_XPU) AND (LINUX))
   bash_test_modules(
     test_c_comm_init_op
     START_BASH
