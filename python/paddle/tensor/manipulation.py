@@ -4783,9 +4783,10 @@ def unflatten(x, shape, axis):
         ],
         'unflatten',
     )
-    if len(shape) == 0:
-        raise ValueError("The input for shape cannot be empty.")
+
     if isinstance(shape, list) or isinstance(shape, tuple):
+        if len(shape) == 0:
+            raise ValueError("The input for shape cannot be empty.")
         if np.min(shape) < -1:
             raise ValueError(f"invalid shape dimension {np.min(shape)}.")
         if shape.count(-1) > 1:
@@ -4801,7 +4802,10 @@ def unflatten(x, shape, axis):
                     )
                 )
     elif isinstance(shape, paddle.Tensor):
-        sizes = paddle.prod(shape)
+        if shape.is_empty():
+            raise ValueError("The input for shape cannot be empty.")
+        if paddle.min(shape) < -1:
+            raise ValueError(f"invalid shape dimension {paddle.min(shape)}.")
         if paddle.sum(shape == -1) > 1:
             raise ValueError("The shape can contain only one -1.")
         elif paddle.sum(shape == -1) == 1:
