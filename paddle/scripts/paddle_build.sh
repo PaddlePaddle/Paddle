@@ -2223,6 +2223,10 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
+            matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+            if [[ "$matchstr" == "" ]]; then
+                continue
+            fi
             testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
