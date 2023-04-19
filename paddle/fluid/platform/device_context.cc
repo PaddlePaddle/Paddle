@@ -109,6 +109,9 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
+  } else if (p.GetType() == phi::AllocationType::CUSTOM) {
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
   } else {
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
