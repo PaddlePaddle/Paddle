@@ -130,14 +130,19 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_expand_as,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, float>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, double>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, int>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, float>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, double>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, int>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

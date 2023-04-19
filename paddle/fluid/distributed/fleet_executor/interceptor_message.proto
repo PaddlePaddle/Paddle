@@ -24,6 +24,13 @@ enum MessageType {
   ERR = 4;             // current Interceptor encounters error
   RESET = 5;           // reset the status
   START = 6;
+  DATA_WITH_VARS = 7;
+  START_LOOP = 8;
+}
+
+message VarList {
+  required string name = 1;
+  required string stensor = 2;
 }
 
 message InterceptorMessage {
@@ -32,6 +39,7 @@ message InterceptorMessage {
   optional MessageType message_type = 3 [ default = RESET ];
   optional bool ctrl_message = 4 [ default = false ];
   optional int64 scope_idx = 5 [ default = 0 ];
+  repeated VarList vars_list = 6;
 }
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }
