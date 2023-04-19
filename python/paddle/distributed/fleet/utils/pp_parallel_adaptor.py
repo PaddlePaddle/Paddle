@@ -82,19 +82,15 @@ class LayerReNamingManager:
 class PipeLineModelAdaptor:
     def __init__(
         self,
-        src_model_path,
         src_parallel_config,
-        dst_model_path,
         dst_parallel_config,
         transformer_layer,
     ):
-        self._src_model_path = src_model_path
         self._src_parallel_config = src_parallel_config
-        self._dst_model_path = dst_model_path
         self._dst_parallel_config = dst_parallel_config
         self._transformer_layer = transformer_layer
 
-    def apply(self):
+    def apply(self, src_model_path, dst_model_path):
         for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
                 # TODO(liuzhenhai): use multiple processs
@@ -104,7 +100,7 @@ class PipeLineModelAdaptor:
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
                 src_dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
-                        self._src_model_path, *e
+                        src_model_path, *e
                     )
                     for e in group
                 ]
@@ -124,7 +120,7 @@ class PipeLineModelAdaptor:
                 dst_group = self._dst_parallel_config.pipe_parallel_group(i, j)
                 dst_dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
-                        self._dst_model_path, *e
+                        dst_model_path, *e
                     )
                     for e in dst_group
                 ]
@@ -500,9 +496,7 @@ def main():
     )
 
     adaptor = PipeLineModelAdaptor(
-        args.src_path,
         src_parallel_config,
-        args.dst_path,
         dst_parallel_config,
         1,
     )
@@ -512,7 +506,7 @@ def main():
         assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
             args.src_mp, args.dst_mp
         )
-        adaptor.apply()
+        adaptor.apply(args.src_path, args.dst_path)
 
 
 if __name__ == "__main__":
