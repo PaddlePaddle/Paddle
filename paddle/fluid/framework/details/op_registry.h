@@ -360,7 +360,7 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
 // A fake OpInfoFiller of void
 template <>
 struct OpInfoFiller<void, kUnknown> {
-  void operator()(const char* op_type, OpInfo* info) const {}
+  void operator()(const char* op_type UNUSED, OpInfo* info UNUSED) const {}
 };
 
 }  // namespace details
