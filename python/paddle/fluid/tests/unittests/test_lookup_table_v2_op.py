@@ -49,7 +49,7 @@ class TestLookupTableOp(OpTest):
         self.python_api = paddle.nn.functional.embedding
         self.init_dtype()
 
-        table = np.random.random((17, 32)).astype(self.dtype)
+        table = np.random.random((17, 31)).astype(self.dtype)
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
 
         self.inputs = {'W': table, 'Ids': ids}
@@ -108,7 +108,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
-        self.outputs['Out'][ids == padding_idx] = np.zeros(32)
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
