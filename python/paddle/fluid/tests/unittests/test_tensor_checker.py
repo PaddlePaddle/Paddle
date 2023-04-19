@@ -85,6 +85,7 @@ class TestTensorChecker(unittest.TestCase):
         _assert_flag(False)
 
         for place in places:
+            paddle.amp.debugging.TensorCheckerConfig.current_step_id = 0
             for index in range(5):
                 paddle.amp.debugging.enable_tensor_checker(checker_config)
                 if index <= 2:
