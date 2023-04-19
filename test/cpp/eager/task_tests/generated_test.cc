@@ -22,7 +22,7 @@
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/eager/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/kernel_registry.h"
