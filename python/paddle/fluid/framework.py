@@ -5335,6 +5335,8 @@ class Program:
         self._fleet_opt = None
         self._program_config = None
 
+        self._pass_applied = None
+
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 

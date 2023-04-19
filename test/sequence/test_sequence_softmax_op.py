@@ -19,7 +19,7 @@ import numpy as np
 
 from paddle.fluid import core
 
-sys.path.append("../")
+sys.path.append("../../python/paddle/fluid/tests/unittests")
 from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
 
