@@ -18,7 +18,7 @@ import unittest
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 import paddle
-from paddle.fleet.utils.pp_parallel_adaptor import (
+from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
     ParallelConfig,
     PipeLineModelAdaptor,
 )
