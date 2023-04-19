@@ -4783,16 +4783,29 @@ def unflatten(x, shape, axis):
         ],
         'unflatten',
     )
-
     if isinstance(shape, list) or isinstance(shape, tuple):
         if len(shape) == 0:
             raise ValueError("The input for shape cannot be empty.")
+        if np.array(shape).dtype not in [
+            'uint8',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+        ]:
+            raise TypeError(
+                "The data type of shape should be one of ['uint8', 'int8', 'int16', 'int32', 'int64'], but got {}".format(
+                    shape
+                )
+            )
         if np.min(shape) < -1:
             raise ValueError(f"invalid shape dimension {np.min(shape)}.")
         if shape.count(-1) > 1:
             raise ValueError("The shape can contain only one -1.")
         elif shape.count(-1) == 1:
-            list(shape)[shape.index(-1)] = x.shape[axis] / abs(np.prod(shape))
+            list(shape)[shape.index(-1)] = int(
+                x.shape[axis] / abs(np.prod(shape))
+            )
         else:
             sizes = np.prod(shape)
             if sizes != x.shape[axis]:
@@ -4801,7 +4814,13 @@ def unflatten(x, shape, axis):
                         shape, x.shape[axis]
                     )
                 )
-    elif isinstance(shape, paddle.Tensor):
+    elif isinstance(shape, paddle.Tensor) or isinstance(shape, Variable):
+        check_variable_and_dtype(
+            shape,
+            'shape',
+            ['uint8', 'int8', 'int16', 'int32', 'int64'],
+            'unflatten',
+        )
         if shape.is_empty():
             raise ValueError("The input for shape cannot be empty.")
         if paddle.min(shape) < -1:
@@ -4820,6 +4839,12 @@ def unflatten(x, shape, axis):
                         shape, x.shape[axis]
                     )
                 )
+    else:
+        raise TypeError(
+            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
+                type(shape)
+            )
+        )
     length = len(x.shape)
     if axis < 0:
         axis = axis + length

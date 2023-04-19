@@ -20,23 +20,32 @@ import paddle
 
 
 def numpy_unflatten(x, shape, axis):
-    if len(shape) == 0:
-        raise ValueError("The input for shape cannot be empty.")
     if isinstance(shape, list) or isinstance(shape, tuple):
-        if np.min(shape) < -1:
-            raise ValueError(f"invalid shape dimension {np.min(shape)}.")
-        if shape.count(-1) > 1:
-            raise ValueError("The shape can contain only one -1.")
-        elif shape.count(-1) == 1:
-            list(shape)[shape.index(-1)] = x.shape[axis] / abs(np.prod(shape))
-        else:
-            sizes = np.prod(shape)
-            if sizes != x.shape[axis]:
-                raise ValueError(
-                    "The product of the elements in shape{} is not equal to {}.".format(
-                        shape, x.shape[axis]
-                    )
+        if len(shape) == 0:
+            raise ValueError("The input for shape cannot be empty.")
+        if isinstance(shape, list) or isinstance(shape, tuple):
+            if np.min(shape) < -1:
+                raise ValueError(f"invalid shape dimension {np.min(shape)}.")
+            if shape.count(-1) > 1:
+                raise ValueError("The shape can contain only one -1.")
+            elif shape.count(-1) == 1:
+                list(shape)[shape.index(-1)] = x.shape[axis] / abs(
+                    np.prod(shape)
                 )
+            else:
+                sizes = np.prod(shape)
+                if sizes != x.shape[axis]:
+                    raise ValueError(
+                        "The product of the elements in shape{} is not equal to {}.".format(
+                            shape, x.shape[axis]
+                        )
+                    )
+    else:
+        raise TypeError(
+            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
+                type(shape)
+            )
+        )
     length = len(x.shape)
     if axis < 0:
         axis = axis + length
@@ -94,15 +103,8 @@ class TestUnflattenAPI(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype=self.x.dtype
                 )
-                if self.shape_is_tensor:
-                    shape = paddle.to_tensor(self.shape)
-                    shape = paddle.static.data(
-                        name="shape", shape=shape.shape, dtype=shape.dtype
-                    )
-                else:
-                    shape = self.shape
                 exe = paddle.static.Executor(place)
-                out = self.paddle_api(x=x, shape=shape, axis=self.axis)
+                out = self.paddle_api(x=x, shape=self.shape, axis=self.axis)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={
@@ -234,7 +236,7 @@ class TestUnflattenTupleShape3(TestUnflattenAPI):
 class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = np.array((-1, 4)).astype('int32')
+        self.shape = tuple(np.array((-1, 4)).astype('int32'))
         self.axis = 0
         self.shape_is_tensor = True
 
@@ -242,7 +244,7 @@ class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
 class TestUnflattenShapeTensorInt64(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = np.array([-1, 2]).astype('int64')
+        self.shape = list(np.array([-1, 2]).astype('int64'))
         self.axis = 1
         self.shape_is_tensor = True
 
@@ -542,6 +544,31 @@ class TestUnflattenError(unittest.TestCase):
                 self.paddle_api(x, shape, axis)
 
             self.assertRaises(ValueError, test_tensor_shape_not_dim)
+
+            # test type of unexpected input
+            def test_string_shape_input():
+                x = paddle.static.data(
+                    name='x',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                shape = ['1', '2', '3']
+                axis = -1
+                self.paddle_api(x, shape, axis)
+
+            self.assertRaises(TypeError, test_string_shape_input)
+
+            def test_int_shape_input():
+                x = paddle.static.data(
+                    name='x',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                shape = 1
+                axis = -1
+                self.paddle_api(x, shape, axis)
+
+            self.assertRaises(TypeError, test_int_shape_input)
 
 
 if __name__ == '__main__':
