@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 namespace framework {
 
@@ -73,7 +73,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out) {}
+  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
 
   virtual void ShutdownImpl() {}
 

@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -1136,9 +1137,9 @@ struct ElementwiseOp : public PatternBase {
 
 struct MatmulElementwiseAdd : public PatternBase {
   MatmulElementwiseAdd(PDPattern* pattern,
-                       const std::string& name_scope,
-                       const std::string& matmul_type,
-                       bool as_x)
+                       const std::string& name_scope UNUSED,
+                       const std::string& matmul_type UNUSED,
+                       bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
 
   PDNode* operator()(const std::string& matmul_type, bool as_x);
@@ -1155,7 +1156,7 @@ struct MatmulElementwiseAdd : public PatternBase {
 struct ResidualElementwise : public PatternBase {
   ResidualElementwise(PDPattern* pattern,
                       const std::string& name_scope,
-                      bool as_x)
+                      bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var,
                      PDNode* residual_var,

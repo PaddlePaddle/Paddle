@@ -212,8 +212,8 @@ void SliceGradCompute(const Context& ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
-                      const std::vector<int64_t>& ends,
-                      const std::vector<int64_t>& infer_flags,
+                      const std::vector<int64_t>& ends UNUSED,
+                      const std::vector<int64_t>& infer_flags UNUSED,
                       const std::vector<int64_t>& decrease_axis,
                       DenseTensor* input_grad) {
   auto* d_out = &out_grad;

@@ -29,9 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
-
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
 #include <cuda.h>
@@ -641,13 +641,13 @@ template <typename DeviceContext,
 void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
-    const framework::DDim &y_dim,
+    const framework::DDim &y_dim UNUSED,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
     const phi::DenseTensor *out,
     const phi::DenseTensor *dout,
-    int axis,
+    int axis UNUSED,
     phi::DenseTensor *dx,
     phi::DenseTensor *dy,
     phi::DenseTensor *dintermediate,
