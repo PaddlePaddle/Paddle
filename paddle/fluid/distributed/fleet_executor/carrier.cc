@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -237,12 +238,10 @@ bool Carrier::Send(const InterceptorMessage& msg) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
     return EnqueueInterceptorMessage(msg);
-  } else {
-    VLOG(3) << "Send a message from interceptor " << src_id
-            << " to interceptor " << dst_id
-            << ", which are in different ranks.";
-    return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
   }
+  VLOG(3) << "Send a message from interceptor " << src_id << " to interceptor "
+          << dst_id << ", which are in different ranks.";
+  return GlobalVal<MessageBus>::Get()->Send(dst_rank, msg);
 }
 
 Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
