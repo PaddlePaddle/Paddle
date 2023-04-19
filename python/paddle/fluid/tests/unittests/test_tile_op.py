@@ -36,7 +36,7 @@ class TestTileOpRank1(OpTest):
         output = np.tile(self.inputs['X'], self.repeat_times)
         self.outputs = {'Out': output}
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.public_python_api = paddle.tile
 
     def init_data(self):
@@ -71,7 +71,7 @@ class TestTileOpRank_ZeroDim1(TestTileOpRank1):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
@@ -95,7 +95,7 @@ class TestTileOpRank_ZeroDim2(TestTileOpRank1):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
@@ -119,14 +119,14 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
-# # with dimension expanding
-# class TestTileOpRank2Expanding(TestTileOpRank1):
-#     def init_data(self):
-#         self.ori_shape = [120]
-#         self.repeat_times = [2, 2]
+# with dimension expanding
+class TestTileOpRank2Expanding(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = [120]
+        self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
@@ -141,10 +141,10 @@ class TestTileOpRank3_Corner(TestTileOpRank1):
         self.repeat_times = (1, 1, 1)
 
 
-# class TestTileOpRank3_Corner2(TestTileOpRank1):
-#     def init_data(self):
-#         self.ori_shape = (2, 10, 5)
-#         self.repeat_times = (2, 2)
+class TestTileOpRank3_Corner2(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 10, 5)
+        self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
