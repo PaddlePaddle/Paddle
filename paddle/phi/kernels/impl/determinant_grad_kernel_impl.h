@@ -127,23 +127,23 @@ void DeterminantGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<MPType>(&inverse_A);
 
   phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
-  if (!std::is_same<T, phi::dtype::float16>::value) {
-    mat_inv(dev_ctx, x, &inverse_A);
-  } else {
+  if (!std::is_same<phi::dtype::float16, T>::value) {
     mat_inv(dev_ctx,
             phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
             &inverse_A);
+  } else {
+    mat_inv(dev_ctx, x, &inverse_A);
   }
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A;
-  if (!std::is_same<T, phi::dtype::float16>::value) {
-    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
-  } else {
+  if (!std::is_same<phi::dtype::float16, T>::value) {
     transpose_inverse_A = phi::TransposeLast2Dim<T>(
         dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
+  } else {
+    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
   }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
@@ -160,11 +160,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
   DenseTensor res;
-  if (!std::is_same<T, phi::dtype::float16>::value) {
-    res = phi::Multiply<T>(
-        dev_ctx,
-        unsqueeze2,
-        phi::Cast<T, Context>(dev_ctx, transpose_inverse_A, DataType::FLOAT32));
+  if (!std::is_same<phi::dtype::float16, T>::value) {
+    res =
+        phi::Multiply<T>(dev_ctx,
+                         unsqueeze2,
+                         phi::Cast<MPType, Context>(
+                             dev_ctx, transpose_inverse_A, DataType::FLOAT16));
   } else {
     res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
   }
