@@ -129,7 +129,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
   phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
   if (!std::is_same<MPType, T>::value) {
     mat_inv(dev_ctx,
-            phi::Cast<TensorToVector, Context>(dev_ctx, x, DataType::FLOAT32),
+            phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
             &inverse_A);
   } else {
     mat_inv(dev_ctx, x, &inverse_A);
