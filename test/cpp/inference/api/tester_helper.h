@@ -35,8 +35,8 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/tests/api/config_printer.h"
-#include "paddle/fluid/inference/tests/test_helper.h"
+#include "test/cpp/inference/api/config_printer.h"
+#include "test/cpp/inference/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
