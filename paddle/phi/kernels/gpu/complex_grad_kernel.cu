@@ -36,7 +36,12 @@ PD_REGISTER_KERNEL(real_grad,
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(
-    complex_grad, GPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(complex_grad, 
+                   GPU, ALL_LAYOUT, 
+                   phi::ComplexGradKernel, 
+                   float, 
+                   double, 
+                   phi::dtype::float16, 
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
