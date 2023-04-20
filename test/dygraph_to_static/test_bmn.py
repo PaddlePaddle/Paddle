@@ -451,7 +451,7 @@ def optimizer(cfg, parameter_list):
     optimizer = fluid.optimizer.Adam(
         fluid.layers.piecewise_decay(boundaries=bd, values=lr),
         parameter_list=parameter_list,
-        regularization=fluid.regularizer.L2DecayRegularizer(
+        regularization=paddle.regularizer.L2DecayRegularizer(
             regularization_coeff=l2_weight_decay
         ),
     )

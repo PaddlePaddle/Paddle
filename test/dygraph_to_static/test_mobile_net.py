@@ -448,7 +448,7 @@ def create_optimizer(args, parameter_list):
     optimizer = fluid.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=fluid.regularizer.L2Decay(args.l2_decay),
+        regularization=paddle.regularizer.L2Decay(args.l2_decay),
         parameter_list=parameter_list,
     )
 

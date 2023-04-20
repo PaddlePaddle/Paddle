@@ -100,7 +100,7 @@ class DGCMomentumOptimizer(Optimizer):
 
         if regularization is not None:
             regular_coeff = regularization._regularization_coeff
-            from paddle.fluid.regularizer import L1Decay, L2Decay
+            from paddle.regularizer import L1Decay, L2Decay
 
             if isinstance(regularization, L1Decay):
                 regular_type = 1

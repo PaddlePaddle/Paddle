@@ -20,8 +20,8 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 import paddle
 from paddle import _legacy_C_ops, fluid
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.regularizer import L2Decay
 from paddle.jit.api import to_static
+from paddle.regularizer import L2Decay
 
 
 class AttrDict(dict):
