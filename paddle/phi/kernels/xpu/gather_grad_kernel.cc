@@ -85,7 +85,7 @@ void GatherGradKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
-        true);
+        false);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
 }
