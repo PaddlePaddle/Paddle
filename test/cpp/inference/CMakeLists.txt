@@ -3,7 +3,4 @@ if(WITH_TESTING)
 endif()
 
 add_subdirectory(analysis)
-
-if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
-  add_subdirectory(api)
-endif()
+add_subdirectory(api)
