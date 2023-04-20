@@ -1751,3 +1751,4 @@ class Unflatten(Layer):
 
     def forward(self, input):
         out = paddle.unflatten(input, shape=self.shape, axis=self.axis)
+        return out
