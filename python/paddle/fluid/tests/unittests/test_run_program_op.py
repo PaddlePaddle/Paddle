@@ -197,7 +197,7 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_output(self):
         def create_var_base(is_input, name):
-            var = framework._varbase_creator(dtype=None, shape=None, name=name)
+            var = framework._create_tensor(dtype=None, shape=None, name=name)
             var.stop_gradient = False
             return var
 
@@ -210,7 +210,7 @@ class RunProgramOpTest(unittest.TestCase):
         if global_var._in_eager_mode_:
             outputs['OutScope'] = [core.Scope()]
         else:
-            outputs['OutScope'] = framework._varbase_creator(
+            outputs['OutScope'] = framework._create_tensor(
                 type=core.VarDesc.VarType.STEP_SCOPES,
                 name="program_out_scope",
                 persistable=True,
