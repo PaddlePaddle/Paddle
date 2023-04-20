@@ -258,7 +258,7 @@ void subtract_double_grad(const Tensor& y,
                           int axis,
                           Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    // ddout = ddx + ddy
+    // ddout = ddx - ddy
     if (!grad_x_grad && !grad_y_grad) {
       grad_out_grad = nullptr;
     } else {
@@ -377,7 +377,8 @@ void sum_grad(const Tensor& x,
           }
         }
       }
-      auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
       x_grad_tmp = out_grad_.expand(IntArray(x_dim));
     } else {
       x_grad_tmp = out_grad.expand(IntArray(x_dim));
@@ -1260,6 +1261,7 @@ void prod_grad(const Tensor& x,
             }
           }
         }
+
         auto out_grad_ = unsqueeze<T>(out_grad, axis_);
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
         auto out_ = unsqueeze<T>(out, axis_);

@@ -1492,17 +1492,21 @@ def _append_backward_ops_(
                 or name in input_grad_names_set
             )
             is_append_grad = False
+            input_grad_names = []
             for op_desc in grad_op_desc:
-                input_grad_names = [
+                input_grad_names += [
                     name
                     for name in op_desc.input_arg_names()
                     if is_grad_name(name)
                 ]
+            if len(input_grad_names) == 0:
+                is_append_grad = True
+                break
+
+            for op_desc in grad_op_desc:
+
                 # some code of gradient ops, like increment, are not very
                 # standard, there is no @GRAD in these ops' inputs.
-                if len(input_grad_names) == 0:
-                    is_append_grad = True
-                    break
 
                 if _some_in_set_(input_grad_names, input_grad_names_set):
                     grad_op_descs.append(op_desc)

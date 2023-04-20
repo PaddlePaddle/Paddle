@@ -73,7 +73,7 @@ class ElementwiseAddCompositeGradOpMaker
         phi::errors::InvalidArgument(
             "We only support axis = -1 in composite add_grad but we got: ",
             axis));
-    VLOG(6) << "Runing add_double_grad composite func";
+    VLOG(6) << "Runing add_grad composite func";
     prim::add_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
