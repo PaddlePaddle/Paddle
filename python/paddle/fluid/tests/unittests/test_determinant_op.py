@@ -72,7 +72,9 @@ class TestDeterminantOpFP16Op(OpTest):
         # not invertible matrix
         self.case = np.random.rand(3, 3, 3, 5, 5).astype(self.dtype)
         self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(self.case)
+        self.target = np.linalg.det(self.case.astype(np.float32)).astype(
+            np.float16
+        )
 
     def test_check_output(self):
         self.check_output()
