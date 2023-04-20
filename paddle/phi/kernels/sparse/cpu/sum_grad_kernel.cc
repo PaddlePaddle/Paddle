@@ -102,6 +102,9 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
           dout_values_data[i + indices_map[pos] * dense_dim];
     }
   }
+  if (dx_values->dtype() != dx->dtype()) {
+    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+  }
 }
 
 template <typename T, typename Context>
