@@ -71,6 +71,29 @@ __global__ void KernelHistogram(const T* input,
   }
 }
 
+template <typename T>
+__global__ void KernelMinMax(const T* input,
+                             const int total_elements,
+                             T* output) {
+  __shared__ T min_data;
+  __shared__ T max_data;
+  for (int i = threadIdx.x; i < 1; i += blockDim.x) {
+    min_data = std::numeric_limits<T>::max();
+    max_data = std::numeric_limits<T>::min();
+  }
+  __syncthreads();
+  CUDA_KERNEL_LOOP(index, total_elements) {
+    const auto input_value = input[index];
+    phi::CudaAtomicMin(&min_data, input_value);
+    phi::CudaAtomicMax(&max_data, input_value);
+  }
+  __syncthreads();
+  for (int i = threadIdx.x; i < 1; i += blockDim.x) {
+    output[0] = min_data;
+    output[1] = max_data;
+  }
+}
+
 template <typename T, typename Context>
 void HistogramKernel(const Context& dev_ctx,
                      const DenseTensor& input,
@@ -95,26 +118,20 @@ void HistogramKernel(const Context& dev_ctx,
   T output_max = static_cast<T>(maxval);
 
   if (output_min == output_max) {
-    auto input_x = phi::EigenVector<T>::Flatten(input);
+    DenseTensor min_max;
+    min_max.Resize({2});
+    auto* min_max_data = dev_ctx.template Alloc<T>(&min_max);
+    KernelMinMax<T>
+        <<<GET_BLOCKS(input_numel),
+           PADDLE_CUDA_NUM_THREADS,
+           0,
+           dev_ctx.stream()>>>(input_data, input_numel, min_max_data);
 
-    DenseTensor input_min_t, input_max_t;
-    input_min_t.Resize({1});
-    input_max_t.Resize({1});
-    auto* input_min_data = dev_ctx.template Alloc<T>(&input_min_t);
-    auto* input_max_data = dev_ctx.template Alloc<T>(&input_max_t);
-    auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
-    auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
-
-    auto* place = dev_ctx.eigen_device();
-    input_min_scala.device(*place) = input_x.minimum();
-    input_max_scala.device(*place) = input_x.maximum();
-
-    DenseTensor input_min_cpu, input_max_cpu;
-    phi::Copy(dev_ctx, input_min_t, phi::CPUPlace(), true, &input_min_cpu);
-    phi::Copy(dev_ctx, input_max_t, phi::CPUPlace(), true, &input_max_cpu);
-
-    output_min = input_min_cpu.data<T>()[0];
-    output_max = input_max_cpu.data<T>()[0];
+    DenseTensor min_max_cpu;
+    phi::Copy(dev_ctx, min_max, phi::CPUPlace(), true, &min_max_cpu);
+    auto* min_max_cpu_data = min_max_cpu.data<T>();
+    output_min = min_max_cpu_data[0];
+    output_max = min_max_cpu_data[1];
   }
   if (output_min == output_max) {
     output_min = output_min - 1;
