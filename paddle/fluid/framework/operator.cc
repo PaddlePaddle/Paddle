@@ -2468,7 +2468,7 @@ Scope* OperatorWithKernel::PrepareData(
                                                  expected_kernel_key.layout(),
                                                  expected_kernel_key.dtype());
           }
-        } else if (in_def != nullptr &&
+        } else if (in_def != nullptr &&  // KernelRegisteredType is Function
                    in_def->backend != phi::Backend::ALL_BACKEND) {
           auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
           if ((in_def->backend != tensor_backend &&
