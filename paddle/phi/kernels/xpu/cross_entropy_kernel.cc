@@ -133,15 +133,24 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                          axis == rank - 1 ? d : t);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
   } else {
-    DenseTensor labels_int32;
-    int* labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
+    int* labels_int_ptr_l3 = nullptr;
+    if (labels.dtype() == DataType::INT32) {
+      labels_int_ptr_l3 = const_cast<int32_t*> labels.data<int32_t>();
+    } else if (labels.dtype() == DataType::INT64) {
+      labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
-    r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
-                                    labels.data<int64_t>(),
-                                    labels_int_ptr_l3,
-                                    labels.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
+                                      labels.data<int64_t>(),
+                                      labels_int_ptr_l3,
+                                      labels.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    } else {
+      // TODO(lilujia): other data types should be handled
+      errors::Unimplemented(
+          ("cross_entropy does not support data types other than int32 and "
+           "int64"));
+    }
 
     r = xpu::hard_cross_entropy<XPUType, int32_t>(
         dev_ctx.x_context(),
