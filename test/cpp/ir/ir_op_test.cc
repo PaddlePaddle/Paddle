@@ -84,18 +84,23 @@ TEST(op_test, op_test) {
   EXPECT_EQ(op2_info->HasTrait<ir::ReadOnlyTrait>(), true);
   EXPECT_EQ(op2_info->HasInterface<ir::InferShapeInterface>(), true);
 
-  // (3) Test use for op.
-  std::vector<ir::OpResult> op1_inputs = {};
-  std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op1 =
-      ir::Operation::create(op1_inputs,
-                            op1_output_types,
+  // (3) Test uses for op.
+  std::vector<ir::OpResult> op_inputs = {};
+  std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
+  ir::Operation *op =
+      ir::Operation::create(op_inputs,
+                            op_output_types,
                             CreateAttribute("op1_name", "op1_attr"),
                             op2_info);
 
-  ir::InferShapeInterface::Concept *concept =
-      op2_info->GetInterfaceImpl<ir::InferShapeInterface>();
-  concept->infer_shape_(op1);
+  if (op->HasTrait<ir::ReadOnlyTrait>()) {
+    ir::ReadOnlyTrait trait = op->dyn_cast<ir::ReadOnlyTrait>();
+    EXPECT_EQ(trait.operation(), op);
+  }
+  if (op->HasInterface<ir::InferShapeInterface>()) {
+    ir::InferShapeInterface interface = op->dyn_cast<ir::InferShapeInterface>();
+    interface.InferShape();
+  }
 
-  op1->destroy();
+  op->destroy();
 }

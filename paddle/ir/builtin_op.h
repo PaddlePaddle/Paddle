@@ -22,20 +22,21 @@ namespace ir {
 
 class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
  public:
-  explicit ReadOnlyTrait(Operation *op) : OpTraitBase<ReadOnlyTrait>(op) {}
+  explicit ReadOnlyTrait(const Operation *op)
+      : OpTraitBase<ReadOnlyTrait>(op) {}
 };
 
 class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
  public:
   struct Concept {
-    explicit Concept(void (*infer_shape)(Operation *))
+    explicit Concept(void (*infer_shape)(const Operation *))
         : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(Operation *);
+    void (*infer_shape_)(const Operation *);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferShape(Operation *op) {
+    static void InferShape(const Operation *op) {
       ConcreteOp concret_op = ConcreteOp(op);
       if (concret_op == nullptr) throw("concret_op is nullptr");
       concret_op.InferShape();
@@ -48,7 +49,7 @@ class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
     }
   };
 
-  InferShapeInterface(Operation *op, Concept *impl)
+  InferShapeInterface(const Operation *op, Concept *impl)
       : OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
 
   void InferShape() { impl_->infer_shape_(operation()); }

@@ -39,6 +39,16 @@ class OpInfo {
 
   const OpInfoImpl *impl() const { return impl_; }
 
+  template <typename Trait>
+  bool HasTrait() const {
+    return impl_->HasTrait<Trait>();
+  }
+
+  template <typename Interface>
+  bool HasInterface() const {
+    return impl_->HasInterface<Interface>();
+  }
+
   friend struct std::hash<OpInfo>;
 
  private:

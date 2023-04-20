@@ -171,11 +171,11 @@ class OpInfoImpl {
   /// \brief Search methods for Trait or Interface.
   ///
   template <typename Trait>
-  bool HasTrait() {
+  bool HasTrait() const {
     return HasTrait(TypeId::get<Trait>());
   }
 
-  bool HasTrait(TypeId trait_id) {
+  bool HasTrait(TypeId trait_id) const {
     size_t traits_num = GetTraitsNum();
     if (traits_num > 0) {
       return std::binary_search(
@@ -185,11 +185,11 @@ class OpInfoImpl {
   }
 
   template <typename Interface>
-  bool HasInterface() {
+  bool HasInterface() const {
     return HasInterface(TypeId::get<Interface>());
   }
 
-  bool HasInterface(TypeId interface_id) {
+  bool HasInterface(TypeId interface_id) const {
     size_t interfaces_num = GetInterfacesNum();
     if (interfaces_num > 0) {
       return std::binary_search(p_first_interface_,
@@ -201,7 +201,7 @@ class OpInfoImpl {
   }
 
   template <typename Interface>
-  typename Interface::Concept *GetInterfaceImpl() {
+  typename Interface::Concept *GetInterfaceImpl() const {
     ir::TypeId interface_id = ir::TypeId::get<Interface>();
     size_t interfaces_num = GetInterfacesNum();
     if (interfaces_num > 0) {
@@ -223,22 +223,25 @@ class OpInfoImpl {
     return nullptr;
   }
 
-  size_t GetInterfacesNum() {
+  size_t GetInterfacesNum() const {
     if (p_first_interface_ == nullptr) {
       return 0;
     }
     std::pair<ir::TypeId, void *> *p_end_interface_ =
         p_first_trait_
             ? reinterpret_cast<std::pair<ir::TypeId, void *> *>(p_first_trait_)
-            : reinterpret_cast<std::pair<ir::TypeId, void *> *>(this);
+            : reinterpret_cast<std::pair<ir::TypeId, void *> *>(
+                  const_cast<OpInfoImpl *>(this));
     return std::distance(p_first_interface_, p_end_interface_);
   }
 
-  size_t GetTraitsNum() {
+  size_t GetTraitsNum() const {
     if (p_first_trait_ == nullptr) {
       return 0;
     }
-    return std::distance(p_first_trait_, reinterpret_cast<TypeId *>(this));
+    return std::distance(
+        p_first_trait_,
+        reinterpret_cast<TypeId *>(const_cast<OpInfoImpl *>(this)));
   }
 
  private:

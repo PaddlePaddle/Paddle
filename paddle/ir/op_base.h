@@ -20,18 +20,18 @@
 namespace ir {
 class OpBase {
  public:
-  explicit OpBase(Operation *operation) : operation_(operation) {}
+  explicit OpBase(const Operation *operation) : operation_(operation) {}
 
-  Operation *operation() { return operation_; }
+  const Operation *operation() const { return operation_; }
 
-  explicit operator bool() { return operation() != nullptr; }
+  explicit operator bool() const { return operation() != nullptr; }
 
-  operator Operation *() const { return operation_; }
+  operator const Operation *() const { return operation_; }
 
-  Operation *operator->() const { return operation_; }
+  const Operation *operator->() const { return operation_; }
 
  private:
-  Operation *operation_;
+  const Operation *operation_;
 };
 
 ///
@@ -40,7 +40,7 @@ class OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
-  explicit OpTraitBase(Operation *op) : OpBase(op) {}
+  explicit OpTraitBase(const Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
 };
@@ -51,7 +51,9 @@ class OpTraitBase : public OpBase {
 template <typename ConcreteInterface>
 class OpInterfaceBase : public OpBase {
  public:
-  explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
+  // explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
+
+  explicit OpInterfaceBase(const Operation *op) : OpBase(op) {}
 
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 };
