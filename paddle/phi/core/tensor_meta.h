@@ -86,6 +86,10 @@ struct DenseTensorMeta {
   /// and re-calculation the strides by the new dims and layout.
   void update(DDim dims, DataLayout layout);
 
+  /// \brief Update the dims, strides and layout
+  /// according to the new dimensions, strides and the layout
+  void update(DDim dims, DDim strides, DataLayout layout);
+
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;

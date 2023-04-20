@@ -25,6 +25,7 @@ void ContiguousKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
+  meta.sync_strides();
   out->set_meta(meta);
 
   auto input_data = reinterpret_cast<XPUT*>(input.data<T>());

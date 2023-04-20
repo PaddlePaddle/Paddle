@@ -47,24 +47,7 @@ bool is_contiguous(const DDim& dims, const DDim& strides, DataLayout layout) {
 }
 
 void DenseTensorMeta::sync_strides() {
-  if (dims.size() == 4 && layout == DataLayout::NHWC) {
-    strides[1] = 1;
-    strides[3] = dims[1];
-    strides[2] = strides[3] * dims[3];
-    strides[0] = strides[2] * dims[2];
-  } else if (dims.size() == 5 && layout == DataLayout::NDHWC) {
-    strides[1] = 1;
-    strides[4] = dims[1];
-    strides[3] = strides[4] * dims[4];
-    strides[2] = strides[3] * dims[3];
-    strides[0] = strides[2] * dims[2];
-  } else {
-    if (product(dims) <= 0) {
-      this->strides = DDim();
-    } else {
-      this->strides = ::phi::stride(this->dims);
-    }
-  }
+  this->strides = calc_strides(dims, layout);
 }
 
 void DenseTensorMeta::update(DDim dims) {
@@ -81,6 +64,15 @@ void DenseTensorMeta::update(DDim dims, DataLayout layout) {
   this->dims = dims;
   this->layout = layout;
   sync_strides();
+}
+
+void DenseTensorMeta::update(DDim dims, DDim strides, DataLayout layout) {
+  this->dims = dims;
+  this->strides = strides;
+  this->layout = layout;
+  if (strides.size() != dims.size()) {
+    sync_strides();
+  }
 }
 
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
@@ -123,9 +115,7 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   dtype = other.dtype;
   lod = other.lod;
   offset = other.offset;
-  dims = other.dims;
-  layout = other.layout;
-  strides = other.strides;
+  update(other.dims, other.strides, other.layout);
 }
 
 DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
@@ -134,7 +124,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   dtype = other.dtype;
   lod = other.lod;
   offset = other.offset;
-  update(other.dims, other.layout);
+  update(other.dims, other.strides, other.layout);
   return *this;
 }
 
@@ -144,9 +134,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   dtype = other.dtype;
   lod = std::move(other.lod);
   offset = other.offset;
-
-  update(other.dims, other.layout);
-
+  update(other.dims, other.strides, other.layout);
   return *this;
 }
 

@@ -31,7 +31,7 @@ void TransposeStrideKernel(const Context& ctx,
     }
   }
 
-  auto meta = x.meta();
+  phi::DenseTensorMeta meta = out->meta();  // copy the meta
   auto in_strides = x.strides();
   auto in_dims = x.dims();
   for (size_t i = 0; i < formated_axis.size(); i++) {
