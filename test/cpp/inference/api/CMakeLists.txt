@@ -1427,6 +1427,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --warmup=true
       --repeat=10)
   endif()
+
+  set(inference_deps ${analysis_deps} paddle_inference_api analysis
+                   naive_executor ${GLOB_PASS_LIB})
   
   if(WITH_TESTING)
     if(NOT APPLE AND NOT WIN32)
