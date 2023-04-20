@@ -45,13 +45,17 @@ enum class AlgorithmType {
   kConvBackwardFilter = 3,
   kTranspose = 4,
   kMatmul = 5,
+  kGatherGemmScatterFP16NN = 6,
+  kGatherGemmScatterFP32NN = 7,
+  kGatherGemmScatterFP32TN = 8,
+  kGatherGemmScatterFP32NT = 9,
 #if !defined(PADDLE_WITH_CUDNN_FRONTEND)
-  kAlgorithmCount = 6
+  kAlgorithmCount = 10
 #else
-  kConvForwardV8 = 6,
-  kConvBackwardDataV8 = 7,
-  kConvBackwardFilterV8 = 8,
-  kAlgorithmCount = 9
+  kConvForwardV8 = 10,
+  kConvBackwardDataV8 = 11,
+  kConvBackwardFilterV8 = 12,
+  kAlgorithmCount = 13
 #endif
 };
 
@@ -71,6 +75,17 @@ using CudnnV8AlgorithmsTypeMap =
     std::unordered_map<int64_t, CudnnFrontendPlanCache>;
 #endif
 
+#define DEFINE_GET_GATHER_GEMM_SCATTER(                    \
+    dtype, transpose_a, transpose_b, algo_type)            \
+  template <typename T, bool TransposeA, bool TransposeB>  \
+  typename std::enable_if<std::is_same<T, dtype>::value && \
+                              TransposeA == transpose_a && \
+                              TransposeB == transpose_b,   \
+                          AlgorithmsCacheMap&>::type       \
+  GetGatherGemmScatter() {                                 \
+    return Get(algo_type);                                 \
+  }
+
 class AutoTuneCache {
  public:
   static AutoTuneCache& Instance() {
@@ -87,6 +102,22 @@ class AutoTuneCache {
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
+  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP16NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 true,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32TN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 true,
+                                 AlgorithmType::kGatherGemmScatterFP32NT);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   CudnnFrontendPlanCache& GetConvV8(const AlgorithmType& algo_type) {

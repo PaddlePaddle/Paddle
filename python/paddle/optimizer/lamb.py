@@ -159,11 +159,15 @@ class Lamb(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
+                self._already_create_accumulater.add(p.name)
             else:
                 self._add_moments_pows(p)
+                self._already_create_accumulater.add(p.name)
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
@@ -233,7 +237,6 @@ class Lamb(Optimizer):
             self._used_master_weights[p_name] = master_weight.name
         else:
             master_weight = None
-        found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
             _C_ops.lamb_(
@@ -245,7 +248,7 @@ class Lamb(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 weight_decay,
                 self._beta1,
                 self._beta2,
@@ -283,6 +286,7 @@ class Lamb(Optimizer):
                 inputs["MasterParam"] = master_weight
                 outputs["MasterParamOut"] = master_weight
 
+            found_inf = self._get_auxiliary_var('found_inf')
             if found_inf:
                 inputs["SkipUpdate"] = found_inf
 

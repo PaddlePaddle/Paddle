@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.common_ops_import import fill_constant
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -333,7 +332,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -343,7 +342,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
                 'linspace',
             )
         else:
@@ -351,7 +350,10 @@ def linspace(start, stop, num, dtype=None, name=None):
         if isinstance(num, Variable):
             check_dtype(num.dtype, 'num', ['int32'], 'linspace')
         check_dtype(
-            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
+            dtype,
+            'dtype',
+            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            'linspace',
         )
         if (
             (stop_dtype == "float64" or start_dtype == "float64")
@@ -571,7 +573,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
-            # convert core.Tensor/core.LoDTensor to VarBase first
+            # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
             if in_dygraph_mode():
                 data = core.eager.Tensor(data)
@@ -857,6 +859,91 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        if isinstance(shape, (list, tuple)):
+            shape = paddle.utils.convert_shape_to_list(shape)
+
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if out is None:
+            out = _C_ops.full(shape, float(value), dtype, place)
+            out.stop_gradient = True
+            return out
+
+        if out is not None:
+            # final state mode is support out is not None.
+            _C_ops.full_(out, shape, float(value), dtype, place)
+            out.stop_gradient = True
+            return out
+    else:
+        attrs = {'force_cpu': force_cpu}
+        dtype = convert_dtype(dtype)
+        if not isinstance(value, Variable):
+            if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
+                attrs['str_value'] = str(int(value))
+                attrs['value'] = int(value)
+            else:
+                attrs['str_value'] = str(float(value))
+                attrs['value'] = float(value)
+
+        helper = LayerHelper("fill_constant", **locals())
+        inputs = {}
+        if isinstance(value, Variable):
+            if convert_dtype(value.dtype) != dtype:
+                value = paddle.cast(value, dtype)
+            inputs['ValueTensor'] = value
+
+        paddle.utils.check_shape(shape)
+        check_dtype(
+            dtype,
+            'dtype',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'uint8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'fill_constant',
+        )
+        check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+
+        if out is not None:
+            check_variable_and_dtype(
+                out, 'out', [convert_dtype(dtype)], 'fill_constant'
+            )
+
+        helper = LayerHelper("fill_constant", **locals())
+        paddle.utils.get_shape_tensor_inputs(
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
+        )
+
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        attrs['dtype'] = out.dtype
+        helper.append_op(
+            type='fill_constant',
+            inputs=inputs,
+            outputs={'Out': [out]},
+            attrs=attrs,
+            stop_gradient=True,
+        )
+        out.stop_gradient = True
+        return out
+
+
 def ones(shape, dtype=None, name=None):
     """
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
@@ -1046,7 +1133,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         if isinstance(attr, ((Variable, core.eager.Tensor))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
-            raise TypeError("{} should be a non-negative int.".format(message))
+            raise TypeError(f"{message} should be a non-negative int.")
 
     _check_attr(num_rows, "num_rows")
 
@@ -1206,6 +1293,14 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
+    out_shape = None
+    if not in_dygraph_mode() and (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1237,13 +1332,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',
@@ -1261,7 +1349,7 @@ def _tril_triu_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert x is not None, f'x cannot be None in {op_type}'
     check_variable_and_dtype(
         x,
         'x',
@@ -1269,10 +1357,10 @@ def _tril_triu_op(helper):
         op_type,
     )
     if len(x.shape) < 2:
-        raise ValueError("x shape in {} must be at least 2-D".format(op_type))
+        raise ValueError(f"x shape in {op_type} must be at least 2-D")
     diagonal = helper.kwargs.get('diagonal', 0)
     if not isinstance(diagonal, (int,)):
-        raise TypeError("diagonal in {} must be a python Int".format(op_type))
+        raise TypeError(f"diagonal in {op_type} must be a python Int")
     name = helper.kwargs.get('name', None)
 
     if name is None:
@@ -1867,13 +1955,29 @@ def empty_like(x, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1939,12 +2043,12 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
+    # NOTE(Aurelius84): Why we judge core.Tensor?
+    # In case of @to_static, a Tensor can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
+    # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -1962,6 +2066,7 @@ def assign(x, output=None):
                     'int32',
                     'int64',
                     'uint8',
+                    'int8',
                     'bool',
                 ],
                 'assign',
@@ -2123,7 +2228,7 @@ def _memcpy(input, place=None, output=None):
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Variable, core.eager.Tensor)):
         check_dtype(
             input.dtype,
             'input',
@@ -2135,6 +2240,7 @@ def _memcpy(input, place=None, output=None):
                 'int32',
                 'int64',
                 'uint8',
+                'int8',
                 'bool',
             ],
             'memcpy',
@@ -2157,8 +2263,6 @@ def _memcpy(input, place=None, output=None):
             dst_place_type = 2
         elif p.is_xpu_place():
             dst_place_type = 3
-        elif p.is_npu_place():
-            dst_place_type = 4
 
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
@@ -2380,3 +2484,41 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             attrs={'row': row, 'col': col, 'offset': offset, 'dtype': dtype},
         )
     return out
+
+
+def polar(abs, angle, name=None):
+    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+
+    Args:
+        abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
+        angle (Tensor): The anglee component. The data type should be the same as ``abs``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
+
+    Note:
+        ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
+            angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
+            out = paddle.polar(abs, angle)
+            print(out)
+            # Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+            #       [ (6.123233995736766e-17+1j) ,
+            #       (-1.4142135623730954-1.414213562373095j)])
+    """
+    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
+    check_variable_and_dtype(
+        angle, 'angle', ['float32', 'float64'], 'paddle.polar'
+    )
+
+    return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))

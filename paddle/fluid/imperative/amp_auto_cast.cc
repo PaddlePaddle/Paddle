@@ -150,15 +150,6 @@ AmpOperators::AmpOperators()
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
 // NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  auto unsupported_ops_npu_fp16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_npu_fp16.begin(),
-                                unsupported_ops_npu_fp16.end());
-  auto unsupported_ops_npu_bf16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_npu_bf16.begin(),
-                                unsupported_ops_npu_bf16.end());
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
@@ -168,15 +159,6 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
-#elif defined(PADDLE_WITH_MLU)
-  auto unsupported_ops_mlu_fp16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
-                                unsupported_ops_mlu_fp16.end());
-  auto unsupported_ops_mlu_bf16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
-                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "
@@ -201,15 +183,14 @@ AmpOperators::GetMutableBlockOps() {
 }
 
 std::shared_ptr<std::unordered_set<std::string>>
-AmpOperators::GetMutableUnsupportedOps(
-    const paddle::experimental::DataType& data_type) {
+AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
   PADDLE_ENFORCE_EQ(
-      data_type == paddle::experimental::DataType::FLOAT16 ||
-          data_type == paddle::experimental::DataType::BFLOAT16,
+      data_type == phi::DataType::FLOAT16 ||
+          data_type == phi::DataType::BFLOAT16,
       true,
       phi::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == paddle::experimental::DataType::FLOAT16) {
+  if (data_type == phi::DataType::FLOAT16) {
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;

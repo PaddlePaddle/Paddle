@@ -16,7 +16,6 @@ import warnings
 from functools import partial, reduce
 
 import paddle
-import paddle.fluid.core as core
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
@@ -24,6 +23,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
+from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
@@ -300,7 +300,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {0}.".format(
+                "condition expected shape as [1], but given shape as {}.".format(
                     list(cond.shape)
                 )
             )
@@ -329,7 +329,7 @@ class While:
             if inner_var:
                 out_vars.append(inner_var)
 
-        x_name_list |= set(map(lambda x: x.name, out_vars))
+        x_name_list |= {x.name for x in out_vars}
         # NOTE(dev): cond_var has been contained in Input('Condition'), so
         # we remove it from Input('X')
         x_name_list -= {self.cond_var.name}
@@ -368,7 +368,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -462,11 +462,11 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
-            "but given shape as {0}.".format(list(pre_cond.shape))
+            f"but given shape as {list(pre_cond.shape)}."
         )
 
     if _non_static_mode():
-        now_cond = pre_cond.numpy().item()
+        now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -476,7 +476,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy().item()
+            now_cond = cond(*output_vars).item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
@@ -500,7 +500,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         except ValueError as e:
             raise ValueError(
                 "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
+                f"(length and structure) as loop_vars: {e}"
             )
         now_cond = cond(*output_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
@@ -839,7 +839,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        "The type of function for key {}".format(key),
+                        f"The type of function for key {key}",
                         "branch_fns",
                         "switch_case",
                         "callable",
@@ -968,7 +968,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
         assert pred.size == 1, "condition input's numel should be 1"
-        pred = pred.numpy().item()
+        pred = pred.item()
         if pred:
             if true_fn is not None:
                 if not callable(true_fn):

@@ -18,7 +18,7 @@ from typing import Set
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.core import (
     AnalysisConfig,
     PaddleDType,

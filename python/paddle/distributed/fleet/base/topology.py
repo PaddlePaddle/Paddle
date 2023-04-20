@@ -421,7 +421,7 @@ class _CommunicateGroup:
     def __init__(self):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
-        self.groups = dict()
+        self.groups = {}
 
     def set_comm_group(
         self, group_name, group_rank, group_size, ring_id, group_ranks

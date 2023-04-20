@@ -29,6 +29,7 @@ class OpVersion {
  public:
   explicit OpVersion(proto::OpVersion* desc) : desc_{desc} {}
   void SetVersionID(uint32_t version) { desc_->set_version(version); }
+  uint32_t get() const { return desc_->version(); }
 
  private:
   proto::OpVersion* desc_;

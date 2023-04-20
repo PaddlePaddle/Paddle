@@ -183,6 +183,23 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 14, 14],
+                "mask_data": [1, 9, 14, 14],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 32, 32],
+                "mask_data": [1, 9, 32, 32],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 14, 16],
+                "mask_data": [1, 9, 14, 16],
+            }
+
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -205,6 +222,11 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-5, 1e-5)
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28

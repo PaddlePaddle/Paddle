@@ -21,9 +21,9 @@ namespace phi {
 class KernelKey;
 class DenseTensor;
 /**
- * Note: GetKernelTypeForVarContext is currently designed to MKLDNN kernel when
+ * Note: GetKernelTypeForVarContext is currently designed for oneDNN kernel when
  * the related memeber function 'GetKernelTypeForVar' is special. It is
- * possiable to uesed for other custom hardwares in the future.
+ * possible to leverage to other vendor libraries in the future.
  */
 class GetKernelTypeForVarContext {
  public:

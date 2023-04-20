@@ -14,7 +14,7 @@
 
 import unittest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import Program, default_startup_program
 
 main_program = default_startup_program()
@@ -66,18 +66,16 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.output("Out"), ["mul.out"])
         self.assertEqual(
             set(mul_op.attr_names),
-            set(
-                [
-                    "x_num_col_dims",
-                    "y_num_col_dims",
-                    "op_role",
-                    "op_role_var",
-                    "op_namescope",
-                    "op_callstack",
-                    "op_device",
-                    "with_quant_attr",
-                ]
-            ),
+            {
+                "x_num_col_dims",
+                "y_num_col_dims",
+                "op_role",
+                "op_role_var",
+                "op_namescope",
+                "op_callstack",
+                "op_device",
+                "with_quant_attr",
+            },
         )
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)

@@ -176,7 +176,7 @@ class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
                               phi::DenseTensor *out) const = 0;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
@@ -190,7 +190,7 @@ class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeQuantizeDequantizeAbsMaxKernel
     : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
@@ -205,7 +205,7 @@ class FakeQuantizeDequantizeAbsMaxKernel
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -232,7 +232,7 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
     : public framework::OpKernel<T> {
  public:
@@ -257,7 +257,7 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -304,7 +304,7 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -367,9 +367,9 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
                               phi::DenseTensor *out) const = 0;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeQuantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
+    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
@@ -382,9 +382,9 @@ class FakeQuantizeMovingAverageAbsMaxKernel
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
-    : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
+    : public FakeMovingAverageAbsMaxKernelBase<T, DeviceContext> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
                       const phi::DenseTensor &in,
@@ -397,7 +397,7 @@ class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -445,7 +445,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

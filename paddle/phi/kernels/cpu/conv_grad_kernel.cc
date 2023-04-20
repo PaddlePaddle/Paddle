@@ -123,9 +123,12 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
 PD_REGISTER_KERNEL(
     conv3d_grad, CPU, ALL_LAYOUT, phi::Conv3DGradKernel, float, double) {}
 
-PD_REGISTER_KERNEL(
-    conv2d_grad_grad, CPU, ALL_LAYOUT, phi::ConvGradGradKernel, float, double) {
-}
+PD_REGISTER_KERNEL(conv2d_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ConvGradGradKernel,
+                   float,
+                   double) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    CPU,

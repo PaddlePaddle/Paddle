@@ -14,8 +14,12 @@
 
 #pragma once
 
+#include <future>  // NOLINT
+#include <unordered_map>
+
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
@@ -113,6 +117,39 @@ struct MemoryInterface {
    */
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  /**
+   * @brief get the memory usage of current GPU device.
+   *
+   * @param[size_t] available  device available memory to alloc
+   * @param[size_t] total      device total memory
+   */
+  void (*gpu_memory_usage)(size_t* available, size_t* total);
+#endif
+
+  /**
+   * @brief init devices info and device context
+   */
+  void (*init_devices)();
+
+  /**
+   * @brief create device_context by places and put them into
+   * place_to_device_context
+   *
+   * @param place_to_device_context the destination that device_context will be
+   * stored
+   * @param places the places that are related to device_context
+   * @param disable_setting_default_stream_for_allocator whether set default
+   * stream for allocator
+   * @param stream_priority set stream priority
+   */
+  void (*emplace_device_contexts)(
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          place_to_device_context,
+      const std::vector<phi::Place>& places,
+      bool disable_setting_default_stream_for_allocator,
+      int stream_priority);
 };
 
 class MemoryUtils {
@@ -234,12 +271,56 @@ class MemoryUtils {
     return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void GpuMemoryUsage(size_t* available, size_t* total) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NOT_NULL(
+        memory_method_->gpu_memory_usage,
+        phi::errors::Unavailable(
+            "gpu_memory_usage method in memory_method_ is not initiazed "
+            "yet. You need init it first."));
+    return memory_method_->gpu_memory_usage(available, total);
+  }
+#endif
+
+  void InitDevices() {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->init_devices,
+        nullptr,
+        phi::errors::Unavailable("init_devices method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    memory_method_->init_devices();
+  }
+
+  void EmplaceDeviceContexts(
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          place_to_device_context,
+      const std::vector<phi::Place>& places,
+      bool disable_setting_default_stream_for_allocator,
+      int stream_priority) {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->emplace_device_contexts,
+        nullptr,
+        phi::errors::Unavailable(
+            "emplace_device_contexts method in memory_method_ is not "
+            "initiazed yet. You need init it first."));
+    memory_method_->emplace_device_contexts(
+        place_to_device_context,
+        places,
+        disable_setting_default_stream_for_allocator,
+        stream_priority);
+  }
+
   void CheckMemoryMethod() {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
         nullptr,
-        phi::errors::Unavailable("memory_method_ in MemoryUtils is not "
-                                 "initiazed yet. You need init it first."));
+        phi::errors::Unavailable(
+            "memory_method_ in MemoryUtils is not "
+            "initiazed yet. You need init it first. If you compiled with "
+            "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
  private:
@@ -288,7 +369,59 @@ void Copy(const Place& dst_place,
           const Place& src_place,
           const void* src,
           size_t num);
+
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void GpuMemoryUsage(size_t* available, size_t* total);
+#endif
+
+void InitDevices();
+
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority);
+
+class Buffer {
+ public:
+  explicit Buffer(const phi::Place& place) : place_(place) {}
+
+  template <typename T>
+  T* Alloc(size_t size) {
+    using AllocT = typename std::
+        conditional<std::is_same<T, void>::value, uint8_t, T>::type;
+    if (UNLIKELY(size == 0)) return nullptr;
+    size *= sizeof(AllocT);
+    if (allocation_ == nullptr || allocation_->size() < size) {
+      allocation_ = memory_utils::Alloc(place_, size);
+    }
+    return reinterpret_cast<T*>(allocation_->ptr());
+  }
+
+  template <typename T>
+  const T* Get() const {
+    return reinterpret_cast<const T*>(
+        allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
+  }
+
+  template <typename T>
+  T* GetMutable() {
+    return reinterpret_cast<T*>(
+        allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
+  }
+
+  size_t Size() const { return allocation_ ? allocation_->size() : 0; }
+
+  phi::Place GetPlace() const { return place_; }
+
+ private:
+  Allocator::AllocationPtr allocation_;
+  phi::Place place_;
+};
+
 }  // namespace memory_utils
 
 }  // namespace phi

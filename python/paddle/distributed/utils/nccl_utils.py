@@ -49,3 +49,14 @@ def check_nccl_version_for_p2p():
         )
     else:
         logging.warning("No version for NCCL library found!")
+
+
+def check_nccl_version_for_bf16():
+    nccl_version_str = get_nccl_version_str()
+    if nccl_version_str:
+        nccl_version_str = nccl_version_str.replace("\n", "")
+        nccl_version_int = [int(s) for s in nccl_version_str.split(".")]
+        nccl_version_baseline = [2, 10, 0]
+        return nccl_version_int >= nccl_version_baseline
+
+    return False

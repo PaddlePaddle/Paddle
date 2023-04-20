@@ -91,14 +91,6 @@ DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus, beta, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid, slope, offset)
 
 template <typename T, typename Context>
-void HardSwishRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        float threshold,
-                        float scale,
-                        float offset,
-                        DenseTensor* out);
-
-template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out);

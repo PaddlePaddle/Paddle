@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle import fluid
+from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
@@ -30,7 +30,9 @@ class TestPyramidHashOpApi(unittest.TestCase):
         num_voc = 128
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
-        x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=x_shape, dtype='int32', lod_level=1
+        )
         hash_embd = fluid.contrib.layers.search_pyramid_hash(
             input=x,
             num_emb=embed_dim,

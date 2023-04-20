@@ -16,11 +16,10 @@ import os
 from collections import namedtuple
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.ascend import ascend_optimizer
-from paddle.fluid import unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.layer_helper import LayerHelper
 
 Block = namedtuple('Block', ['program'])
@@ -96,7 +95,9 @@ def init_communicator(
 
     with fluid.program_guard(main_program):
         op_type = "c_allreduce_sum"
-        data = fluid.layers.fill_constant(shape=[1], dtype='float32', value=2.5)
+        data = paddle.tensor.fill_constant(
+            shape=[1], dtype='float32', value=2.5
+        )
         helper = LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
