@@ -71,8 +71,8 @@ class TestHybridPipeParallel(TestMultipleGpus):
 
                 def check_names(dict_1, dict_2):
                     for (k, v) in dict_2.items():
-                        self.AssertTrue(k in dict_1)
-                        self.AssertEqual(
+                        self.assertTrue(k in dict_1)
+                        self.assertEqual(
                             getattr(v, "name", ""),
                             getattr(dict_1[k], "name", ""),
                         )
@@ -98,7 +98,7 @@ class TestHybridPipeParallel(TestMultipleGpus):
                 # check master weight
                 # check master wieghts
                 if "master_weights" in opt_2:
-                    self.AssertTrue("master_weights" in opt_1)
+                    self.assertTrue("master_weights" in opt_1)
                     check_names(
                         opt_2["master_weights"], opt_1["master_weights"]
                     )

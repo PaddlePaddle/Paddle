@@ -163,7 +163,7 @@ class PipeLineModelAdaptor:
     def extract_layers(self, dir: str, with_shared: bool):
         opt = paddle.load(dir + "/model_state.pdopt")
         params = paddle.load(dir + "/model.pdparams")
-        shared_parsed = False
+        shared_layer_parsed = False
         # tname -> (layer, param_name)
         tname_to_layer_and_pname = {}
         for (k, v) in params.items():
@@ -171,21 +171,19 @@ class PipeLineModelAdaptor:
             assert layer
             # special treatment for embedding layer, skip duplicated shared layer
             # shared layer may exist or not, if it exist it share weight with _layers.0
-            # _layers_.shared_layers.embed.word_embeddings.weight -> embedding_0.w_0
-            # _layers_.shared_layers.embed.position_embeddings.weight -> embedding_1.w_0
+            # _layers.shared_layers.embed.word_embeddings.weight -> embedding_0.w_0
+            # _layers.shared_layers.embed.position_embeddings.weight -> embedding_1.w_0
             # _layers.0.word_embeddings.weight -> embedding_0.w_0
             # _layers.0.position_embeddings.weight -> embedding_1.w_0
-            if "shared_layers" in layer:
-                shared_parsed = True
+            if "_layers.shared_layers" in layer:
+                shared_layer_parsed = True
 
-            if "shared_layers" not in layer and (
-                "word_embeddings" in k or "position_embeddings" in k
+            if (
+                "_layers.shared_layers" not in layer
+                and ("word_embeddings" in k or "position_embeddings" in k)
+                and shared_layer_parsed
             ):
-                if shared_parsed:
-                    continue
-                shared_layer = "_layers.shared_layers.embed"
-                k = shared_layer + k[len(layer) :]
-                layer = shared_layer
+                continue
             tname_to_layer_and_pname[v.name] = (layer, k)
 
             # get opt-> param mapping
@@ -326,6 +324,14 @@ class PipeLineModelAdaptor:
                         )
                     else:
                         segments[i].append(([f"_layers.{j}"], layers[j][1]))
+
+        shared_layer_exist = any(
+            "_layers.shared_layers" in e[0] for e in layers
+        )
+        if not shared_layer_exist:
+            return segments
+
+        # special treatment for shared layer
         if config.vpp > 1:
             segments[0] = [
                 ([layers[0][0], segments[0][0][0][0]], layers[0][1])
