@@ -576,7 +576,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       false);
 }
 
-void CheckTensorsInDifferentDevices(
+void CheckTensorsInDifferentCustomDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
       tensors.size() == 0,
@@ -643,7 +643,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
-  CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+  CheckTensorsInDifferentCustomDevices(tensors, static_cast<size_t>(GetSize()));
   return Collective(
       tensors,
       tensors,
@@ -700,7 +700,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
-  CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+  CheckTensorsInDifferentCustomDevices(tensors, static_cast<size_t>(GetSize()));
   return Collective(
       tensors,
       tensors,
