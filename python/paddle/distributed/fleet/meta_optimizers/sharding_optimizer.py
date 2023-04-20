@@ -269,11 +269,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._gradient_merge_acc_step = gm_acc_step
         self._optimizer_sharding = optimizer_sharding
 
-        # this feature is design for ascend, and should NOT be used in GPU training
-        self.pp_allreduce_in_optimize = sharding_configs[
-            "pp_allreduce_in_optimize"
-        ]
-
     def _inner_opt_minimize(
         self, loss, startup_program, parameter_list, no_grad_set
     ):
@@ -743,7 +738,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             )
 
     def _init_npu_pipeline_comm(self, startup_block):
-        # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
         assert (self.pp_degree % 2) == 0
 
         max_ring_id = -1

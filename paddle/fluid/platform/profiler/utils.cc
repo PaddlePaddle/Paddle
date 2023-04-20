@@ -165,8 +165,7 @@ const char* StringTracerEventType(TracerEventType type) {
                                          "Optimization",
                                          "Communication",
                                          "PythonOp",
-                                         "PythonUserDefined",
-                                         "MluRuntime"};
+                                         "PythonUserDefined"};
   return categary_name_[static_cast<int>(type)];
 }
 
