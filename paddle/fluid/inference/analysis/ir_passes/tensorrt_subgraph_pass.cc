@@ -485,18 +485,33 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     op_desc->SetAttr("model_opt_cache_dir",
                      Get<std::string>("model_opt_cache_dir"));
 
+  auto static_path = Get<std::string>("static_path");
+  auto predictor_id = Get<int>("predictor_id");
+  if (!static_path.empty() &&
+      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().Has(
+          static_path)) {
+    VLOG(3) << "TensorRT engine " << static_path
+            << " already existed, "
+               "create TensorRT engine with name "
+            << static_path + std::to_string(predictor_id);
+    static_path += std::to_string(predictor_id);
+  }
+  op_desc->SetAttr("static_path", static_path);
+
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
   // serialization is affected by max_batch_size, but calibration is not.
   // So we use separate engine keys in serialization and calibration.
   auto engine_key =
-      GenerateEngineKey(input_names_with_id,
-                        output_names_with_id,
-                        std::to_string(0),
-                        std::to_string(max_batch_size),
-                        std::to_string(static_cast<int>(precision_mode)),
-                        false);
+      !static_path.empty()
+          ? static_path
+          : GenerateEngineKey(input_names_with_id,
+                              output_names_with_id,
+                              std::to_string(0),
+                              std::to_string(max_batch_size),
+                              std::to_string(static_cast<int>(precision_mode)),
+                              false);
   auto calibration_engine_key =
       GenerateEngineKey(input_names_with_id,
                         output_names_with_id,
@@ -504,7 +519,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                         std::to_string(max_batch_size),
                         std::to_string(static_cast<int>(precision_mode)),
                         true);
-  auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = "";
@@ -610,20 +624,24 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
-        Get<std::string>("model_opt_cache_dir"), engine_key);
+        Get<std::string>("model_opt_cache_dir"), engine_key, static_path);
     // we can load the engine info serialized before from the disk.
     if (!trt_engine_serialized_data.empty()) {
       try {
         trt_engine->Deserialize(trt_engine_serialized_data);
         LOG(INFO) << "Load TRT Optimized Info from "
                   << GetTrtEngineSerializedPath(
-                         Get<std::string>("model_opt_cache_dir"), engine_key);
+                         Get<std::string>("model_opt_cache_dir"),
+                         engine_key,
+                         static_path);
         return;
       } catch (const std::exception &exp) {
         LOG(WARNING)
             << "Fail to load TRT Optimized Info from "
             << GetTrtEngineSerializedPath(
-                   Get<std::string>("model_opt_cache_dir"), engine_key)
+                   Get<std::string>("model_opt_cache_dir"),
+                   engine_key,
+                   static_path)
             << ". Engine deserialization failed: Serialized Engine Version "
                "does not match Current Version, TRT engine will be rebuilded";
       }
@@ -659,12 +677,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         std::string((const char *)serialized_engine_data->data(),
                     serialized_engine_data->size());
     SaveTrtEngineSerializedDataToFile(
-        GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
-                                   engine_key),
+        GetTrtEngineSerializedPath(
+            Get<std::string>("model_opt_cache_dir"), engine_key, static_path),
         trt_engine_serialized_data);
     LOG(INFO) << "Save TRT Optimized Info to "
               << GetTrtEngineSerializedPath(
-                     Get<std::string>("model_opt_cache_dir"), engine_key);
+                     Get<std::string>("model_opt_cache_dir"),
+                     engine_key,
+                     static_path);
   }
 }
 

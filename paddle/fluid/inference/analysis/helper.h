@@ -36,10 +36,12 @@ limitations under the License. */
 #include <io.h>
 #define GCC_ATTRIBUTE(attr__)
 #define MKDIR(path) _mkdir(path)
+#define RW_ACCESS(path) _access(path, 06)
 #else
 #include <unistd.h>
 #define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#define RW_ACCESS(path) access(path, R_OK | W_OK)
 #endif
 #define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
 
@@ -170,6 +172,10 @@ static bool PathExists(const std::string &path) {
   return false;
 }
 
+static inline bool PathRWAccess(const std::string &path) {
+  return RW_ACCESS(path.c_str()) != -1;
+}
+
 static std::string GetDirRoot(const std::string &path) {
   char sep_1 = '/', sep_2 = '\\';
 
@@ -203,6 +209,23 @@ static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
   return opt_cache_dir;
 }
 
+static void CheckModelStaticPathDir(const std::string &static_path) {
+  if (static_path.empty()) return;
+
+  auto static_path_dir = GetDirRoot(static_path);
+  PADDLE_ENFORCE_EQ(
+      PathExists(static_path_dir),
+      true,
+      platform::errors::PreconditionNotMet(
+          "static_path directory[%s] not exists", static_path_dir));
+  PADDLE_ENFORCE_EQ(
+      PathRWAccess(static_path_dir),
+      true,
+      platform::errors::PreconditionNotMet(
+          "static_path directory[%s] not have read or write permissions",
+          static_path_dir));
+}
+
 static std::string GetTrtCalibPath(const std::string &model_root,
                                    const std::string &engine_key) {
   return model_root + "/trt_calib_" + engine_key;
@@ -226,15 +249,20 @@ static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
   return "";
 }
 
-static std::string GetTrtEngineSerializedPath(const std::string &model_root,
-                                              const std::string &engine_key) {
+static std::string GetTrtEngineSerializedPath(
+    const std::string &model_root,
+    const std::string &engine_key,
+    const std::string &static_path = "") {
+  if (static_path != "") return static_path;
   return model_root + "/trt_serialized_" + engine_key;
 }
 
 static std::string GetTrtEngineSerializedData(
-    const std::string &model_opt_cache_dir, const std::string &engine_key) {
+    const std::string &model_opt_cache_dir,
+    const std::string &engine_key,
+    const std::string &static_path = "") {
   std::string trt_serialized_path =
-      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key, static_path);
   if (FileExists(trt_serialized_path)) {
     VLOG(3) << "Trt serialized file: " << trt_serialized_path
             << "is found here";
