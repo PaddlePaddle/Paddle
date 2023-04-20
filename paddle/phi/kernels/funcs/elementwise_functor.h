@@ -193,7 +193,7 @@ struct FMinFunctor<dtype::float16> {
 template <>
 struct FMinFunctor<dtype::bfloat16> {
   inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                              const dtype::bfloat16 b) const {
+                                               const dtype::bfloat16 b) const {
     float float_a = static_cast<float>(a);
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);

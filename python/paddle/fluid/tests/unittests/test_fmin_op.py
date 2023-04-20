@@ -257,8 +257,10 @@ class TestFminBF16OP(OpTest):
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
         y = x + sgn * np.random.uniform(1, 1, [13, 17]).astype("float32")
         out = np.fmin(x, y)
-
-        self.inputs = {'X': convert_float_to_uint16(x), 'Y': convert_float_to_uint16(y)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
