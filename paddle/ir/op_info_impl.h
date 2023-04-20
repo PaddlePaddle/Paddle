@@ -140,8 +140,8 @@ class OpInfoImpl {
     OpInfoImpl *p_opinfo_impl = reinterpret_cast<OpInfoImpl *>(base_ptr);
     VLOG(4) << "Construct op_info_impl at " << p_opinfo_impl << " ......";
     OpInfoImpl *op_info =
-        new (p_opinfo_impl) OpInfoImpl(p_first_interface,
-                                       p_first_trait,
+        new (p_opinfo_impl) OpInfoImpl(interfaces_num,
+                                       traits_num,
                                        ConcreteOp::attributes_name_,
                                        attributes_num,
                                        ir::TypeId::get<ConcreteOp>(),
@@ -152,17 +152,17 @@ class OpInfoImpl {
   void destroy() {
     VLOG(4) << "Destroy op_info impl at " << this;
     // (1) free interfaces
-    if (p_first_interface_) {
-      for (size_t i = 0; i < GetInterfacesNum(); i++) {
-        free((p_first_interface_ + i)->second);
+    void *base_ptr = reinterpret_cast<void *>(
+        reinterpret_cast<char *>(this) - sizeof(ir::TypeId) * num_traits_ -
+        sizeof(std::pair<ir::TypeId, void *>) * num_interfaces_);
+    if (num_interfaces_ > 0) {
+      std::pair<ir::TypeId, void *> *p_first_interface =
+          reinterpret_cast<std::pair<ir::TypeId, void *> *>(base_ptr);
+      for (size_t i = 0; i < num_interfaces_; i++) {
+        free((p_first_interface + i)->second);
       }
     }
     // (2) free memeory
-    void *base_ptr =
-        p_first_interface_
-            ? reinterpret_cast<void *>(p_first_interface_)
-            : (p_first_trait_ ? reinterpret_cast<void *>(p_first_trait_)
-                              : reinterpret_cast<void *>(this));
     VLOG(4) << "Free base_ptr " << base_ptr;
     free(base_ptr);
   }
@@ -176,10 +176,12 @@ class OpInfoImpl {
   }
 
   bool HasTrait(TypeId trait_id) const {
-    size_t traits_num = GetTraitsNum();
-    if (traits_num > 0) {
+    if (num_traits_ > 0) {
+      TypeId *p_first_trait = reinterpret_cast<TypeId *>(
+          reinterpret_cast<char *>(const_cast<OpInfoImpl *>(this)) -
+          sizeof(ir::TypeId) * num_traits_);
       return std::binary_search(
-          p_first_trait_, p_first_trait_ + traits_num, trait_id);
+          p_first_trait, p_first_trait + num_traits_, trait_id);
     }
     return false;
   }
@@ -190,10 +192,14 @@ class OpInfoImpl {
   }
 
   bool HasInterface(TypeId interface_id) const {
-    size_t interfaces_num = GetInterfacesNum();
-    if (interfaces_num > 0) {
-      return std::binary_search(p_first_interface_,
-                                p_first_interface_ + interfaces_num,
+    if (num_interfaces_ > 0) {
+      std::pair<ir::TypeId, void *> *p_first_interface =
+          reinterpret_cast<std::pair<ir::TypeId, void *> *>(
+              reinterpret_cast<char *>(const_cast<OpInfoImpl *>(this)) -
+              sizeof(ir::TypeId) * num_traits_ -
+              sizeof(std::pair<ir::TypeId, void *>) * num_interfaces_);
+      return std::binary_search(p_first_interface,
+                                p_first_interface + num_interfaces_,
                                 std::make_pair(interface_id, nullptr),
                                 CompareInterface);
     }
@@ -202,18 +208,22 @@ class OpInfoImpl {
 
   template <typename Interface>
   typename Interface::Concept *GetInterfaceImpl() const {
-    ir::TypeId interface_id = ir::TypeId::get<Interface>();
-    size_t interfaces_num = GetInterfacesNum();
-    if (interfaces_num > 0) {
+    if (num_interfaces_ > 0) {
+      ir::TypeId interface_id = ir::TypeId::get<Interface>();
+      std::pair<ir::TypeId, void *> *p_first_interface =
+          reinterpret_cast<std::pair<ir::TypeId, void *> *>(
+              reinterpret_cast<char *>(const_cast<OpInfoImpl *>(this)) -
+              sizeof(ir::TypeId) * num_traits_ -
+              sizeof(std::pair<ir::TypeId, void *>) * num_interfaces_);
       int left = 0;
-      int right = interfaces_num - 1;
+      int right = num_interfaces_ - 1;
       int mid = 0;
       while (left <= right) {
         mid = (left + right) / 2;
-        if ((p_first_interface_ + mid)->first == interface_id) {
+        if ((p_first_interface + mid)->first == interface_id) {
           return reinterpret_cast<typename Interface::Concept *>(
-              (p_first_interface_ + mid)->second);
-        } else if ((p_first_interface_ + mid)->first < interface_id) {
+              (p_first_interface + mid)->second);
+        } else if ((p_first_interface + mid)->first < interface_id) {
           left = mid + 1;
         } else {
           right = mid - 1;
@@ -223,36 +233,15 @@ class OpInfoImpl {
     return nullptr;
   }
 
-  size_t GetInterfacesNum() const {
-    if (p_first_interface_ == nullptr) {
-      return 0;
-    }
-    std::pair<ir::TypeId, void *> *p_end_interface_ =
-        p_first_trait_
-            ? reinterpret_cast<std::pair<ir::TypeId, void *> *>(p_first_trait_)
-            : reinterpret_cast<std::pair<ir::TypeId, void *> *>(
-                  const_cast<OpInfoImpl *>(this));
-    return std::distance(p_first_interface_, p_end_interface_);
-  }
-
-  size_t GetTraitsNum() const {
-    if (p_first_trait_ == nullptr) {
-      return 0;
-    }
-    return std::distance(
-        p_first_trait_,
-        reinterpret_cast<TypeId *>(const_cast<OpInfoImpl *>(this)));
-  }
-
  private:
-  OpInfoImpl(std::pair<TypeId, void *> *p_first_interface,
-             TypeId *p_first_trait,
+  OpInfoImpl(uint32_t num_interfaces,
+             uint32_t num_traits,
              const char **p_attributes,
              uint32_t num_attributes,
              TypeId op_id,
              const char *op_name)
-      : p_first_interface_(p_first_interface),
-        p_first_trait_(p_first_trait),
+      : num_interfaces_(num_interfaces),
+        num_traits_(num_traits),
         p_attributes_(p_attributes),
         num_attributes_(num_attributes),
         op_id_(op_id),
@@ -264,10 +253,10 @@ class OpInfoImpl {
   }
 
   /// Interface will be recorded by std::pair<TypeId, void*>.
-  std::pair<TypeId, void *> *p_first_interface_{nullptr};
+  uint32_t num_interfaces_ = 0;
 
   /// Trait will be recorded by TypeId.
-  TypeId *p_first_trait_{nullptr};
+  uint32_t num_traits_ = 0;
 
   /// Attributes array address.
   const char **p_attributes_{nullptr};

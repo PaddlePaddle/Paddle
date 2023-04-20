@@ -52,7 +52,7 @@ class OpInfo {
   friend struct std::hash<OpInfo>;
 
  private:
-  const OpInfoImpl *impl_{nullptr};
+  const OpInfoImpl *impl_{nullptr};  // not owned
 };
 
 }  // namespace ir
