@@ -47,7 +47,7 @@ def resnet_unit(
     has_shortcut,
     has_dx,
     use_global_stats,
-    is_test,
+    training,
     act,
 ):
 
@@ -123,7 +123,7 @@ def resnet_unit(
         'has_shortcut': has_shortcut,
         'has_dx': has_dx,
         'use_global_stats': use_global_stats,
-        'is_test': is_test,
+        'is_test': not training,
         'act_type': act,
     }
 
@@ -360,7 +360,7 @@ class ResNetUnit(Layer):
             self._has_shortcut,
             self._has_dx,
             self._use_global_stats,
-            self._is_test,
+            self.training,
             self._act,
         )
         return out
