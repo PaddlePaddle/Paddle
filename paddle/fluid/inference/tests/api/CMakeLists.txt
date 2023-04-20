@@ -981,6 +981,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     ${INFERENCE_C_EXTRA_DEPS}
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  inference_analysis_test(
+    trt_rebind_stream_test
+    SRCS
+    trt_rebind_stream_test.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    ARGS
+    --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   if(WIN32)
     target_link_libraries(test_analyzer_capi_exp_gpu paddle_inference_c_shared)
   else()
@@ -1346,6 +1354,8 @@ if(WITH_GPU)
 endif()
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
+  set_tests_properties(trt_rebind_stream_test PROPERTIES LABELS
+                                                         "RUN_TYPE=EXCLUSIVE")
   if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
   endif()
