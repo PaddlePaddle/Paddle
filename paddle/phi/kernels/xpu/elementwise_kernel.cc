@@ -63,7 +63,7 @@ void RemainderKernel(const Context& dev_ctx,
     return xpu::broadcast_mod<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
 }
 
 template <typename T, typename Context>
