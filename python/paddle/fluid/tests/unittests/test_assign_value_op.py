@@ -72,9 +72,6 @@ class TestAssignValueOp4(TestAssignValueOp):
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestAssignValueOpFp16(TestAssignValueOp):
     def init_data(self):
         self.dtype = np.float16
