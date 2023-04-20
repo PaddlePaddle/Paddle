@@ -15,7 +15,7 @@ limitations under the License. */
 #include <numeric>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/inference/tests/api/trt_test_helper.h"
+#include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
