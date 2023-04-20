@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 PHI_DECLARE_bool(enable_opt_get_features);
 PHI_DECLARE_bool(graph_metapath_split_opt);
@@ -602,8 +603,7 @@ __global__ void FillActualNeighbors(int64_t *vals,
 }
 
 int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
-                                            bool gpu_graph_training,
-                                            size_t cursor) {
+                                            bool gpu_graph_training) {
   id_tensor_ptr_ =
       feed_vec_[0]->mutable_data<int64_t>({total_instance, 1}, this->place_);
   show_tensor_ptr_ =
@@ -630,7 +630,7 @@ int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
   } else {
     // infer
     uint64_t *d_type_keys =
-        reinterpret_cast<uint64_t *>(d_device_keys_[cursor]->ptr());
+        reinterpret_cast<uint64_t *>(d_device_keys_[infer_cursor_]->ptr());
     d_type_keys += infer_node_start_;
     infer_node_start_ += total_instance / 2;
     CopyDuplicateKeys<<<GET_BLOCKS(total_instance / 2),
@@ -906,7 +906,7 @@ int GraphDataGenerator::GenerateBatch() {
       if (total_instance == 0) {
         return 0;
       }
-      FillIdShowClkTensor(total_instance, conf_.gpu_graph_training, cursor_);
+      FillIdShowClkTensor(total_instance, conf_.gpu_graph_training);
     } else {
       if (sage_batch_count_ == sage_batch_num_) {
         return 0;
@@ -2110,7 +2110,7 @@ void GraphDataGenerator::DoWalkandSage() {
         total_instance *= 2;
         while (total_instance != 0) {
           uint64_t *d_type_keys =
-              reinterpret_cast<uint64_t *>(d_device_keys_[cursor_]->ptr());
+              reinterpret_cast<uint64_t *>(d_device_keys_[infer_cursor_]->ptr());
           d_type_keys += infer_node_start_;
           infer_node_start_ += total_instance / 2;
           auto node_buf = memory::AllocShared(
@@ -2239,7 +2239,7 @@ int GraphDataGenerator::FillInferBuf() {
     infer_node_start_ = global_infer_node_type_start[infer_cursor];
     global_infer_node_type_start[infer_cursor] += total_row_;
     infer_node_end_ = global_infer_node_type_start[infer_cursor];
-    cursor_ = infer_cursor;
+    infer_cursor_ = infer_cursor;
     return 1;
   }
   return 0;
@@ -2298,51 +2298,108 @@ int GraphDataGenerator::FillWalkBuf() {
       buf_size_ - conf_.walk_degree * conf_.once_sample_startid_len * conf_.walk_len;
   int total_samples = 0;
 
-  // FIXME, 限制pass内采样batch数, 临时解决方案.
-  // 规避由于d_walk打满导致的多卡pass级batch不一致导致的卡住问题
-  // 不影响样本量, 后面将使用规范方案解决这个问题.
-  while (i <= remain_size && sample_times < 40) {
+  // Definition of variables related to multi machine sampling
+  int switch_flag = EVENT_NOT_SWTICH; // Mark whether the local machine needs to switch metapath
+  int switch_command = EVENT_NOT_SWTICH; // Mark whether to switch metapath, after multi node sync
+  int sample_flag = EVENT_CONTINUE_SAMPLE; // Mark whether the local machine needs to continue sampling
+  int sample_command = EVENT_CONTINUE_SAMPLE; // Mark whether to continue sampling, after multi node sync
+
+  // In the case of a single machine, for scenarios where the d_walk buffer is full,
+  // epoch sampling ends, and metapath switching occurs, direct decisions are made
+  // to end the current card sampling or perform metapath switching.
+  // However, in the case of multiple machines, further decisions can only be made
+  // after waiting for the multiple machines to synchronize and exchange information.
+  while (1) {
+    if (i > remain_size) {
+      // scenarios 1: d_walk is full
+      if (!is_multi_node_) {
+        break;
+      } else {
+        sample_flag = EVENT_WALKBUF_FULL;
+      }
+    }
+
     int cur_node_idx = cursor % node_type_len;
     int node_type = first_node_type[cur_node_idx];
     auto &path = meta_path[cur_node_idx];
     size_t start = node_type_start[node_type];
-    VLOG(2) << "cur_node_idx = " << cur_node_idx
-            << " meta_path.size = " << meta_path.size();
-    // auto node_query_result = gpu_graph_ptr->query_node_list(
-    //     conf_.gpuid, node_type, start, conf_.once_sample_startid_len);
-
-    // int tmp_len = node_query_result.actual_sample_size;
-    VLOG(2) << "choose start type: " << node_type;
     int type_index = type_to_index[node_type];
     size_t device_key_size = h_device_keys_len_[type_index];
-    VLOG(2) << "type: " << node_type << " size: " << device_key_size
-            << " start: " << start;
     uint64_t *d_type_keys =
         reinterpret_cast<uint64_t *>(d_device_keys_[type_index]->ptr());
     int tmp_len = start + conf_.once_sample_startid_len > device_key_size
                       ? device_key_size - start
                       : conf_.once_sample_startid_len;
-    bool update = true;
+    VLOG(2) << "choose node_type: " << node_type
+        << " cur_node_idx: " << cur_node_idx
+        << " meta_path.size: " << meta_path.size()
+        << " key_size: " << device_key_size
+        << " start: " << start
+        << " tmp_len: " << tmp_len;
     if (tmp_len == 0) {
       finish_node_type.insert(node_type);
       if (finish_node_type.size() == node_type_start.size()) {
-        cursor = 0;
-        epoch_finish_ = true;
-        break;
+        // scenarios 2: epoch finish
+        if (!is_multi_node_) {
+          cursor = 0;
+          epoch_finish_ = true;
+          break;
+        } else {
+          sample_flag = EVENT_FINISH_EPOCH;
+        }
       }
-      cursor += 1;
-      continue;
+
+      // scenarios 3: switch metapath
+      if (!is_multi_node_) {
+        cursor += 1;
+        continue;
+      } else if (sample_flag == EVENT_CONTINUE_SAMPLE) {
+        // Switching only occurs when multi machine sampling continues
+        switch_flag = EVENT_SWTICH_METAPATH;
+      }
     }
 
-    VLOG(2) << "gpuid = " << conf_.gpuid << " path[0] = " << path[0];
+    // Perform synchronous information exchange between multiple machines
+    // to decide whether to continue sampling
+    if (is_multi_node_) {
+      switch_command = multi_node_sync_sample(switch_flag, ncclProd);
+      VLOG(2) << "gpuid:" << conf_.gpuid << " multi node sample sync"
+          << " switch_flag:" << switch_flag << "," << switch_command;
+      if (switch_command) {
+        cursor += 1;
+        switch_flag = EVENT_NOT_SWTICH;
+        continue;
+      }
+
+      sample_command = multi_node_sync_sample(sample_flag, ncclMax);
+      VLOG(2) << "gpuid:" << conf_.gpuid << " multi node sample sync"
+          << " sample_flag:" << sample_flag << "," << sample_command;
+      if (sample_command == EVENT_FINISH_EPOCH) {
+        // end sampling current epoch
+        cursor = 0;
+        epoch_finish_ = true;
+        VLOG(0) << "sample epoch finish!";
+        break;
+      } else if (sample_command == EVENT_WALKBUF_FULL) {
+        // end sampling current pass 
+        VLOG(0) << "sample pass finish!";
+        break;
+      } else if (sample_command == EVENT_CONTINUE_SAMPLE) {
+        // continue sampling
+      } else {
+        // shouldn't come here
+        VLOG(0) << "should not come here, sample_command:" << sample_command;
+        assert(false);
+      }
+    }
+
+    int step = 1;
+    bool update = true;
     uint64_t *cur_walk = walk + i;
     uint8_t *cur_walk_ntype = NULL;
     if (conf_.need_walk_ntype) {
       cur_walk_ntype = walk_ntype + i;
     }
-
-    int step = 1;
-    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
 
     NeighborSampleQuery q;
     q.initialize(conf_.gpuid,
@@ -2356,28 +2413,40 @@ int GraphDataGenerator::FillWalkBuf() {
 
     jump_rows_ = sample_res.total_sample_size;
     total_samples += sample_res.total_sample_size;
-    VLOG(2) << "i = " << i << " start = " << start << " tmp_len = " << tmp_len
-            << " cursor = " << node_type << " cur_node_idx = " << cur_node_idx
-            << " jump row: " << jump_rows_;
-    VLOG(2) << "jump_row: " << jump_rows_;
-    if (jump_rows_ == 0) {
-      node_type_start[node_type] = tmp_len + start;
-      cursor += 1;
-      continue;
+
+    if (!is_multi_node_) {
+      if (jump_rows_ == 0) {
+        node_type_start[node_type] = tmp_len + start;
+        cursor += 1;
+        continue;
+      }
+    } else {
+      int flag = jump_rows_ > 0 ? 1 : 0;
+      int command = multi_node_sync_sample(flag, ncclMax);
+      VLOG(2) << "gpuid:" << conf_.gpuid << " multi node step sync"
+          << " step:" << step
+          << " step_sample:" << flag << "," << command;
+      if (command <= 0) {
+        node_type_start[node_type] = tmp_len + start;
+        cursor += 1;
+        continue;
+      }
     }
 
     if (!conf_.sage_mode) {
       if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
         if (InsertTable(d_type_keys + start, tmp_len, d_uniq_node_num_) != 0) {
-          VLOG(2) << "in step 0, insert key stage, table is full";
+          VLOG(2) << "gpu:" << conf_.gpuid << " in step 0, insert key stage, table is full";
           update = false;
+          assert(false);
           break;
         }
         if (InsertTable(sample_res.actual_val,
                         sample_res.total_sample_size,
                         d_uniq_node_num_) != 0) {
-          VLOG(2) << "in step 0, insert sample res stage, table is full";
+          VLOG(2) << "gpu:" << conf_.gpuid << " in step 0, insert sample res, table is full";
           update = false;
+          assert(false);
           break;
         }
       }
@@ -2399,20 +2468,33 @@ int GraphDataGenerator::FillWalkBuf() {
       }
     }
 
-    VLOG(2) << "sample, step=" << step << " sample_keys=" << tmp_len
-            << " sample_res_len=" << sample_res.total_sample_size;
-
     /////////
     step++;
     size_t path_len = path.size();
     for (; step < conf_.walk_len; step++) {
-      if (sample_res.total_sample_size == 0) {
-        VLOG(2) << "sample finish, step=" << step;
-        break;
+      if (!is_multi_node_) {
+        // Finish multi-step sampling in single node
+        if (sample_res.total_sample_size == 0) {
+          VLOG(2) << "sample finish, step=" << step;
+          break;
+        }
+      } else {
+        // Step synchronization for multi-step sampling in multi node
+        int flag = sample_res.total_sample_size > 0 ? 1 : 0;
+        int command = multi_node_sync_sample(flag, ncclMax);
+        VLOG(2) << "gpuid:" << conf_.gpuid << " multi node step sync"
+            << " step:" << step
+            << " step_sample:" << flag << "," << command;
+        if (command <= 0) {
+          break;
+        }
       }
+
       auto sample_key_mem = sample_res.actual_val_mem;
-      uint64_t *sample_keys_ptr =
-          reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
+      uint64_t *sample_keys_ptr = nullptr;
+      if (sample_key_mem) {
+        sample_keys_ptr = reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
+      }
       int edge_type_id = path[(step - 1) % path_len];
       VLOG(2) << "sample edge type: " << edge_type_id << " step: " << step;
       q.initialize(conf_.gpuid,
@@ -2429,8 +2511,9 @@ int GraphDataGenerator::FillWalkBuf() {
           if (InsertTable(sample_res.actual_val,
                           sample_res.total_sample_size,
                           d_uniq_node_num_) != 0) {
-            VLOG(2) << "in step: " << step << ", table is full";
+            VLOG(0) << "gpu:" << conf_.gpuid << " in step: " << step << ", table is full";
             update = false;
+            assert(false);
             break;
           }
         }
@@ -2450,10 +2533,8 @@ int GraphDataGenerator::FillWalkBuf() {
           VLOG(2) << "h_walk[" << xx << "]: " << h_walk[xx];
         }
       }
-
-      VLOG(2) << "sample, step=" << step << " sample_keys=" << sample_key_len
-              << " sample_res_len=" << sample_res.total_sample_size;
     }
+
     // 此时更新全局采样状态
     if (update == true) {
       node_type_start[node_type] = tmp_len + start;
@@ -2462,9 +2543,18 @@ int GraphDataGenerator::FillWalkBuf() {
       cursor += 1;
       sample_times++;
     } else {
-      VLOG(2) << "table is full, not update stat!";
+      VLOG(0) << "table is full, multi node will suspend!";
+      assert(false);
       break;
     }
+
+    VLOG(2) << "sample " << sample_times << " finish, node_type=" << node_type
+        << ", path:[" << path[0] << "," << path[1] << "]"
+        << ", start:" << start
+        << ", len:" << tmp_len
+        << ", row:" << jump_rows_
+        << ", total_step:" << step
+        << ", device_key_size:" << device_key_size;
   }
   platform::CUDADeviceGuard guard2(gpuid_);
   buf_state_.Reset(total_row_);
@@ -2844,7 +2934,7 @@ void GraphDataGenerator::AllocResource(
                   0,
                   (once_max_sample_keynum + 1) * sizeof(int),
                   sample_stream_);
-  cursor_ = 0;
+  infer_cursor_ = 0;
   jump_rows_ = 0;
   d_uniq_node_num_ = memory::AllocShared(
       place_,
@@ -3016,6 +3106,13 @@ void GraphDataGenerator::AllocResource(
             << infer_node_type_index_set_.size();
   }
 
+  int *stat_ptr = multi_node_sync_stat_.mutable_data<int>(place_, sizeof(int) * 4);
+  int flags[4] = {0, 1, 2, 0};
+  cudaMemcpyAsync(stat_ptr,  // output
+          &flags,
+          sizeof(int) * 4,
+          cudaMemcpyHostToDevice,
+          sample_stream_);
   cudaStreamSynchronize(sample_stream_);
 
   debug_gpu_memory_info(conf_.gpuid, "AllocResource end");
@@ -3127,6 +3224,36 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
     write_count = fwrite_unlocked("\n", 1, 1, fp.get());
   }
 #endif
+}
+
+int GraphDataGenerator::multi_node_sync_sample(int flag, const ncclRedOp_t& op) {
+  if (flag < 0 && flag > 2) {
+    VLOG(0) << "invalid flag! " << flag;
+    assert(false);
+    return -1;
+  }
+
+  int ret = 0;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+  int *stat_ptr = multi_node_sync_stat_.data<int>();
+  auto comm =
+      platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
+  auto stream = comm->stream();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                              &stat_ptr[3],
+                                                              1,
+                                                              ncclInt,
+                                                              op,
+                                                              comm->comm(),
+                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
+                                             &stat_ptr[3],
+                                             sizeof(int),
+                                             cudaMemcpyDeviceToHost,
+                                             stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+#endif
+  return ret;
 }
 
 }  // namespace framework

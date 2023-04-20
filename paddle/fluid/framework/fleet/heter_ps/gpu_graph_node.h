@@ -95,7 +95,8 @@ struct GpuPsCommGraph {
     node_size = 0;
     neighbor_size = 0;
   }
-  void display_on_cpu() const {
+  void display_on_cpu(int edge_idx=-1) const {
+    /*
     VLOG(0) << "neighbor_size = " << neighbor_size;
     VLOG(0) << "node_size = " << node_size;
     for (int64_t i = 0; i < neighbor_size; i++) {
@@ -104,11 +105,19 @@ struct GpuPsCommGraph {
         VLOG(0) << "neighbor weight " << i << " " << (float)weight_list[i];
       }
     }
+    */
     for (int64_t i = 0; i < node_size; i++) {
       auto id = node_list[i];
       auto val = node_info_list[i];
-      VLOG(0) << "node id " << id << "," << val.neighbor_offset << ":"
-              << val.neighbor_size;
+      if (id % 10000 != 1) continue;
+      //VLOG(0) << "node id " << id << "," << val.neighbor_offset << ":"
+       //       << val.neighbor_size;
+      std::string neighbor_str;
+      for (size_t j = 0; j < val.neighbor_size; ++j) {
+        if (j > 0) neighbor_str += ";";
+        neighbor_str += std::to_string(neighbor_list[val.neighbor_offset + j]);
+      }
+      VLOG(0) << "node id " << id << ", edge_idx:" << edge_idx << ", " << val.neighbor_offset << ":" << val.neighbor_size << " " << neighbor_str;
     }
   }
 };
@@ -195,6 +204,7 @@ struct NeighborSampleResult {
   cudaStream_t stream = 0;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
   std::shared_ptr<memory::Allocation> actual_val_mem;
+  NeighborSampleQuery query;
   uint64_t *get_val() { return val; }
   uint64_t get_actual_val() { return (uint64_t)actual_val; }
   int *get_actual_sample_size() { return actual_sample_size; }
@@ -230,6 +240,10 @@ struct NeighborSampleResult {
 
   void display() {
     VLOG(0) << "in node sample result display ------------------";
+    uint64_t *sample_keys = new uint64_t[query.len];
+    cudaMemcpy(
+        sample_keys, query.src_nodes, query.len * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+
     int64_t *res = new int64_t[sample_size * key_size];
     cudaMemcpy(res,
                val,
@@ -252,23 +266,32 @@ struct NeighborSampleResult {
 
     int start = 0;
     for (int i = 0; i < key_size; i++) {
-      std::string neighbor2;
-      for (int j = 0; j < ac_size[i]; j++) {
-        if (neighbor2.size() > 0) neighbor2 += ";";  // r
-        neighbor2 += std::to_string(res2[start + j]);  // r
+      auto key = sample_keys[i];
+#if 0
+      if (key % 10000 != 1) {
+        start += ac_size[i];  // r
+        continue;
       }
-      VLOG(0) << "actual sample size for " << i << "th key is " << ac_size[i];
-      VLOG(0) << "sampled neighbors are " << neighbor2;
+#endif
+      std::string neighbor;
+      for (int j = 0; j < ac_size[i]; j++) {
+        if (neighbor.size() > 0) neighbor += ";";  // r
+        neighbor += std::to_string(res2[start + j]);  // r
+      }
+      VLOG(0) << "sample key:" << key
+          << " gpu_id:" << query.gpu_id
+          << " sample_size:" << query.sample_size
+          << " sample_step:" << query.sample_step
+          << " table_index:" << query.table_idx
+          << " ac_size:" << ac_size[i]
+          << " neighbor:" << neighbor;
       start += ac_size[i];  // r
-      break;
     }
     delete[] res;
     delete[] res2;  // r
     delete[] ac_size;
-    VLOG(0) << " ------------------";
   }
   void display2() {
-    //VLOG(0) << "in node sample result display -----";
     uint64_t *res = new uint64_t[total_sample_size];
     cudaMemcpy(res,
                actual_val,

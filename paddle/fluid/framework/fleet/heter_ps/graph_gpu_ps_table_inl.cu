@@ -1662,12 +1662,12 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
   auto &loc = storage_[gpu_id];
   auto stream = resource_->local_stream(gpu_id, 0);
 
-  loc.alloc(len, sizeof(uint64_t)/*key_bytes*/);
+  loc.alloc(len, sizeof(uint64_t)/*value_bytes*/);
 
 
   // all2all mode begins. init resource, partition keys, pull vals by all2all
   auto pull_size = gather_inter_keys_by_all2all(gpu_id, len, d_keys, stream);
-  VLOG(0) << "gather_inter_keys_by_all2all finish, pull_size=" << pull_size << ", len=" << len;
+  VLOG(2) << "gather_inter_keys_by_all2all finish, pull_size=" << pull_size << ", len=" << len;
 
 
   // do single-node multi-card sampling
@@ -1679,7 +1679,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
                                          cpu_query_switch,
                                          compress,
                                          weighted);
-  VLOG(0) << "graph_neighbor_sample_v2 local finish"
+  VLOG(2) << "graph_neighbor_sample_v2 local finish"
       << ", gpu_id=" << gpu_id
       << ", pull_size=" << pull_size
       << ", total_sample_size=" << result.total_sample_size;
@@ -1697,7 +1697,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
                                  reinterpret_cast<uint64_t*>(final.val), // out
                                  reinterpret_cast<uint64_t*>(loc.d_merged_vals), // tmp hbm
                                  stream);
-  VLOG(0) << "scatter_inter_vals_by_all2all val finish" << " gpu_id=" << gpu_id;
+  VLOG(2) << "scatter_inter_vals_by_all2all val finish" << " gpu_id=" << gpu_id;
 
   // all2all mode finish, scatter sample sizes of every node by all2all
   scatter_inter_vals_by_all2all_common(gpu_id,
@@ -1707,7 +1707,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
                                  reinterpret_cast<int*>(final.actual_sample_size), // out
                                  reinterpret_cast<int*>(loc.d_merged_vals), // temp hbm
                                  stream);
-  VLOG(0) << "scatter_inter_vals_by_all2all actual_sample_size finish" << " gpu_id=" << gpu_id;
+  VLOG(2) << "scatter_inter_vals_by_all2all actual_sample_size finish" << " gpu_id=" << gpu_id;
 
   // build final.actual_val
   if (compress) {
@@ -1747,7 +1747,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
                                stream));
     CUDA_CHECK(cudaStreamSynchronize(stream));
     final.set_total_sample_size(total_sample_size);
-    //VLOG(0) << "InclusiveSum finish";
 
     final.actual_val_mem = memory::AllocShared(
         place,
@@ -1756,7 +1755,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
     final.actual_val =
         reinterpret_cast<uint64_t*>((final.actual_val_mem)->ptr());
 
-    VLOG(0) << "sample step:" << sample_step
+    VLOG(2) << "sample step:" << sample_step
         << ", total_sample_size:" << total_sample_size
         << ", len=" << len
         << ", final.val=" << final.val

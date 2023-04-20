@@ -928,6 +928,13 @@ struct BufState {
   }
 };
 
+/// Related behaviors and events during sampling
+const int EVENT_FINISH_EPOCH = 0;       // End of sampling single epoch
+const int EVENT_CONTINUE_SAMPLE = 1;    // Continue sampling
+const int EVENT_WALKBUF_FULL = 2;       // d_walk is full, end current pass sampling
+const int EVENT_NOT_SWTICH = 0;         // Continue sampling on the current metapath.
+const int EVENT_SWTICH_METAPATH = 1;    // Switch to the next metapath to perform sampling
+
 struct GraphDataGeneratorConfig {
   bool need_walk_ntype;
   int batch_size;
@@ -973,8 +980,7 @@ class GraphDataGenerator {
                    int step);
   int FillInsBuf(cudaStream_t stream);
   int FillIdShowClkTensor(int total_instance,
-                          bool gpu_graph_training,
-                          size_t cursor = 0);
+                          bool gpu_graph_training);
   int FillGraphIdShowClkTensor(int uniq_instance,
                                int total_instance,
                                int index);
@@ -1034,11 +1040,12 @@ class GraphDataGenerator {
   bool get_epoch_finish() { return epoch_finish_; }
   int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
+  int multi_node_sync_sample(int flag, const ncclRedOp_t& op);
 
  protected:
   HashTable<uint64_t, uint64_t>* table_;
   GraphDataGeneratorConfig conf_;
-  size_t cursor_;
+  size_t infer_cursor_;
   size_t jump_rows_;
   int edge_to_id_len_;
   int64_t* id_tensor_ptr_;
@@ -1132,6 +1139,7 @@ class GraphDataGenerator {
   bool weighted_sample_;
   bool return_weight_;
   bool is_multi_node_;
+  phi::DenseTensor multi_node_sync_stat_;
 };
 
 class DataFeed {

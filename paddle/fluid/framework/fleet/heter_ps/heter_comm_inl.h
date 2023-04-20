@@ -2670,7 +2670,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
           max_value_bound_,
           stream);
       scatter_inter_vals_by_all2all(gpu_id,
-                                     pull_size,
+                                     fea_num,
                                      loc.d_merged_push_vals,
                                      loc.d_merged_push_vals,
                                      value_bytes,
@@ -2687,7 +2687,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse_all2all(
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     } else {
       scatter_inter_vals_by_all2all(gpu_id,
-                                     pull_size,
+                                     fea_num,
                                      loc.d_merged_vals,
                                      d_vals,
                                      pull_type_size_,
@@ -2927,6 +2927,13 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::partition_shard_keys(
     const cudaStream_t &stream) {
   DevPlace place = DevPlace(gpu_id);
   AnyDeviceGuard guard(gpu_id);
+
+  if (len <= 0) {
+    for (int i = 0; i < shard_num; ++i) {
+      h_part_sizes[i] = 0;
+    }
+    return;
+  }
 
   thread_local std::shared_ptr<memory::Allocation> d_offset_tmp = nullptr;
   uint32_t *d_left = AllocCache<uint32_t>(
