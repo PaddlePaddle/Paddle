@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import static
-from paddle.fluid import dygraph
+from paddle.fluid import core, dygraph
 
 paddle.enable_static()
 
@@ -51,12 +51,15 @@ class TestComplexOp(OpTest):
     def init_spec(self):
         self.x_shape = [10, 10]
         self.y_shape = [10, 10]
-        self.dtype = "float64"
+
+    def init_dtype(self):
+        self.dtype = 'float64'
 
     def setUp(self):
         self.op_type = "complex"
         self.python_api = paddle.complex
         self.init_spec()
+        self.init_dtype()
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         y = np.random.randn(*self.y_shape).astype(self.dtype)
         out_ref = ref_complex(x, y)
@@ -157,6 +160,82 @@ class TestComplexAPI(unittest.TestCase):
             mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
         )
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestComplexFP16OP(TestComplexOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestComplexBF16(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.dtype = np.uint16
+
+    def setUp(self):
+        self.op_type = "complex"
+        self.python_api = paddle.complex
+        self.init_spec()
+        x = np.random.randn(*self.x_shape).astype(self.dtype)
+        y = np.random.randn(*self.y_shape).astype(self.dtype)
+        out_ref = ref_complex(x, y)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            self.dtype
+        ) + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+        )
+
+    def test_check_grad_ignore_x(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.assertTupleEqual(dx.shape, tuple(self.x_shape))
+        self.assertTupleEqual(dy.shape, tuple(self.y_shape))
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            user_defined_grads=[dy],
+            user_defined_grad_outputs=[dout],
+        )
+
+    def test_check_grad_ignore_y(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+        )
 
 
 if __name__ == "__main__":
