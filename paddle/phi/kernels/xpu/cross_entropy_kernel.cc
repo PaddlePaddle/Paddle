@@ -132,27 +132,38 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                          axis == rank - 1 ? n : n * d / t,
                                          axis == rank - 1 ? d : t);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
-  } else {
+  } else {    
     DenseTensor labels_int32;
     int* labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
-    r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
-                                    labels.data<int64_t>(),
-                                    labels_int_ptr_l3,
-                                    labels.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    if(labels.dtype()==DataType::INT32){
+      r = xpu::hard_cross_entropy<XPUType, int32_t>(dev_ctx.x_context(),
+                                                    softmax_data,
+                                                    labels.data<int32_t>(),
+                                                    loss_data,
+                                                    nullptr,
+                                                    axis == rank - 1 ? n : n * d / t,
+                                                    axis == rank - 1 ? d : t,
+                                                    ignore_index);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
+    } else {
+      r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
+                                      labels.data<int64_t>(),
+                                      labels_int_ptr_l3,
+                                      labels.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
-    r = xpu::hard_cross_entropy<XPUType, int32_t>(
-        dev_ctx.x_context(),
-        softmax_data,
-        labels_int_ptr_l3,
-        loss_data,
-        nullptr,
-        axis == rank - 1 ? n : n * d / t,
-        axis == rank - 1 ? d : t,
-        ignore_index);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
+      r = xpu::hard_cross_entropy<XPUType, int32_t>(dev_ctx.x_context(),
+                                                    softmax_data,
+                                                    labels_int_ptr_l3,
+                                                    loss_data,
+                                                    nullptr,
+                                                    axis == rank - 1 ? n : n * d / t,
+                                                    axis == rank - 1 ? d : t,
+                                                    ignore_index);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
+    }
   }
 }
 
