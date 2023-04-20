@@ -35,9 +35,9 @@ DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
 
-PADDLE_DEFINE_EXPORTED_string(throw_inplace_error_op, "", "");
+DECLARE_string(throw_inplace_error_op);
 
-PADDLE_DEFINE_EXPORTED_string(throw_use_error_op, "", "");
+DECLARE_string(throw_use_error_op);
 
 namespace paddle {
 namespace imperative {

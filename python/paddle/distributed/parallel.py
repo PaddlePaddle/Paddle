@@ -191,15 +191,12 @@ def sync_params_buffers(
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
-        paddle.fluid.core.eager.clear_can_not_use(coalesced_var)
         paddle.fluid.framework._dygraph_tracer().trace_op(
             type='split',
             inputs={'X': coalesced_var},
             outputs={'Out': origin_vars},
             attrs={'sections': var_len, 'axis': 0},
         )
-        for v in origin_vars:
-            paddle.fluid.core.eager.clear_can_not_use(v)
 
 
 class DataParallel(layers.Layer):

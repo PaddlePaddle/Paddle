@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #define MAX_RANK_SUPPORTED 6
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 DECLARE_string(throw_strided_error_op);
 
 namespace phi {
