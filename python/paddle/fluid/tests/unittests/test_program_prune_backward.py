@@ -167,7 +167,7 @@ class TestProgramPruneBackward(unittest.TestCase):
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+                regularization=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -183,7 +183,7 @@ class TestProgramPruneBackward(unittest.TestCase):
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+                regularization=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -199,7 +199,7 @@ class TestProgramPruneBackward(unittest.TestCase):
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+                regularization=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -223,7 +223,7 @@ class TestProgramPruneBackward(unittest.TestCase):
         def optimizer():
             optimizer = fluid.optimizer.Adam(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+                regularization=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 

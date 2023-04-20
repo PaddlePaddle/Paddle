@@ -58,7 +58,6 @@ from . import nets
 from . import optimizer
 from . import backward
 from .backward import gradients
-from . import regularizer
 from . import average
 from . import metrics
 from . import incubate
@@ -118,7 +117,6 @@ __all__ = (
         'nets',
         'optimizer',
         'backward',
-        'regularizer',
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',

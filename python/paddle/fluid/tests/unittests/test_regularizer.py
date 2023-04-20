@@ -20,8 +20,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework, regularizer
+from paddle import fluid, regularizer
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 
 
@@ -208,7 +208,8 @@ class TestRegularizer(unittest.TestCase):
             avg_cost = model(data, label, self.word_len)
 
             optimizer = fluid.optimizer.Adagrad(
-                learning_rate=0.1, regularization=fluid.regularizer.L2Decay(1.0)
+                learning_rate=0.1,
+                regularization=paddle.regularizer.L2Decay(1.0),
             )
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])
@@ -265,8 +266,8 @@ class TestRegularizer(unittest.TestCase):
                 )
 
     def test_repeated_regularization(self):
-        l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
-        l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
+        l1 = paddle.regularizer.L1Decay(regularization_coeff=0.1)
+        l2 = paddle.regularizer.L2Decay(regularization_coeff=0.01)
         fc_param_attr = paddle.ParamAttr(
             regularizer=paddle.regularizer.L1Decay()
         )

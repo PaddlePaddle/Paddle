@@ -17,7 +17,7 @@ import warnings
 import paddle
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.regularizer import L2DecayRegularizer
+from paddle.regularizer import L2DecayRegularizer
 
 from ..fluid import core, framework
 from .optimizer import Optimizer

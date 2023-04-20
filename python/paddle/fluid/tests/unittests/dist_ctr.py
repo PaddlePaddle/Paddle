@@ -114,7 +114,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
         regularization = None
         use_l2_decay = bool(os.getenv('USE_L2_DECAY', 0))
         if use_l2_decay:
-            regularization = fluid.regularizer.L2DecayRegularizer(
+            regularization = paddle.regularizer.L2DecayRegularizer(
                 regularization_coeff=1e-1
             )
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))

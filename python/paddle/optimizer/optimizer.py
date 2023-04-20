@@ -224,7 +224,7 @@ class Optimizer:
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
         if isinstance(weight_decay, float):
-            from ..fluid.regularizer import L2Decay
+            from paddle.regularizer import L2Decay
 
             self.regularization = L2Decay(weight_decay)
         else:
@@ -1571,7 +1571,7 @@ class Optimizer:
         for param in param_group['params']:
             weight_decay = param_group['weight_decay']
             if isinstance(weight_decay, float):
-                from ..fluid.regularizer import L2Decay
+                from paddle.regularizer import L2Decay
 
                 regularization = L2Decay(weight_decay)
             else:
