@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/fluid/eager/test_utils.h"
+#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
