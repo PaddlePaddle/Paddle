@@ -72,7 +72,7 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& y,
                           DenseTensor* out) {
   int axis = -1;
-  ElementwisePowKernel<T>(dev_ctx, x, y, axis, out);
+  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
