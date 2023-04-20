@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tests/api/analyzer_transformer_tester_helper.h"
+#include "test/cpp/inference/api/analyzer_transformer_tester_helper.h"
 
 namespace paddle {
 namespace inference {
