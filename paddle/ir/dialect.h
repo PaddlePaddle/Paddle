@@ -46,9 +46,6 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterType<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register type of class T.
-  ///
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
@@ -82,9 +79,6 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterAttribute<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register attribute of class T.
-  ///
   template <typename T>
   void RegisterAttribute() {
     VLOG(4) << "Attribute registered into Dialect. --->";
@@ -99,22 +93,16 @@ class Dialect {
     VLOG(4) << "----------------------------------";
   }
 
-  ///
-  /// \brief Register abstract_attribute into context.
-  ///
   void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
 
   ///
-  /// \brief Register all Operation.
+  /// \brief Register Operation methods.
   ///
   template <typename... Args>
   void RegisterOperations() {
     (void)std::initializer_list<int>{0, (RegisterOperation<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register Operation of class T.
-  ///
   template <typename ConcertOp>
   void RegisterOperation() {
     VLOG(4) << "Operation registered into Dialect. --->";
@@ -127,9 +115,6 @@ class Dialect {
     VLOG(4) << "----------------------------------";
   }
 
-  ///
-  /// \brief Register operation into context.
-  ///
   void RegisterOperation(ir::TypeId id, OpInfoImpl *op_info);
 
  private:

@@ -14,18 +14,24 @@
 
 #pragma once
 
-#include <iostream>
-
 #include "paddle/ir/op_base.h"
 
 namespace ir {
-
+///
+/// \brief Define built-in Trait, derived from OpTraitBase.
+///
 class ReadOnlyTrait : public OpTraitBase<ReadOnlyTrait> {
  public:
   explicit ReadOnlyTrait(const Operation *op)
       : OpTraitBase<ReadOnlyTrait>(op) {}
 };
 
+///
+/// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
+/// Models need to be defined within the class. Concept defines abstract
+/// interface functions, and Model is a template class that defines the specific
+/// implementation of interface functions based on template parameters.
+///
 class InferShapeInterface : public OpInterfaceBase<InferShapeInterface> {
  public:
   struct Concept {
