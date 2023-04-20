@@ -107,6 +107,9 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
             self.check_output()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_dtype(self):
         self.dtype = np.float16
