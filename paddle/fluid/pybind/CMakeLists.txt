@@ -85,6 +85,10 @@ if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
 
+if(WITH_XPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
+endif()
+
 if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)

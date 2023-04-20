@@ -99,6 +99,10 @@ DEFINE_string(rccl_dir,
               "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
+#ifdef PADDLE_WITH_XPU
+DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+#endif
+
 namespace phi {
 namespace dynload {
 
@@ -601,6 +605,10 @@ void* GetCusparseLtDsoHandle() {
       "PaddlePaddle.");
   return nullptr;
 #endif
+}
+
+void* GetXPTIDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_xpti_dir, "libxpti.so");
 }
 
 }  // namespace dynload

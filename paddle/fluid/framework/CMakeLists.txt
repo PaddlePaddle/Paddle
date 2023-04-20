@@ -212,6 +212,9 @@ cc_library(
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+if(WITH_XPU)
+  target_link_libraries(var_type_traits dynload_xpti)
+endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn

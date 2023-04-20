@@ -2388,6 +2388,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("is_cnpapi_supported",
            &paddle::platform::Profiler::IsCnpapiSupported)
+      .def("is_xpti_supported", &paddle::platform::Profiler::IsXPTISupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();

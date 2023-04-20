@@ -20,7 +20,8 @@ cc_library(
        xpulib
        device_context
        place
-       phi_backends)
+       phi_backends
+       dynload_xpti)
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
@@ -30,7 +31,8 @@ cc_library(
        xpulib
        device_context
        op_kernel_type
-       phi_backends)
+       phi_backends
+       dynload_xpti)
 cc_library(
   xpu_resource_pool
   SRCS xpu_resource_pool.cc

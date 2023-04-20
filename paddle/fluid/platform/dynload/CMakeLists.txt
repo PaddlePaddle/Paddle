@@ -78,6 +78,12 @@ if(WITH_MKLML)
     SRCS mklml.cc
     DEPS dynamic_loader mklml phi_dynload_mklml)
 endif()
+if(WITH_XPU)
+  cc_library(
+    dynload_xpti
+    SRCS xpti.cc
+    DEPS dynamic_loader phi_dynload_xpti)
+endif()
 
 # TODO(TJ): add iomp, mkldnn?
 

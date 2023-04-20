@@ -31,6 +31,7 @@
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/fluid/platform/profiler/xpu_tracer.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -52,6 +53,10 @@ void SynchronizeDevice() {
     auto place = paddle::platform::CustomPlace(dev_type, i);
     phi::DeviceManager::SynchronizeDevice(place);
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  // TODO(zhangxiaoci) xpu do not support device sync yet
+  // KL3 might do
 #endif
 }
 
@@ -82,6 +87,14 @@ bool Profiler::IsCnpapiSupported() {
   return supported;
 }
 
+bool Profiler::IsXPTISupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_XPU
+  supported = true;
+#endif
+  return supported;
+}
+
 Profiler::Profiler(const ProfilerOptions& options,
                    const std::vector<std::string>& custom_device_types) {
   options_ = options;
@@ -98,6 +111,9 @@ Profiler::Profiler(const ProfilerOptions& options,
     for (const auto& dev_type : custom_device_types) {
       tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
     }
+  }
+  if (trace_switch.test(kProfileXPUOptionBit)) {
+    tracers_.emplace_back(&XPUTracer::GetInstance(), false);
   }
 }
 

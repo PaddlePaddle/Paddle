@@ -75,6 +75,8 @@ void* GetCusparseLtDsoHandle() {
   return phi::dynload::GetCusparseLtDsoHandle();
 }
 
+void* GetXPTIDsoHandle() { return phi::dynload::GetXPTIDsoHandle(); }
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

@@ -86,6 +86,12 @@ if(WITH_MKLML)
     SRCS mklml.cc
     DEPS phi_dynamic_loader mklml)
 endif()
+if(WITH_XPU)
+  cc_library(
+    phi_dynload_xpti
+    SRCS xpti.cc
+    DEPS phi_dynamic_loader)
+endif()
 
 if(WITH_FLASHATTN)
   cc_library(

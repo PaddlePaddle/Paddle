@@ -790,7 +790,11 @@ void ChromeTracingLogger::RefineDisplayName(
         (*it).second * 2 + 1);
   }
 
+#ifdef PADDLE_WITH_XPU
+  static std::string device_type("XPU");
+#else
   static std::string device_type("GPU");
+#endif
 
   for (auto it = deviceid_streamid_set_.begin();
        it != deviceid_streamid_set_.end();

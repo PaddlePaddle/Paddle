@@ -30,10 +30,14 @@ if(WITH_GPU OR WITH_ROCM)
   set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
+if(WITH_XPU)
+  set(XPU_CTX_DEPS dynload_xpti dynamic_loader)
+endif()
+
 cc_library(
   phi_device_tracer
   SRCS device_tracer.cc
-  DEPS phi_profiler_proto ${GPU_CTX_DEPS})
+  DEPS phi_profiler_proto ${GPU_CTX_DEPS} ${XPU_CTX_DEPS})
 
 cc_library(
   phi_profiler
