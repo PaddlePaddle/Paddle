@@ -333,7 +333,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -343,7 +343,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -353,7 +353,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'linspace',
         )
         if (
@@ -1787,7 +1787,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
