@@ -69,6 +69,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   int64_t batch_size = cu_seqlens_q.numel() - 1;
 
   int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  if (FLAGS_cudnn_deterministic) {
+    num_splits = 1;
+  }
   bool zero_tensors = false;
 
   if (FLAGS_cudnn_deterministic) {
