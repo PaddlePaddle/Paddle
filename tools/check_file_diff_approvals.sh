@@ -85,6 +85,8 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/incubate/autograd/composite_rules.py"
 	       "python/paddle/incubate/autograd/primitives.py"
            "paddle/fluid/prim/api/api.yaml"
+           "paddle/fluid/prim/api/api.yaml"
+           "paddle/fluid/prim/api/api.yaml"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -206,11 +208,11 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval JiabinYang chenwhql phlrain
       elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
             echo_line="You must have one RD (chenwhql, phlrain, zyfncg, YuanRisheng) approval for changing ${API_FILE} , which manages the underlying code for PaddlePaddle PHI Library.\n"
-            check_approval chenwhql phlrain zyfncg YuanRisheng
+      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ] || ["${API_FILE}" ==  "paddle/fluid/prim/api/api.yaml"]; then
       elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ]; then
             echo_line="You must have one RD (JiabinYang, cxxly(chenxiaoxu) , xiaoguoguo626807(wangruting)) approval for changing ${API_FILE} , which manages the code for PaddlePaddle Composite Bacward Prim API.\n"
             check_approval 1 JiabinYang cxxly xiaoguoguo626807
-      elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py"] || ["${API_FILE}" ==  "paddle/fluid/prim/api/api.yaml"]; then
+      elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
             echo_line="You must have one RD (cyber-pioneer(chenzhuo), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
             check_approval 1 cyber-pioneer JiabinYang
       else
