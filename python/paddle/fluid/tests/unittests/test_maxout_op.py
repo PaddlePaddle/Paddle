@@ -136,9 +136,6 @@ class TestMaxoutAPI(unittest.TestCase):
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestMaxOutOpFP16(TestMaxOutOp):
     def set_attrs(self):
         self.dtype = 'float16'
@@ -153,7 +150,9 @@ class TestMaxoutFP16Case2(TestMaxOutOpFP16):
     def set_attrs(self):
         self.axis = 3
 
-
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMaxoutStaticAPIFP16(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
