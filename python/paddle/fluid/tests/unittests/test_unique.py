@@ -318,7 +318,7 @@ class TestUniqueError(unittest.TestCase):
                     paddle.static.Program(), paddle.static.Program()
                 ):
                     x = paddle.static.data(
-                        name='x', shape=[10, 10], dtype='float16'
+                        name='x', shape=[10, 10], dtype='int16'
                     )
                     result = paddle.unique(x)
 
