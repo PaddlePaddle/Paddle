@@ -30,7 +30,7 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
 
   int found_count = 0;
   std::unordered_map<std::string, std::string> replaced_map{
-      {"depthwise_conv2d", "conv2d"},
+      {"depthwise_conv2d1", "conv2d"},
       {"flatten_contiguous_range", "reshape2"},
   };
 
@@ -52,7 +52,7 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
         op_desc->SetType(replaced_map[op_type]);
         op_desc->SetAttr("shape", std::vector<int>{0, -1});
       }
-    } else if (op_type == "depthwise_conv2d") {
+    } else if (op_type == "depthwise_conv2d1") {
       auto groups = PADDLE_GET_CONST(int, op_desc->GetAttr("groups"));
       if (groups > 1) {
 #if CUDNN_VERSION >= 8100

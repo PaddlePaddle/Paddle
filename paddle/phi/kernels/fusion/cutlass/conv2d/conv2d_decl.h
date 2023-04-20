@@ -65,6 +65,7 @@ void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
 void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
 void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
 
+void TwoConv2dFusion(const ConvAllParams &p0, const ConvAllParams &p1);
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

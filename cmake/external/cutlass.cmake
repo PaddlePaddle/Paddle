@@ -24,6 +24,10 @@ include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")
 include_directories(
   "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
 
+include_directories(
+  "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/examples/13_two_tensor_op_fusion/"
+)
+
 add_definitions("-DPADDLE_WITH_CUTLASS")
 
 if(NOT PYTHON_EXECUTABLE)

@@ -2629,13 +2629,13 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
                                  ->assert_is_op_output("elementwise_add")
-                                 ->assert_is_op_input("elementwise_add", "Y")
+                                 ->assert_is_op_input("elementwise_add")
                                  ->AsIntermediate();
 
   auto elementwise_add_op_1 = pattern->NewNode(elementwise_add_op_1_repr())
                                   ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y_1 = pattern->NewNode(elementwise_add_in_y_1_repr())
-                                    ->assert_is_op_input("elementwise_add", "X")
+                                    ->assert_is_op_input("elementwise_add")
                                     ->AsInput();
   auto elementwise_add_out_1 = pattern->NewNode(elementwise_add_out_1_repr())
                                    ->assert_is_op_output("elementwise_add")

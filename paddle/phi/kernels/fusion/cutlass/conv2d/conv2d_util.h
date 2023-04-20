@@ -31,11 +31,12 @@
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
-#define CUTLASS_CHECK(status)                                                \
-  if (status != cutlass::Status::kSuccess) {                                 \
-    VLOG(3)                                                                  \
-        << "Cutlass can not deal with this problem size, skip this kernel!"; \
-    return status;                                                           \
+#define CUTLASS_CHECK(status)                                               \
+  if (status != cutlass::Status::kSuccess) {                                \
+    std::cout                                                               \
+        << "Cutlass can not deal with this problem size, skip this kernel!" \
+        << std::endl;                                                       \
+    return status;                                                          \
   }
 
 typedef enum {

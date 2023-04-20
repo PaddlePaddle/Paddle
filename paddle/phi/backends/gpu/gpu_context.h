@@ -71,7 +71,7 @@ class DnnWorkspaceHandle {
   DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
   DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
 
- private:
+ public:
   Allocator::AllocationPtr allocation_{nullptr};
   Allocator* allocator_{nullptr};  // Not owned
   gpuStream_t stream_{nullptr};    // Not owned
