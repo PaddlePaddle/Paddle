@@ -107,6 +107,9 @@ def flash_attention(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
     training=True,
     name=None,
 ):
@@ -140,7 +143,9 @@ def flash_attention(
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
         training(bool): Whether it is in the training phase.
+        rng_name(str): The name to select Generator.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -162,7 +167,6 @@ def flash_attention(
             output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
             print(output)
     """
-
     head_dim = query.shape[3]
     sdp_func_name = select_sdp(head_dim)
 
@@ -172,10 +176,12 @@ def flash_attention(
                 query,
                 key,
                 value,
+                fixed_seed_offset,
                 dropout,
                 causal,
                 return_softmax,
                 not training,
+                rng_name,
             )
             return result_attention, result_softmax if return_softmax else None
 
@@ -189,6 +195,7 @@ def flash_attention(
             'q': query,
             'k': key,
             'v': value,
+            'fixed_seed_offset': fixed_seed_offset,
         }
         outputs = {
             'out': out,
@@ -205,6 +212,7 @@ def flash_attention(
                 'causal': causal,
                 'return_softmax': return_softmax,
                 'is_test': not training,
+                'rng_name': rng_name,
             },
         )
         return out, softmax if return_softmax else None
@@ -248,6 +256,8 @@ def flash_attn_unpadded(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    fixed_seed_offset=None,
+    rng_name="",
     training=True,
     name=None,
 ):
@@ -288,6 +298,8 @@ def flash_attn_unpadded(
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        rng_name(str): The name to select Generator.
         training(bool): Whether it is in the training phase.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
@@ -317,6 +329,7 @@ def flash_attn_unpadded(
             value,
             cu_seqlens_q,
             cu_seqlens_k,
+            fixed_seed_offset,
             max_seqlen_q,
             max_seqlen_k,
             scale,
@@ -324,6 +337,7 @@ def flash_attn_unpadded(
             causal,
             return_softmax,
             not training,
+            rng_name,
         )
         return result_attention, result_softmax if return_softmax else None
 
@@ -339,6 +353,7 @@ def flash_attn_unpadded(
         'v': value,
         'cu_seqlens_q': cu_seqlens_q,
         'cu_seqlens_k': cu_seqlens_k,
+        'fixed_seed_offset': fixed_seed_offset,
     }
     outputs = {
         'out': out,
@@ -358,6 +373,7 @@ def flash_attn_unpadded(
             'causal': causal,
             'return_softmax': return_softmax,
             'is_test': not training,
+            'rng_name': rng_name,
         },
     )
     return out, softmax if return_softmax else None
