@@ -83,7 +83,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
                 avg_loss = paddle.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,
-                regularization=fluid.regularizer.L2Decay(
+                regularization=paddle.regularizer.L2Decay(
                     regularization_coeff=0.1))
             optimizer.minimize(avg_loss)
 
@@ -93,8 +93,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             import paddle
             paddle.enable_static()
 
-            l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
-            l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
+            l1 = paddle.regularizer.L1Decay(regularization_coeff=0.1)
+            l2 = paddle.regularizer.L2Decay(regularization_coeff=0.1)
             x = paddle.uniform([3,4])
 
             # set L1 regularization in fluid.ParamAttr
@@ -202,7 +202,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                 avg_loss = paddle.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,
-                regularization=fluid.regularizer.L1DecayRegularizer(
+                regularization=paddle.regularizer.L1DecayRegularizer(
                     regularization_coeff=0.1))
             optimizer.minimize(avg_loss)
 
@@ -211,8 +211,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
-            l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
+            l1 = paddle.regularizer.L1Decay(regularization_coeff=0.1)
+            l2 = paddle.regularizer.L2Decay(regularization_coeff=0.1)
             x = paddle.uniform([3,4])
 
             # set L1 regularization in fluid.ParamAttr
