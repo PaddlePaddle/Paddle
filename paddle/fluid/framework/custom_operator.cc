@@ -149,7 +149,7 @@ static void RunKernelFunc(
   }
 
   for (auto& attr_str : attrs) {
-    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
     if (attr_type_str == "bool") {
@@ -464,7 +464,7 @@ static void RunInferShapeFunc(
 
   std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
-    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
     if (attr_type_str == "bool") {
@@ -491,13 +491,13 @@ static void RunInferShapeFunc(
       custom_attrs.emplace_back(
           ctx->Attrs().Get<std::vector<std::string>>(attr_name));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<std::string>`, "
-          "Please check whether the attribute data type and "
-          "data type string are matched.",
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether the attribute data "
+          "type and data type string are matched.",
           attr_type_str));
     }
   }
@@ -872,7 +872,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       }
     }
     for (auto& attr : attrs_) {
-      auto attr_name_and_type = detail::ParseAttrStr(attr);
+      auto attr_name_and_type = paddle::ParseAttrStr(attr);
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       if (attr_type_str == "bool") {
