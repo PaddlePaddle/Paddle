@@ -110,7 +110,8 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
                          ->assert_is_op_input(conv_type_, "Filter")
                          ->AsInput();
   auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output(conv_type_, "Output");
+                      ->assert_is_op_output(conv_type_, "Output")
+                      ->assert_has_n_outputs(1);
   conv->LinksFrom({input, conv_filter}).LinksTo({conv_out});
   // ew_bias_add op
   PDNode* ew_bias_add = nullptr;
