@@ -23,7 +23,6 @@ void TransposeStrideKernel(const Context& ctx,
                            const DenseTensor& x,
                            const std::vector<int>& axis,
                            DenseTensor* out) {
-  std::cout << "TransposeStrideKernel" << std::endl;
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
@@ -42,7 +41,6 @@ void TransposeStrideKernel(const Context& ctx,
 
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
-  std::cout << "out layout = " << out->layout() << std::endl;
 }
 
 }  // namespace phi
