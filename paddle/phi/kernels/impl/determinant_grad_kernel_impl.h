@@ -124,12 +124,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
   DenseTensor inverse_A;
   // A must be square matrices!
   inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<MPType>(&inverse_A);
+  dev_ctx.template Alloc<T>(&inverse_A);
 
-  phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
+  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
   if (!std::is_same<MPType, T>::value) {
     mat_inv(dev_ctx,
-            phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
+            phi::Cast<MPType, Context>(dev_ctx, x, DataType::FLOAT16),
             &inverse_A);
   } else {
     mat_inv(dev_ctx, x, &inverse_A);
@@ -140,10 +140,11 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A;
   if (!std::is_same<MPType, T>::value) {
-    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(
-        dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
+    transpose_inverse_A = phi::TransposeLast2Dim<T>(
+        dev_ctx,
+        phi::Cast<MPType, Context>(dev_ctx, inverse_A, DataType::FLOAT16));
   } else {
-    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
+    transpose_inverse_A = phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
   }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
