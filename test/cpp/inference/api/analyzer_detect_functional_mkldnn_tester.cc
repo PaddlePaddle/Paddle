@@ -17,8 +17,8 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 
-#include "test/cpp/inference/api/tester_helper.h"
 #include "paddle/phi/common/place.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 DEFINE_string(infer_shape, "", "data shape file");
 DEFINE_int32(sample, 20, "number of sample");

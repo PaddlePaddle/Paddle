@@ -16,8 +16,8 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "test/cpp/inference/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {

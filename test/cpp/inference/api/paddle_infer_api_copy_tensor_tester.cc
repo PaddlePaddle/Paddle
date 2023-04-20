@@ -22,8 +22,8 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
-#include "test/cpp/inference/api/trt_test_helper.h"
 #include "paddle/fluid/platform/float16.h"
+#include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle_infer {
 

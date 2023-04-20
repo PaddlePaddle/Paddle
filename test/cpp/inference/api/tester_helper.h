@@ -35,10 +35,10 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "test/cpp/inference/api/config_printer.h"
-#include "test/cpp/inference/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "test/cpp/inference/api/config_printer.h"
+#include "test/cpp/inference/test_helper.h"
 
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
