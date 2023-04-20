@@ -35,17 +35,12 @@ __all__ = [
 
 class DebugMode(Enum):
     """
-    DebugMode is used to present the state of TensorCheckerConfig.
+    The DebugMode is a feature that helps to present the state of the TensorCheckerConfig. Each DebugMode has a specific meaning, which is explained below:
 
-    The meaning of each DebugMode is as following
-
-    - **DebugMode.CHECK_NAN_INF_AND_ABORT** : Print or save Tensor key information with NaN/Inf and interrupt the program
-
-    - **DebugMode.CHECK_NAN_INF** : Print or save Tensor critical information with NaN/Inf, but continue to run
-
-    - **DebugMode.CHECK_ALL_FOR_OVERFLOW** : Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
-
-    - **DebugMode.CHECK_ALL** : Print or save output Tensor key information for all operators
+    DebugMode.CHECK_NAN_INF_AND_ABORT: This mode prints or saves information about Tensors that contain NaN/Inf and interrupts the program.
+    DebugMode.CHECK_NAN_INF: This mode prints or saves critical information about Tensors that contain NaN/Inf but allows the program to continue running.
+    DebugMode.CHECK_ALL_FOR_OVERFLOW: This mode checks the output of the FP32 operator and prints or saves information about key Tensors that exceed the FP16 representation range, such as overflow or underflow.
+    DebugMode.CHECK_ALL: This mode prints or saves output Tensor key information for all operators.
 
     """
 
@@ -79,32 +74,29 @@ def set_skipped_op_list(skipped_op_list):
 
 class TensorCheckerConfig:
     """
-    Collect the config for checking nan and inf in module or op tensor.
+    The purpose of this function is to collect the configuration for checking NaN and Inf values in the tensors of a module or operator. It takes the following arguments:
 
-    Args:
-    * enable: Whether to enable Tensor's value detection function. The default value is False, which means that these tools will never be used.
+    enable: A boolean value indicating whether to enable the detection of NaN and Inf values in tensors. The default value is False, which means that these tools will not be used.
 
-    * debug_mode: Debug mode,There are 6 kinds of debug mode.
+    debug_mode: A parameter that determines the type of debugging to be used. There are 4 available modes:
 
-        CHECK_NAN_INF_AND_ABORT(default): Print or save Tensor key information with NaN/Inf and interrupt the program
+    - CHECK_NAN_INF_AND_ABORT (default): This mode prints or saves information about Tensors that contain NaN/Inf and interrupts the program.
 
-        CHECK_NAN_INF: Print or save Tensor critical information with NaN/Inf, but continue to run
+    - CHECK_NAN_INF: This mode prints or saves critical information about Tensors that contain NaN/Inf but allows the program to continue running.
 
-        CHECK_ALL_FOR_OVERFLOW: Check the output of the FP32 operator, print or save key Tensor information that exceeds the FP16 representation range (overflow, underflow)
+    - CHECK_ALL_FOR_OVERFLOW: This mode checks the output of the FP32 operator and prints or saves information about key Tensors that exceed the FP16 representation range, such as overflow or underflow.
 
-        CHECK_ALL: Print or save output Tensor key information for all operators
+    - CHECK_ALL: This mode prints or saves output Tensor key information for all operators.
 
-    * output_dir: The collection data storage path. If it is None, it will be directly printed to the terminal
+    output_dir: The path to store collected data. If this parameter is set to None, the data will be printed to the terminal.
 
-    * checked_op_list: A list of operators you want to check
+    checked_op_list: Specifies a list of operators that need to be checked during program execution, for example, checked_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should be checked for nan/inf during program execution.
 
-    * skipped_op_list: A list of operators to skip checking
+    skipped_op_list: Specifies a list of operators that do not need to be checked during program execution, for example, skipped_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should not be checked for nan/inf during program execution.
 
-    * debug_step: The iteration scope of debugging
+    debug_step: A list or tuple used primarily for nan/inf checking during model training. For example, debug_step=[1,5] indicates that nan/inf checking should only be performed on model training iterations 1 to 5.
 
-    * stack_height_limit: The maximum depth of the call stack, and supports printing the call stack at the error location. The specific scheme needs to be investigated
-
-    * enable_traceback_filtering: Whether to filter the traceback. The main purpose is to filter out the internal code call stack of the framework and only display the user code call stack
+    stack_height_limit: An integer value specifying the maximum depth of the call stack. This feature supports printing the call stack at the error location. Currently, only enabling or disabling call stack printing is supported. If you want to print the corresponding C++ call stack when NaN is detected in GPU Kernel, set stack_height_limit to 1, otherwise set it to 0.
 
     Examples:
 
@@ -120,7 +112,14 @@ class TensorCheckerConfig:
         res = paddle.pow(x, y)
         paddle.autograd.backward(res, retain_graph=True)
         paddle.amp.debugging.disable_tensor_checker()
+
         #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+
+        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+        #Traceback (most recent call last):
+        #    res = paddle.pow(x, y)
+        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+        #    return _C_ops.elementwise_pow(x, y)
 
     """
 
@@ -136,7 +135,6 @@ class TensorCheckerConfig:
         skipped_op_list=None,
         debug_step=None,
         stack_height_limit=3,
-        enable_traceback_filtering=False,
     ):
 
         self.enable = enable
@@ -148,8 +146,6 @@ class TensorCheckerConfig:
 
         self.debug_step = debug_step
         self.stack_height_limit = stack_height_limit
-
-        self.enable_traceback_filtering = enable_traceback_filtering
 
         self.start_step = None
         self.end_step = None
@@ -195,36 +191,35 @@ class TensorCheckerConfig:
         if self.enable:
             self._set_seed(self.enable)
 
-    def _keep_random(self, seed, flag):
+    def _set_seed(self, flag):
+        if self.initial_seed != self.seed:
+            self.seed = self.initial_seed
+
+        if self.seed > 4294967295 or self.seed < 0:
+            print("[Warnning: Seed must be between 0 and 2**32 - 1")
+            self.seed = 123
+
         # get random seed
-        self.seed = seed
         paddle.seed(self.seed)
         np.random.seed(self.seed)
         random.seed(self.seed)
 
+        # info
+        print("AMP Debugging TensorCheckerConfig: seed ", self.seed)
+
         # set cudnn and cpu
         if core.is_compiled_with_cuda():
             paddle.set_flags({"FLAGS_cudnn_deterministic": flag})
-        paddle.set_flags({"FLAGS_cpu_deterministic": flag})
+            print(
+                "AMP Debugging TensorCheckerConfig: FLAGS_cudnn_deterministic is ",
+                flag,
+            )
 
-        # info
-        print("AMP Debugging TensorCheckerConfig: seed ", self.seed)
-        print(
-            "AMP Debugging TensorCheckerConfig: FLAGS_cudnn_deterministic is ",
-            flag,
-        )
+        paddle.set_flags({"FLAGS_cpu_deterministic": flag})
         print(
             "AMP Debugging TensorCheckerConfig: FLAGS_cpu_deterministic is ",
             flag,
         )
-
-    def _set_seed(self, enable):
-        if self.initial_seed != self.seed:
-            self.seed = self.initial_seed
-        if self.seed > 4294967295 or self.seed < 0:
-            print("[Warnning: Seed must be between 0 and 2**32 - 1")
-            self.seed = 123
-            self._keep_random(self.seed, True)
 
     def _set_env(self, check_flag):
         paddle.set_flags({"FLAGS_check_nan_inf": check_flag})
@@ -246,7 +241,7 @@ class TensorCheckerConfig:
             else:
                 raise ValueError("stack_height_limit must be int")
 
-    def _check_step_id(self):
+    def update_and_check_step_id(self):
         if self.enable:
             if self.start_step is not None and self.end_step is not None:
                 if (
@@ -259,11 +254,11 @@ class TensorCheckerConfig:
             return True
         return False
 
-    def _run(self):
+    def start_check_nan_inf(self):
         if self.enable:
             self._set_env(self.enable)
 
-    def _end(self):
+    def stop_check_nan_inf(self):
         self._set_env(False)
 
 
@@ -435,14 +430,12 @@ def collect_operator_stats():
 
 def enable_tensor_checker(checker_config):
     """
-    enable_tensor_checker(checker_config) is enables model level accuracy checking, which is used together with disables_tensor_checker() to achieve model level precision checking through the combination of these two APIs, checking the output Tensors of all operators within the specified range.
+    The enable_tensor_checker(checker_config) function enables model-level accuracy checking and is used in combination with disables_tensor_checker() to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
 
+    Note:
 
-    Attention:
-
-    * If disable_tensor_checker() is called before loss.backward(), the gradient operator is not checked;
-
-    * If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked
+    If disable_tensor_checker() is called before loss.backward(), the gradient operator will not be checked.
+    If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
 
@@ -460,22 +453,28 @@ def enable_tensor_checker(checker_config):
         paddle.amp.debugging.disable_tensor_checker()
         #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
+        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+        #Traceback (most recent call last):
+        #  File "tp.py", line 8, in <module>
+        #    res = paddle.pow(x, y)
+        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+        #    return _C_ops.elementwise_pow(x, y)
+
     """
-    if checker_config._check_step_id():
-        checker_config._run()
+    if checker_config.update_and_check_step_id():
+        checker_config.start_check_nan_inf()
     else:
-        checker_config._end()
+        checker_config.stop_check_nan_inf()
 
 
 def disable_tensor_checker():
     """
-    disable_tensor_checker() to disables the accuracy checking, which is used together with enables_tensor_checker(config) to achieve model level precision checking through the combination of these two APIs, checking the output Tensors of all operators within the specified range.
+    disable_tensor_checker() is used to disable accuracy checking, and is used together with enables_tensor_checker(config) to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
 
-    Attention:
+    Note:
 
-    * If disable_tensor_checker() is called before loss.backward(), the gradient operator is not checked;
-
-    * If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked
+    If disable_tensor_checker() is called before loss.backward(), the gradient operator will not be checked;
+    If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
 
@@ -492,6 +491,12 @@ def disable_tensor_checker():
         paddle.autograd.backward(res, retain_graph=True)
         paddle.amp.debugging.disable_tensor_checker()
         #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+
+        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+        #Traceback (most recent call last):
+        #    res = paddle.pow(x, y)
+        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+        #    return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})

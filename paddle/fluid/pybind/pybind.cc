@@ -2677,11 +2677,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
 
-  // Add skipped op list
+  // Add check op lost
   m.def("set_checked_op_list",
         [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
 
-  // Add check op lost
+  // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
