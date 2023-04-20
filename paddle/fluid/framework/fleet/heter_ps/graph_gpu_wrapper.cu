@@ -116,7 +116,9 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
                     "(%s) is not found in edge_to_id.", edge_dst));
         VLOG(2) << "pair_label_conf[" << src_iter->second << "][" << dst_iter->second << "] = " << label;
         pair_label_conf_[src_iter->second * id_to_feature.size() + dst_iter->second] = label;
-        pair_label_conf_[dst_iter->second * id_to_feature.size() + src_iter->second] = label;
+        if (pair_label_conf_[dst_iter->second * id_to_feature.size() + src_iter->second] == 0) {
+          pair_label_conf_[dst_iter->second * id_to_feature.size() + src_iter->second] = label;
+        }
       }
       for (int i = 0; i < id_to_feature.size(); ++i) {
         std::stringstream buf;

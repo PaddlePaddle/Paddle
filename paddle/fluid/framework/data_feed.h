@@ -1092,6 +1092,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_buf_;
 
   // sage mode batch data
+  std::vector<std::shared_ptr<phi::Allocation>> pair_label_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> inverse_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> final_sage_nodes_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> node_degree_vec_;

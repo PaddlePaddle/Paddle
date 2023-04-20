@@ -662,7 +662,11 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
       feed_vec_[2]->mutable_data<int64_t>({uniq_instance}, this->place_);
   int index_offset = 0;
   if (conf_.enable_pair_label) {
-    pair_label_ptr_ = feed_vec_[3]->mutable_data<int32_t>({uniq_instance / 2}, this->place_);
+    pair_label_ptr_ = feed_vec_[3]->mutable_data<int32_t>({total_instance / 2}, this->place_);
+    int32_t *pair_label_buf = reinterpret_cast<int32_t *>(d_pair_label_buf_->ptr());
+    int32_t *pair_label_cursor = pair_label_buf + ins_buf_pair_len_ - total_instance / 2;
+    cudaMemcpyAsync(pair_label_ptr_, pair_label_vec_[index]->ptr(), sizeof(int32_t) * total_instance / 2,
+            cudaMemcpyDeviceToDevice, train_stream_);
   }
   if (!return_weight_) {
     index_offset = id_offset_of_feed_vec_ + conf_.slot_num * 2 + 5 * samples_.size();
@@ -2065,6 +2069,17 @@ void GraphDataGenerator::DoWalkandSage() {
                 GetNodeDegree(final_sage_nodes_ptr, uniq_instance);
             node_degree_vec_.emplace_back(node_degrees);
           }
+
+          if (conf_.enable_pair_label) {
+            auto pair_label = memory::AllocShared(place_, total_instance / 2 * sizeof(int),
+                                phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+            int32_t *pair_label_buf = reinterpret_cast<int32_t *>(d_pair_label_buf_->ptr());
+            int32_t *pair_label_cursor = pair_label_buf + ins_buf_pair_len_ - total_instance / 2;
+            cudaMemcpyAsync(pair_label->ptr(), pair_label_cursor, sizeof(int32_t) * total_instance / 2,
+                    cudaMemcpyDeviceToDevice, sample_stream_);
+            pair_label_vec_.emplace_back(pair_label);
+          }
+
           cudaStreamSynchronize(sample_stream_);
           if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
             uint64_t *final_sage_nodes_ptr =
