@@ -138,6 +138,15 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   class op_name##CPUKernel : public CAllReduceOpCPUKernel<red_type, T> {};
 
 template <ReduceType red_type, typename T>
+class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with NPU."));
+  }
+};
+
+template <ReduceType red_type, typename T>
 class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

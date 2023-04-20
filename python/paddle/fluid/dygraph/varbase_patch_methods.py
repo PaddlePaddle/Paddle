@@ -377,6 +377,12 @@ def monkey_patch_varbase():
                 return None
 
             new_ivar = self._grad_ivar()
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if (
+                _global_flags()['FLAGS_npu_storage_format']
+                and 'npu' in get_all_custom_device_type()
+            ):
+                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
             new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
                 return (
