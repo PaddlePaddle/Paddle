@@ -227,7 +227,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
   // need to explicit synchronization.
-  if ((platform::is_custom_place(place)) && op_type == kMemcpyD2H) {
+  if (platform::is_custom_place(place) && op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
 
