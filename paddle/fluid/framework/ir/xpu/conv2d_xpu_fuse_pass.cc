@@ -190,12 +190,12 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   // ew_branch_add op
   if (with_branch_) {
     if (with_branch_x_) {
-      bn_out->assert_is_op_input("elementwise_add", "Y")->AsIntermediate();
+      bn_out->assert_is_op_input("elementwise_add", "Y");
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "X")
                              ->AsInput();
     } else if (with_branch_y_) {
-      bn_out->assert_is_op_input("elementwise_add", "X")->AsIntermediate();
+      bn_out->assert_is_op_input("elementwise_add", "X");
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "Y")
                              ->AsInput();
@@ -221,13 +221,15 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   }
   // act op
   if (!act_type_.empty()) {
-    ew_branch_add_out->assert_is_op_input(act_type_, "X")->AsIntermediate();
+    ew_branch_add_out->assert_is_op_input(act_type_, "X");
     act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
-    act_out = pattern->NewNode(act_out_repr())
-                  ->assert_is_op_output(act_type_, "Out")
-                  ->assert_var_not_persistable();
+    act_out =
+        pattern->NewNode(act_out_repr())->assert_is_op_output(act_type_, "Out");
     act->LinksFrom({ew_branch_add_out}).LinksTo({act_out});
+  } else {
+    act_out = ew_branch_add_out;
   }
+  act_out->AsOutput();
 }
 
 }  // namespace patterns
@@ -349,6 +351,11 @@ void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                      "",
                  }) {
               if (with_branch_x && with_branch_y) continue;
+              if (with_conv_bias && !with_bn &&
+                  (with_branch_x || with_branch_y)) {
+                std::string act_name = act_type;
+                if (act_name.empty()) continue;
+              }
               found_subgraph_count += ApplyImpl(graph,
                                                 conv_type,
                                                 act_type,
