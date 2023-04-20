@@ -95,7 +95,6 @@ class TestHybridPipeParallel(TestMultipleGpus):
                     f"{sub_expected_model_dir}/model_state.pdopt"
                 )
                 check_names(opt_1, opt_2)
-                # check master weight
                 # check master wieghts
                 if "master_weights" in opt_2:
                     self.assertTrue("master_weights" in opt_1)
