@@ -545,17 +545,14 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                     f"only valid string values are 'fro', found {p}"
                 )
         elif isinstance(p, (int, float)):
-            if len(x.shape) == 2:
-                axis = [0, 1]
-            else:
-                return vector_norm(
-                    x,
-                    porder=p,
-                    axis=axis,
-                    keepdim=keepdim,
-                    asvector=True,
-                    name=name,
-                )
+            return vector_norm(
+                x,
+                porder=p,
+                axis=axis,
+                keepdim=keepdim,
+                asvector=True,
+                name=name,
+            )
         else:
             raise ValueError(
                 f"only valid p type is string or float, found {type(p)}"
