@@ -33,7 +33,7 @@ void TransposeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  DenseTensor out_values(x.values());
+  const DenseTensor& out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
@@ -134,8 +134,8 @@ void TransposeCsrKernel(const Context& dev_ctx,
       }
     }
   } else {  // n_dim == 3
-    int out_n_rows = out_dims[1];
-    int x_n_rows = x.dims()[1];
+    int64_t out_n_rows = out_dims[1];
+    int64_t x_n_rows = x.dims()[1];
     for (int k = 0; k < out_dims[0]; ++k) {
       if (perm[0] == 0) {  // perm == {0, 2, 1}
         // compute out_crows_data by x_cols_data
