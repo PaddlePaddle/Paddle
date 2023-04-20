@@ -152,8 +152,6 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
-  } else if (paddle::platform::is_npu_place(tensor->place())) {
-    *place = PlaceType::kNPU;
   } else if (paddle::platform::is_custom_place(tensor->place())) {
     *place = PlaceType::kCUSTOM;
   } else {
