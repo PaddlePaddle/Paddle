@@ -26,6 +26,7 @@ batch_size = 8
 length = 8
 micro_batch_size = 2
 vocab_size = 128
+transformer_layer_num = 8
 
 
 class TestDistPPSaveTraning(unittest.TestCase):
@@ -55,7 +56,7 @@ class TestDistPPSaveTraning(unittest.TestCase):
         topology = hcg.topology()
         set_random_seed(1024, dp_id, rank_id)
 
-        model = ModelPipe(topology)
+        model = ModelPipe(topology, transformer_layer_num=transformer_layer_num)
         scheduler = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2], values=[0.001, 0.002], verbose=True
         )

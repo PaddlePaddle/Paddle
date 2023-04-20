@@ -118,7 +118,7 @@ class PipeLineModelAdaptor:
 
                 # 3、resplit layers among pp group according new pp config
                 layer_segments = self.segment_layers(
-                    layers, self._dst_parallel_config
+                    layers, self._dst_parallel_config, self._segment_method
                 )
                 dst_group = self._dst_parallel_config.pipe_parallel_group(i, j)
                 dst_dirs = [
@@ -305,7 +305,7 @@ class PipeLineModelAdaptor:
 
         result = (
             segment_uniform()
-            if segment_method == "uniform"
+            if (segment_method == "uniform")
             else segment_by_layer()
         )
         index_segments = [[] for _ in range(config.pp)]

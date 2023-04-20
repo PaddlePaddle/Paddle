@@ -38,36 +38,84 @@ class TestHybridPipeParallel(TestMultipleGpus):
         dir2 = "./pp_transformer_vp"
         p_config2 = ParallelConfig(mp=1, pp=2, vpp=2, sharding=1)
 
-        pp_to_vp = PipeLineModelAdaptor(p_config1, p_config2, 1)
-        vp_to_pp = PipeLineModelAdaptor(p_config2, p_config1, 1)
+        pp_to_vp = PipeLineModelAdaptor(
+            src_parallel_config=p_config1,
+            dst_parallel_config=p_config2,
+            transformer_layer_num=8,
+            segment_method="layer",
+        )
+        vp_to_pp = PipeLineModelAdaptor(
+            src_parallel_config=p_config2,
+            dst_parallel_config=p_config1,
+            transformer_layer_num=8,
+            segment_method="layer",
+        )
 
-        def check_params_names(dir1, dir2):
-            for i in p_config1.pp:
-                params_1 = paddle.load(
-                    "{}/mp_00_sharding_00_pp_{:0>2d}/model.pdparams".format(
-                        dir1, i
+        def check_converted_model(converted_model_dir, expected_model_dir):
+            # for compatibility, converted_model_dir may contain more key than
+            # expected model, which does not hinder model recovering
+            for i in range(p_config1.pp):
+                sub_converted_model_dir = (
+                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
+                        converted_model_dir, i
                     )
+                )
+                sub_expected_model_dir = (
+                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
+                        expected_model_dir, i
+                    )
+                )
+                print(
+                    f"converted_model_dir: {sub_converted_model_dir}; expected_model_dir: {sub_expected_model_dir}"
+                )
+
+                def check_names(dict_1, dict_2):
+                    for (k, v) in dict_2.items():
+                        self.AssertTrue(k in dict_1)
+                        self.AssertEqual(
+                            getattr(v, "name", ""),
+                            getattr(dict_1[k], "name", ""),
+                        )
+
+                # check param
+                params_1 = paddle.load(
+                    f"{sub_converted_model_dir}/model.pdparams"
                 )
                 params_2 = paddle.load(
-                    "{}/mp_00_sharding_00_pp_{:0>2d}/model.pdparams".format(
-                        dir2, i
-                    )
+                    f"{sub_expected_model_dir}/model.pdparams"
                 )
-                self.assertEqual(params_1.keys(), params_2.keys())
+                check_names(params_1, params_2)
+                del params_1
+                del params_2
+                # check opt
+                opt_1 = paddle.load(
+                    f"{sub_converted_model_dir}/model_state.pdopt"
+                )
+                opt_2 = paddle.load(
+                    f"{sub_expected_model_dir}/model_state.pdopt"
+                )
+                check_names(opt_1, opt_2)
+                # check master weight
+                # check master wieghts
+                if "master_weights" in opt_2:
+                    self.AssertTrue("master_weights" in opt_1)
+                    check_names(
+                        opt_2["master_weights"], opt_1["master_weights"]
+                    )
 
         # check pp to vp
         tmp_dir1 = "./tmp_vp"
         if not os.path.exists(tmp_dir1):
             os.makedirs(tmp_dir1)
         pp_to_vp.apply(dir1, tmp_dir1)
-        check_params_names(tmp_dir1, dir2)
+        check_converted_model(tmp_dir1, dir2)
 
         # check vp to pp
         tmp_dir2 = "./tmp_pp"
         if not os.path.exists(tmp_dir2):
             os.makedirs(tmp_dir2)
         vp_to_pp.apply(dir2, tmp_dir2)
-        check_params_names(tmp_dir2, dir1)
+        check_converted_model(tmp_dir2, dir1)
 
         # rm dirs
         shutil.rmtree(dir1, ignore_errors=True)

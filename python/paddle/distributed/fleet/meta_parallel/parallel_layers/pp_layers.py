@@ -532,7 +532,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -562,7 +562,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
