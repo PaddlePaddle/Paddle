@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 // This file copy from llvm/ADT/SmallVector.h, version: 12.0.0
 // Modified the following points
 // 1. remove  macro
@@ -37,7 +37,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "paddle/phi/core/macros.h"
 namespace paddle {
 
 /// A range adaptor for a pair of iterators.
@@ -105,7 +104,7 @@ class small_vector_base {
   /// This is a helper for \a grow() that's out of line to reduce code
   /// duplication.  This function will report a fatal error if it can't grow at
   /// least to \p MinSize.
-  void *mallocForGrow(size_t MinSize, size_t TSize, size_t NewCapacity);
+  void *mallocForGrow(size_t MinSize, size_t TSize, size_t *NewCapacity);
 
   /// This is an implementation of the grow() method which only works
   /// on POD-like data types and is out of line to reduce code duplication.
@@ -222,7 +221,7 @@ class small_vector_template_common
   /// Check whether Elt will be invalidated by resizing the vector to NewSize.
   void assertSafeToReferenceAfterResize(const void *Elt, size_t NewSize) {
     (void)Elt;
-    (void)NewSize;  // remove [-Wunused-parameter] warning
+    (void)NewSize;  // just remove [-Wunused-paremeter]
     assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
@@ -414,7 +413,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   /// Create a new allocation big enough for \p MinSize and pass back its size
   /// in \p NewCapacity. This is the first section of \a grow().
-  T *mallocForGrow(size_t MinSize, const size_t &NewCapacity) {
+  T *mallocForGrow(size_t MinSize, size_t *NewCapacity) {
     return static_cast<T *>(
         small_vector_base<SmallVectorSizeType<T>>::mallocForGrow(
             MinSize, sizeof(T), NewCapacity));
@@ -440,7 +439,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
   void growAndAssign(size_t NumElts, const T &Elt) {
     // Grow manually in case Elt is an internal reference.
     size_t NewCapacity = 0;
-    T *NewElts = mallocForGrow(NumElts, NewCapacity);
+    T *NewElts = mallocForGrow(NumElts, &NewCapacity);
     std::uninitialized_fill_n(NewElts, NumElts, Elt);
     this->destroy_range(this->begin(), this->end());
     takeAllocationForGrow(NewElts, NewCapacity);
@@ -451,7 +450,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
   T &growAndEmplaceBack(ArgTypes &&...Args) {
     // Grow manually in case one of Args is an internal reference.
     size_t NewCapacity = 0;
-    T *NewElts = mallocForGrow(0, NewCapacity);
+    T *NewElts = mallocForGrow(0, &NewCapacity);
     ::new (reinterpret_cast<void *>(NewElts + this->size()))
         T(std::forward<ArgTypes>(Args)...);
     moveElementsForGrow(NewElts);
@@ -483,7 +482,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 template <typename T, bool TriviallyCopyable>
 void small_vector_template_base<T, TriviallyCopyable>::grow(size_t MinSize) {
   size_t NewCapacity = 0;
-  T *NewElts = mallocForGrow(MinSize, NewCapacity);
+  T *NewElts = mallocForGrow(MinSize, &NewCapacity);
   moveElementsForGrow(NewElts);
   takeAllocationForGrow(NewElts, NewCapacity);
 }
@@ -1395,9 +1394,7 @@ static void report_at_maximum_capacity(size_t MaxSize) {
 
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
-static size_t getNewCapacity(size_t MinSize,
-                             size_t TSize UNUSED,
-                             size_t OldCapacity) {
+static size_t getNewCapacity(size_t MinSize, size_t OldCapacity) {
   constexpr size_t MaxSize = (std::numeric_limits<Size_T>::max)();
 
   // Ensure we can fit the new capacity.
@@ -1420,9 +1417,9 @@ static size_t getNewCapacity(size_t MinSize,
 template <class Size_T>
 void *small_vector_base<Size_T>::mallocForGrow(size_t MinSize,
                                                size_t TSize,
-                                               size_t NewCapacity) {
-  NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
-  return safe_malloc(NewCapacity * TSize);
+                                               size_t *NewCapacity) {
+  *NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
+  return safe_malloc((*NewCapacity) * TSize);
 }
 
 // Note: Moving this function into the header may cause performance regression.
@@ -1430,7 +1427,7 @@ template <class Size_T>
 void small_vector_base<Size_T>::grow_pod(void *FirstEl,
                                          size_t MinSize,
                                          size_t TSize) {
-  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
+  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
   void *NewElts;
   if (BeginX == FirstEl) {
     NewElts = safe_malloc(NewCapacity * TSize);
