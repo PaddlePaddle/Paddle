@@ -495,9 +495,11 @@ void CheckNumericsKernel(const Context& ctx,
                                              tensor_block_mean_ptr);
 
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
+
   phi::DenseTensor nan_inf_zero_tensor;
   nan_inf_zero_tensor.Resize({static_cast<int64_t>(3)});
   int64_t* nan_inf_zero_ptr = ctx.template Alloc<int64_t>(&nan_inf_zero_tensor);
+
   FindGlobalMaxMinAndPrint<T, MT>
       <<<1, 1, 0, ctx.stream()>>>(block_num_nan_ptr,
                                   block_num_inf_ptr,

@@ -122,7 +122,6 @@ NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}
-    LOG(INFO)<<"this is SetPythonStack";
     SetPythonStack();
     if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
