@@ -315,7 +315,7 @@ static void YoloTensorParseCuda(
       prob_thresh);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class YoloBoxPostKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -555,4 +555,5 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(yolo_box_post, ops::YoloBoxPostKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    yolo_box_post, GPU, ALL_LAYOUT, ops::YoloBoxPostKernel, float) {}

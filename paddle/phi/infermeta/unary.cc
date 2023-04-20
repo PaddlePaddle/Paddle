@@ -2764,10 +2764,6 @@ void PNormInferMeta(const MetaTensor& x,
     for (int i = 0; i < x_dim.size(); ++i) {
       if (i != axis) reduce_dims.emplace_back(x_dim[i]);
     }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-
     x_dim[axis] = 1;
   }
 
@@ -4434,6 +4430,13 @@ void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
 
 void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
   TrilTriuInferMeta(x, diagonal, false, out);
+}
+
+// Some operator having oneDnn kernel will be set layout in kernel.
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
