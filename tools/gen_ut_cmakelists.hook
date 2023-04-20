@@ -1,6 +1,29 @@
 
 set -e
-lists=`python tools/gen_ut_cmakelists.py -f $* |grep 'modified/new:'|cut -f 2 -d :`
+
+for cmake in `echo $*`; do
+    testlist=`dirname $cmake`/testslist.csv
+    res=`python3 -c 'import sys
+if sys.argv[-1] in sys.argv[:-1]:
+    print(1)' $* $testlist`
+
+    if [[ ! $res == 1 ]];then
+        echo $cmake is modified but $testlist is not. 1>&2
+        exit 1
+    fi
+done
+
+tests=""
+for name in `echo $*`; do
+if [[ $(basename $name) == "testslist.csv" ]];then
+tests="$tests $name"
+fi
+done
+
+python tools/gen_ut_cmakelists.py -f $tests
+lists=`python tools/gen_ut_cmakelists.py -f $tests |grep 'modified/new:'|cut -f 2 -d :`
 num=`echo $lists |wc -w`
-[[ $num -ge 1 ]] && git add $lists && exit 1
+if [[ $num -ge 1 ]];then
+git add $lists && exit 1
+fi
 exit 0
