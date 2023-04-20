@@ -46,6 +46,7 @@ class TestDistPPSaveTraning(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_pp_model(self):
+        print(f"pwd {os.getcwd()}")
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         dp_id = hcg.get_data_parallel_rank()
@@ -67,13 +68,22 @@ class TestDistPPSaveTraning(unittest.TestCase):
         output_dir = "{}/mp_00_sharding_00_pp_{:0>2d}".format(
             "./pp_transformer", pp_id
         )
+        try:
+            os.makedirs(output_dir)
+        except:
+            # dir is already created, do nothing
+            pass
         for step_id in range(2):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
 
-        model._layers.save_state_dict(output_dir)
+        paddle.save(
+            model.state_dict(),
+            os.path.join(output_dir, "model.pdparams"),
+        )
+
         paddle.save(
             optimizer.state_dict(),
             os.path.join(output_dir, "model_state.pdopt"),

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import shutil
 import unittest
 
@@ -26,6 +27,7 @@ from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
 
 class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_transformer_unbalanced_data(self):
+        print(f"pwd {os.getcwd()}")
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer_save.py')
         self.run_mnist_2gpu(
             'hybrid_parallel_pp_transformer_save_with_virtual_stage.py'
@@ -36,8 +38,8 @@ class TestHybridPipeParallel(TestMultipleGpus):
         dir2 = "./pp_transformer_vp"
         p_config2 = ParallelConfig(mp=1, pp=2, vpp=2, sharding=1)
 
-        pp_to_vp = PipeLineModelAdaptor(p_config1, p_config2)
-        vp_to_pp = PipeLineModelAdaptor(p_config2, p_config1)
+        pp_to_vp = PipeLineModelAdaptor(p_config1, p_config2, 1)
+        vp_to_pp = PipeLineModelAdaptor(p_config2, p_config1, 1)
 
         def check_params_names(dir1, dir2):
             for i in p_config1.pp:
@@ -55,11 +57,15 @@ class TestHybridPipeParallel(TestMultipleGpus):
 
         # check pp to vp
         tmp_dir1 = "./tmp_vp"
+        if not os.path.exists(tmp_dir1):
+            os.makedirs(tmp_dir1)
         pp_to_vp.apply(dir1, tmp_dir1)
         check_params_names(tmp_dir1, dir2)
 
         # check vp to pp
         tmp_dir2 = "./tmp_pp"
+        if not os.path.exists(tmp_dir2):
+            os.makedirs(tmp_dir2)
         vp_to_pp.apply(dir2, tmp_dir2)
         check_params_names(tmp_dir2, dir1)
 
