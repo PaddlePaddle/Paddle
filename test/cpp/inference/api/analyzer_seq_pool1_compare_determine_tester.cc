@@ -16,7 +16,7 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 
-#include "test/cpp/inference/api/analyzer_seq_pool1_tester_helper.h "
+#include "test/cpp/inference/api/analyzer_seq_pool1_tester_helper.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
