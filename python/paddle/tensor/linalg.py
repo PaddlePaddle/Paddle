@@ -415,7 +415,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if axis is not None:
                 check_type(axis, 'axis', (int), 'p_norm')
             check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'p_norm'
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
             )
 
             attrs = {

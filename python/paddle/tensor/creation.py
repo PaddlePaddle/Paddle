@@ -1354,7 +1354,7 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         op_type,
     )
     if len(x.shape) < 2:

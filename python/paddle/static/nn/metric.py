@@ -89,7 +89,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'accuracy'
+        input, 'input', ['float16', 'uint16', 'float32', 'float64'], 'accuracy'
     )
     topk_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     topk_indices = helper.create_variable_for_type_inference(dtype="int64")

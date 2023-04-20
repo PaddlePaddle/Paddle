@@ -2200,6 +2200,7 @@ def squeeze(x, axis=None, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2476,7 +2477,10 @@ def unique(
         return tuple(outs)
     else:
         check_variable_and_dtype(
-            x, "input", ['float32', 'float64', 'int32', 'int64'], 'unique'
+            x,
+            "input",
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'unique',
         )
         check_type(return_index, 'return_index', bool, 'unique')
         check_type(return_inverse, 'return_inverse', bool, 'unique')
@@ -2596,6 +2600,7 @@ def unsqueeze(x, axis, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -3858,7 +3863,15 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'strided_slice',
         )
         check_type(axes, 'axes', (list, tuple), 'strided_slice')
