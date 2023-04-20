@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.fluid import core
 
 _fixed_add_param = np.random.random(size=[16, 16]).astype("float32")
 
 
 def _build_optimizer(
-    use_amp, amp_dtype="float16", amp_level="O1", use_grad_clip=False
+    use_amp,
+    amp_dtype="float16",
+    amp_level="O1",
+    amp_lists=None,
+    use_grad_clip=False,
 ):
     if use_grad_clip:
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
@@ -37,13 +44,8 @@ def _build_optimizer(
         multi_precision=True,
     )
     if use_amp:
-        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-            custom_white_list=["elementwise_add"],
-            custom_black_list=["reduce_mean"],
-            dtype=amp_dtype,
-        )
-        optimizer = paddle.static.amp.amp_decorate(
-            optimizer, amp_lists=amp_lists, level=amp_level, dtype=amp_dtype
+        optimizer = paddle.static.amp.decorate(
+            optimizer, amp_lists, level=amp_level, dtype=amp_dtype
         )
     return optimizer
 
@@ -80,7 +82,18 @@ def build_add_model(use_amp, amp_dtype="float16", amp_level="O1"):
             x = paddle.static.data(name='input', shape=[16, 16], dtype=x_dtype)
             out = model(x)
             loss = paddle.mean(out)
-            optimizer = _build_optimizer(use_amp, amp_dtype, amp_level)
+
+            if use_amp:
+                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                    custom_white_list=["elementwise_add"],
+                    custom_black_list=["reduce_mean"],
+                    dtype=amp_dtype,
+                )
+            else:
+                amp_lists = None
+            optimizer = _build_optimizer(
+                use_amp, amp_dtype, amp_level, amp_lists
+            )
             optimizer.minimize(loss)
     feed_vars = [x]
     fetch_vars = [loss]
@@ -145,7 +158,9 @@ def build_embedding_model(use_amp, amp_dtype="float16", amp_level="O1"):
             x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
             out = model(x)
             loss = paddle.mean(out)
-            optimizer = _build_optimizer(use_amp, amp_dtype, amp_level, True)
+            optimizer = _build_optimizer(
+                use_amp, amp_dtype, amp_level, None, True
+            )
             optimizer.minimize(loss)
     return main_program, startup_program
 
@@ -186,3 +201,13 @@ def build_while_model():
             out = model(x)
             loss = paddle.mean(out)
     return main_program, startup_program
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support amp.",
+)
+class AmpTestBase(unittest.TestCase):
+    def setUp(self):
+        self.amp_dtype = None
+        self.amp_level = None

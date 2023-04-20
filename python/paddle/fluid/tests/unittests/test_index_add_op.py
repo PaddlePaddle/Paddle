@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import Program
+from paddle.fluid import Program, core
 
 
 def compute_index_add_ref(
@@ -97,6 +97,69 @@ class TestIndexAddOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'AddValue'], 'Out')
+
+
+class TestIndexAddFP16Op(TestIndexAddOp):
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float16
+        self.index_type = np.int64
+        self.x_shape = (101, 3)
+        self.index_size = 3
+        self.add_value_shape = (3, 3)
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestIndexAddBF16Op(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.axis], size=self.index_size
+        )
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(x_np),
+            'Index': index_np,
+            'AddValue': convert_float_to_uint16(add_value_np),
+        }
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        )
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.place = core.CUDAPlace(0)
+
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float32
+        self.index_type = np.int64
+        self.x_shape = (101, 3)
+        self.index_size = 3
+        self.add_value_shape = (3, 3)
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['X', 'AddValue'], 'Out')
 
 
 class TestIndexAddAPI(unittest.TestCase):

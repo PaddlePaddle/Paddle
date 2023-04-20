@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from . import decorator
-from .decorator import decorate, amp_decorate
+from .decorator import decorate
 from . import fp16_lists
 from .fp16_lists import CustomOpLists, AutoMixedPrecisionLists
 from . import fp16_utils
