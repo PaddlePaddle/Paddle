@@ -1441,6 +1441,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mean_all (mean)
+  backward : mean_all_grad (mean_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : merge_selected_rows
   inputs :
     x : X
@@ -1809,6 +1816,14 @@
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
     {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
+
+- op : rnn
+  backward : rnn_grad
+  inputs:
+    { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
+  outputs:
+    { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
+  drop_empty_grad : [pre_state_grad, weight_list_grad]
 
 - op : roll
   backward : roll_grad
@@ -2365,6 +2380,21 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op: lu
+  backward: lu_grad
+  inputs:
+    x: X
+  outputs:
+    {out: Out, pivots : Pivots, infos : Infos}
+  attrs:
+    pivot : pivots
+
+- op: reindex_graph (graph_reindex)
+  inputs :
+    {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
+  outputs :
+    {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

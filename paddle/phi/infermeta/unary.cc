@@ -2006,8 +2006,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),
@@ -4434,6 +4434,13 @@ void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
 
 void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
   TrilTriuInferMeta(x, diagonal, false, out);
+}
+
+// Some operator having oneDnn kernel will be set layout in kernel.
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {

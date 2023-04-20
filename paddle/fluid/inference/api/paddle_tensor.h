@@ -21,12 +21,14 @@
 
 #include "paddle_infer_declare.h"  // NOLINT
 
-#include "paddle/phi/api/include/tensor.h"  // expose paddle::Tensor
-
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
+
+namespace paddle {
+class Tensor;
+}
 
 namespace paddle_infer {
 

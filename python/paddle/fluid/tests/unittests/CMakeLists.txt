@@ -560,9 +560,6 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
 if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed_passes)
-  add_subdirectory(ps)
-  add_subdirectory(auto_parallel)
   add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
@@ -767,9 +764,6 @@ if(NOT WIN32)
   py_test_modules(test_ir_memory_optimize_transformer MODULES
                   test_ir_memory_optimize_transformer)
 endif()
-
-add_subdirectory(sequence)
-add_subdirectory(distribution)
 
 # dist xpu tests:
 if(WITH_XPU_BKCL)
@@ -1166,6 +1160,8 @@ set(STATIC_BUILD_TESTS
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_fused_attention_op
+    test_fused_attention_op_api
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1191,6 +1187,11 @@ set(STATIC_BUILD_TESTS
     test_update_loss_scaling_op
     test_while_op
     test_one_hot_v2_op)
+
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
