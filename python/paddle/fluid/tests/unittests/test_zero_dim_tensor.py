@@ -4442,33 +4442,36 @@ class TestSundryAPIStatic(unittest.TestCase):
         x_2 = paddle.arange(24, dtype="float32") - 12
         x_2.stop_gradient = False
         out_2 = paddle.linalg.norm(x_2, p=1)
-        out_2.retain_grads()
-        out_2.backward()
+        paddle.static.append_backward(out_2.sum())
 
-        self.assertEqual(out_2.shape, [1])
-        self.assertEqual(x_2.grad.shape, [24])
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_2, x_2.grad_name])
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = 1 ,axis = 0,
         # using p_nrom, as_vector = False
         x_2_p = paddle.arange(24, dtype="float32") - 12
         x_2_p.stop_gradient = False
         out_2_p = paddle.linalg.norm(x_2_p, p=1, axis=0)
-        out_2_p.retain_grads()
-        out_2_p.backward()
+        paddle.static.append_backward(out_2_p.sum())
 
-        self.assertEqual(out_2_p.shape, [])
-        self.assertEqual(x_2_p.grad.shape, [24])
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_2_p, x_2_p.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = fro ,axis = 0,
         # using p_nrom, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
         out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
-        out_2_fro.retain_grads()
-        out_2_fro.backward()
+        paddle.static.append_backward(out_2_fro.sum())
 
-        self.assertEqual(out_2_fro.shape, [])
-        self.assertEqual(x_2_fro.grad.shape, [24])
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_2_fro, x_2_fro.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (24,))
 
         # 2D input, p = 1, axis = [0, 1]
         # using p_matrix_norm ,depends on abs, pow, sum
