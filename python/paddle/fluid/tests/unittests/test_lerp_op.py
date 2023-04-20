@@ -231,9 +231,9 @@ class TestLerpBF16(TestLerp):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.shape)
-        y = np.full(100, 10.0).astype(np.float32).reshape(self.shape)
-        w = np.asarray([0.5]).astype(np.float32)
+        x = np.arange(1.0, 101.0).astype(np.float64).reshape(self.shape)
+        y = np.full(100, 10.0).astype(np.float64).reshape(self.shape)
+        w = np.asarray([0.5]).astype(np.float64)
         self.inputs = {
             'X': convert_float_to_uint16(x),
             'Y': convert_float_to_uint16(y),
