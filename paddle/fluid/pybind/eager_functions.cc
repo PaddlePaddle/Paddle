@@ -1370,7 +1370,7 @@ PyMethodDef variable_functions[] = {
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle erroe in BindFunctions(PyModule_AddFunctions)."));
+        "Init Paddle error in BindFunctions(PyModule_AddFunctions)."));
     return;
   }
 }
