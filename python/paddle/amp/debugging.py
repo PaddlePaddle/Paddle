@@ -434,7 +434,7 @@ def enable_tensor_checker(checker_config):
 
     Note:
 
-    If disable_tensor_checker() is called before loss.backward(), the gradient operator will not be checked.
+    If disable_tensor_checker() is called before backward(), the gradient operator will not be checked.
     If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
@@ -469,11 +469,11 @@ def enable_tensor_checker(checker_config):
 
 def disable_tensor_checker():
     """
-    disable_tensor_checker() is used to disable accuracy checking, and is used together with enables_tensor_checker(config) to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
+    disable_tensor_checker() is used to disable accuracy checking, and is used together with enable_tensor_checker(config) to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
 
     Note:
 
-    If disable_tensor_checker() is called before loss.backward(), the gradient operator will not be checked;
+    If disable_tensor_checker() is called before backward(), the gradient operator will not be checked;
     If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
