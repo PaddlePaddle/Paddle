@@ -2207,7 +2207,7 @@ void MatrixRankStaticInferMeta(const MetaTensor& x,
   if (atol_tensor) {
     MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
   } else {
-    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
   }
 }
 
@@ -2406,9 +2406,9 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,

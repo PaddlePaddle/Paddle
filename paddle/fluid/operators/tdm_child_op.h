@@ -105,7 +105,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
   memcpy(leaf_mask_data, &item_mask_vec[0], sizeof(OutT) * output_nums);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TDMChildKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

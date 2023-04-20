@@ -626,11 +626,14 @@ def cast_parameters_to_fp16(
     for block in program.blocks:
         all_parameters.extend(block.all_parameters())
 
+    dtype_str = get_low_precision_dtypestr(dest_type)
     fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
         if param.name in fp16_var_names:
-            _logger.debug(f"---- cast {param.name} to fp16/bf16 dtype ----")
+            _logger.debug(
+                f"-- cast {param.name} to {dtype_str}, place is {place}"
+            )
             if var_scope.find_var(param.name):
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)

@@ -23,9 +23,9 @@ from paddle.fluid.data_feeder import (  # noqa: F401
 from paddle.fluid.framework import (  # noqa: F401
     OpProtoHolder,
     Variable,
+    _create_tensor,
     _dygraph_tracer,
     _non_static_mode,
-    _varbase_creator,
     convert_np_dtype_to_dtype_,
     default_main_program,
     device_guard,
