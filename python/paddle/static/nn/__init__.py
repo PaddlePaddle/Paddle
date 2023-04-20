@@ -60,6 +60,7 @@ from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
 
+
 __all__ = [  # noqa
     'fc',
     'batch_norm',

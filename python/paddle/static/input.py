@@ -18,6 +18,8 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
 
+from ..fluid.variable_index import _setitem_impl_
+
 __all__ = []
 
 
@@ -342,3 +344,13 @@ class InputSpec:
 
     def __ne__(self, other):
         return not self == other
+
+
+@static_only
+def setitem(x, index, value):
+    """
+    x(Tensor): input Tensor.
+    index(Scalar|Tuple|List|Tensor): Where should be set value.
+    value(Scalar|Tensor): The value which is going to be set.
+    """
+    return _setitem_impl_(x, index, value)
