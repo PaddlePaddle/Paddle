@@ -39,15 +39,8 @@ void DotKernel(const Context& dev_ctx,
 
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
-  } else if (out->dims().size() == 1) {
-    auto eigen_out = phi::EigenVector<T>::From(*out);
-    auto eigen_x = phi::EigenMatrix<T>::From(x);
-    auto eigen_y = phi::EigenMatrix<T>::From(y);
-
-    auto& dev = *dev_ctx.eigen_device();
-    eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
   } else {
-    auto eigen_out = phi::EigenMatrix<T>::From(*out);
+    auto eigen_out = phi::EigenVector<T>::From(*out);
     auto eigen_x = phi::EigenMatrix<T>::From(x);
     auto eigen_y = phi::EigenMatrix<T>::From(y);
 
