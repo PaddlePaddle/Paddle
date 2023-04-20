@@ -59,13 +59,15 @@ DataLayout MetaTensor::layout() const {
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
-        dims;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->update(dims);
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
   } else if (phi::SelectedRows::classof(tensor_)) {
     static_cast<SelectedRows*>(tensor_)->set_height(dims[0]);
+    // TODO(liudongxue01): update strides?
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->dims = dims;
@@ -105,14 +107,15 @@ void MetaTensor::set_dtype(DataType dtype) {
 void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
-        ->layout = layout;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->update(layout);
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<SelectedRows*>(tensor_)->mutable_value())
-        ->layout = layout;
+    auto meta = DenseTensorUtils::GetMutableMeta(
+        static_cast<SelectedRows*>(tensor_)->mutable_value());
+    meta->update(layout);
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->layout = layout;
@@ -192,9 +195,9 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
       auto* selected_rows_in = static_cast<SelectedRows*>(in_tensor_base);
       selected_rows_out->set_rows(selected_rows_in->rows());
       selected_rows_out->set_height(selected_rows_in->height());
-      DenseTensorUtils::GetMutableMeta(
-          static_cast<SelectedRows*>(tensor_)->mutable_value())
-          ->dims = selected_rows_in->mutable_value()->dims();
+      auto meta = DenseTensorUtils::GetMutableMeta(
+          static_cast<SelectedRows*>(tensor_)->mutable_value());
+      meta->update(selected_rows_in->mutable_value()->dims());
     } else {
       set_dims(meta_tensor.dims());
     }

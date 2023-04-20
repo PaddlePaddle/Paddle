@@ -249,7 +249,7 @@ def to_string(var, prefix='Tensor'):
     if var.dtype == core.VarDesc.VarType.BF16:
         dtype = 'bfloat16'
 
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+    _template = "{prefix}(shape={shape}, strides={strides}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
@@ -279,6 +279,7 @@ def to_string(var, prefix='Tensor'):
     return _template.format(
         prefix=prefix,
         shape=var.shape,
+        strides=var.strides,
         dtype=dtype,
         place=var._place_str,
         stop_gradient=var.stop_gradient,
@@ -370,7 +371,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         dtype = 'bfloat16'
 
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+    _template = "{prefix}(shape={shape}, strides={strides}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
@@ -382,6 +383,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return _template.format(
             prefix=prefix,
             shape=tensor.shape,
+            strides=tensor.strides,
             dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
