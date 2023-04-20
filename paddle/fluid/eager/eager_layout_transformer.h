@@ -34,7 +34,10 @@ inline paddle::Tensor EagerTraceTransposeOp(const phi::DataLayout layout,
   } else {
     axis = {0, 1, 2, 3};
   }
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
   auto out_tensor = transpose_ad_func(in, axis);
+  egr::Controller::Instance().SetHasGrad(trace_backward);
   VLOG(4) << "AutoTune Transpose from " << in.layout() << " to " << layout;
   return out_tensor;
 }
