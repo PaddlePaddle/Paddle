@@ -360,7 +360,7 @@ class ResNetUnit(Layer):
             self._has_shortcut,
             self._has_dx,
             self._use_global_stats,
-            self.training,
+            not self.training,
             self._act,
         )
         return out

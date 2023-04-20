@@ -85,6 +85,12 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
         return input;
       }
     }
+    if (op_name == "resnet_unit") {
+      if (input_name != "X" && input_name != "FilterX" &&
+          input_name != "FilterZ") {
+        return input;
+      }
+    }
   }
   if (NeedCast(input, dst_dtype)) {
     paddle::framework::AttributeMap cast_attrs = {
