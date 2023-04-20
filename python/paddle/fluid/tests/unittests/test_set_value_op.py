@@ -986,7 +986,7 @@ class TestSetValueValueShape5(TestSetValueApi):
 # less than value Tensor on CPU / GPU.
 class TestSetValueValueShape6(TestSetValueApi):
     def set_value(self):
-        self.value = paddle.ones((1, 4)) * 5
+        self.value = np.ones((1, 4)) * 5
 
     def set_shape(self):
         self.shape = [4, 4]
