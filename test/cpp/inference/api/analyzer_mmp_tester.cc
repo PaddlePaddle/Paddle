@@ -15,7 +15,7 @@
 #include <random>
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 // Here add missing commands
 DEFINE_string(infer_model2, "", "model path");

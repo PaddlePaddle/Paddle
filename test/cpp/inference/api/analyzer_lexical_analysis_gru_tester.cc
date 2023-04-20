@@ -16,7 +16,7 @@ limitations under the License. */
 #include <iostream>
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 // setting iterations to 0 means processing the whole dataset
 namespace paddle {

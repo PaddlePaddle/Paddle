@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {

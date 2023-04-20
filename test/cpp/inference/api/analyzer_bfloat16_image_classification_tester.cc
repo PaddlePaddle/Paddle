@@ -13,7 +13,7 @@ limitations under the License. */
 #include <iostream>
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");

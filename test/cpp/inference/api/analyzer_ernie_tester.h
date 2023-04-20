@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {

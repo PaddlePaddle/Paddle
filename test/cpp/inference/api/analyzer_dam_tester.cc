@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 const int FLAGS_max_turn_num = 1;
 
