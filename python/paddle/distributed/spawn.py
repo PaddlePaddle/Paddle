@@ -108,8 +108,6 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
-    elif 'mlu' in device:
-        return core.get_custom_device_count('mlu')
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
     else:
