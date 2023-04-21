@@ -107,7 +107,7 @@ __global__ void KernelMinMax(const T* input,
       }
       if (min_ptr[0] == max_ptr[0]) {
         min_ptr[0] = min_ptr[0] - 1;
-        max_ptr[0] = max_ptr[0] - 1;
+        max_ptr[0] = max_ptr[0] + 1;
       }
     }
   }
