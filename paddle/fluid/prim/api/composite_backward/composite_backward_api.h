@@ -1261,10 +1261,10 @@ void prod_grad(const Tensor& x,
             }
           }
         }
-
-        auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
-        auto out_ = unsqueeze<T>(out, axis_);
+        auto out_ = reshape<T>(out, out_grad_shape);
         out_tmp = out_.expand(IntArray(x_dim));
       } else {
         x_grad_tmp = out_grad.expand(IntArray(x_dim));
@@ -1317,8 +1317,9 @@ void max_grad(const Tensor& x,
         }
       }
     }
-    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-    auto out_ = unsqueeze<T>(out, axis_);
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    auto out_ = reshape<T>(out, out_grad_shape);
     auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
     auto out_tmp = out_.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
