@@ -143,8 +143,12 @@ class CompositeGradOpMakerBase {
       const std::string& name) {
     paddle::optional<paddle::Tensor> output_grad_opt;
     if (fwd_op_.Outputs().find(name) != fwd_op_.Outputs().end()) {
+      std::cout << "~~~~~~~~~~~~~~~name: " << name << std::endl;
       framework::VarDesc* output_grad_desc = this->SingleOutputGrad(name);
+      std::cout << "~~~~~~~~~~~~~~~output_grad_desc: " << output_grad_desc
+                << std::endl;
       if (!output_grad_desc) return output_grad_opt;
+      std::cout << "~~~~~~~~~~~~~~~not null pointer: " << std::endl;
       paddle::Tensor output_grad =
           paddle::Tensor(std::make_shared<DescTensor>(output_grad_desc));
       output_grad_opt = paddle::make_optional<paddle::Tensor>(output_grad);
