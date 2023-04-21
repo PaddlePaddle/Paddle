@@ -18,13 +18,12 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #include "paddle/phi/kernels/xpu/xpu_fused_common_function.h"
 
 namespace phi {
 namespace fusion {
-
-using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
 template <typename T, typename Context>
 void FFN(const phi::XPUContext& dev_ctx,
@@ -54,6 +53,7 @@ void FFN(const phi::XPUContext& dev_ctx,
          const phi::XPUDropoutParam& dropout_param1,
          const phi::XPUDropoutParam& dropout_param2,
          int ring_id) {
+  using XPUTypeT = typename XPUTypeTrait<T>::Type;
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
@@ -166,7 +166,7 @@ void FFN(const phi::XPUContext& dev_ctx,
         xpu_ctx, linear1_out_ptr, linear2_before_tmp_ptr, linear1_out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Currently only supports gelu or relu activation functions!"));
   }
 
@@ -281,7 +281,6 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
                             DenseTensor* dropout1_out,
                             DenseTensor* dropout2_out) {
   auto* x_ptr = &x;
-
   auto* linear1_weight_ptr = &linear1_weight;
   auto* linear1_bias_ptr = linear1_bias.get_ptr();
   auto* linear2_weight_ptr = &linear2_weight;
@@ -291,14 +290,13 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   const phi::DenseTensor* ln_bias = nullptr;
   phi::DenseTensor* ln_mean = nullptr;
   phi::DenseTensor* ln_variance = nullptr;
-  phi::DenseTensor* ln1_out = nullptr;
 
   if (pre_layer_norm) {
     ln_scale = ln1_scale.get_ptr();
     ln_bias = ln1_bias.get_ptr();
     ln_mean = ln1_mean;
     ln_variance = ln1_variance;
-    dev_ctx.template Alloc<T>(ln1_out)
+    dev_ctx.template Alloc<T>(ln1_out);
   } else {
     ln_scale = ln2_scale.get_ptr();
     ln_bias = ln2_bias.get_ptr();
@@ -312,19 +310,21 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   bool is_upscale_in_train_1 = dropout1_implementation == "upscale_in_train";
   bool is_upscale_in_train_2 = dropout2_implementation == "upscale_in_train";
 
+  auto* dropout1_seed_ptr = dropout1_seed.get_ptr();
+  auto* dropout2_seed_ptr = dropout2_seed.get_ptr();
   phi::XPUDropoutParam dropout_param1;
   dropout_param1.initXPUDropoutParam(dropout1_prob,
                                      is_upscale_in_train_1,
                                      is_test,
                                      dropout1_fix_seed,
-                                     dropout1_seed,
+                                     dropout1_seed_ptr,
                                      dropout1_seed_val);
   phi::XPUDropoutParam dropout_param2;
   dropout_param2.initXPUDropoutParam(dropout2_prob,
                                      is_upscale_in_train_2,
                                      is_test,
                                      dropout2_fix_seed,
-                                     dropout2_seed,
+                                     dropout2_seed_ptr,
                                      dropout2_seed_val);
 
   dev_ctx.template Alloc<float>(ln_mean);
@@ -337,7 +337,7 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dropout2_out);
   dev_ctx.template Alloc<T>(linear1_out);
 
-  auto x_dim = x->dims();
+  auto x_dim = x_ptr->dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
       phi::RowMatrixFromVector(x_dim), 0, false);
 
@@ -346,33 +346,33 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   int dim_feedforward = dim[dim.size() - 1];
   int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
 
-  FFN<T, Context>(dev_ctx,
-                  x,
-                  linear1_weight_ptr,
-                  linear1_bias_ptr,
-                  linear2_weight_ptr,
-                  linear2_bias_ptr,
-                  ln_scale,
-                  ln_bias,
-                  out,
-                  dropout1_mask,
-                  dropout2_mask,
-                  ln_mean,
-                  ln_variance,
-                  linear1_out,
-                  ln1_out,
-                  dropout1_out,
-                  dropout2_out,
-                  bsz_seq,
-                  d_model,
-                  dim_feedforward,
-                  act_method,
-                  pre_layer_norm,
-                  epsilon1,
-                  epsilon2,
-                  dropout_param1,
-                  dropout_param2,
-                  ring_id);
+  phi::fusion::FFN<T, Context>(dev_ctx,
+                               x_ptr,
+                               linear1_weight_ptr,
+                               linear1_bias_ptr,
+                               linear2_weight_ptr,
+                               linear2_bias_ptr,
+                               ln_scale,
+                               ln_bias,
+                               out,
+                               dropout1_mask,
+                               dropout2_mask,
+                               ln_mean,
+                               ln_variance,
+                               linear1_out,
+                               ln1_out,
+                               dropout1_out,
+                               dropout2_out,
+                               bsz_seq,
+                               d_model,
+                               dim_feedforward,
+                               act_method,
+                               pre_layer_norm,
+                               epsilon1,
+                               epsilon2,
+                               dropout_param1,
+                               dropout_param2,
+                               ring_id);
 }
 }  // namespace fusion
 }  // namespace phi
