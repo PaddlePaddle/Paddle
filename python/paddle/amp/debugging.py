@@ -478,6 +478,7 @@ def disable_tensor_checker():
     Examples:
 
         ..  code-block:: python
+
             import paddle
 
             checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
