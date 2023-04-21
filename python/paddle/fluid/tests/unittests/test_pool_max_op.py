@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle.fluid import core
@@ -153,8 +153,9 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_dtype()
 
         if self.is_bfloat16_op():
-            input = np.random.random(self.shape).astype(np.uint16)
-            input = np.round(input * 100.0, 2).astype(np.float32)
+            input = np.random.random(self.shape).astype(np.float32)
+            input = convert_uint16_to_float(convert_float_to_uint16(np.round(input * 100.0, 2)))
+            
         else:
             input = np.random.random(self.shape).astype(self.dtype)
             input = np.round(input * 100.0, 2)
