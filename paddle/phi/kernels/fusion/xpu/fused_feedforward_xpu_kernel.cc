@@ -12,18 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
-#include "paddle/fluid/operators/xpu_api_wrapper.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #include "paddle/phi/kernels/xpu/xpu_fused_common_function.h"
 
