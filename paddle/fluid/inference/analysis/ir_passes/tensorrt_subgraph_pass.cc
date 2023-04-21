@@ -296,6 +296,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
+  // var may have the same name but not have the same id.
+  // e.g., var(batch_norm2d_0.w_1) may have id: 10, 13, 25.... in a graph.
+  // so we must find all the var_name+id.
+  for (auto *n : graph->Nodes()) {
+    if (n->IsVar() && input_names.count(n->Name())) {
+      input_names_with_id.insert(n->Name() + std::to_string(n->id()));
+    }
+  }
+
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
