@@ -102,25 +102,53 @@ class TestHybridPipeParallel(TestMultipleGpus):
                         opt_2["master_weights"], opt_1["master_weights"]
                     )
 
+        def create_dir_if_nonexist(dir: str):
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+
         # check pp to vp
-        tmp_dir1 = "./tmp_vp"
-        if not os.path.exists(tmp_dir1):
-            os.makedirs(tmp_dir1)
+        tmp_dir1 = "./tmp_pp_to_vp"
+        create_dir_if_nonexist(tmp_dir1)
         pp_to_vp.apply(dir1, tmp_dir1)
+        # browse the converted model
+        pp_to_vp.peek_model(tmp_dir1)
+        # check
         check_converted_model(tmp_dir1, dir2)
 
         # check vp to pp
-        tmp_dir2 = "./tmp_pp"
-        if not os.path.exists(tmp_dir2):
-            os.makedirs(tmp_dir2)
+        tmp_dir2 = "./tmp_vp_to_pp"
+        create_dir_if_nonexist(tmp_dir2)
         vp_to_pp.apply(dir2, tmp_dir2)
+        vp_to_pp.peek_model(tmp_dir2)
         check_converted_model(tmp_dir2, dir1)
 
+        # check uniform segment
+        tmp_dir3 = "./tmp_vp_to_pp_uniform"
+        create_dir_if_nonexist(tmp_dir3)
+        vp_to_pp_uniform = PipeLineModelAdaptor(
+            src_parallel_config=p_config2,
+            dst_parallel_config=p_config1,
+            transformer_layer_num=8,
+            segment_method="uniform",
+        )
+        vp_to_pp_uniform.apply(dir2, tmp_dir3)
+        vp_to_pp_uniform.peek_model(tmp_dir3)
+
+        tmp_dir4 = "./tmp_pp_to_pp_uniform"
+        create_dir_if_nonexist(tmp_dir4)
+        pp_to_pp_uniform = PipeLineModelAdaptor(
+            src_parallel_config=p_config1,
+            dst_parallel_config=p_config1,
+            transformer_layer_num=8,
+            segment_method="uniform",
+        )
+        pp_to_pp_uniform.apply(dir1, tmp_dir4)
+        pp_to_pp_uniform.peek_model(tmp_dir4)
+        check_converted_model(tmp_dir3, tmp_dir4)
+
         # rm dirs
-        shutil.rmtree(dir1, ignore_errors=True)
-        shutil.rmtree(dir2, ignore_errors=True)
-        shutil.rmtree(tmp_dir1, ignore_errors=True)
-        shutil.rmtree(tmp_dir2, ignore_errors=True)
+        for d in [dir1, dir2, tmp_dir1, tmp_dir2, tmp_dir3, tmp_dir4]:
+            shutil.rmtree(d, ignore_errors=True)
 
 
 if __name__ == "__main__":

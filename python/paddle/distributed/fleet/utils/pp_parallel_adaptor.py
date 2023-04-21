@@ -28,11 +28,6 @@ class ParallelConfig:
         self.vpp = vpp
         self.sharding = sharding
 
-    def pipe_parallel_groups(self):
-        for i in range(self.mp):
-            for j in range(self.sharding):
-                yield self.pipe_parallel_group(i, j)
-
     def pipe_parallel_group(self, i: int, j: int):
         ans = []
         for k in range(self.pp):
@@ -238,7 +233,7 @@ class PipeLineModelAdaptor:
             match = re.search(
                 r"^_layers((\.\d+)+|(\.shared_layers\.[^\.]+))", layer_name
             )
-            assert match, f"not a valid {layer_name} layer name"
+            assert match, f"{layer_name} not a valid layer name"
             return float(match.group(1).lstrip("."))
 
         # strictly sort layers
@@ -328,20 +323,18 @@ class PipeLineModelAdaptor:
         shared_layer_exist = any(
             "_layers.shared_layers" in e[0] for e in layers
         )
-        if not shared_layer_exist:
-            return segments
+        if shared_layer_exist:
+            # special treatment for shared layer
+            if config.vpp > 1:
+                segments[0] = [
+                    ([layers[0][0], segments[0][0][0][0]], layers[0][1])
+                ] + segments[0][1:]
+            else:
+                segments[0] = [([layers[0][0]], layers[0][1])] + segments[0][1:]
 
-        # special treatment for shared layer
-        if config.vpp > 1:
-            segments[0] = [
-                ([layers[0][0], segments[0][0][0][0]], layers[0][1])
-            ] + segments[0][1:]
             for i in range(1, config.pp):
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
-        else:
-            segments[0] = [([layers[0][0]], layers[0][1])] + segments[0][1:]
-            for i in range(1, config.pp):
-                segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
+
         for segs in segments:
             print(50 * "=")
             for seg in segs:
@@ -588,4 +581,12 @@ def main():
 
 
 if __name__ == "__main__":
+    """
+    Usage:
+        python pp_parallel_adaptor.py --src_mp xxx --src_path xxx --method \
+          adapt_model/peek_model --dst_path xxx --sharding xxx --segment_method xxx --transformer_layer_num xxx
+
+    for the meaning of a specific arg, please use:
+        python  pp_parallel_adaptor.py  -h
+    """
     main()
