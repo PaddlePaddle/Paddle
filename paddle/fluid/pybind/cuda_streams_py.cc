@@ -262,7 +262,6 @@ void BindCudaStream(py::module *m_ptr) {
               int curr_device_id = platform::GetCurrentDeviceId();
               auto place_tmp = platform::CUDAPlace(curr_device_id);
               new (&self) phi::CUDAStream(place_tmp, priority - 2, stream_flag);
-              place = &place_tmp;
             } else {
               // seting priority 1(high) and 2(normal) correspond to the actual
               // cuda stream priority -1 and 0.
