@@ -17,7 +17,7 @@ import struct
 import unittest
 
 import numpy as np
-from amp_base_models import AmpTestBase, build_embedding_model
+from amp_base_models import AmpTestBase, build_add_model, build_embedding_model
 
 import paddle
 from paddle import fluid
@@ -266,13 +266,35 @@ class TestStaticBF16(AmpTestBase):
         return x_fp32, x_bf16
 
     def test_compare_o1_o2(self):
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
+        def _run(place, exe, x_np, max_iters, level):
+            (
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+            ) = build_add_model(True, "bfloat16", level)
+
+            losses = self.run_program(
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+                place,
+                exe,
+                x_np,
+                max_iters,
+                level,
+            )
+            return losses
 
         max_iters = 2
         x_fp32, x_bf16 = self._generate_feed_x()
-        losses_o1 = self.run_program(place, exe, x_fp32, max_iters, 'O1')
-        losses_o2 = self.run_program(place, exe, x_bf16, max_iters, 'O2')
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        losses_o1 = _run(place, exe, x_fp32, max_iters, 'O1')
+        losses_o2 = _run(place, exe, x_bf16, max_iters, 'O2')
 
 
 if __name__ == '__main__':

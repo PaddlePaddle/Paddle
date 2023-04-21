@@ -27,9 +27,13 @@ class TestAMPPromote(AmpTestBase):
     def check_promote_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls
     ):
-        main_program, startup_program = build_conv_model(
-            use_amp, dtype, level, use_promote
-        )
+        (
+            main_program,
+            startup_program,
+            optimizer,
+            feed_vars,
+            fetch_vars,
+        ) = build_conv_model(use_amp, dtype, level, use_promote)
         self.assertEqual(main_program.num_blocks, 1)
 
         amp.debugging.collect_operator_stats(main_program)
@@ -43,8 +47,20 @@ class TestAMPPromote(AmpTestBase):
         exe = paddle.static.Executor(place)
 
         max_iters = 2
-        x_fp32 = np.random.random(size=[16, 16]).astype("float32")
-        losses_o1 = self.run_program(place, exe, x_fp32, max_iters, 'O1')
+        x_fp32 = np.random.random(size=[1, 1, 6, 6]).astype("float32")
+        print(main_program)
+        losses_o1 = self.run_program(
+            main_program,
+            startup_program,
+            optimizer,
+            feed_vars,
+            fetch_vars,
+            place,
+            exe,
+            x_fp32,
+            max_iters,
+            level,
+        )
 
     def test_static_amp_o1(self):
         expected_fp16_calls = {
