@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +12,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+=======
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+>>>>>>> 3c1049b876 (Add i1 and i1e op)
 
 #pragma once
 
@@ -87,6 +100,7 @@ static inline T Chbevl(T x, const T array[], size_t len) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 struct I0eFunctor {
   I0eFunctor(const T* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
@@ -148,6 +162,8 @@ struct I0Functor {
 };
 
 template <typename T>
+=======
+>>>>>>> 3c1049b876 (Add i1 and i1e op)
 static inline typename std::enable_if<std::is_same<double, T>::value,
                                       std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_A() {
@@ -251,4 +267,68 @@ ChebyshevCoefficientsI1e_B() {
   return std::make_tuple(coeff, 7);
 }
 
+<<<<<<< HEAD
+=======
+template <typename T>
+struct I1Functor {
+  I1Functor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      const T out = std::exp(x) * x * Chbevl(y, A, len);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+      const T out = (std::exp(x) * Chbevl(y, B, len)) / std::sqrt(x);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    }
+  }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct I1eFunctor {
+  I1eFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      const T out = Chbevl<T>(y, A, len) * x;
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+
+      const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    }
+  }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+>>>>>>> 3c1049b876 (Add i1 and i1e op)
 }  // namespace phi
