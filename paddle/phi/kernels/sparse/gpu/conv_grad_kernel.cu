@@ -205,7 +205,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       // (in_channels, n) * (n, out_channels)
       static cutlass::device_memory::allocation<uint8_t> workspace(
           workspace_size);
-      GatherGemmScatterDriver<T, IntT, true, false>(
+      GatherGemmScatterDriver<80, true, false>(
           dev_ctx,
           key,
           x.values().data<T>(),
@@ -223,7 +223,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
           &workspace);
       // call gemm: d_x = out_grad * transpose(kernel)
       // (n, out_channels) * (out_channels, in_channels)
-      GatherGemmScatterDriver<T, IntT, false, true>(
+      GatherGemmScatterDriver<80, false, true>(
           dev_ctx,
           key,
           out_grad.values().data<T>(),
