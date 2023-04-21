@@ -271,7 +271,7 @@ def _rnn_static_graph(
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     with paddle.fluid.framework.device_guard("cpu"):
-        start_i = paddle.zeros([1], dtype="int64")
+        start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
         end = paddle.cast(end, "int64")
