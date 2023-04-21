@@ -1130,6 +1130,18 @@
   outputs :
     {out : Out, residual : Residual}
 
+- op : i0
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : i0e
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -2552,18 +2564,6 @@
 
 - op: temporal_shift
   backward: temporal_shift_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
-- op : i0
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
-- op : i0e
   inputs :
     x : X
   outputs :
