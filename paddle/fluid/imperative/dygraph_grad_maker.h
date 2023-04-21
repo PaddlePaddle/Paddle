@@ -61,9 +61,8 @@ class GradOpBaseMakerBase {
   virtual std::shared_ptr<GradOpNode> operator()() const = 0;
 
   TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
-      const std::string& name, bool drop_empty_grad = true) const {
-    return GetVarBaseList<TracedVarRole::kBackward>(
-        name, /*is_input=*/drop_empty_grad);
+      const std::string& name, bool drop_empty_grad UNUSED = true) const {
+    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/true);
   }
 
   TracedVarList<VarBase, TracedVarRole::kBackward> OutputGrad(
