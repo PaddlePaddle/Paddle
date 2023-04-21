@@ -51,12 +51,12 @@ def is_balanced(content):
 def grad_kernel_definition(content, kernel_pattern, grad_pattern):
     """
     Args:
-       content(str): content of file
+       content(str): file content
        kernel_pattern(str): kernel pattern
        grad_pattern(str): grad pattern
 
     Returns:
-        (list, int): grad kernel definitions of file and count.
+        (list, int): grad kernel definitions in file and count.
     """
 
     results = []
