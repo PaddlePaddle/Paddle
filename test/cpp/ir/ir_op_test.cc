@@ -14,11 +14,53 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/op_base.h"
+
+/// \brief Define built-in Trait, derived from OpTraitBase.
+class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
+ public:
+  explicit ReadOnlyTrait(const ir::Operation *op)
+      : ir::OpTraitBase<ReadOnlyTrait>(op) {}
+};
+
+/// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
+/// Models need to be defined within the class. Concept defines abstract
+/// interface functions, and Model is a template class that defines the specific
+/// implementation of interface functions based on template parameters.
+class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
+ public:
+  struct Concept {
+    explicit Concept(void (*infer_shape)(const ir::Operation *))
+        : infer_shape_(infer_shape) {}
+    void (*infer_shape_)(const ir::Operation *);
+  };
+
+  template <class ConcreteOp>
+  struct Model : public Concept {
+    static void InferShape(const ir::Operation *op) {
+      ConcreteOp concret_op = ConcreteOp(op);
+      if (concret_op == nullptr) throw("concret_op is nullptr");
+      concret_op.InferShape();
+    }
+
+    Model() : Concept(InferShape) {
+      if (sizeof(Model) != sizeof(Concept)) {
+        throw("sizeof(Model) != sizeof(Concept)");
+      }
+    }
+  };
+
+  InferShapeInterface(const ir::Operation *op, Concept *impl)
+      : ir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
+
+  void InferShape() { impl_->infer_shape_(operation()); }
+
+ private:
+  Concept *impl_;
+};
 
 // Define op1.
 class Operation1 : public ir::Op<Operation1> {
@@ -31,7 +73,7 @@ const char *Operation1::attributes_name_[] = {"op1_attr1", "op1_attr2"};
 
 // Define op2.
 class Operation2
-    : public ir::Op<Operation2, ir::ReadOnlyTrait, ir::InferShapeInterface> {
+    : public ir::Op<Operation2, ReadOnlyTrait, InferShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "Operation2"; }
@@ -79,10 +121,10 @@ TEST(op_test, op_test) {
   EXPECT_EQ(operations.count(ir::TypeId::get<Operation2>()) == 1, true);
   ir::OpInfoImpl *op1_info = operations[ir::TypeId::get<Operation1>()];
   ir::OpInfoImpl *op2_info = operations[ir::TypeId::get<Operation2>()];
-  EXPECT_EQ(op1_info->HasTrait<ir::ReadOnlyTrait>(), false);
-  EXPECT_EQ(op1_info->HasInterface<ir::InferShapeInterface>(), false);
-  EXPECT_EQ(op2_info->HasTrait<ir::ReadOnlyTrait>(), true);
-  EXPECT_EQ(op2_info->HasInterface<ir::InferShapeInterface>(), true);
+  EXPECT_EQ(op1_info->HasTrait<ReadOnlyTrait>(), false);
+  EXPECT_EQ(op1_info->HasInterface<InferShapeInterface>(), false);
+  EXPECT_EQ(op2_info->HasTrait<ReadOnlyTrait>(), true);
+  EXPECT_EQ(op2_info->HasInterface<InferShapeInterface>(), true);
 
   // (3) Test uses for op.
   std::vector<ir::OpResult> op_inputs = {};
@@ -93,12 +135,12 @@ TEST(op_test, op_test) {
                             CreateAttribute("op1_name", "op1_attr"),
                             op2_info);
 
-  if (op->HasTrait<ir::ReadOnlyTrait>()) {
-    ir::ReadOnlyTrait trait = op->dyn_cast<ir::ReadOnlyTrait>();
+  if (op->HasTrait<ReadOnlyTrait>()) {
+    ReadOnlyTrait trait = op->dyn_cast<ReadOnlyTrait>();
     EXPECT_EQ(trait.operation(), op);
   }
-  if (op->HasInterface<ir::InferShapeInterface>()) {
-    ir::InferShapeInterface interface = op->dyn_cast<ir::InferShapeInterface>();
+  if (op->HasInterface<InferShapeInterface>()) {
+    InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
     interface.InferShape();
   }
 

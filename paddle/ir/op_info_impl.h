@@ -217,9 +217,8 @@ class OpInfoImpl {
               sizeof(std::pair<ir::TypeId, void *>) * num_interfaces_);
       int left = 0;
       int right = num_interfaces_ - 1;
-      int mid = 0;
       while (left <= right) {
-        mid = (left + right) / 2;
+        int mid = (right - left) / 2 + left;
         if ((p_first_interface + mid)->first == interface_id) {
           return reinterpret_cast<typename Interface::Concept *>(
               (p_first_interface + mid)->second);
