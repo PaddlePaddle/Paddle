@@ -77,52 +77,47 @@ def set_skipped_op_list(skipped_op_list):
 
 class TensorCheckerConfig:
     """
-    The purpose of this function is to collect the configuration for checking NaN and Inf values in the tensors of a module or operator. It takes the following arguments:
+    The purpose of this class is to collect the configuration for checking NaN and Inf values in the tensors of a module or operator. It takes the following arguments:
 
-    enable: A boolean value indicating whether to enable the detection of NaN and Inf values in tensors. The default value is False, which means that these tools will not be used.
+    Args:
+        enable: A boolean value indicating whether to enable the detection of NaN and Inf values in tensors. The default value is False, which means that these tools will not be used.
+        debug_mode: A parameter that determines the type of debugging to be used. There are 4 available modes:
+            - CHECK_NAN_INF_AND_ABORT (default): This mode prints or saves information about Tensors that contain NaN/Inf and interrupts the program.
+            - CHECK_NAN_INF: This mode prints or saves critical information about Tensors that contain NaN/Inf but allows the program to continue running.
+            - CHECK_ALL_FOR_OVERFLOW: This mode checks the output of the FP32 operator and prints or saves information about key Tensors that exceed the FP16 representation range, such as overflow or underflow.
+            - CHECK_ALL: This mode prints or saves output Tensor key information for all operators.
+        output_dir: The path to store collected data. If this parameter is set to None, the data will be printed to the terminal.
 
-    debug_mode: A parameter that determines the type of debugging to be used. There are 4 available modes:
+        checked_op_list: Specifies a list of operators that need to be checked during program execution, for example, checked_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should be checked for nan/inf during program execution.
 
-    - CHECK_NAN_INF_AND_ABORT (default): This mode prints or saves information about Tensors that contain NaN/Inf and interrupts the program.
+        skipped_op_list: Specifies a list of operators that do not need to be checked during program execution, for example, skipped_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should not be checked for nan/inf during program execution.
 
-    - CHECK_NAN_INF: This mode prints or saves critical information about Tensors that contain NaN/Inf but allows the program to continue running.
-
-    - CHECK_ALL_FOR_OVERFLOW: This mode checks the output of the FP32 operator and prints or saves information about key Tensors that exceed the FP16 representation range, such as overflow or underflow.
-
-    - CHECK_ALL: This mode prints or saves output Tensor key information for all operators.
-
-    output_dir: The path to store collected data. If this parameter is set to None, the data will be printed to the terminal.
-
-    checked_op_list: Specifies a list of operators that need to be checked during program execution, for example, checked_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should be checked for nan/inf during program execution.
-
-    skipped_op_list: Specifies a list of operators that do not need to be checked during program execution, for example, skipped_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should not be checked for nan/inf during program execution.
-
-    debug_step: A list or tuple used primarily for nan/inf checking during model training. For example, debug_step=[1,5] indicates that nan/inf checking should only be performed on model training iterations 1 to 5.
+        debug_step: A list or tuple used primarily for nan/inf checking during model training. For example, debug_step=[1,5] indicates that nan/inf checking should only be performed on model training iterations 1 to 5.
 
     stack_height_limit: An integer value specifying the maximum depth of the call stack. This feature supports printing the call stack at the error location. Currently, only enabling or disabling call stack printing is supported. If you want to print the corresponding C++ call stack when NaN is detected in GPU Kernel, set stack_height_limit to 1, otherwise set it to 0.
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-        paddle.amp.debugging.enable_tensor_checker(checker_config)
+            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-        res = paddle.pow(x, y)
-        paddle.autograd.backward(res, retain_graph=True)
-        paddle.amp.debugging.disable_tensor_checker()
+            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            res = paddle.pow(x, y)
+            paddle.autograd.backward(res, retain_graph=True)
+            paddle.amp.debugging.disable_tensor_checker()
 
-        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-        #Traceback (most recent call last):
-        #    res = paddle.pow(x, y)
-        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-        #    return _C_ops.elementwise_pow(x, y)
+            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            #Traceback (most recent call last):
+            #    res = paddle.pow(x, y)
+            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            #    return _C_ops.elementwise_pow(x, y)
 
     """
 
@@ -326,26 +321,26 @@ def enable_operator_stats_collection():
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        conv = paddle.nn.Conv2D(3, 2, 3)
-        x = paddle.rand([10, 3, 32, 32])
+            conv = paddle.nn.Conv2D(3, 2, 3)
+            x = paddle.rand([10, 3, 32, 32])
 
-        paddle.amp.debugging.enable_operator_stats_collection()
-        # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-        with paddle.amp.auto_cast(enable=True, level='O2'):
-            out = conv(x)
-        # Print to the standard output.
-        paddle.amp.debugging.disable_operator_stats_collection()
-        # <------------------------------------------------------- op list -------------------------------------------------------->
-        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-        #   conv2d                                  |  1                |  0                |  0                |  0
-        #   elementwise_add                         |  1                |  0                |  0                |  0
-        #   reshape2                                |  1                |  0                |  0                |  0
-        #   transfer_dtype                          |  0                |  0                |  3                |  0
-        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            paddle.amp.debugging.enable_operator_stats_collection()
+            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            with paddle.amp.auto_cast(enable=True, level='O2'):
+                out = conv(x)
+            # Print to the standard output.
+            paddle.amp.debugging.disable_operator_stats_collection()
+            # <------------------------------------------------------- op list -------------------------------------------------------->
+            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            #   conv2d                                  |  1                |  0                |  0                |  0
+            #   elementwise_add                         |  1                |  0                |  0                |  0
+            #   reshape2                                |  1                |  0                |  0                |  0
+            #   transfer_dtype                          |  0                |  0                |  3                |  0
+            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     # Clear the previous stats.
@@ -364,26 +359,26 @@ def disable_operator_stats_collection():
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        conv = paddle.nn.Conv2D(3, 2, 3)
-        x = paddle.rand([10, 3, 32, 32])
+            conv = paddle.nn.Conv2D(3, 2, 3)
+            x = paddle.rand([10, 3, 32, 32])
 
-        paddle.amp.debugging.enable_operator_stats_collection()
-        # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-        with paddle.amp.auto_cast(enable=True, level='O2'):
-            out = conv(x)
-        # Print to the standard output.
-        paddle.amp.debugging.disable_operator_stats_collection()
-        # <------------------------------------------------------- op list -------------------------------------------------------->
-        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-        #   conv2d                                  |  1                |  0                |  0                |  0
-        #   elementwise_add                         |  1                |  0                |  0                |  0
-        #   reshape2                                |  1                |  0                |  0                |  0
-        #   transfer_dtype                          |  0                |  0                |  3                |  0
-        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            paddle.amp.debugging.enable_operator_stats_collection()
+            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            with paddle.amp.auto_cast(enable=True, level='O2'):
+                out = conv(x)
+            # Print to the standard output.
+            paddle.amp.debugging.disable_operator_stats_collection()
+            # <------------------------------------------------------- op list -------------------------------------------------------->
+            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            #   conv2d                                  |  1                |  0                |  0                |  0
+            #   elementwise_add                         |  1                |  0                |  0                |  0
+            #   reshape2                                |  1                |  0                |  0                |  0
+            #   transfer_dtype                          |  0                |  0                |  3                |  0
+            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     if not _get_operator_stats_flag():
@@ -405,25 +400,25 @@ def collect_operator_stats():
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        conv = paddle.nn.Conv2D(3, 2, 3)
-        x = paddle.rand([10, 3, 32, 32])
+            conv = paddle.nn.Conv2D(3, 2, 3)
+            x = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.debugging.collect_operator_stats():
-            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-            with paddle.amp.auto_cast(enable=True, level='O2'):
-                out = conv(x)
-        # Print to the standard output.
-        # <------------------------------------------------------- op list -------------------------------------------------------->
-        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-        #   conv2d                                  |  1                |  0                |  0                |  0
-        #   elementwise_add                         |  1                |  0                |  0                |  0
-        #   reshape2                                |  1                |  0                |  0                |  0
-        #   transfer_dtype                          |  0                |  0                |  3                |  0
-        # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            with paddle.amp.debugging.collect_operator_stats():
+                # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+                with paddle.amp.auto_cast(enable=True, level='O2'):
+                    out = conv(x)
+            # Print to the standard output.
+            # <------------------------------------------------------- op list -------------------------------------------------------->
+            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            #   conv2d                                  |  1                |  0                |  0                |  0
+            #   elementwise_add                         |  1                |  0                |  0                |  0
+            #   reshape2                                |  1                |  0                |  0                |  0
+            #   transfer_dtype                          |  0                |  0                |  3                |  0
+            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     enable_operator_stats_collection()
@@ -435,33 +430,35 @@ def enable_tensor_checker(checker_config):
     """
     The enable_tensor_checker(checker_config) function enables model-level accuracy checking and is used in combination with disables_tensor_checker() to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
 
-    Note:
+    Args:
+        checker_config(TensorCheckerConfig): Checker_config is to collect the configuration for checking NaN and Inf values in the tensors of a module or operator.
 
-    If disable_tensor_checker() is called before backward(), the gradient operator will not be checked.
-    If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
+    Note:
+        If disable_tensor_checker() is called before backward(), the gradient operator will not be checked.
+        If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
 
-        import paddle
+            import paddle
 
-        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-        paddle.amp.debugging.enable_tensor_checker(checker_config)
+            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-        res = paddle.pow(x, y)
-        paddle.autograd.backward(res, retain_graph=True)
-        paddle.amp.debugging.disable_tensor_checker()
-        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            res = paddle.pow(x, y)
+            paddle.autograd.backward(res, retain_graph=True)
+            paddle.amp.debugging.disable_tensor_checker()
+            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-        #Traceback (most recent call last):
-        #  File "tp.py", line 8, in <module>
-        #    res = paddle.pow(x, y)
-        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-        #    return _C_ops.elementwise_pow(x, y)
+            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            #Traceback (most recent call last):
+            #  File "tp.py", line 8, in <module>
+            #    res = paddle.pow(x, y)
+            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            #    return _C_ops.elementwise_pow(x, y)
 
     """
     if checker_config.update_and_check_step_id():
@@ -475,31 +472,29 @@ def disable_tensor_checker():
     disable_tensor_checker() is used to disable accuracy checking, and is used together with enable_tensor_checker(config) to achieve model-level precision checking by checking the output Tensors of all operators within the specified range.
 
     Note:
-
-    If disable_tensor_checker() is called before backward(), the gradient operator will not be checked;
-    If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
+        If disable_tensor_checker() is called before backward(), the gradient operator will not be checked;
+        If disable_tensor_checker() is called before optimizer.step(), the optimizer and other weight update related operators will not be checked.
 
     Examples:
 
-     .. code-block:: python
+        ..  code-block:: python
+            import paddle
 
-        import paddle
+            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-        checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-        paddle.amp.debugging.enable_tensor_checker(checker_config)
+            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            res = paddle.pow(x, y)
+            paddle.autograd.backward(res, retain_graph=True)
+            paddle.amp.debugging.disable_tensor_checker()
+            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-        x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-        y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-        res = paddle.pow(x, y)
-        paddle.autograd.backward(res, retain_graph=True)
-        paddle.amp.debugging.disable_tensor_checker()
-        #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
-
-        # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-        #Traceback (most recent call last):
-        #    res = paddle.pow(x, y)
-        #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-        #    return _C_ops.elementwise_pow(x, y)
+            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            #Traceback (most recent call last):
+            #    res = paddle.pow(x, y)
+            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            #    return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})
