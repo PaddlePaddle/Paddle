@@ -58,25 +58,16 @@ KernelSignature FeedForwardFuseOpArgumentMapping(
 KernelSignature FeedForwardGradFuseOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("fused_feedforward_grad",
-                         {"Out@GRAD",
-                          "X",
-                          "Linear1Weight",
-                          "Linear1Bias",
-                          "Linear2Weight",
-                          "Dropout1Mask",
-                          "Dropout2Mask",
-                          "Linear1Out",
-                          "Dropout1Out",
-                          "Ln1Scale",
-                          "Ln1Bias",
-                          "Ln1Out",
-                          "Ln1Mean",
-                          "Ln1Variance",
-                          "Ln2Scale",
-                          "Ln2Bias",
-                          "Ln2Mean",
-                          "Ln2Variance",
-                          "Linear2Bias"},
+                         {"Out@GRAD",      "X",
+                          "Linear1Weight", "Linear1Bias",
+                          "Linear2Weight", "Dropout1Mask",
+                          "Dropout2Mask",  "Linear1Out",
+                          "Dropout1Out",   "Dropout2Out",
+                          "Ln1Scale",      "Ln1Bias",
+                          "Ln1Out",        "Ln1Mean",
+                          "Ln1Variance",   "Ln2Scale",
+                          "Ln2Bias",       "Ln2Mean",
+                          "Ln2Variance",   "Linear2Bias"},
                          {"pre_layer_norm",
                           "ln1_epsilon",
                           "ln2_epsilon",
@@ -100,10 +91,7 @@ KernelSignature FeedForwardGradFuseOpArgumentMapping(
                           "Linear1Weight@GRAD",
                           "Linear1Bias@GRAD",
                           "Linear2Weight@GRAD",
-                          "Linear2Bias@GRAD",
-                          "QKVW@GRAD",
-                          "OutLinearW@GRAD",
-                          "LnOut@GRAD"});
+                          "Linear2Bias@GRAD"});
 }
 }  // namespace phi
 
