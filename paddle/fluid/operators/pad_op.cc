@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -126,6 +129,28 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("pad_grad");
+  }
+};
+
+class PadCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+
+    std::vector<int> paddings =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("paddings"));
+    int pad_value = static_cast<int>(this->Attr<int>("pad_value"));
+    VLOG(6) << "Runing add_grad composite func";
+
+    prim::pad_grad<prim::DescTensor>(x, out_grad, paddings, pad_value, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
   }
 };
 
