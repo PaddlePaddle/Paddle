@@ -661,7 +661,16 @@ PD_REGISTER_KERNEL(fused_feedforward,
                    phi::fusion::FusedFeedForwardKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UINT8);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 
 PD_REGISTER_KERNEL(fused_feedforward_grad,
                    GPU,
@@ -669,4 +678,13 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    phi::fusion::FusedFeedForwardGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(10).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(15).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
