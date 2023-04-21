@@ -410,7 +410,7 @@ struct MatmulWithCublasLt {
     MT beta = static_cast<MT>(0);
 
     cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = static_cast<size_t>(1) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
 
     if (planner != nullptr) {
