@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This script simply removes grad kernels. You should use this script
-when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
+when cmake ON_INFER=ON, which can greatly reduce the volume of the inference library.
 """
 
 import glob
@@ -84,7 +84,7 @@ def grad_kernel_definition(content, kernel_pattern, grad_pattern):
 def remove_grad_kernels(dry_run=False):
     """
     Args:
-       dry_run(bool): Whether just print
+       dry_run(bool): whether just print
 
     Returns:
         int: number of kernel(grad) removed
@@ -116,10 +116,10 @@ def remove_grad_kernels(dry_run=False):
 
             matches.extend(pd_kernel)
 
-        for i in matches:
-            content = content.replace(i, '')
+        for to_remove in matches:
+            content = content.replace(to_remove, '')
             if dry_run:
-                print(op_file, i)
+                print(op_file, to_remove)
 
         if not dry_run:
             with open(op_file, 'w', encoding='utf-8') as f:

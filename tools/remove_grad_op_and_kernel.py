@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This script simply removes all grad ops and kernels. You should use this script
-when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
+This script simply removes grad ops and kernels. You should use this script
+when cmake ON_INFER=ON, which can greatly reduce the volume of the inference library.
 """
 
 import argparse
@@ -26,7 +26,7 @@ import reduce_lib_size_util
 
 def parse_args():
     """Parse input arguments."""
-    parser = argparse.ArgumentParser(description='Remove grad op an kernels.')
+    parser = argparse.ArgumentParser(description='Remove grad op and kernels.')
     parser.add_argument('--only_kernel', action='store_true', default=False)
     parser.add_argument('--dry_run', action='store_true', default=False)
 
@@ -188,10 +188,10 @@ if __name__ == '__main__':
             all_matches.extend(op_kernel)
             all_matches.extend(custom_kernel)
 
-        for i in all_matches:
-            content = content.replace(i, '')
+        for to_remove in all_matches:
+            content = content.replace(to_remove, '')
             if args.dry_run:
-                print(op_file, i)
+                print(op_file, to_remove)
 
         if not args.dry_run:
             with open(op_file, 'w', encoding='utf-8') as f:
