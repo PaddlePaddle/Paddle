@@ -29,6 +29,7 @@ from ..fluid.data_feeder import (
     check_type,
     check_dtype,
     convert_dtype,
+    convert_float_to_uint16,
 )
 from ..framework import (
     convert_np_dtype_to_dtype_,
@@ -399,7 +400,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                 data = data.astype(default_type)
 
     if dtype and convert_dtype(dtype) != data.dtype:
-        data = data.astype(convert_dtype(dtype))
+        if convert_dtype(dtype) in ['uint16']:
+            # should not ndarray.astype('uint16') directly, data bits is wrong
+            data = convert_float_to_uint16(data.astype('float32'))
+        else:
+            data = data.astype(convert_dtype(dtype))
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(
