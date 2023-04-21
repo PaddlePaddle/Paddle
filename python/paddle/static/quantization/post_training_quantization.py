@@ -701,6 +701,8 @@ class PostTrainingQuantization:
                     in self.quant_config.activation_quant_operation_types
                     or is_conv1d_quant
                 ):
+                    trans_y = (op_type == 'matmul_v2') and op.attr('trans_y')
+                    op_type = op_type + '_trans_y' if trans_y else op_type
                     collect_var_name(
                         utils._get_op_input_var_names(op),
                         persistable_var_names,

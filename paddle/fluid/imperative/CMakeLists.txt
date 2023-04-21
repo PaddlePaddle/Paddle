@@ -123,16 +123,7 @@ if(NOT WIN32)
       SRCS reducer.cc
       DEPS layer)
   endif()
-  if(WITH_CNCL)
-    cc_library(
-      cncl_context
-      SRCS cncl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
-  endif()
+
   if(WITH_NCCL
      OR WITH_RCCL
      OR WITH_XPU_BKCL)
@@ -155,8 +146,7 @@ if(WITH_GLOO)
      OR (NOT
          (WITH_NCCL
           OR WITH_RCCL
-          OR WITH_XPU_BKCL
-          OR WITH_CNCL)
+          OR WITH_XPU_BKCL)
         ))
     cc_library(
       reducer
@@ -176,5 +166,4 @@ cc_library(
        var_type_traits
        layer
        math_function
-       phi_tensor
-       ${MLU_DEPS})
+       phi_tensor)

@@ -955,6 +955,156 @@ void slice_grad(const Tensor& input,
 }
 
 template <typename T>
+void group_norm_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& scale,
+                     const paddle::optional<Tensor>& bias,
+                     const Tensor& y,
+                     const Tensor& mean,
+                     const Tensor& variance,
+                     const Tensor& out_grad,
+                     float epsilon,
+                     int groups,
+                     const std::string& data_layout,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  // x.shape=[n,c,h,w]
+  // y.shape=[n,c,h,w]
+  // g_size = c/g
+  // scale.shape=[c]
+  // mean, var: shape=[n, g]
+  // inv_std = rsqrt(var + epsilon)
+  // ds = sum(dy * x, axes=(2,3))
+  // db = sum(dy, axes=(2,3))
+  //
+  // cal d_x:
+  // s = g / (h*w*c)
+  // if scale:
+  //  ds_val = sum((ds * scale).reshape(n, g, g_size), axes=2)
+  //  db_val = sum((db * scale).reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (scale.reshape(1, g, g_size))
+  // else:
+  //  ds_val = sum(ds.reshape(n, g, g_size), axes=2)
+  //  db_val = sum(db.reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (ones(1, g, g_size))
+  // p2 = (db_val * mean - ds_val) * inv_std * inv_std * inv_std * s
+  // p3 = -p2 * mean - db_val * inv_std * s
+  // p1.reshape(n, g, g_size, 1)
+  // p2.reshape(n, g, 1, 1)
+  // p3.reshape(n, g, 1, 1)
+  // d_x = dy.reshape(n, g, g_size, h*w) * p1 + x.reshape(n, g, g_size, h*w)* p2
+  // + p3
+  //
+  // cal d_scale:
+  // temp = ds.reshape(n, g, g_size) - db.reshape(n, g, g_size) *
+  // mean.reshape(n, g, 1)
+  // d_scale = sum(temp * inv_std.reshape(n, g, 1), axes=0).reshape(c)
+  //
+  // cal d_bias:
+  // d_bias = sum(dy, axes=(0,2,3))
+  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+  if (data_layout_ != DataLayout::kNCHW) {
+    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
+                                              data_layout));
+  }
+  Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> x_dims = phi::vectorize<int64_t>(x.dims());
+  auto add_axis = std::vector<int64_t>({-1});
+  const int N = x_dims[0];
+  const int C = x_dims[1];
+
+  const int hw = x_dims[2] * x_dims[3];
+  const int g_num = C / groups;
+
+  auto reduce_axis = IntArray(std::vector<int64_t>({2, 3}));
+  auto shape_group = IntArray(std::vector<int64_t>({N, groups, g_num}));
+  auto whole_group_shape =
+      IntArray(std::vector<int64_t>({N, groups, g_num, hw}));
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+  auto inv_std = sqrt<T>(1.0 / (variance + epsilon));
+  auto inv_std_mul_s = inv_std / hw / g_num;
+  auto dtype = x_data.dtype();
+  auto sum_y_grad_mul_x =
+      sum<T>(out_grad_data * x_data, reduce_axis, dtype, false);
+  auto sum_y_grad = sum<T>(out_grad_data, reduce_axis, dtype, false);
+  if (x_grad) {
+    Tensor d1;
+    Tensor d2;
+    Tensor p1;
+    if (scale_ptr) {
+      auto scale_data = scale.get();
+      if (scale_data.dtype() == phi::DataType::FLOAT16) {
+        scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
+      }
+      d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})) *
+           reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num}));
+    } else {
+      d1 = (reshape<T>(sum_y_grad_mul_x, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})))
+               .expand(IntArray(shape_group));
+    }
+
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
+    auto p3 = -p2 * mean - d2 * inv_std_mul_s;
+    p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
+    p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
+    p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
+    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
+    auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
+    auto x_grad_data = tmp_1 + tmp_2;
+    x_grad_data = reshape<T>(x_grad_data, x.shape());
+    if (x.dtype() == phi::DataType::FLOAT16) {
+      x_grad_data = cast<T>(x_grad_data, x.dtype());
+    }
+
+    set_output<T>(x_grad_data, x_grad);
+  }
+  if (scale_grad) {
+    if (scale_ptr) {
+      auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
+                   reshape<T>(sum_y_grad, shape_group) *
+                       unsqueeze<T>(mean, std::vector<int64_t>({2}))) *
+                  unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
+      auto scale_grad_tmp =
+          reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
+                     IntArray(std::vector<int64_t>({C})));
+      set_output<T>(scale_grad_tmp, scale_grad);
+    } else {
+      scale_grad = nullptr;
+    }
+  }
+
+  if (bias_grad) {
+    if (bias_ptr) {
+      auto bias_grad_tmp =
+          sum_y_grad.sum(std::vector<int64_t>({0}), dtype, false);
+      set_output<T>(bias_grad_tmp, bias_grad);
+    } else {
+      bias_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
 void layer_norm_grad(const Tensor& x,
                      const paddle::optional<Tensor>& scale,
                      const paddle::optional<Tensor>& bias,
@@ -1132,7 +1282,7 @@ void prod_grad(const Tensor& x,
       if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
         if (reduce_all) {
-          for (int64_t i = 1; i < x_dim_size; i++) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
             axis_.push_back(i);
           }
         } else {
@@ -1490,6 +1640,58 @@ void batch_norm_grad(const Tensor& x,
     default:
       PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
                                                 data_layout));
+  }
+}
+
+template <typename T>
+void instance_norm_grad(const Tensor& x,
+                        const paddle::optional<Tensor>& scale,
+                        const Tensor& saved_mean,
+                        const Tensor& saved_variance,
+                        const Tensor& y_grad,
+                        float epsilon,
+                        Tensor* x_grad,
+                        Tensor* scale_grad,
+                        Tensor* bias_grad) {
+  const int n = x.dims()[0];
+  const int c = x.dims()[1];
+  const int h = x.dims()[2];
+  const int w = x.dims()[3];
+
+  Tensor x_hat;
+  Tensor std_inv;
+  if (scale_grad || x_grad) {
+    auto mean = reshape<T>(saved_mean, IntArray({n, c, 1, 1}))
+                    .tile(IntArray({1, 1, h, w}));
+    std_inv = reshape<T>(saved_variance, IntArray({n, c, 1, 1}))
+                  .tile(IntArray({1, 1, h, w}));
+    x_hat = (x - mean) * std_inv;
+  }
+
+  // x_grad = scale * inv_var * (y_grad - y_grad.mean(2,3) - x_hat * (y_grad *
+  // x_hat).mean((h,w)))
+  if (x_grad) {
+    auto scale_t =
+        reshape<T>(scale.get_ptr() ? scale.get()
+                                   : full<T>(IntArray({c}), 1., x.dtype()),
+                   IntArray({1, c, 1, 1}))
+            .tile(IntArray({n, 1, h, w}));
+    set_output<T>(
+        (scale_t * std_inv) *
+            (y_grad -
+             y_grad.sum(IntArray({2, 3}), y_grad.dtype(), true) / (h * w) -
+             (x_hat *
+              ((y_grad * x_hat).sum(IntArray({2, 3}), y_grad.dtype(), true) /
+               (h * w)))),
+        x_grad);
+  }
+  // scale_grad = x_hat * y_grad.sum(n, h, w)
+  if (scale_grad) {
+    set_output<T>((y_grad * x_hat).sum(IntArray({0, 2, 3})), scale_grad);
+  }
+  // d_bias = y_grad.sum(n, h, w)
+  if (bias_grad) {
+    set_output<T>(y_grad.sum(IntArray({0, 2, 3})), bias_grad);
   }
 }
 

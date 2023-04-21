@@ -184,7 +184,7 @@ def gelu(x, approximate=False, name=None):
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'gelu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
         )
         helper = LayerHelper("gelu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -538,10 +538,13 @@ def prelu(x, weight, data_format="NCHW", name=None):
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'prelu'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'prelu'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'prelu'
+            weight,
+            'weight',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'prelu',
         )
         helper = LayerHelper('prelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1065,12 +1068,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64.
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1110,15 +1113,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'bfloat16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float16', 'bfloat16', 'float32', 'float64'],
+                ['uint16', 'float16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float16, bfloat16, float32 or float64.',
+                'If dtype is not None, it only support uint16, float16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())

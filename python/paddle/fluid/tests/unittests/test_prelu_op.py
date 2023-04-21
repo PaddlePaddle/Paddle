@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F
@@ -174,7 +174,11 @@ class PReluTest(OpTest):
         self.op_type = "prelu"
         self.python_api = prelu_api_wrapper
 
-        x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        if self.dtype == np.uint16:
+            as_type = self.np_dtype
+        else:
+            as_type = self.dtype
+        x_np = np.random.uniform(-1, 1, self.x_shape).astype(as_type)
         # Since zero point in prelu is not differentiable, avoid randomize
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
@@ -190,7 +194,7 @@ class PReluTest(OpTest):
             alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
-        alpha_np = alpha_np.astype(self.dtype)
+        alpha_np = alpha_np.astype(as_type)
 
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
@@ -393,16 +397,46 @@ def create_test_fp16_class(
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and check_grad:
-                self.check_grad_with_place(
-                    place,
-                    ['X', 'Alpha'],
-                    'Out',
-                    max_relative_error=max_relative_error,
-                )
+                # Use the default max_relative_error, not use max_relative_error
+                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
     globals()[cls_name] = TestPReluFp16Case
+
+
+def create_test_bf16_class(
+    parent, check_grad=True, atol=1e-3, max_relative_error=0.05
+):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not complied with CUDA and not support the bfloat16",
+    )
+    class TestPReluBF16Op(parent):
+        def setUp(self):
+            super().setUp()
+            self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+            self.inputs['Alpha'] = convert_float_to_uint16(self.inputs['Alpha'])
+            self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+
+        def init_dtype(self):
+            self.dtype = np.uint16
+            self.np_dtype = np.float32
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if check_grad:
+                # Use the default max_relative_error, not use max_relative_error
+                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
+
+    cls_name = "{}_{}".format(parent.__name__, "BF16Op")
+    TestPReluBF16Op.__name__ = cls_name
+    globals()[cls_name] = TestPReluBF16Op
 
 
 create_test_fp16_class(TestModeElt)
@@ -419,6 +453,21 @@ create_test_fp16_class(TestModeChannelRank3NHWC)
 create_test_fp16_class(TestModeChannelRank6NHWC)
 create_test_fp16_class(TestModeElementRank3NHWC)
 create_test_fp16_class(TestModeElementRank6NHWC)
+
+create_test_bf16_class(TestModeElt)
+create_test_bf16_class(TestModeAllRank3)
+create_test_bf16_class(TestModeAllRank6)
+create_test_bf16_class(TestModeChannelRank3)
+create_test_bf16_class(TestModeChannelRank6)
+create_test_bf16_class(TestModeElementRank3)
+create_test_bf16_class(TestModeElementRank6)
+create_test_bf16_class(TestModeEltNHWC)
+create_test_bf16_class(TestModeAllRank3NHWC)
+create_test_bf16_class(TestModeAllRank6NHWC)
+create_test_bf16_class(TestModeChannelRank3NHWC)
+create_test_bf16_class(TestModeChannelRank6NHWC)
+create_test_bf16_class(TestModeElementRank3NHWC)
+create_test_bf16_class(TestModeElementRank6NHWC)
 
 
 def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):

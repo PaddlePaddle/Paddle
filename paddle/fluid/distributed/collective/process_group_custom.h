@@ -176,7 +176,9 @@ class ProcessGroupCustom : public ProcessGroupWithStream {
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,
-      CommType op_type);
+      CommType op_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   void CreateCustomManagerCache(const std::string& places_key,
                                 const std::vector<Place>& places);
