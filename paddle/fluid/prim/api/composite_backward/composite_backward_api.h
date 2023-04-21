@@ -1282,7 +1282,7 @@ void prod_grad(const Tensor& x,
       if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
         if (reduce_all) {
-          for (int64_t i = 1; i < x_dim_size; i++) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
             axis_.push_back(i);
           }
         } else {
