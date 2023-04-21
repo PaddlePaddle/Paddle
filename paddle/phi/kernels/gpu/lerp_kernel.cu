@@ -63,7 +63,7 @@ static void LerpFunction(const Context &ctx,
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
     funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        ctx, inputs, &outputs, 1, functor);
+        ctx, inputs, &outputs, -1, functor);
   } else {
     inputs.reserve(3);
     inputs.emplace_back(&x);
@@ -71,7 +71,7 @@ static void LerpFunction(const Context &ctx,
     inputs.emplace_back(&weight);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
     funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
-        ctx, inputs, &outputs, 1, functor);
+        ctx, inputs, &outputs, -1, functor);
   }
 }
 
