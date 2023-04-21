@@ -3529,6 +3529,39 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (3, 4, 2))
 
     @prog_scope()
+    def test_static_data(self):
+        x1 = paddle.static.data(name="x1", shape=[])
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            feed={
+                "x1": np.array(1.0, dtype='float32'),
+            },
+            fetch_list=[
+                x1.name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], np.array(1.0))
+
+        x2 = paddle.static.data(name="x2", shape=[])
+        x3 = paddle.static.data(name="x3", shape=[])
+        y = x2 + x3
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            feed={
+                "x2": 100.5,
+                "x3": 200.5,
+            },
+            fetch_list=[
+                y.name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 301.0)
+
+    @prog_scope()
     def test_prelu(self):
         x1 = paddle.full([], 1.0, 'float32')
         x1.stop_gradient = False
