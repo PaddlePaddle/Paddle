@@ -976,10 +976,6 @@ class GraphDataGenerator {
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
-  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
-    // type_to_index_[type] = h_device_keys_.size();
-    // h_device_keys_.push_back(device_keys);
-  }
 
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
       int64_t* uniq_nodes,
@@ -1126,7 +1122,7 @@ class DataFeed {
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
-  virtual bool CheckFile(const char* filename) {
+  virtual bool CheckFile(const char* filename UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(CheckFile) is not implemented."));
   }
@@ -1185,9 +1181,6 @@ class DataFeed {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
-  virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
-    gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
-  }
 #endif
 
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
@@ -1415,13 +1408,13 @@ class InMemoryDataFeed : public DataFeed {
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      T* instance,
-                                      CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len,
-                                  const char* str,
-                                  std::vector<T>* instances,
-                                  CustomParser* parser) {
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      T* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
+  virtual int ParseInstanceFromSo(int len UNUSED,
+                                  const char* str UNUSED,
+                                  std::vector<T>* instances UNUSED,
+                                  CustomParser* parser UNUSED) {
     return 0;
   }
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
@@ -1656,7 +1649,7 @@ struct RecordCandidate {
 class RecordCandidateList {
  public:
   RecordCandidateList() = default;
-  RecordCandidateList(const RecordCandidateList&) {}
+  RecordCandidateList(const RecordCandidateList& UNUSED) {}
 
   size_t Size() { return cur_size_; }
   void ReSize(size_t length);
@@ -1802,9 +1795,9 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      Record* instance,
-                                      CustomParser* parser) {}
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      Record* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,
@@ -1828,11 +1821,13 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  protected:
   bool Start() override;
   int Next() override;
-  bool ParseOneInstance(SlotRecord* instance) override { return false; }
-  bool ParseOneInstanceFromPipe(SlotRecord* instance) override { return false; }
+  bool ParseOneInstance(SlotRecord* instance UNUSED) override { return false; }
+  bool ParseOneInstanceFromPipe(SlotRecord* instance UNUSED) override {
+    return false;
+  }
   // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
   //                                    CustomParser* parser) {}
-  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) override {}
+  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec UNUSED) override {}
 
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);
