@@ -604,7 +604,7 @@ void FusedFeedForwardGradKernel(
 
   auto x_dim = x.dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
-      paddle::operators::RowMatrixFromVector(x_dim), 0, false);
+      phi::RowMatrixFromVector(x_dim), 0, false);
 
   auto linear1_weight_dim = linear1_weight.dims();
   int d_model = linear1_weight_dim[0];
