@@ -66,7 +66,7 @@ class OptimizerWithMixedPrecision:
                            the loss scaling.
         use_amp_guard(bool): Whether to use `fp16_guard` when constructing the program.
                            Default None, which means that its value is equal to `use_pure_fp16`.
-        use_promote(bool): Whether to promotes to fp32 when op's has any float32 inputs. Default is False.
+        use_promote(bool): Whether to promotes to fp32 when op has any float32 inputs. Default is False.
     """
 
     def __init__(
