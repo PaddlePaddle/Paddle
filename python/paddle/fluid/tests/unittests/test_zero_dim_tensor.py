@@ -1097,7 +1097,22 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
 
+        # 2) input is 2D
+        x = paddle.rand([2, 3])
+        x.stop_gradient = False
+        y = paddle.rand([3, 3])
+        y.stop_gradient = False
+        out = paddle.inner(x, y)
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(x.grad.shape, [2, 3])
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(out.grad.shape, [2, 3])
+
     def test_tensordot(self):
+
+        # 1) input is 1D
         x = paddle.arange(10, dtype='float64')
         x.stop_gradient = False
         y = paddle.arange(10, dtype='float64')
@@ -1107,6 +1122,18 @@ class TestSundryAPI(unittest.TestCase):
         out.backward()
 
         self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        # 2) input is 2D
+        x = paddle.arange(6, dtype='float64').reshape([2, 3])
+        y = paddle.arange(6, dtype='float64').reshape([2, 3])
+        x.stop_gradient = False
+        out = paddle.tensordot(x, y, axes=2)
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(x.grad.shape, [2, 3])
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
 
@@ -2697,7 +2724,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
-        # 0) input is 2D
+        # 2) input is 2D
         x = paddle.rand([2, 3])
         x.stop_gradient = False
         y = paddle.rand([2, 3])
@@ -2739,6 +2766,24 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (10,))
         self.assertEqual(res[1].shape, (10,))
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+
+        x = paddle.arange(6, dtype='float64').reshape([2, 3])
+        y = paddle.arange(6, dtype='float64').reshape([2, 3])
+        x.stop_gradient = False
+        out = paddle.tensordot(x, y, axes=2)
+
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[x, x.grad_name, out, out.grad_name],
+        )
+
+        self.assertEqual(res[0].shape, (2, 3))
+        self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
