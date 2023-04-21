@@ -1204,7 +1204,7 @@ void group_norm_grad(const Tensor& x,
       auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
                    reshape<T>(sum_y_grad, shape_group) *
                        reshape<T>(mean, third_shape)) *
-                  reshapee<T>(inv_std, std::vector<int64_t>({2}));
+                  reshapee<T>(inv_std, third_shape);
       auto scale_grad_tmp =
           reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
                      IntArray(std::vector<int64_t>({C})));
