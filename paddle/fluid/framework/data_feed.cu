@@ -1572,7 +1572,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
 }
 
 uint64_t CopyUniqueNodes(HashTable<uint64_t, uint64_t>* table,
-                        int copy_unique_len,
+                        uint64_t copy_unique_len,
                         const paddle::platform::Place &place,
                         const std::shared_ptr<phi::Allocation>& d_uniq_node_num_ptr,
                         std::vector<uint64_t>& host_vec,                // output
@@ -2028,7 +2028,7 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GetNodeDegree(
 }
 
 uint64_t CopyUniqueNodes(HashTable<uint64_t, uint64_t>* table,
-                        int copy_unique_len,
+                        uint64_t copy_unique_len,
                         const paddle::platform::Place &place,
                         const std::shared_ptr<phi::Allocation>& d_uniq_node_num_ptr,
                         std::vector<uint64_t>& host_vec,                // output
