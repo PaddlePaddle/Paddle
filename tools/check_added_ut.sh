@@ -67,6 +67,10 @@ if [[ "$SYSTEM" == 'Linux' ]];then
 fi
 echo "New-UT:"
 cat $PADDLE_ROOT/added_ut
+echo "PR-UT:"
+cat $PADDLE_ROOT/pr-ut
+echo "BR-UT:"
+cat $PADDLE_ROOT/br-ut
 rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
