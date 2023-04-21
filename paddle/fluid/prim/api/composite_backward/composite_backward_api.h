@@ -1183,9 +1183,11 @@ void group_norm_grad(const Tensor& x,
 
     auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
-    p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
-    p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
-    p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
+    auto first_shape = get_unsqueeze_dims(p1, std::vector<int64_t>({3}));
+    auto second_shape = get_unsqueeze_dims(p2, std::vector<int64_t>({2, 3}));
+    p1 = reshape<T>(p1, first_shape);
+    p2 = reshape<T>(p2, second_shape);
+    p3 = reshape<T>(p3, second_shape);
     auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
@@ -1198,10 +1200,11 @@ void group_norm_grad(const Tensor& x,
   }
   if (scale_grad) {
     if (scale_ptr) {
+      auto third_shape = get_unsqueeze_dims(mean, std::vector<int64_t>({2}));
       auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
                    reshape<T>(sum_y_grad, shape_group) *
-                       unsqueeze<T>(mean, std::vector<int64_t>({2}))) *
-                  unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
+                       reshape<T>(mean, third_shape)) *
+                  reshapee<T>(inv_std, std::vector<int64_t>({2}));
       auto scale_grad_tmp =
           reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
                      IntArray(std::vector<int64_t>({C})));
