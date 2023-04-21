@@ -60,7 +60,7 @@ class TestFuseResNetUnit(unittest.TestCase):
         paddle.static.amp.cast_parameters_to_fp16(
             place, after_program, to_fp16_var_names=after_params
         )
-        feed = {"x": np.random.randn(1, 64, 64, 8).astype("float32")}
+        feed = {"x": np.random.randn(1, 64, 64, 8).astype("float16")}
         before_out = exe.run(program, feed=feed, fetch_list=[out.name])
         after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
         np.testing.assert_allclose(

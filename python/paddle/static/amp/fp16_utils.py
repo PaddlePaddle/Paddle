@@ -488,6 +488,50 @@ def get_promote_dtype(op, amp_dtype, block):
     return dst_dtype
 
 
+def get_amp_dst_dtype(
+    op, amp_dtype, level, block, amp_lists, keep_fp32_ops, keep_fp16_ops
+):
+    if level == 'O2':
+        return amp_dtype
+
+    ops = block.ops
+    dst_dtype = amp_dtype
+    if op.type in amp_lists.gray_list:
+        keep_fp32 = False
+        keep_fp16 = False
+        for in_name in op.input_names:
+            # if this op has inputs
+            if in_name:
+                for in_var_name in op.input(in_name):
+                    in_var = block.var(in_var_name)
+                    # this in_var isn't the output of other op
+                    if in_var.op is None:
+                        continue
+                    elif in_var.op is op:
+                        prev_op = find_true_prev_op(ops, op, in_var_name)
+                        if prev_op is None:
+                            continue
+                    else:
+                        prev_op = in_var.op
+
+                    # if it's one of inputs
+                    if (
+                        prev_op in keep_fp32_ops
+                        or prev_op.type in amp_lists.black_list
+                    ):
+                        dst_dtype = core.VarDesc.VarType.FP32
+                    elif (
+                        prev_op in keep_fp16_ops
+                        or prev_op.type in amp_lists.white_list
+                    ):
+                        dst_dtype = amp_dtype
+    else:
+        # For numerical safe, we apply fp32 computation on ops that
+        # are not determined which list they should stay.
+        dst_dtype = core.VarDesc.VarType.FP32
+    return dst_dtype
+
+
 def process_op_input_and_outputs(op, block, global_block, dtype):
     low_precison_var_names = set()
     # Get the FP16 input because the low_precison_var_names is required for the parameter casting.
@@ -528,6 +572,7 @@ def cast_model_to_fp16(
     use_fp16_guard=True,
     dest_type=core.VarDesc.VarType.FP16,
     level='O2',
+    use_promote=False,
 ):
     """
     Traverse all ops in the whole model and set their inputs and outputs
@@ -606,7 +651,20 @@ def cast_model_to_fp16(
                 )
             else:
                 # divide others ops into fp16/fp32 sets according to promoting principle.
-                dst_dtype = get_promote_dtype(op, dest_type, block)
+                dst_dtype = dest_type
+                if not use_promote:
+                    dst_dtype = get_amp_dst_dtype(
+                        op,
+                        dest_type,
+                        level,
+                        block,
+                        amp_lists,
+                        keep_fp32_ops,
+                        keep_fp16_ops,
+                    )
+                else:
+                    dst_dtype = get_promote_dtype(op, dest_type, block)
+
                 if dst_dtype == dest_type:
                     keep_fp16_ops.add(op)
                     fp16_var_names = process_op_input_and_outputs(

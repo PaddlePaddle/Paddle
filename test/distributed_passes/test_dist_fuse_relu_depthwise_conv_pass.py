@@ -75,7 +75,7 @@ class TestFuseReluDepthwiseConvPass(DistPassTestBase):
 
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
-        return main_program, startup_program, [image], [loss], reader, optimizer
+        return main_program, startup_program, [image], [loss], reader
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager([new_pass("fuse_relu_depthwise_conv")])

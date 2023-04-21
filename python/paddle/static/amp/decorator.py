@@ -66,6 +66,7 @@ class OptimizerWithMixedPrecision:
                            the loss scaling.
         use_amp_guard(bool): Whether to use `fp16_guard` when constructing the program.
                            Default None, which means that its value is equal to `use_pure_fp16`.
+        use_promote(bool): Whether to promotes to fp32 when op's has any float32 inputs. Default is False.
     """
 
     def __init__(
@@ -81,6 +82,7 @@ class OptimizerWithMixedPrecision:
         incr_ratio,
         decr_ratio,
         use_amp_guard=None,
+        use_promote=False,
     ):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
@@ -115,6 +117,7 @@ class OptimizerWithMixedPrecision:
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+        self.use_promote = use_promote
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -231,6 +234,7 @@ class OptimizerWithMixedPrecision:
                     self._use_fp16_guard,
                     self._amp_vartype,
                     level='O2',
+                    use_promote=self.use_promote,
                 )
             else:
                 # use_fp16_guard is not support amp-o1.
@@ -240,6 +244,7 @@ class OptimizerWithMixedPrecision:
                     use_fp16_guard=False,
                     dest_type=self._amp_vartype,
                     level='O1',
+                    use_promote=self.use_promote,
                 )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
@@ -368,6 +373,7 @@ class OptimizerWithMixedPrecision:
                     self._use_fp16_guard,
                     self._amp_vartype,
                     level='O2',
+                    use_promote=self.use_promote,
                 )
             elif use_fp16_test:
                 # use_fp16_guard is not support amp-o1.
@@ -377,6 +383,7 @@ class OptimizerWithMixedPrecision:
                     use_fp16_guard=False,
                     dest_type=self._amp_vartype,
                     level='O1',
+                    use_promote=self.use_promote,
                 )
 
     def apply_gradients(self, params_grads):
