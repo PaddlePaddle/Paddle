@@ -21,6 +21,7 @@ import six
 from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
+import struct
 
 from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
@@ -41,6 +42,27 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
+
+
+def copy_bits_from_float_to_uint16(f):
+    return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
+
+
+def convert_float_to_uint16(data, data_format="NCHW"):
+    if data.size == 0:
+        return data.view(np.uint16)
+
+    if data_format == "NHWC":
+        data = np.transpose(data, [0, 3, 1, 2])
+
+    new_data = []
+    for x in np.nditer(data):
+        new_data.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+    new_data = np.reshape(new_data, data.shape).view(np.uint16)
+
+    if data_format == "NHWC":
+        new_data = np.transpose(new_output, [0, 2, 3, 1])
+    return new_data
 
 
 def convert_dtype(dtype):
@@ -68,7 +90,9 @@ def convert_dtype(dtype):
             # however, jointly supporting python2 and python3, (as well as python4 maybe)
             # may still be a long-lasting problem.
             return str(dtype)
-        # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
+        # NOTE(zhangbo): Now numpy does not support bfloat, so use numpy.uint16 to represent paddle.bfloat16, there binaries are consistent.
+        # If cast ndarray to uint16 and trans to tensor, should not ndarray.astype('uint16') directly
+        # should use function 'convert_float_to_uint16' above, otherwise bits is wrong
         if dtype in ['bfloat16']:
             return 'uint16'
 
