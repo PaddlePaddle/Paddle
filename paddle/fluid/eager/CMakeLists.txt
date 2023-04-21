@@ -41,6 +41,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(accumulation)
   add_subdirectory(tests)
   add_subdirectory(pylayer)
+  add_subdirectory(to_static)
   cc_library(
     grad_tensor_holder
     SRCS grad_tensor_holder.cc

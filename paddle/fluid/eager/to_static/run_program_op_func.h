@@ -20,7 +20,6 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
-#include "pybind11/pybind11.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from

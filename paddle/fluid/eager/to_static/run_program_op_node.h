@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <Python.h>
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -21,7 +22,6 @@
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -278,6 +278,11 @@ static void GcScope(paddle::framework::Scope *scope) {
 
 }  // namespace details
 
+void UpdateCUDAGraphPyObject(
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+        &cuda_graph,  // NOLINT
+    PyObject *cuda_graph_pyobj);
+
 inline std::shared_ptr<paddle::framework::InterpreterCore> RunProgramAPIImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
@@ -524,7 +529,7 @@ inline void RunProgramAPI(
         callable, {x}, {out, dout}, place, mode, pool_id);
     VLOG(10) << "Capture Forward CUDA Graph";
 
-    paddle::pybind::SetCUDAGraphPtrListToPyArg(cuda_graph, cuda_graph_pyobj);
+    UpdateCUDAGraphPyObject(cuda_graph, cuda_graph_pyobj);
   } else {
     VLOG(10) << "Run Forward CUDA Graph directly";
     paddle::operators::ExecuteCUDAGraph(
@@ -728,7 +733,7 @@ inline void RunProgramGradAPI(
     cuda_graph[graph_idx] = std::move(paddle::operators::CaptureCUDAGraph(
         callable, {out_grad}, {x_grad}, place, mode, pool_id));
     VLOG(10) << "Capture Backward CUDA Graph";
-    paddle::pybind::SetCUDAGraphPtrListToPyArg(cuda_graph, cuda_graph_pyobj);
+    UpdateCUDAGraphPyObject(cuda_graph, cuda_graph_pyobj);
   } else {
     VLOG(10) << "Run Backward CUDA Graph directly";
     paddle::operators::ExecuteCUDAGraph(
