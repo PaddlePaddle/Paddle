@@ -168,7 +168,7 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (FLAGS_cudnn_deterministic) {
       if (index_type == framework::proto::VarType::INT32) {
-        LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
             dev_ctx,
             ids_t->data<int32_t>(),
             d_output,
@@ -179,7 +179,7 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
             start_idx);
         return;
       } else if (index_type == framework::proto::VarType::INT64) {
-        LaunchEmbeddingGradDeterministicKernel<T, int64_t>(
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int64_t>(
             dev_ctx,
             ids_t->data<int64_t>(),
             d_output,
