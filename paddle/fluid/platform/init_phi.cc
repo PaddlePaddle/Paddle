@@ -21,7 +21,7 @@ namespace paddle {
 
 InitPhi::InitPhi() {
   paddle::framework::InitMemoryMethod();
-  VLOG(4) << "Init MemoryMethod success.";
+  //VLOG(4) << "Init MemoryMethod success.";
 }
 
 }  // namespace paddle
