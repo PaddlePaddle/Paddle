@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -67,12 +68,6 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
       "parallel op."));
 #endif
 }
-
-template <typename T, typename DeviceContext>
-class FusedFeedForwardKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-};
 
 template <typename T, typename DeviceContext>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
@@ -482,7 +477,7 @@ void FFN(const phi::GPUContext& dev_ctx,
                                    ln1_variance->data<U>());
     in = ln1_out;
   }
-  phi::fusion::MatMul(dev_ctx, *in, linear1_weight, linear1_out);
+  MatMul<T, Context>(dev_ctx, *in, linear1_weight, linear1_out);
   fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                           linear1_out->data<T>(),
                                           linear1_bias_ptr,
@@ -491,8 +486,8 @@ void FFN(const phi::GPUContext& dev_ctx,
                                           dropout1_mask->data<uint8_t>());
   phi::DenseTensor linear2_out;
   linear2_out.Resize({bsz_seq, d_model});
-  dev_ctx.Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
-  phi::fusion::MatMul(dev_ctx, *dropout1_out, linear2_weight, &linear2_out);
+  dev_ctx.template Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
+  MatMul<T, Context>(dev_ctx, *dropout1_out, linear2_weight, &linear2_out);
 
   // tensor model parallel
   phi::fusion::AllReduce<T>(linear2_out, ring_id, dev_ctx);
@@ -502,7 +497,7 @@ void FFN(const phi::GPUContext& dev_ctx,
     // TODO(Xreki): support post layer_norm case when add_residual is false.
     PADDLE_ENFORCE_EQ(add_residual,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Attribute add_residual is expected to be true "
                           "when pre_layer_norm is false."));
 
@@ -532,16 +527,16 @@ void FFN(const phi::GPUContext& dev_ctx,
 template <typename T, typename Context>
 void FusedFeedForwardKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor> dropout1_seed,
-                            const paddle::optional<DenseTensor> dropout2_seed,
+                            const paddle::optional<DenseTensor>& dropout1_seed,
+                            const paddle::optional<DenseTensor>& dropout2_seed,
                             const DenseTensor& linear1_weight,
-                            const paddle::optional<DenseTensor> linear1_bias,
+                            const paddle::optional<DenseTensor>& linear1_bias,
                             const DenseTensor& linear2_weight,
-                            const paddle::optional<DenseTensor> linear2_bias,
-                            const paddle::optional<DenseTensor> ln1_scale,
-                            const paddle::optional<DenseTensor> ln1_bias,
-                            const paddle::optional<DenseTensor> ln2_scale,
-                            const paddle::optional<DenseTensor> ln2_bias,
+                            const paddle::optional<DenseTensor>& linear2_bias,
+                            const paddle::optional<DenseTensor>& ln1_scale,
+                            const paddle::optional<DenseTensor>& ln1_bias,
+                            const paddle::optional<DenseTensor>& ln2_scale,
+                            const paddle::optional<DenseTensor>& ln2_bias,
                             bool pre_layer_norm,
                             float ln1_epsilon,
                             float ln2_epsilon,
@@ -568,10 +563,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
                             DenseTensor* ln1_out,
                             DenseTensor* dropout1_out,
                             DenseTensor* dropout2_out) {
-  auto* x_ptr = x;
-  auto* linear1_weight_ptr = linear1_weight;
-  auto* linear1_bias_ptr = linear1_bias;
-  auto* linear2_weight_ptr = linear2_weight;
+  auto* x_ptr = &x;
+  auto* linear1_weight_ptr = &linear1_weight;
+  auto* linear1_bias_ptr = linear1_bias.get_ptr();
+  auto* linear2_weight_ptr = &linear2_weight;
   auto* linear2_bias_ptr = linear2_bias.get_ptr();
 
   auto* ln1_scale_ptr = pre_layer_norm ? ln1_scale.get_ptr() : nullptr;
@@ -590,40 +585,42 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
 
   bool is_upscale_in_train1 = dropout1_implementation == "upscale_in_train";
   bool is_upscale_in_train2 = dropout2_implementation == "upscale_in_train";
+  auto* dropout1_seed_ptr = dropout1_seed.get_ptr();
+  auto* dropout2_seed_ptr = dropout2_seed.get_ptr();
 
-  phi::fusion::DropoutParam dropout_param1(dropout1_seed,
+  phi::fusion::DropoutParam dropout_param1(dropout1_fix_seed,
                                            0,
                                            is_test,
                                            is_upscale_in_train1,
                                            dropout1_prob,
-                                           dropout1_seed,
+                                           dropout1_seed_ptr,
                                            dropout1_seed_val);
-  phi::fusion::DropoutParam dropout_param2(dropout2_seed,
+  phi::fusion::DropoutParam dropout_param2(dropout2_fix_seed,
                                            0,
                                            is_test,
                                            is_upscale_in_train2,
                                            dropout2_prob,
-                                           dropout2_seed,
+                                           dropout2_seed_ptr,
                                            dropout2_seed_val);
 
   using U = phi::funcs::LayerNormParamType<T>;
-  dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-  dev_ctx.Alloc<uint8_t>(dropout1_mask,
-                         dropout1_mask->numel() * sizeof(uint8_t));
-  dev_ctx.Alloc<uint8_t>(dropout2_mask,
-                         dropout2_mask->numel() * sizeof(uint8_t));
+  dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+  dev_ctx.template Alloc<uint8_t>(dropout1_mask,
+                                  dropout1_mask->numel() * sizeof(uint8_t));
+  dev_ctx.template Alloc<uint8_t>(dropout2_mask,
+                                  dropout2_mask->numel() * sizeof(uint8_t));
   if (pre_layer_norm) {
-    dev_ctx.Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
-    dev_ctx.Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
-    dev_ctx.Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
+    dev_ctx.template Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
+    dev_ctx.template Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
+    dev_ctx.template Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
   } else {
-    dev_ctx.Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
-    dev_ctx.Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
+    dev_ctx.template Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
+    dev_ctx.template Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
   }
 
-  dev_ctx.Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
-  dev_ctx.Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
-  dev_ctx.Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
 
   auto x_dim = x_ptr->dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
@@ -634,38 +631,38 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   int dim_feedforward = dim[dim.size() - 1];
   int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
 
-  phi::fusion::FFN(context.cuda_device_context(),
-                   *x_ptr,
-                   *linear1_weight_ptr,
-                   linear1_bias,
-                   *linear2_weight_ptr,
-                   linear2_bias,
-                   ln1_scale_ptr,
-                   ln1_bias_ptr,
-                   ln2_scale_ptr,
-                   ln2_bias_ptr,
-                   out,
-                   dropout1_mask,
-                   dropout2_mask,
-                   ln1_mean_ptr,
-                   ln1_variance,
-                   ln2_mean,
-                   ln2_variance,
-                   linear1_out,
-                   ln1_out,
-                   dropout1_out,
-                   dropout2_out,
-                   bsz_seq,
-                   d_model,
-                   dim_feedforward,
-                   act_method,
-                   pre_layer_norm,
-                   ln1_epsilon,
-                   ln2_epsilon,
-                   add_residual,
-                   ring_id,
-                   dropout_param1,
-                   dropout_param2);
+  phi::fusion::FFN<T, Context>(dev_ctx,
+                               x,
+                               linear1_weight,
+                               linear1_bias_ptr,
+                               linear2_weight,
+                               linear2_bias_ptr,
+                               ln1_scale_ptr,
+                               ln1_bias_ptr,
+                               ln2_scale_ptr,
+                               ln2_bias_ptr,
+                               out,
+                               dropout1_mask,
+                               dropout2_mask,
+                               ln1_mean,
+                               ln1_variance,
+                               ln2_mean,
+                               ln2_variance,
+                               linear1_out,
+                               ln1_out,
+                               dropout1_out,
+                               dropout2_out,
+                               bsz_seq,
+                               d_model,
+                               dim_feedforward,
+                               act_method,
+                               pre_layer_norm,
+                               ln1_epsilon,
+                               ln2_epsilon,
+                               add_residual,
+                               ring_id,
+                               dropout_param1,
+                               dropout_param2);
 }
 }  // namespace fusion
 }  // namespace phi
@@ -673,13 +670,6 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(fused_feedforward,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedFeedForwardKernel,
-                          float,
-                          double,
-                          plat::float16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_feedforward_grad,
                           GPU,
                           ALL_LAYOUT,
@@ -687,3 +677,11 @@ PD_REGISTER_STRUCT_KERNEL(fused_feedforward_grad,
                           float,
                           double,
                           plat::float16) {}
+
+PD_REGISTER_KERNEL(fused_feedforward,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedFeedForwardKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
