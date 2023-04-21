@@ -17,6 +17,7 @@
 # 0D Tensor's shape is always [], numel is 1
 # which can be created by paddle.rand([])
 
+import os
 import unittest
 
 import numpy as np
@@ -1584,6 +1585,71 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), [2.0, 5.0])
         self.assertEqual(x.grad.shape, [2, 3])
         self.assertEqual(out.grad.shape, [2])
+
+    def test_gather_nd(self):
+        x1 = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        x2 = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
+        )
+
+        index1 = paddle.full([1], 1, 'int64')
+        index2 = paddle.full([2], 1, 'int64')
+
+        out1 = paddle.gather_nd(x1, index1)
+        out2 = paddle.gather_nd(x2, index2)
+
+        out1.retain_grads()
+        out2.retain_grads()
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_array_equal(out1, np.array(3.0))
+        np.testing.assert_array_equal(out2, np.array(5.0))
+        self.assertEqual(x1.grad.shape, [5])
+        self.assertEqual(x2.grad.shape, [2, 3])
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+
+    def test_einsum(self):
+        os.environ['FLAGS_new_einsum'] = "0"
+        x = paddle.rand([5])
+        # sum
+        out1 = paddle.einsum('i->', x)
+        # dot
+        out2 = paddle.einsum('i,i->', x, x)
+
+        out1.retain_grads()
+        out2.retain_grads()
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_array_equal(out1, np.array(3.0))
+        np.testing.assert_array_equal(out2, np.array(5.0))
+
+    def test_einsum_V2(self):
+        os.environ['FLAGS_new_einsum'] = "1"
+        x = paddle.rand([5])
+        # sum
+        out1 = paddle.einsum('i->', x)
+        # dot
+        out2 = paddle.einsum('i,i->', x, x)
+
+        out1.retain_grads()
+        out2.retain_grads()
+
+        out1.backward()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_array_equal(out1, np.einsum('i->', x))
+        np.testing.assert_array_equal(out2, np.einsum('i,i->', x, x))
 
     def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
@@ -3354,6 +3420,42 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], [1.0, 1.0])
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2,))
+
+    @prog_scope()
+    def test_gather_nd(self):
+        x1 = paddle.full([10], 1.0, 'float32')
+        x1.stop_gradient = False
+        x2 = paddle.to_tensor([2, 3], 1.0, stop_gradient=False)
+        x2.stop_gradient = False
+
+        index1 = paddle.full([1], 1, 'int64')
+        index2 = paddle.full([2], 1, 'int64')
+
+        out1 = paddle.gather_nd(x1, index1)
+        out2 = paddle.gather_nd(x2, index2)
+        paddle.static.append_backward(out1.sum())
+        paddle.static.append_backward(out2.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                x1.grad_name,
+                x2.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        np.testing.assert_array_equal(res[0], 1.0)
+        np.testing.assert_array_equal(res[1], 1.0)
+        self.assertEqual(res[2].shape, (10,))
+        self.assertEqual(res[3].shape, (2, 3))
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
 
     @prog_scope()
     def test_scatter_1D(self):
