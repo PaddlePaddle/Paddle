@@ -59,8 +59,8 @@ def grad_kernel_definition(content, kernel_pattern, grad_pattern):
         (list, int): grad kernel definitions of file and count.
     """
 
-    count = 0
     results = []
+    count = 0
     start = 0
     lens = len(content)
     while True:
