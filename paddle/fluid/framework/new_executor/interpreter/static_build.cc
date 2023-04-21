@@ -33,8 +33,6 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "cudnn_lstm",
     "dequantize",
     "distributed_fused_lamb",
-    "fused_attention",
-    "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
     "fusion_group",

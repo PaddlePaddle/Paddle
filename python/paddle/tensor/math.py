@@ -514,7 +514,15 @@ def _elementwise_op(helper):
             'complex128',
         ]
     else:
-        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
+        data_type = [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+        ]
     check_variable_and_dtype(
         x,
         'x',
@@ -3119,7 +3127,15 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             check_dtype(
                 x.dtype,
                 'Input',
-                ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+                [
+                    'bool',
+                    'int32',
+                    'int64',
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                ],
                 'diagonal',
             )
 
@@ -3278,7 +3294,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'cumsum',
         )
         check_type(x, 'x', (Variable), 'cumsum')
@@ -3426,7 +3442,16 @@ def cumprod(x, dim=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'cumprod',
         )
         check_type(dim, 'dim', int, 'cumprod')
@@ -3996,6 +4021,7 @@ def conj(x, name=None):
                 'complex64',
                 'complex128',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
