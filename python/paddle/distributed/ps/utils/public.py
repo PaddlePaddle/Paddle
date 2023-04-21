@@ -1577,6 +1577,8 @@ def get_param_grads(origin_program):
                 ):
                     op._set_attr("op_role", role_id)
                     continue
+                if not op.has_attr(OP_ROLE_VAR_ATTR_NAME):
+                    continue
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                     grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
@@ -1586,7 +1588,7 @@ def get_param_grads(origin_program):
                             origin_var_dict[param_name],
                             origin_var_dict[grad_name],
                         )
-
+    
                         if param_name in sparse_varnames:
                             sparse_param_grads.append(param_grad)
                         else:

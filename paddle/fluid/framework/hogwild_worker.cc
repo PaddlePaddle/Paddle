@@ -111,16 +111,24 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
     if (ring_id >= 0 && ring_id != ring_id_) {
       ring_id_ = ring_id;
     }
+    std::string new_name;
     for (auto &o : op_desc->Inputs()) {
       for (auto &name : o.second) {
-        auto var = block.FindVar(name);
+        // amp
+        size_t pos = name.find(".cast_fp16");
+        if (pos != std::string::npos) {
+          new_name = name.substr(0, pos);
+        } else {
+          new_name = name;
+        }
+        auto var = block.FindVar(new_name);
         if (!var->Persistable() || !var->IsParameter()) {
           continue;
         }
-        if (params2rootid_.find(name) != params2rootid_.end()) {
+        if (params2rootid_.find(new_name) != params2rootid_.end()) {
           continue;
         }
-        params2rootid_.insert(std::make_pair(name, root_id));
+        params2rootid_.insert(std::make_pair(new_name, root_id));
       }
     }
   }
