@@ -170,9 +170,9 @@ class PipeLineModelAdaptor:
             # _layers.shared_layers.embed.position_embeddings.weight -> embedding_1.w_0
             # _layers.0.word_embeddings.weight -> embedding_0.w_0
             # _layers.0.position_embeddings.weight -> embedding_1.w_0
-            if "_layers.shared_layers" in layer:
-                shared_layer_parsed = True
-
+            shared_layer_parsed = shared_layer_parsed or (
+                "_layers.shared_layers" in layer
+            )
             if (
                 "_layers.shared_layers" not in layer
                 and ("word_embeddings" in k or "position_embeddings" in k)
@@ -394,9 +394,8 @@ class PipeLineModelAdaptor:
         match = re.search(
             r"^_layers((\.\d+)+|(\.shared_layers\.[^\.]+))", param_name
         )
-        if not match:
-            return ""
-        return match.group()
+        layer_name = ""
+        return "" if (not match) else match.group()
 
     # map opt names to tensor name
     def _opt_name_to_tname(self, tensor_names, opt_names):
@@ -444,7 +443,8 @@ class PipeLineModelAdaptor:
         return (params, opt_renamed, master_weights_renamed)
 
 
-def main():
+def parse_args():
+
     parser = argparse.ArgumentParser(
         prog='model converter', description='converter a model'
     )
@@ -493,7 +493,7 @@ def main():
     parser.add_argument(
         '--dst_pp',
         type=int,
-        default=2,
+        default=None,
         help='pp degree of the expected triaing task that would recover this model',
     )
 
@@ -538,6 +538,21 @@ def main():
 
     if args.dst_mp is None:
         args.dst_mp = args.src_mp
+    if args.dst_pp is None:
+        args.dst_pp = args.src_pp
+
+    assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
+        args.src_mp, args.dst_mp
+    )
+
+    assert args.method in [
+        'peek_model',
+        'adapt_model',
+    ], "method should be in ['peek_model', 'adapt_model']"
+    assert args.segment_method in [
+        "uniform",
+        "layer",
+    ], "segment_method should be 'uniform' or 'layer"
 
     print(
         "adapt model dumped by task with pp degree:{}, vp degree:{}, mp degree:{} to task with pp degree:{}, vp degree:{}, mp degree:{}".format(
@@ -549,6 +564,14 @@ def main():
             args.dst_mp,
         )
     )
+
+    return args
+
+
+def main():
+
+    args = parse_args()
+
     src_parallel_config = ParallelConfig(
         args.src_mp,
         args.src_pp,
@@ -557,6 +580,7 @@ def main():
         args.transformer_layer_num,
         args.segment_method,
     )
+
     dst_parallel_config = ParallelConfig(
         args.dst_mp,
         args.dst_pp,
@@ -574,9 +598,6 @@ def main():
     if args.method == "peek_model":
         adaptor.peek_model(args.dst_path)
     elif args.method == "adapt_model":
-        assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
-            args.src_mp, args.dst_mp
-        )
         adaptor.apply(args.src_path, args.dst_path)
 
 

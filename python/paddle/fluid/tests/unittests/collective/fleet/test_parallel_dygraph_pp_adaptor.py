@@ -22,10 +22,15 @@ import paddle
 from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
     ParallelConfig,
     PipeLineModelAdaptor,
+    parse_args,
 )
 
 
-class TestHybridPipeParallel(TestMultipleGpus):
+class TestPPAdaptor(TestMultipleGpus):
+    def test_parse_args(self):
+        args = parse_args()
+        self.assertEqual(args.src_mp, args.dst_mp)
+
     def test_hybrid_parallel_transformer_unbalanced_data(self):
         print(f"pwd {os.getcwd()}")
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer_save.py')
