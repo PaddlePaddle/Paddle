@@ -67,6 +67,7 @@ KernelSignature FeedForwardGradFuseOpArgumentMapping(
                           "Dropout2Mask",
                           "Linear1Out",
                           "Dropout1Out",
+                          "Dropout2Out",
                           "Ln1Scale",
                           "Ln1Bias",
                           "Ln1Out",
