@@ -82,7 +82,7 @@ class TestUniqueRaiseError(unittest.TestCase):
 
             def test_dtype():
                 data = paddle.static.data(
-                    shape=[10], dtype="float16", name="input"
+                    shape=[10], dtype="int16", name="input"
                 )
                 paddle.unique(data)
 
