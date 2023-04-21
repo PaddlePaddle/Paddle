@@ -24,13 +24,15 @@
 
 namespace phi {
 
-template <typename T> struct LerpElementWiseDirectCUDAFunctor {
+template <typename T>
+struct LerpElementWiseDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
     return x + weight * (y - x);
   }
 };
 
-template <typename T> struct LerpScalarDirectCUDAFunctor {
+template <typename T>
+struct LerpScalarDirectCUDAFunctor {
   const T *weight_;
 
   HOSTDEVICE inline LerpScalarDirectCUDAFunctor(const T *weight)
@@ -42,8 +44,10 @@ template <typename T> struct LerpScalarDirectCUDAFunctor {
 };
 
 template <typename Context, typename T>
-static void LerpFunction(const Context &ctx, const DenseTensor &x,
-                         const DenseTensor &y, const DenseTensor &weight,
+static void LerpFunction(const Context &ctx,
+                         const DenseTensor &x,
+                         const DenseTensor &y,
+                         const DenseTensor &weight,
                          DenseTensor *out) {
   std::vector<DenseTensor *> outputs;
   outputs.reserve(1);
@@ -72,8 +76,10 @@ static void LerpFunction(const Context &ctx, const DenseTensor &x,
 }
 
 template <typename Context, typename T>
-static void LerpFunctionZero(const Context &ctx, const DenseTensor &x,
-                             const DenseTensor &y, const DenseTensor &weight,
+static void LerpFunctionZero(const Context &ctx,
+                             const DenseTensor &x,
+                             const DenseTensor &y,
+                             const DenseTensor &weight,
                              DenseTensor *out) {
   ctx.template Alloc<T>(out);
 
@@ -93,19 +99,26 @@ static void LerpFunctionZero(const Context &ctx, const DenseTensor &x,
 }
 
 template <typename T, typename Context>
-void LerpKernel(const Context &ctx, const DenseTensor &x, const DenseTensor &y,
-                const DenseTensor &weight, DenseTensor *out) {
+void LerpKernel(const Context &ctx,
+                const DenseTensor &x,
+                const DenseTensor &y,
+                const DenseTensor &weight,
+                DenseTensor *out) {
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
-      rank, 0, phi::errors::InvalidArgument(
-                   "The number of dimensions for LerpOp must be "
-                   "greater than or equal to 0, but the value received is %d.",
-                   rank));
+      rank,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "greater than or equal to 0, but the value received is %d.",
+          rank));
   PADDLE_ENFORCE_LE(
-      rank, 6, phi::errors::InvalidArgument(
-                   "The number of dimensions for LerpOp must be "
-                   "less than or equal to 6, but the value received is %d.",
-                   rank));
+      rank,
+      6,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "less than or equal to 6, but the value received is %d.",
+          rank));
 
   if (rank == 0) {
     LerpFunctionZero<Context, T>(ctx, x, y, weight, out);
@@ -114,7 +127,12 @@ void LerpKernel(const Context &ctx, const DenseTensor &x, const DenseTensor &y,
   }
 }
 
-} // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(lerp, GPU, ALL_LAYOUT, phi::LerpKernel, phi::dtype::float16,
-                   float, double) {}
+PD_REGISTER_KERNEL(lerp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LerpKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
