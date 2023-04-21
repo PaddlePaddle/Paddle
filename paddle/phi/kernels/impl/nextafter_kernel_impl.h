@@ -43,8 +43,8 @@ struct NextafterFunctor {
       : x_(x), y_(y), out_(out), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] = static_cast<typename NextafterOut<T>::type>(
-        ::nextafter(static_cast<float>(x_[idx]), static_cast<float>(y_[idx])));
+    out_[idx] = static_cast<typename NextafterOut<T>::type>(std::nextafter(
+        static_cast<float>(x_[idx]), static_cast<float>(y_[idx])));
   }
   const T* x_;
   const T* y_;
@@ -57,7 +57,7 @@ struct NextafterFunctor<double> {
       : x_(x), y_(y), out_(out), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] = ::nextafter(x_[idx], y_[idx]);
+    out_[idx] = std::nextafter(x_[idx], y_[idx]);
   }
 
   const double* x_;

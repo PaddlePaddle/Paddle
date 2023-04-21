@@ -2282,15 +2282,6 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void NextafterInferMeta(const MetaTensor& x,
-                        const MetaTensor& y,
-                        MetaTensor* out) {
-  auto x_dims = x.dims();
-  out->set_dims(x_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& data_format,
