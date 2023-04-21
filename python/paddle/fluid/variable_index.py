@@ -117,7 +117,7 @@ class SliceInfo:
         return s
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def get_offset_stride(self, tensor_shape):
         for index in self.indexes:
