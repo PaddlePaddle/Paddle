@@ -5442,11 +5442,4 @@ def nextafter(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.nextafter(x, y)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
-        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
-        helper = LayerHelper('nextafter', **locals())
-        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
-        helper.append_op(
-            type='nextafter', inputs={'X': x, 'Y': y}, outputs={'Out': out}
-        )
-    return out
+        return _elementwise_op(LayerHelper('nextafter', **locals()))
