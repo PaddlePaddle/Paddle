@@ -18,8 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -73,24 +72,40 @@ __global__ void KernelHistogram(const T* input,
 
 template <typename T>
 __global__ void KernelMinMax(const T* input,
-                             const int total_elements,
-                             T* output) {
-  __shared__ T min_data;
-  __shared__ T max_data;
-  for (int i = threadIdx.x; i < 1; i += blockDim.x) {
-    min_data = std::numeric_limits<T>::max();
-    max_data = std::numeric_limits<T>::min();
+                             const int numel,
+                             const int block_num,
+                             T* min_ptr,
+                             T* max_ptr) {
+  int64_t index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i = index;
+  T min_value = static_cast<T>(i < numel ? input[i] : input[0]);
+  T max_value = static_cast<T>(i < numel ? input[i] : input[0]);
+
+  for (; i < numel; i += blockDim.x * gridDim.x) {
+    T value = static_cast<T>(input[i]);
+    min_value = value < min_value ? value : min_value;
+    max_value = value > max_value ? value : max_value;
+  }
+  if (max_ptr && min_ptr) {
+    __syncthreads();
+    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+
+    if (threadIdx.x == 0) {
+      min_ptr[blockIdx.x] = block_min_value;
+      max_ptr[blockIdx.x] = block_max_value;
+    }
   }
   __syncthreads();
-  CUDA_KERNEL_LOOP(index, total_elements) {
-    const auto input_value = input[index];
-    phi::CudaAtomicMin(&min_data, input_value);
-    phi::CudaAtomicMax(&max_data, input_value);
-  }
-  __syncthreads();
-  for (int i = threadIdx.x; i < 1; i += blockDim.x) {
-    output[0] = min_data;
-    output[1] = max_data;
+  if (index == 0) {
+    if (min_ptr && max_ptr) {
+      min_value = min_ptr[0];
+      max_value = max_ptr[0];
+      for (int64_t i = 1; i < block_num; i++) {
+        min_ptr[0] = min_ptr[i] < min_value ? min_ptr[i] : min_value;
+        max_ptr[0] = max_ptr[i] > max_value ? max_ptr[i] : max_value;
+      }
+    }
   }
 }
 
@@ -119,19 +134,21 @@ void HistogramKernel(const Context& dev_ctx,
 
   if (output_min == output_max) {
     DenseTensor min_max;
-    min_max.Resize({2});
-    auto* min_max_data = dev_ctx.template Alloc<T>(&min_max);
-    KernelMinMax<T>
-        <<<GET_BLOCKS(input_numel),
-           PADDLE_CUDA_NUM_THREADS,
-           0,
-           dev_ctx.stream()>>>(input_data, input_numel, min_max_data);
+    int block_num = GET_BLOCKS(input_numel);
+    min_max.Resize({2 * block_num});
+    auto* min_block_ptr = dev_ctx.template Alloc<T>(&min_max);
+    auto* max_block_ptr = min_block_ptr + block_num;
+    KernelMinMax<T><<<GET_BLOCKS(input_numel),
+                      PADDLE_CUDA_NUM_THREADS,
+                      0,
+                      dev_ctx.stream()>>>(
+        input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
 
     DenseTensor min_max_cpu;
     phi::Copy(dev_ctx, min_max, phi::CPUPlace(), true, &min_max_cpu);
     auto* min_max_cpu_data = min_max_cpu.data<T>();
     output_min = min_max_cpu_data[0];
-    output_max = min_max_cpu_data[1];
+    output_max = min_max_cpu_data[block_num];
   }
   if (output_min == output_max) {
     output_min = output_min - 1;
