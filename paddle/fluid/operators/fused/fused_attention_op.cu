@@ -40,54 +40,57 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedAttentionKernel(const Context &dev_ctx,
-                          const DenseTensor &x,
-                          const paddle::optional<DenseTensor> &ln_scale,
-                          const paddle::optional<DenseTensor> &ln_bias,
-                          const DenseTensor &qkv_weight,
-                          const paddle::optional<DenseTensor> &qkv_bias,
-                          const paddle::optional<DenseTensor> &cache_kv,
-                          const paddle::optional<DenseTensor> &src_mask,
-                          const DenseTensor &out_linear_weight,
-                          const paddle::optional<DenseTensor> &out_linear_bias,
-                          const paddle::optional<DenseTensor> &ln_scale_2,
-                          const paddle::optional<DenseTensor> &ln_bias_2,
-                          int num_heads,
-                          bool transpose_qkv_wb,
-                          bool pre_layer_norm,
-                          float epsilon,
-                          float attn_dropout_rate,
-                          bool is_test,
-                          bool attn_dropout_fix_seed,
-                          int attn_dropout_seed,
-                          const std::string &attn_dropout_implementation,
-                          float dropout_rate,
-                          bool dropout_fix_seed,
-                          int dropout_seed,
-                          const std::string &dropout_implementation,
-                          float ln_epsilon,
-                          bool add_residual,
-                          int ring_id,
-                          DenseTensor *ln_mean,
-                          DenseTensor *ln_var,
-                          DenseTensor *ln_out,
-                          DenseTensor *qkv_out,
-                          DenseTensor *qkv_bias_out,
-                          DenseTensor *transpose_out_2,
-                          DenseTensor *qk_out,
-                          DenseTensor *qktv_out,
-                          DenseTensor *softmax_out,
-                          DenseTensor *attn_dropout_mask_out,
-                          DenseTensor *attn_dropout_out,
-                          DenseTensor *src_mask_out,
-                          DenseTensor *fmha_out,
-                          DenseTensor *out_linear_out,
-                          DenseTensor *dropout_mask_out,
-                          DenseTensor *ln_mean_2,
-                          DenseTensor *ln_var_2,
-                          DenseTensor *bias_dropout_residual_out,
-                          DenseTensor *cache_kv_out,
-                          DenseTensor *out) {
+void FusedAttentionKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const paddle::optional<DenseTensor> &ln_scale,
+    const paddle::optional<DenseTensor> &ln_bias,
+    const DenseTensor &qkv_weight,
+    const paddle::optional<DenseTensor> &qkv_bias,
+    const paddle::optional<DenseTensor> &cache_kv,
+    const paddle::optional<DenseTensor> &src_mask,
+    const DenseTensor &out_linear_weight,
+    const paddle::optional<DenseTensor> &out_linear_bias,
+    const paddle::optional<DenseTensor> &ln_scale_2,
+    const paddle::optional<DenseTensor> &ln_bias_2,
+    const paddle::optional<DenseTensor> &seed_1_tensor,
+    const paddle::optional<DenseTensor> &dropout_seed_tensor,
+    int num_heads,
+    bool transpose_qkv_wb,
+    bool pre_layer_norm,
+    float epsilon,
+    float attn_dropout_rate,
+    bool is_test,
+    bool attn_dropout_fix_seed,
+    int attn_dropout_seed,
+    const std::string &attn_dropout_implementation,
+    float dropout_rate,
+    bool dropout_fix_seed,
+    int dropout_seed,
+    const std::string &dropout_implementation,
+    float ln_epsilon,
+    bool add_residual,
+    int ring_id,
+    DenseTensor *ln_mean,
+    DenseTensor *ln_var,
+    DenseTensor *ln_out,
+    DenseTensor *qkv_out,
+    DenseTensor *qkv_bias_out,
+    DenseTensor *transpose_out_2,
+    DenseTensor *qk_out,
+    DenseTensor *qktv_out,
+    DenseTensor *softmax_out,
+    DenseTensor *attn_dropout_mask_out,
+    DenseTensor *attn_dropout_out,
+    DenseTensor *src_mask_out,
+    DenseTensor *fmha_out,
+    DenseTensor *out_linear_out,
+    DenseTensor *dropout_mask_out,
+    DenseTensor *ln_mean_2,
+    DenseTensor *ln_var_2,
+    DenseTensor *bias_dropout_residual_out,
+    DenseTensor *cache_kv_out,
+    DenseTensor *out) {
   using U = phi::funcs::LayerNormParamType<T>;
 
   // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -121,14 +124,13 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                            is_test,
                                            is_upscale_in_train,
                                            dropout_rate,
-                                           nullptr,
+                                           dropout_seed_tensor.get_ptr(),
                                            dropout_seed);
 
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  phi::DenseTensor *seed_1 = nullptr;
 
   // get data ptr for qkv part.
   const auto input_x_dims = x_p->dims();
@@ -234,7 +236,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                                    is_upscale_in_train_1,
                                                    attn_dropout_fix_seed,
                                                    attn_dropout_seed,
-                                                   seed_1);
+                                                   seed_1_tensor.get_ptr());
   auto fmha_ref_compute = phi::fusion::FMHARef<T>(
       dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
 
@@ -415,8 +417,6 @@ void FusedAttentionGradKernel(
     bool add_residual,
     int ring_id,
     DenseTensor *qkv_bias_grad,
-    DenseTensor *qkv_bias_out_grad,
-    DenseTensor *src_mask_out_grad,
     DenseTensor *out_linear_bias_grad,
     DenseTensor *ln_scale_grad,
     DenseTensor *ln_bias_grad,
@@ -424,17 +424,7 @@ void FusedAttentionGradKernel(
     DenseTensor *ln_bias_2_grad,
     DenseTensor *x_grad,
     DenseTensor *qkv_weight_grad,
-    DenseTensor *out_linear_weight_grad,
-    DenseTensor *ln_out_grad,
-    DenseTensor *bias_dropout_residual_out_grad,
-    DenseTensor *qkv_out_grad,
-    DenseTensor *qktv_out_grad,
-    DenseTensor *transpose_out_2_grad,
-    DenseTensor *qk_out_grad,
-    DenseTensor *softmax_out_grad,
-    DenseTensor *attn_dropout_out_grad,
-    DenseTensor *fmha_out_grad,
-    DenseTensor *out_linear_out_grad) {
+    DenseTensor *out_linear_weight_grad) {
   using U = phi::fusion::LayerNormParamType<T>;
 
   const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
@@ -500,6 +490,62 @@ void FusedAttentionGradKernel(
   auto *dropout_mask_out_data =
       has_dropout ? dropout_mask_out_p->data<uint8_t>() : nullptr;
 
+  phi::DenseTensor *qkv_out_grad = nullptr;
+  if (&qkv_out) {
+    qkv_out_grad = new phi::DenseTensor();
+    qkv_out_grad->Resize(qkv_out.dims());
+  }
+  phi::DenseTensor *qkv_bias_out_grad = nullptr;
+  if (qkv_bias_out.get_ptr()) {
+    qkv_bias_out_grad = new phi::DenseTensor();
+    qkv_bias_out_grad->Resize(qkv_bias_out.get_ptr()->dims());
+  }
+  phi::DenseTensor *qktv_out_grad = nullptr;
+  if (&qktv_out) {
+    qktv_out_grad = new phi::DenseTensor();
+    qktv_out_grad->Resize(qktv_out.dims());
+  }
+  phi::DenseTensor *transpose_out_2_grad = nullptr;
+  if (&transpose_out_2) {
+    transpose_out_2_grad = new phi::DenseTensor();
+    transpose_out_2_grad->Resize(transpose_out_2.dims());
+  }
+  phi::DenseTensor *qk_out_grad = nullptr;
+  if (&qk_out) {
+    qk_out_grad = new phi::DenseTensor();
+    qk_out_grad->Resize(qk_out.dims());
+  }
+  phi::DenseTensor *softmax_out_grad = nullptr;
+  if (&softmax_out) {
+    softmax_out_grad = new phi::DenseTensor();
+    softmax_out_grad->Resize(softmax_out.dims());
+  }
+  phi::DenseTensor *attn_dropout_out_grad = nullptr;
+  if (&attn_dropout_out) {
+    attn_dropout_out_grad = new phi::DenseTensor();
+    attn_dropout_out_grad->Resize(attn_dropout_out.dims());
+  }
+  phi::DenseTensor *src_mask_out_grad = nullptr;
+  if (src_mask_out.get_ptr()) {
+    src_mask_out_grad = new phi::DenseTensor();
+    src_mask_out_grad->Resize(src_mask_out.get_ptr()->dims());
+  }
+  phi::DenseTensor *fmha_out_grad = nullptr;
+  if (&fmha_out) {
+    fmha_out_grad = new phi::DenseTensor();
+    fmha_out_grad->Resize(fmha_out.dims());
+  }
+  phi::DenseTensor *out_linear_out_grad = nullptr;
+  if (&out_linear_out) {
+    out_linear_out_grad = new phi::DenseTensor();
+    out_linear_out_grad->Resize(out_linear_out.dims());
+  }
+  phi::DenseTensor *bias_dropout_residual_out_grad = nullptr;
+  if (bias_dropout_residual_out.get_ptr()) {
+    bias_dropout_residual_out_grad = new phi::DenseTensor();
+    bias_dropout_residual_out_grad->Resize(
+        bias_dropout_residual_out.get_ptr()->dims());
+  }
   auto *d_x_data =
       dev_ctx.template Alloc<T>(x_grad, x_grad->numel() * sizeof(T));
   // when qkv_bias_p is not nullptr, qkv_out_grad is equals to
@@ -737,6 +783,11 @@ void FusedAttentionGradKernel(
     auto *ln_var_data = ln_var_p->data<U>();
     auto *ln_out_data = ln_out_p->data<T>();
 
+    phi::DenseTensor *ln_out_grad = nullptr;
+    if (ln_out.get_ptr()) {
+      ln_out_grad = new phi::DenseTensor();
+      ln_out_grad->Resize(ln_out.get_ptr()->dims());
+    }
     auto *d_ln_out_data = dev_ctx.template Alloc<T>(
         ln_out_grad, ln_out_grad->numel() * sizeof(T));
     auto *d_ln_scale_data =

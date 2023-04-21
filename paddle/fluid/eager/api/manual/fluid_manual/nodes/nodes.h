@@ -469,6 +469,12 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
   void SetTensorWrapperLnVariance(const paddle::Tensor& LnVariance) {
     LnVariance_ = egr::TensorWrapper(LnVariance, false);
   }
+  void SetTensorWrapperSeed1(const paddle::Tensor& Seed1) {
+    Seed1_ = egr::TensorWrapper(Seed1, true);
+  }
+  void SetTensorWrapperDropoutSeed(const paddle::Tensor& DropoutSeed) {
+    DropoutSeed_ = egr::TensorWrapper(DropoutSeed, true);
+  }
 
   // SetAttrMap
   void SetAttrMap(paddle::framework::AttributeMap&& attr_map) {
@@ -502,6 +508,8 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
   egr::TensorWrapper SrcMask_;
   egr::TensorWrapper SrcMaskOut_;
   egr::TensorWrapper TransposeOut2_;
+  egr::TensorWrapper Seed1_;
+  egr::TensorWrapper DropoutSeed_;
   egr::TensorWrapper X_;
 
   egr::TensorWrapper LnScale_;

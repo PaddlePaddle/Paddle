@@ -40,6 +40,8 @@ def fused_feedforward(
     ln2_bias=None,
     dropout1_rate=0.5,
     dropout2_rate=0.5,
+    dropout1_seed_tensor=None,
+    dropout2_seed_tensor=None,
     activation="relu",
     ln1_epsilon=1e-5,
     ln2_epsilon=1e-5,
@@ -137,8 +139,8 @@ def fused_feedforward(
             seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
             x,
-            None,
-            None,
+            dropout1_seed_tensor,
+            dropout2_seed_tensor,
             linear1_weight,
             linear1_bias,
             linear2_weight,
@@ -475,6 +477,8 @@ def fused_multi_head_attention(
     linear_bias=None,
     cache_kv=None,
     attn_mask=None,
+    attn_dropout_seed_tensor=None,
+    dropout_seed_tensor=None,
     dropout_rate=0.5,
     attn_dropout_rate=0.5,
     ln_epsilon=1e-05,
@@ -623,6 +627,16 @@ def fused_multi_head_attention(
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
+        if attn_dropout_seed_tensor:
+            assert (
+                len(attn_dropout_seed_tensor) == 1
+                and attn_dropout_seed_tensor.shape[0] == 1
+            ), "Shape of attention dropout seed tensor should be [1]."
+        if dropout_seed_tensor:
+            assert (
+                len(dropout_seed_tensor) == 1
+                and dropout_seed_tensor.shape[0] == 1
+            ), "Shape of dropout seed tensor should be [1]."
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
@@ -701,6 +715,8 @@ def fused_multi_head_attention(
             linear_bias,
             ln_scale,
             ln_bias,
+            attn_dropout_seed_tensor,
+            dropout_seed_tensor,
             'num_heads',
             num_heads,
             'transpose_qkv_wb',
@@ -772,6 +788,10 @@ def fused_multi_head_attention(
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:
             inputs['Ln2Bias'] = [ln_bias]
+        if attn_dropout_seed_tensor:
+            inputs['Seed1'] = [attn_dropout_seed_tensor]
+        if dropout_seed_tensor:
+            inputs['DropoutSeed'] = [dropout_seed_tensor]
         if cache_kv:
             inputs['CacheKV'] = [cache_kv]
 

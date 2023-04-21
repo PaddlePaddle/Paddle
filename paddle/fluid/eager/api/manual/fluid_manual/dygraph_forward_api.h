@@ -100,6 +100,8 @@ fused_attention_dygraph_function(
     const paddle::Tensor& OutLinearBias,
     const paddle::Tensor& Ln2Scale,
     const paddle::Tensor& Ln2Bias,
+    const paddle::Tensor& Seed1,
+    const paddle::Tensor& DropoutSeed,
     const paddle::framework::AttributeMap& attr_map);
 
 paddle::Tensor fused_gemm_epilogue_dygraph_function(
