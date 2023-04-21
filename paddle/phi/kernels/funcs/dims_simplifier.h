@@ -107,7 +107,7 @@ struct BroadcastDimsSimplifier {
     for (auto &in_dim : in_dims) {
       if (in_dim.size() < rank) {
         DimVector extended_in_dim(rank, 1);
-        int out_idx = axis;
+        int out_idx = out_dims.size() - in_dim.size();
         for (int in_idx = 0; in_idx < in_dim.size(); in_idx++) {
           if (in_dim[in_idx] == out_dims[out_idx] || in_dim[in_idx] == 1) {
             extended_in_dim[out_idx] = in_dim[in_idx];
