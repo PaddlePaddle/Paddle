@@ -475,15 +475,6 @@ inline void RunProgramAPI(
     PyObject *cuda_graph_pyobj,
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
-  // In the original run_program OP, the default value of the is_test
-  // attribute is false, we should check if there is is_test parameter
-  // in attrs
-  auto is_test = false;
-  if (attrs.count("is_test")) {
-    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
-  }
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-
   const auto &capture_mode =
       PADDLE_GET_CONST(std::string, attrs.at("cuda_graph_capture_mode"));
 
@@ -494,6 +485,12 @@ inline void RunProgramAPI(
   }
 
 #ifdef PADDLE_WITH_CUDA
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+
   auto mode =
       paddle::operators::details::StringToCUDAGraphCaptureMode(capture_mode);
   PADDLE_ENFORCE_EQ(
@@ -688,12 +685,6 @@ inline void RunProgramGradAPI(
     std::vector<paddle::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::Tensor *> &params_grad  // NOLINT
 ) {
-  // In the original run_program OP, the default value of the is_test
-  // attribute is false, we should check if there is is_test parameter
-  // in attrs
-
-  auto place = egr::Controller::Instance().GetExpectedPlace();
-
   const auto &capture_mode =
       PADDLE_GET_CONST(std::string, attrs.at("cuda_graph_capture_mode"));
 
@@ -704,6 +695,8 @@ inline void RunProgramGradAPI(
   }
 
 #ifdef PADDLE_WITH_CUDA
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+
   auto mode =
       paddle::operators::details::StringToCUDAGraphCaptureMode(capture_mode);
   PADDLE_ENFORCE_EQ(
