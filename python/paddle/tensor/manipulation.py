@@ -1971,12 +1971,12 @@ def split(x, num_or_sections, axis=0, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
                 'int64',
                 'uint8',
-                'uint16',
                 'int8',
             ],
             'split',
@@ -2804,7 +2804,15 @@ def unbind(input, axis=0):
         check_dtype(
             dtype,
             'unbind',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'unbind',
         )
         outs = [
