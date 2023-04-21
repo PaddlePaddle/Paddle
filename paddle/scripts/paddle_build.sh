@@ -3479,7 +3479,7 @@ EOF
             python setup.py $2;build_error=$?
         fi
     fi
-    sleep 30h
+    # sleep 30h
 
     # ci will collect ccache hit rate
     collect_ccache_hits
