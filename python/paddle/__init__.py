@@ -24,11 +24,12 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+
 from .framework import monkey_patch_variable
-from .framework import monkey_patch_math_varbase
+from .framework import monkey_patch_math_tensor
 
 monkey_patch_variable()
-monkey_patch_math_varbase()
+monkey_patch_math_tensor()
 
 from .framework import disable_signal_handler  # noqa: F401
 from .framework import get_flags  # noqa: F401
