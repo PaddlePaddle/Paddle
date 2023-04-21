@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
-
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -66,7 +65,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     OpDesc* conv_op = conv->Op();
 
     if (conv_op->Type() == "conv2d") {
-      conv_op->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op);
     }
 
     SetActivationAttrs(conv_op, activation->Op(), act_type);
@@ -138,7 +137,7 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
     for (auto node : concat_inputs) {
       OpDesc* conv_op = node->inputs[0]->Op();
       if (conv_op->Type() == "conv2d") {
-        conv_op->SetType("fused_conv2d");
+        ConvertToFusedOp(conv_op);
       }
 
       SetActivationAttrs(conv_op, activation_op->Op(), act_type);

@@ -64,9 +64,9 @@ void IndexSampleKernel(const Context& ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   const T* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();

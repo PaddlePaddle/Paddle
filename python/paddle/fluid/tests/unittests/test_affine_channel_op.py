@@ -18,7 +18,7 @@ Unit testing for affine_channel_op
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def affine_channel(x, scale, bias, layout):
@@ -48,16 +48,23 @@ class TestAffineChannelOp(OpTest):
         self.outputs = {'Out': y}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Out')
+        self.check_grad(['X', 'Scale', 'Bias'], 'Out', check_dygraph=False)
 
     def test_check_grad_stopgrad_dx(self):
-        self.check_grad(['Scale', 'Bias'], 'Out', no_grad_set=set('X'))
+        self.check_grad(
+            ['Scale', 'Bias'], 'Out', no_grad_set=set('X'), check_dygraph=False
+        )
 
     def test_check_grad_stopgrad_dscale_dbias(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set={'Scale', 'Bias'},
+            check_dygraph=False,
+        )
 
     def init_test_case(self):
         self.shape = [2, 100, 3, 3]

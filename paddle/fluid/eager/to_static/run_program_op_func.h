@@ -24,11 +24,10 @@
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
 // reducer while training on multi-cards.
-static void clear_no_grad_edges(
-    const std::vector<paddle::experimental::Tensor>& params,
-    const paddle::framework::BlockDesc* block_desc,
-    egr::GradNodeBase* grad_node,
-    size_t slot_id) {
+static void clear_no_grad_edges(const std::vector<paddle::Tensor>& params,
+                                const paddle::framework::BlockDesc* block_desc,
+                                egr::GradNodeBase* grad_node,
+                                size_t slot_id) {
   for (size_t i = 0; i < params.size(); ++i) {
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!block_desc->HasVar(p_grad_name)) {
@@ -39,7 +38,7 @@ static void clear_no_grad_edges(
 }
 
 static void clear_no_grad_edges_with_partial_block(
-    const std::vector<paddle::experimental::Tensor>& params,
+    const std::vector<paddle::Tensor>& params,
     const paddle::framework::BlockDesc* forward_block_desc,
     const paddle::framework::BlockDesc* backward_block_desc,
     egr::GradNodeBase* grad_node,
@@ -55,17 +54,12 @@ static void clear_no_grad_edges_with_partial_block(
 }
 
 inline void run_program_ad_func(
-    const std::vector<paddle::experimental::Tensor>& x,
-    const std::vector<paddle::experimental::Tensor>& params,
-    std::vector<paddle::experimental::Tensor*>& out,     // NOLINT
+    const std::vector<paddle::Tensor>& x,
+    const std::vector<paddle::Tensor>& params,
+    std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::experimental::Tensor*>& dout,    // NOLINT
+    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
-  VLOG(2) << "start run run_program";
-  // Call forward function
-  RunProgramAPI(x, params, out, step_scope, dout, attrs);
-  VLOG(2) << "start run run_program grad";
-
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
@@ -78,6 +72,13 @@ inline void run_program_ad_func(
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
       trace_backward, &p_autograd_x, &p_autograd_params);
+
+  VLOG(2) << "start run run_program with require_any_grad = "
+          << require_any_grad;
+  // Call forward function
+  // if require_any_grad is False, don't save any middle vars.
+  RunProgramAPI(x, params, out, step_scope, dout, require_any_grad, attrs);
+  VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
@@ -100,7 +101,7 @@ inline void run_program_ad_func(
         paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
     auto* backward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
-    std::vector<const paddle::experimental::Tensor*> x_require_grad;
+    std::vector<const paddle::Tensor*> x_require_grad;
     for (size_t i = 0; i < x.size(); ++i) {
       auto& name = x[i].name();
       if (forward_global_block->HasVar(name) ||

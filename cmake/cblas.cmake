@@ -96,6 +96,7 @@ if(NOT DEFINED CBLAS_PROVIDER)
         STATUS
           "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})"
       )
+
       message(
         STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})"
       )

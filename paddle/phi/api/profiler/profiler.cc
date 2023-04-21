@@ -20,6 +20,8 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/profiler/common_event.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/api/profiler/host_event_recorder.h"
@@ -34,6 +36,10 @@ limitations under the License. */
 DEFINE_bool(enable_host_event_recorder_hook,
             false,
             "enable HostEventRecorder, hook Profiler");
+
+DEFINE_bool(enable_record_op_info,
+            false,
+            "enable operator supplement info recorder");
 
 namespace phi {
 
@@ -264,5 +270,26 @@ bool RecordEvent::IsEnabled() {
          ProfilerHelper::g_enable_nvprof_hook ||
          ProfilerHelper::g_state != ProfilerState::kDisabled;
 }
+
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type,
+    const std::vector<std::pair<const char *, std::vector<DDim>>> &input_shapes,
+    const AttributeMap &attrs) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  if (IsEnabled() == false) {
+    return;
+  }
+  uint64_t op_id = 0;
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, attrs, op_id);
+}
+
+bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
+
+void EnableOpInfoRecorder() { FLAGS_enable_record_op_info = true; }
+
+void DisableOpInfoRecorder() { FLAGS_enable_record_op_info = false; }
 
 }  // namespace phi

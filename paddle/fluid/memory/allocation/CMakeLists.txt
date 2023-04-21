@@ -50,11 +50,6 @@ if(UNIX AND NOT APPLE)
   list(APPEND ALLOCATOR_DEPS rt)
 endif()
 
-if(WITH_ASCEND_CL)
-  list(APPEND ALLOCATOR_SRCS npu_allocator.cc npu_pinned_allocator.cc)
-  list(APPEND ALLOCATOR_DEPS npu_info)
-endif()
-
 if(WITH_CUSTOM_DEVICE)
   list(APPEND ALLOCATOR_SRCS custom_allocator.cc)
 endif()

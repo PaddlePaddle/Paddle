@@ -88,25 +88,15 @@ class LayerHelperBase:
 
         """
         if isinstance(value, np.ndarray):
-            if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(
-                    value,
-                    _current_expected_place(),
-                    False,
-                    False,
-                    name if name else None,
-                    True,
-                )
-            else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False,
-                )
-                return py_var
-        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
+            return core.eager.Tensor(
+                value,
+                _current_expected_place(),
+                False,
+                False,
+                name if name else None,
+                True,
+            )
+        elif isinstance(value, (Variable, core.eager.Tensor)):
             return value
         else:
             raise TypeError(
@@ -394,14 +384,18 @@ class LayerHelperBase:
                     and dtype != core.VarDesc.VarType.BF16
                 ):
                     raise TypeError(
-                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
-                if not (
-                    dtype.startswith("float") or dtype in ["double", "uint16"]
-                ):
+                if dtype not in [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'bfloat16',
+                    'float',
+                ]:
                     raise TypeError(
-                        "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
+                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
                     )
             if is_bias:
                 attr._set_default_bias_initializer()

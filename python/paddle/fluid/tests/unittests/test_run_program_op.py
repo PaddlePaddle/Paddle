@@ -18,16 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _legacy_C_ops
+from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import global_var
-from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -145,7 +139,7 @@ class RunProgramOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         ]
 
     def get_param_grad_names(self):
@@ -177,14 +171,9 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if global_var._in_eager_mode_:
-                var = core.eager.Tensor(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
-            else:
-                var = core.VarBase(
-                    value=np_value, name=name, place=place, zero_copy=True
-                )
+            var = core.eager.Tensor(
+                value=np_value, name=name, place=place, zero_copy=True
+            )
             var.stop_gradient = stop_gradient
             return var
 
@@ -208,7 +197,7 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_output(self):
         def create_var_base(is_input, name):
-            var = framework._varbase_creator(dtype=None, shape=None, name=name)
+            var = framework._create_tensor(dtype=None, shape=None, name=name)
             var.stop_gradient = False
             return var
 
@@ -221,7 +210,7 @@ class RunProgramOpTest(unittest.TestCase):
         if global_var._in_eager_mode_:
             outputs['OutScope'] = [core.Scope()]
         else:
-            outputs['OutScope'] = framework._varbase_creator(
+            outputs['OutScope'] = framework._create_tensor(
                 type=core.VarDesc.VarType.STEP_SCOPES,
                 name="program_out_scope",
                 persistable=True,
@@ -247,10 +236,7 @@ class RunProgramOpTest(unittest.TestCase):
                 self.program_desc, self.fwd_op_num, len(outputs['Out'])
             )
 
-            use_interpretorcore = (
-                _is_enable_standalone_executor()
-                and _is_dy2st_enable_standalone_executor()
-            )
+            use_interpretorcore = True
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(
@@ -299,10 +285,7 @@ class RunProgramOpTest(unittest.TestCase):
                 self.program_desc, self.fwd_op_num, len(outputs['Out'])
             )
 
-            use_interpretorcore = (
-                _is_enable_standalone_executor()
-                and _is_dy2st_enable_standalone_executor()
-            )
+            use_interpretorcore = True
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(
@@ -395,7 +378,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
+        img = paddle.static.data(
             name=self.input_names['X'][0],
             shape=[None, 1, 28, 28],
             dtype='float32',
@@ -463,7 +446,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         x = paddle.static.data(
             name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
-        emb = fluid.input.embedding(
+        emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(

@@ -16,14 +16,21 @@
 
 #include <atomic>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 
+#include "glog/logging.h"
+
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -33,6 +40,51 @@
 namespace phi {
 namespace backends {
 namespace gpu {
+
+class CUDAGraphContextManager {
+ public:
+  using DeviceContextMap =
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>;
+
+  static CUDAGraphContextManager &Instance() {
+    static CUDAGraphContextManager *cuda_graph_ctx_manager =
+        new CUDAGraphContextManager;
+    return *cuda_graph_ctx_manager;
+  }
+
+  DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+    VLOG(6) << "Get cuda graph device context for " << place;
+
+    DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
+    if (ctxs.find(place) == ctxs.end()) {
+      phi::memory_utils::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true,
+          stream_priority);
+    }
+    return ctxs[place].get().get();
+  }
+
+  void RecordCapturingDeviceContext(DeviceContext *dev_ctx) {
+    capturing_ctxs_.insert(dev_ctx);
+  }
+
+  std::set<DeviceContext *> GetAllCapturingDeviceContexts() const {
+    return capturing_ctxs_;
+  }
+
+  void ClearDeviceContextsRecords() { capturing_ctxs_.clear(); }
+
+ private:
+  CUDAGraphContextManager() {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphContextManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<int64_t, DeviceContextMap> cuda_graph_ctx_pool_;
+  std::set<DeviceContext *> capturing_ctxs_;
+};
 
 class CUDAKernelParams {
  public:

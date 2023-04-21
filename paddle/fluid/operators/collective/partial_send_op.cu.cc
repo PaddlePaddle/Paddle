@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSendCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -62,8 +62,8 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
-    int send_numel = numel / num;
-    int offset = send_numel * id;
+    int64_t send_numel = numel / num;
+    int64_t offset = send_numel * id;
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -117,9 +117,16 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(partial_send,
-                        ops::PartialSendCUDAKernel<float>,
-                        ops::PartialSendCUDAKernel<double>,
-                        ops::PartialSendCUDAKernel<int>,
-                        ops::PartialSendCUDAKernel<int64_t>,
-                        ops::PartialSendCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_send,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialSendCUDAKernel,
+                          float,
+                          double,
+#if NCCL_VERSION_CODE >= 21000
+                          plat::bfloat16,
+#endif
+                          int,
+                          int64_t,
+                          plat::float16) {
+}

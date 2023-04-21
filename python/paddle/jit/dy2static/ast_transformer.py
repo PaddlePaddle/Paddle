@@ -86,14 +86,13 @@ class DygraphToStaticAst(BaseTransformer):
 
     def transfer_from_node_type(self, node_wrapper):
         self.translator_logger.log(
-            1, "Source code: \n{}".format(ast_to_source_code(self.root))
+            1, f"Source code: \n{ast_to_source_code(self.root)}"
         )
         # Generic transformation
         self.visit(node_wrapper.node)
 
         transformers = [
             EarlyReturnTransformer,
-            DecoratorTransformer,  # transform decorators to function call
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
@@ -105,6 +104,7 @@ class DygraphToStaticAst(BaseTransformer):
             AssertTransformer,  # assert statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
+            DecoratorTransformer,  # transform decorators to function call
             NameloadJstTransformer,
             TypeHintTransformer,  # remove all typehint in gast.Name
         ]

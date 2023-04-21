@@ -17,7 +17,6 @@
 
 #include "paddle/phi/kernels/svd_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -105,12 +104,12 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -186,12 +185,12 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,

@@ -74,7 +74,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         }
 
     def _get_distributed_strategy(self):
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -96,7 +96,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return strategy
 
     def _build_trainer_programs(self, compiled_config):
-        from paddle.incubate.fleet.parameter_server.ir import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir import (
             trainer_pass as worker,
         )
 
@@ -106,7 +106,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
 
         if not compiled_config.is_geo_mode():
-            from paddle.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _add_lr_decay_table_pass,
             )
 
@@ -150,7 +150,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             compiled_config.set_origin_ps_startup_program(_startup)
             # for heter program
             if self.role_maker._is_heter_parameter_server_mode:
-                from paddle.incubate.fleet.parameter_server.ir import (
+                from paddle.incubate.distributed.fleet.parameter_server.ir import (
                     heter_trainer_pass as heter_worker,
                 )
 
@@ -191,13 +191,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = paddle.static.Program()
         _startup = paddle.static.Program()
 
-        from paddle.incubate.fleet.parameter_server.ir import (
+        from paddle.incubate.distributed.fleet.parameter_server.ir import (
             pserver_pass as server,
         )
 
         if not compiled_config.is_geo_mode():
 
-            from paddle.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _get_optimize_ops,
             )
 
@@ -209,7 +209,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if len(ops) == 0:
                 return _main, _startup
 
-            from paddle.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _add_lr_decay_table_pass,
             )
 
@@ -299,9 +299,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         free = get_sys_free_mem()
 
-        from paddle.incubate.fleet.parameter_server.ir import vars_metatools
+        from paddle.incubate.distributed.fleet.parameter_server.ir import (
+            vars_metatools,
+        )
 
-        processed_var_names = set(["@EMPTY@"])
+        processed_var_names = {"@EMPTY@"}
         param_memory_size = 0
         for varname in program.global_block().vars:
             var = program.global_block().vars[varname]
@@ -316,7 +318,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         upper_mem_use = param_memory_size * 5.0
 
-        program_tmp_vars = dict()
+        program_tmp_vars = {}
         eval_batch_size = 1024
         for op in program.global_block().ops:
             for var_name in op.output_arg_names:
@@ -369,7 +371,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
-        from paddle.incubate.fleet.parameter_server.ir import public as public
+        from paddle.incubate.distributed.fleet.parameter_server.ir import public
 
         compiled_config = public.CompileTimeStrategy(
             _origin_main_program,

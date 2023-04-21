@@ -12,8 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/generator.h"
 namespace paddle {
 namespace operators {
 
@@ -102,7 +102,10 @@ REGISTER_OPERATOR(
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    fused_softmax_mask_upper_triangle,
-    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, float>,
-    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SoftmaxMaskFuseUpperTriangleCPUKernel,
+                          float,
+                          double) {}

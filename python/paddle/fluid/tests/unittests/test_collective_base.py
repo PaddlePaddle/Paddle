@@ -24,8 +24,8 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
+from paddle import fluid
 from paddle.fluid import core
 
 
@@ -145,7 +145,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )

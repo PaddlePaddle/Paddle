@@ -18,6 +18,7 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle::framework::paddle2cinn {
 
@@ -76,6 +77,54 @@ namespace paddle::framework::paddle2cinn {
   PADDLE_THROW(platform::errors::Unimplemented("Input type not supported yet"));
   return ::phi::DataType::UNDEFINED;
 #undef SET_TYPE_CASE_ITEM
+}
+
+std::string PaddleAttributeToString(const framework::Attribute& attr) {
+  std::ostringstream ss;
+#define EXPAND_ATTRIBUTE_MACRO(TYPE_)                              \
+  if (attr.type() == typeid(TYPE_)) {                              \
+    ss << PADDLE_GET_CONST(TYPE_, attr);                           \
+    return ss.str();                                               \
+  }                                                                \
+  if (attr.type() == typeid(std::vector<TYPE_>)) {                 \
+    const auto& vals = PADDLE_GET_CONST(std::vector<TYPE_>, attr); \
+    if (!vals.empty()) {                                           \
+      ss << "[" << string::join_strings(vals, ", ") << "]";        \
+    }                                                              \
+    return ss.str();                                               \
+  }
+
+  if (attr.type() == typeid(bool)) {
+    ss << std::boolalpha << PADDLE_GET_CONST(bool, attr);
+    return ss.str();
+  }
+  if (attr.type() == typeid(std::vector<bool>)) {
+    // join_strings<bool> will compile failed:
+    // cannot bind non-const lvalue reference of type ‘bool&’
+    const auto& vals = PADDLE_GET_CONST(std::vector<bool>, attr);
+    if (!vals.empty()) {
+      ss << "[";
+      bool first_value = true;
+      for (bool val : vals) {
+        if (!first_value) {
+          ss << ", ";
+        }
+        first_value = false;
+        ss << std::boolalpha << val;
+      }
+      ss << "]";
+    }
+    return ss.str();
+  }
+  EXPAND_ATTRIBUTE_MACRO(std::string)
+  EXPAND_ATTRIBUTE_MACRO(int)
+  EXPAND_ATTRIBUTE_MACRO(float)
+  EXPAND_ATTRIBUTE_MACRO(int64_t)
+  EXPAND_ATTRIBUTE_MACRO(double)
+
+  ss << "Unkown_Dtype:" << attr.type().name();
+#undef EXPAND_ATTRIBUTE_MACRO
+  return ss.str();
 }
 
 }  // namespace paddle::framework::paddle2cinn

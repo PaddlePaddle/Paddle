@@ -57,4 +57,5 @@ PD_REGISTER_KERNEL(squared_l2_norm_grad,
                    phi::SquaredL2NormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

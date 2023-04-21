@@ -1,14 +1,18 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 // This file has been adapted from FasterTransformer file:
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
@@ -26,11 +30,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -1867,19 +1871,20 @@ class CublasFusedMLP {
     const auto *x_data = x->data<T>();
     const auto *w_data = weight->data<T>();
 
-    auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
-                                                              operation_desc_,
-                                                              w_desc_,
-                                                              x_desc_,
-                                                              out_desc_,
-                                                              alpha,
-                                                              beta,
-                                                              w_data,
-                                                              x_data,
-                                                              out_data,
-                                                              stream,
-                                                              workspace->ptr(),
-                                                              workspace_size);
+    auto algo = phi::funcs::GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+        lt_handle,
+        operation_desc_,
+        w_desc_,
+        x_desc_,
+        out_desc_,
+        alpha,
+        beta,
+        w_data,
+        x_data,
+        out_data,
+        stream,
+        workspace->ptr(),
+        workspace_size);
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmul(lt_handle,

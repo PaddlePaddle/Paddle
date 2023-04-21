@@ -18,7 +18,7 @@ import numpy as np
 from simple_nets import init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
 from paddle.static import Program, program_guard

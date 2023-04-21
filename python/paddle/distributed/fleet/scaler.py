@@ -66,6 +66,7 @@ def distributed_scaler(scaler):
             ]
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+        self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):
             _legacy_C_ops.check_finite_and_unscale(
                 param_grads_fp16,

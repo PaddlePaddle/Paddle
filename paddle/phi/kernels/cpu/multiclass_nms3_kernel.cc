@@ -496,7 +496,7 @@ void MultiClassNMSKernel(const Context& ctx,
                          DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
-  auto score_dims = scores.dims();
+  auto score_dims = phi::vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;
@@ -628,4 +628,6 @@ void MultiClassNMSKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     multiclass_nms3, CPU, ALL_LAYOUT, phi::MultiClassNMSKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

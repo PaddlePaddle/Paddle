@@ -60,6 +60,7 @@ __global__ void KeLinearInterpBw(T* in,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -79,13 +80,12 @@ __global__ void KeLinearInterpBw(T* in,
                                 : ratio_w * out_img_idx;
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
-    T w1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_w) - in_img_idx)
-                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = static_cast<T>(1.0) - w1lambda;
+
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    MT w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
+    MT w2lambda = 1.0 - w1lambda;
 
     T* in_pos;
     if (data_layout == DataLayout::kNCHW) {
@@ -96,11 +96,17 @@ __global__ void KeLinearInterpBw(T* in,
     const T* out_pos = &out[out_id_w];
 
     if (data_layout == DataLayout::kNCHW) {
-      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
+          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      phi::CudaAtomicAdd(
+          &in_pos[w_id],
+          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     } else {
-      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos[w_id * num_channels], w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
+          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      phi::CudaAtomicAdd(
+          &in_pos[w_id * num_channels],
+          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     }
   }
 }
@@ -469,6 +475,7 @@ __global__ void KeBicubicInterpBw(T* in,
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
@@ -487,23 +494,21 @@ __global__ void KeBicubicInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    T in_img_idy = align_corners
-                       ? static_cast<T>(ratio_h * out_img_idy)
-                       : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
+    MT in_img_idy = align_corners ? ratio_h * out_img_idy
+                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
     int input_y = floorf(static_cast<float>(in_img_idy));
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const T y_t = static_cast<T>(static_cast<MT>(in_img_idy) - input_y);
-    T in_img_idx = align_corners
-                       ? static_cast<T>(ratio_w * out_img_idx)
-                       : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+
+    const MT y_t = in_img_idy - input_y;
+    MT in_img_idx = align_corners ? ratio_w * out_img_idx
+                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
     int input_x = floorf(static_cast<float>(in_img_idx));
-    const T x_t = static_cast<T>(static_cast<MT>(in_img_idx) - input_x);
+    const MT x_t = in_img_idx - input_x;
 
-    T x_coeffs[4];
-    T y_coeffs[4];
+    MT x_coeffs[4];
+    MT y_coeffs[4];
 
-    funcs::get_cubic_upsample_coefficients(x_coeffs, x_t);
-    funcs::get_cubic_upsample_coefficients(y_coeffs, y_t);
+    funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
+    funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
 
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
     T* in_pos;
@@ -524,7 +529,8 @@ __global__ void KeBicubicInterpBw(T* in,
                        access_x * num_channels + channel_id];
         }
         phi::CudaAtomicAdd(&in_pos[0],
-                           (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
+                           static_cast<T>(static_cast<MT>(out_pos[0]) *
+                                          y_coeffs[j] * x_coeffs[i]));
       }
     }
   }
@@ -1568,7 +1574,8 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    phi::BilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1589,7 +1596,8 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    phi::TrilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1599,7 +1607,8 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    phi::LinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1609,7 +1618,8 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    phi::BicubicInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

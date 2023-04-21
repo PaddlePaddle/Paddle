@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -103,7 +103,7 @@ class TestEditDistanceOp(OpTest):
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestEditDistanceOpNormalizedCase0(OpTest):
@@ -153,7 +153,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
         self.post_config()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestEditDistanceOpNormalizedCase1(TestEditDistanceOpNormalizedCase0):
@@ -205,7 +205,7 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 if __name__ == '__main__':

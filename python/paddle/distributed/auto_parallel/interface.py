@@ -78,8 +78,16 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         ), "Specify the process mesh argument or use ProcessMesh context manager first."
     assert isinstance(
         shard_spec, list
-    ), "Argument shard_spec {} is not an instance of list".format(shard_spec)
-    dist_tensor = DistributedTensor(x)
+    ), f"Argument shard_spec {shard_spec} is not an instance of list"
+    if isinstance(x, str):
+        x = (
+            paddle.static.default_main_program()
+            .global_block()
+            ._var_recursive(x)
+        )
+        dist_tensor = DistributedTensor(x)
+    else:
+        dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
     if serial_tensor.type in __no_shape_var_type__:
@@ -102,6 +110,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     default_dist_ctx = get_default_distributed_context()
     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
     dist_tensor = default_dist_ctx.get_dist_tensor_for_program(x)
+    default_dist_ctx.add_process_mesh(process_mesh)
     return x
 
 
@@ -117,15 +126,15 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             will be used. And an error will be raised if the current process mesh cannot be found.
             Default: None.
         in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
-            and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
-            If it is None, all inputs are replicated across all processes. Note that the lenght of the
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the corresponding input
+            and `process_mesh`. If one item is None, the corresponding input is replicated across all processes
+            If it is None, all inputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None.
         out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
-            and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
-            If it is None, all outputs are replicated across all processes. Note that the lenght of the
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the corresponding output
+            and `process_mesh`. If one item is None, the corresponding output is replicated across all processes
+            If it is None, all outputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None. Default: None.
 

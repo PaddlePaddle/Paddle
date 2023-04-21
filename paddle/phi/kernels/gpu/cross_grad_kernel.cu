@@ -38,14 +38,32 @@ __global__ void CrossGrad(const T* x,
     auto pos1 = offset + 1 * stride;
     auto pos2 = offset + 2 * stride;
 
-    out_dx[pos0] = out[pos2] * y[pos1] - out[pos1] * y[pos2];
-    out_dy[pos0] = out[pos1] * x[pos2] - out[pos2] * x[pos1];
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-    out_dx[pos1] = out[pos0] * y[pos2] - out[pos2] * y[pos0];
-    out_dy[pos1] = out[pos2] * x[pos0] - out[pos0] * x[pos2];
+    MPType x_pos0_mp = static_cast<MPType>(x[pos0]);
+    MPType x_pos1_mp = static_cast<MPType>(x[pos1]);
+    MPType x_pos2_mp = static_cast<MPType>(x[pos2]);
+    MPType y_pos0_mp = static_cast<MPType>(y[pos0]);
+    MPType y_pos1_mp = static_cast<MPType>(y[pos1]);
+    MPType y_pos2_mp = static_cast<MPType>(y[pos2]);
+    MPType out_pos0_mp = static_cast<MPType>(out[pos0]);
+    MPType out_pos1_mp = static_cast<MPType>(out[pos1]);
+    MPType out_pos2_mp = static_cast<MPType>(out[pos2]);
 
-    out_dx[pos2] = out[pos1] * y[pos0] - out[pos0] * y[pos1];
-    out_dy[pos2] = out[pos0] * x[pos1] - out[pos1] * x[pos0];
+    out_dx[pos0] =
+        static_cast<T>(out_pos2_mp * y_pos1_mp - out_pos1_mp * y_pos2_mp);
+    out_dy[pos0] =
+        static_cast<T>(out_pos1_mp * x_pos2_mp - out_pos2_mp * x_pos1_mp);
+
+    out_dx[pos1] =
+        static_cast<T>(out_pos0_mp * y_pos2_mp - out_pos2_mp * y_pos0_mp);
+    out_dy[pos1] =
+        static_cast<T>(out_pos2_mp * x_pos0_mp - out_pos0_mp * x_pos2_mp);
+
+    out_dx[pos2] =
+        static_cast<T>(out_pos1_mp * y_pos0_mp - out_pos0_mp * y_pos1_mp);
+    out_dy[pos2] =
+        static_cast<T>(out_pos0_mp * x_pos1_mp - out_pos1_mp * x_pos0_mp);
   }
 }
 
@@ -172,6 +190,8 @@ PD_REGISTER_KERNEL(cross_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::CrossGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

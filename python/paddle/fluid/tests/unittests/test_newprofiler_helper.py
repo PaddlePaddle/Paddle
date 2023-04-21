@@ -14,7 +14,7 @@
 
 import unittest
 
-import paddle.profiler.statistic_helper as statistic_helper
+from paddle.profiler import statistic_helper
 
 
 class TestStatisticHelper(unittest.TestCase):

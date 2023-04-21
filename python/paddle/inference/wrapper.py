@@ -18,7 +18,7 @@ from typing import Set
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.core import (
     AnalysisConfig,
     PaddleDType,
@@ -94,9 +94,14 @@ def convert_to_mixed_precision(
         black_list: Operators that do not convert precision.
     '''
     mixed_model_dirname = os.path.dirname(mixed_model_file)
-    mixed_params_dirname = os.path.dirname(mixed_params_file)
-    if not os.path.exists(mixed_model_dirname):
-        os.makedirs(mixed_model_dirname)
+    # Support mixed_params_file is empty, because some models don't have params, but convert_to_mixed_precision will call
+    # constant_folding_pass, it will generate a new params file to save persistable vars, which is saved in the same
+    # level file directory as the model file by default and ends in pdiparams.
+    mixed_params_dirname = (
+        os.path.dirname(mixed_params_file)
+        if len(mixed_params_file) != 0
+        else mixed_model_dirname
+    )
     if not os.path.exists(mixed_params_dirname):
         os.makedirs(mixed_params_dirname)
     convert_to_mixed_precision_bind(

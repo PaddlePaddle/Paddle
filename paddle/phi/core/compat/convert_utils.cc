@@ -41,8 +41,6 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::NPU;
     case AllocationType::IPU:
       return Backend::IPU;
-    case AllocationType::MLU:
-      return Backend::MLU;
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -99,6 +97,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
         return phi::CustomPlace(
             device_type,
             set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
+      } else if (backend == Backend::CUSTOM) {
+        return phi::CustomPlace();
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -123,8 +123,7 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToOneDNNDataType(
-    const paddle::experimental::DataType& dtype) {
+dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:
       return dnnl::memory::data_type::f32;

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestClass(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestClass(unittest.TestCase):
                 yield img, label
 
         reader = paddle.reader.cache(fake_reader)
-        batch_reader = fluid.io.batch(reader, batch_size=batch_size)
+        batch_reader = paddle.batch(reader, batch_size=batch_size)
 
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
