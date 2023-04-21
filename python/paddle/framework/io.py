@@ -1078,6 +1078,7 @@ def load(path, **configs):
                                 load_result[key] = _ndarray_to_tensor(
                                     load_result[key], config.return_numpy
                                 )
+                                # default name is "generatedxxx" which is set in Tensor init, if not set
                                 if not config.return_numpy and getattr(
                                     load_result[key], "name", ""
                                 ):
