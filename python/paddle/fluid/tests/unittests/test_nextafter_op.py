@@ -39,10 +39,10 @@ class TestNextafterAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
-                name="X", shape=self.x_np.shape, dtype='float32'
+                name='X', shape=self.x_np.shape, dtype='float32'
             )
             y = paddle.static.data(
-                name="Y", shape=self.y_np.shape, dtype='float32'
+                name='Y', shape=self.y_np.shape, dtype='float32'
             )
             out = paddle.nextafter(x, y)
             exe = paddle.static.Executor(self.place)
