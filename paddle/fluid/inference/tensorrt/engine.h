@@ -360,6 +360,7 @@ class TensorRTEngine {
   int GetRuntimeBatch();
 
   bool WithFp16() {
+    return false;
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     // below is consistent with setFlag in engine.cc
