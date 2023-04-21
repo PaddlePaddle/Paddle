@@ -976,7 +976,11 @@ class GraphDataGenerator {
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
-
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys UNUSED,
+                     int type UNUSED) {
+    // type_to_index_[type] = h_device_keys_.size();
+    // h_device_keys_.push_back(device_keys);
+  }
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
       int64_t* uniq_nodes,
       int len,
@@ -1181,6 +1185,9 @@ class DataFeed {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
+  virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+    gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
+  }
 #endif
 
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
