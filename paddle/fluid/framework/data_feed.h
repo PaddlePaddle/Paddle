@@ -937,23 +937,29 @@ const int EVENT_SWTICH_METAPATH = 1;    // Switch to the next metapath to perfor
 
 struct GraphDataGeneratorConfig {
   bool need_walk_ntype;
+  bool enable_pair_label;
+  bool gpu_graph_training;
+  bool sage_mode;
+  bool get_degree;
+  bool weighted_sample;
+  bool return_weight;
   int batch_size;
   int slot_num;
-  bool enable_pair_label;
-  std::shared_ptr<phi::Allocation> d_pair_label_conf;
   int walk_degree;
   int walk_len;
   int window;
-  std::vector<int> window_step;
   int gpuid;
   int thread_id;
   int once_sample_startid_len;
   int node_type_num;
   int debug_mode;
   int excluded_train_pair_len;
+  int64_t reindex_table_size;
+  uint64_t train_table_cap;
+  uint64_t infer_table_cap;
+  std::vector<int> window_step;
   std::shared_ptr<phi::Allocation> d_excluded_train_pair;
-  bool gpu_graph_training;
-  bool sage_mode;
+  std::shared_ptr<phi::Allocation> d_pair_label_conf;
 };
 
 class GraphDataGenerator {
@@ -970,15 +976,6 @@ class GraphDataGenerator {
   int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
-  void FillOneStep(uint64_t* start_ids,
-                   int etype_id,
-                   uint64_t* walk,
-                   uint8_t* walk_ntype,
-                   int len,
-                   NeighborSampleResult& sample_res,  // NOLINT
-                   int cur_degree,
-                   int step);
-  int FillInsBuf(cudaStream_t stream);
   int FillIdShowClkTensor(int total_instance,
                           bool gpu_graph_training);
   int FillGraphIdShowClkTensor(int uniq_instance,
@@ -989,7 +986,6 @@ class GraphDataGenerator {
       bool gpu_graph_training,
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
   int FillSlotFeature(uint64_t* d_walk, size_t key_num);
-  uint64_t CopyUniqueNodes();
   int GetPathNum() { return total_row_; }
   void ResetPathNum() { total_row_ = 0; }
   int GetGraphBatchsize() {return conf_.batch_size;};
@@ -1015,27 +1011,12 @@ class GraphDataGenerator {
       int sample_size,
       std::vector<int>& edges_split_num,  // NOLINT
       int64_t* neighbor_len);
-  std::shared_ptr<phi::Allocation> FillReindexHashTable(int64_t* input,
-                                                        int num_input,
-                                                        int64_t len_hashtable,
-                                                        int64_t* keys,
-                                                        int* values,
-                                                        int* key_index,
-                                                        int* final_nodes_len);
-  std::shared_ptr<phi::Allocation> GetReindexResult(int64_t* reindex_src_data,
-                                                    int64_t* center_nodes,
-                                                    int* final_nodes_len,
-                                                    int node_len,
-                                                    int64_t neighbor_len);
   std::shared_ptr<phi::Allocation> GenerateSampleGraph(
       uint64_t* node_ids,
       int len,
       int* uniq_len,
       std::shared_ptr<phi::Allocation>& inverse);  // NOLINT
   std::shared_ptr<phi::Allocation> GetNodeDegree(uint64_t* node_ids, int len);
-  int InsertTable(const uint64_t* d_keys,
-                  uint64_t len,
-                  std::shared_ptr<phi::Allocation> d_uniq_node_num);
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
   bool get_epoch_finish() { return epoch_finish_; }
   int get_pass_end() { return pass_end_; }
@@ -1108,7 +1089,6 @@ class GraphDataGenerator {
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
   std::vector<std::vector<std::vector<int>>> edges_split_num_vec_;
 
-  int64_t reindex_table_size_;
   int sage_batch_count_;
   int sage_batch_num_;
   int ins_buf_pair_len_;
@@ -1127,17 +1107,12 @@ class GraphDataGenerator {
   std::vector<uint64_t> host_vec_;
   std::vector<uint64_t> h_device_keys_len_;
   uint64_t h_train_metapath_keys_len_;
-  uint64_t train_table_cap_;
-  uint64_t infer_table_cap_;
   uint64_t copy_unique_len_;
   int total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;
   std::set<int> infer_node_type_index_set_;
   std::string infer_node_type_;
-  bool get_degree_;
-  bool weighted_sample_;
-  bool return_weight_;
   bool is_multi_node_;
   phi::DenseTensor multi_node_sync_stat_;
 };
