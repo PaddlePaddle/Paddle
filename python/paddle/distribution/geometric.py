@@ -64,7 +64,7 @@ class Geometric(distribution.Distribution):
             #        [1.41421354])
     """
 
-    def __init__(self, probs=None):
+    def __init__(self, probs):
         if isinstance(probs, (numbers.Real, paddle.Tensor, framework.Variable)):
             if isinstance(probs, numbers.Real):
                 probs = paddle.full(
@@ -187,7 +187,7 @@ class Geometric(distribution.Distribution):
         """Sample from Geometric distribution with sample shape.
 
         Args:
-            shape (Sequence[int], optional): Sample shape.
+            shape (tuple(int)): Sample shape.
 
         Returns:
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -214,7 +214,7 @@ class Geometric(distribution.Distribution):
         """Generate samples of the specified shape.
 
         Args:
-            shape(tuple): The shape of generated samples.
+            shape(tuple(int)): The shape of generated samples.
 
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
