@@ -27,14 +27,6 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class FusedFeedForwardXPUKernel : public framework::OpKernel<T> {
-  using XPUTypeT = typename XPUTypeTrait<T>::Type;
-
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-};
-
-template <typename DeviceContext, typename T>
 class FusedFeedForwardGradXPUKernel : public framework::OpKernel<T> {
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
@@ -504,10 +496,6 @@ class FusedFeedForwardGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    fused_feedforward,
-    ops::FusedFeedForwardXPUKernel<phi::XPUContext, float>,
-    ops::FusedFeedForwardXPUKernel<phi::XPUContext, paddle::platform::float16>);
 
 REGISTER_OP_XPU_KERNEL(
     fused_feedforward_grad,
