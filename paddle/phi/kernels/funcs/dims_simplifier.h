@@ -104,10 +104,17 @@ struct BroadcastDimsSimplifier {
  private:
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
+    bool case_bug = in_dims.size() == 3 && in_dims[0] != in_dims[1] &&
+                    in_dims[1] != in_dims[2];
     for (auto &in_dim : in_dims) {
       if (in_dim.size() < rank) {
         DimVector extended_in_dim(rank, 1);
-        int out_idx = out_dims.size() - in_dim.size();
+        int out_idx;
+        if (case_bug) {
+          out_idx = out_dims.size() - in_dim.size();
+        } else {
+          out_idx = axis;
+        }
         for (int in_idx = 0; in_idx < in_dim.size(); in_idx++) {
           if (in_dim[in_idx] == out_dims[out_idx] || in_dim[in_idx] == 1) {
             extended_in_dim[out_idx] = in_dim[in_idx];
