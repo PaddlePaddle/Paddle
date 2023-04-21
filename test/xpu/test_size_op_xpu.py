@@ -27,12 +27,12 @@ import paddle
 paddle.enable_static()
 
 
-class XPUTestNumelOP(XPUOpTestWrapper):
+class XPUTestSizeOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'size'
         self.use_dynamic_create_class = False
 
-    class TestXPUNumelOp(XPUOpTest):
+    class TestXPUSizeOp(XPUOpTest):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
@@ -54,30 +54,30 @@ class XPUTestNumelOP(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
-    class TestNumel1(TestXPUNumelOp):
+    class TestSize1(TestXPUSizeOp):
         def initTestCase(self):
             self.shape = (11, 66)
 
-    class TestNumel2(TestXPUNumelOp):
+    class TestSize2(TestXPUSizeOp):
         def initTestCase(self):
             self.shape = (0,)
 
-    class TestNumel3(TestXPUNumelOp):
+    class TestSize3(TestXPUSizeOp):
         def initTestCase(self):
             self.shape = (2, 3, 4, 5, 6)
 
-    class TestNumel4(TestXPUNumelOp):
+    class TestSize4(TestXPUSizeOp):
         def initTestCase(self):
             self.shape = (12, 24)
 
-    class TestNumel5(TestXPUNumelOp):
+    class TestSize5(TestXPUSizeOp):
         def initTestCase(self):
             self.shape = (1, 64, 16)
 
 
-support_types = get_xpu_op_support_types('numel')
+support_types = get_xpu_op_support_types('size')
 for stype in support_types:
-    create_test_class(globals(), XPUTestNumelOP, stype)
+    create_test_class(globals(), XPUTestSizeOP, stype)
 
 if __name__ == '__main__':
     unittest.main()
