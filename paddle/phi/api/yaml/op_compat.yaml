@@ -518,6 +518,13 @@
   outputs :
     out : Out
 
+- op : deformable_conv
+  backward : deformable_conv_grad
+  inputs :
+    {x : Input, offset : Offset, filter : Filter, mask : Mask}
+  outputs :
+    out : Output
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -1384,6 +1391,13 @@
   outputs :
     out : Out
 
+- op : matrix_rank
+  inputs :
+    {x : X, tol_tensor : TolTensor}
+  outputs :
+    out : Out
+  manual_signature : [matrix_rank]
+
 - op : max (reduce_max)
   backward : max_grad (reduce_max_grad)
   inputs:
@@ -1426,6 +1440,13 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : mean_all (mean)
+  backward : mean_all_grad (mean_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : merge_selected_rows
   inputs :
@@ -1796,6 +1817,14 @@
   outputs :
     {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
 
+- op : rnn
+  backward : rnn_grad
+  inputs:
+    { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
+  outputs:
+    { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
+  drop_empty_grad : [pre_state_grad, weight_list_grad]
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -2040,6 +2069,11 @@
   outputs :
     out : Out
 
+- op : split
+  int_array:
+      sections :
+          data_type : int
+
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :
@@ -2259,6 +2293,13 @@
         support_tensor : true
   manual_signature : [uniform]
 
+- op : uniform_inplace (uniform_random_inplace)
+  backward : uniform_inplace_grad(uniform_random_inplace_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : unique
   inputs :
     {x : X}
@@ -2339,6 +2380,21 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op: lu
+  backward: lu_grad
+  inputs:
+    x: X
+  outputs:
+    {out: Out, pivots : Pivots, infos : Infos}
+  attrs:
+    pivot : pivots
+
+- op: reindex_graph (graph_reindex)
+  inputs :
+    {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
+  outputs :
+    {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

@@ -151,6 +151,8 @@ std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
   auto starts = slice_op_desc->GetAttrIfExists<std::vector<int>>("starts");
   auto ends = slice_op_desc->GetAttrIfExists<std::vector<int>>("ends");
   auto axes = slice_op_desc->GetAttrIfExists<std::vector<int>>("axes");
+  auto decrease_axis =
+      slice_op_desc->GetAttrIfExists<std::vector<int>>("decrease_axis");
   attr_key += "starts_";
   for (auto start : starts) {
     attr_key += std::to_string(start) + "_";
@@ -161,6 +163,10 @@ std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
   }
   attr_key += "axes_";
   for (auto axis : axes) {
+    attr_key += std::to_string(axis) + "_";
+  }
+  attr_key += "decrease_axis_";
+  for (auto axis : decrease_axis) {
     attr_key += std::to_string(axis) + "_";
   }
   return attr_key;
