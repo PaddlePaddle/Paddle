@@ -892,6 +892,16 @@
     func : imag
   backward : imag_grad
 
+- op : increment
+  args : (Tensor x, float step = 1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : IncrementInferMeta
+  kernel :
+    func : increment
+    data_type : x
+  inplace : (x -> out)
+
 - op : index_add
   args : (Tensor x, Tensor index,  Tensor add_value, int axis = 0)
   output : Tensor(out)

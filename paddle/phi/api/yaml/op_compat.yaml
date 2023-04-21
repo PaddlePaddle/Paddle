@@ -1101,6 +1101,12 @@
   outputs :
     out : Out
 
+- op : increment
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : index_add
   inputs :
     {x : X, index : Index, add_value : AddValue}

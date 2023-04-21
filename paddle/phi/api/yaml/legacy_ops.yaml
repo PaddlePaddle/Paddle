@@ -624,15 +624,6 @@
     data_type : x
   backward : hsigmoid_loss_grad
 
-- op : increment
-  args : (Tensor x, float value = 1.0)
-  output : Tensor(out)
-  infer_meta :
-    func : IncrementInferMeta
-  kernel :
-    func : increment
-  inplace : (x -> out)
-
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
