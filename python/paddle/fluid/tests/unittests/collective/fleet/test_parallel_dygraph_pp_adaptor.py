@@ -22,6 +22,7 @@ import paddle
 from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
     ParallelConfig,
     PipeLineModelAdaptor,
+    adaptor_from_args,
     parse_args,
 )
 
@@ -30,6 +31,8 @@ class TestPPAdaptor(TestMultipleGpus):
     def test_parse_args(self):
         args = parse_args()
         self.assertEqual(args.src_mp, args.dst_mp)
+        adaptor = adaptor_from_args(args)
+        self.assertTrue(adaptor is not None)
 
     def test_hybrid_parallel_transformer_unbalanced_data(self):
         print(f"pwd {os.getcwd()}")

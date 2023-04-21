@@ -64,14 +64,18 @@ class LayerReNamingManager:
         )
 
     def get_new_layer_name(self, old_name: str):
+        layer_name = ""
         for (k, v) in self._renaming_helpers.items():
             if old_name.startswith(k):
-                return v.get_new_layer_name(old_name)
-        raise AssertionError(f"no renamed layer found {old_name}")
+                layer_name = v.get_new_layer_name(old_name)
+                break
+        return layer_name
 
     def get_new_param_name(self, old_name: str):
         names = old_name.split(".")
-        names[0] = self.get_new_layer_name(names[0])
+        layer_name = self.get_new_layer_name(names[0])
+        assert layer_name, f"can not rename layer {names[0]}"
+        names[0] = layer_name
         return ".".join(names)
 
 
@@ -568,10 +572,7 @@ def parse_args():
     return args
 
 
-def main():
-
-    args = parse_args()
-
+def adaptor_from_args(args):
     src_parallel_config = ParallelConfig(
         args.src_mp, args.src_pp, args.src_vp, args.sharding
     )
@@ -586,7 +587,13 @@ def main():
         args.transformer_layer_num,
         args.segment_method,
     )
+    return adaptor
 
+
+def main():
+
+    args = parse_args()
+    adaptor = adaptor_from_args(args)
     if args.method == "peek_model":
         adaptor.peek_model(args.dst_path)
     elif args.method == "adapt_model":
