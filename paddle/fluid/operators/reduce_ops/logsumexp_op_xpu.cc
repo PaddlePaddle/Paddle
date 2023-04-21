@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class XPULogsumexpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -70,7 +70,6 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    logsumexp,
-    ops::XPULogsumexpKernel<paddle::platform::XPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    logsumexp, XPU, ALL_LAYOUT, ops::XPULogsumexpKernel, float) {}
 #endif
