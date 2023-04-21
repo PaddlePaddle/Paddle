@@ -642,6 +642,7 @@ def decorate(
     use_pure_fp16=False,
     use_fp16_guard=None,
     use_bf16=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -754,6 +755,7 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_fp16_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer
@@ -772,6 +774,7 @@ def decorate(
     decr_ratio=0.8,
     use_dynamic_loss_scaling=True,
     use_amp_guard=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -799,6 +802,7 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_amp_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer
