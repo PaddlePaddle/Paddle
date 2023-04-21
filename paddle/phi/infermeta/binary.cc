@@ -72,7 +72,7 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -2207,7 +2207,7 @@ void MatrixRankStaticInferMeta(const MetaTensor& x,
   if (atol_tensor) {
     MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
   } else {
-    MatrixRankInferMeta(x, hermitian, use_default_tol, out);
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
   }
 }
 

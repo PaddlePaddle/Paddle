@@ -78,7 +78,6 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> cpu_buffer_;
   std::vector<TensorVec> cuda_buffer_;
   std::vector<TensorVec> npu_buffer_;
-  std::vector<TensorVec> mlu_buffer_;
   std::vector<TensorVec> xpu_buffer_;
   std::vector<TensorVec> custom_device_buffer_;
   size_t prev_pos_{-1UL};
