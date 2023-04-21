@@ -215,9 +215,17 @@ void subtract_grad(const Tensor& x,
                    int axis,
                    Tensor* dx,
                    Tensor* dy) {
+  std::cout << "subtract_grad: "
+            << "out_grad: " << out_grad.dims() << " ;" << std::endl;
   if (dy) {
     auto scale_out_grad = scale<T>(out_grad, -1.0, 0.0, true);
+    std::cout << "subtract_grad: "
+              << "scale_out_grad: " << scale_out_grad.dims() << " ;"
+              << std::endl;
     if (x.dims() != y.dims()) {
+      std::cout << "subtract_grad: "
+                << "dy reduce dims "
+                << " ;" << std::endl;
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
       if (!reduce_dim.size()) {
@@ -234,6 +242,9 @@ void subtract_grad(const Tensor& x,
   }
   if (dx) {
     if (y.dims() != x.dims()) {
+      std::cout << "subtract_grad: "
+                << "dx reduce dims "
+                << " ;" << std::endl;
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
       if (!reduce_dim.size()) {
@@ -1014,6 +1025,10 @@ void slice_grad(const Tensor& input,
                 const std::vector<int64_t>& decrease_axis,
                 Tensor* input_grad) {
   if (input_grad) {
+    std::cout << "slice_grad: "
+              << "input dims, " << input.dims() << "out_grad dims, "
+              << out_grad.dims() << "decrese axis: " << decrease_axis.size()
+              << std::endl;
     size_t rank = input.dims().size();
     auto out_dims = out_grad.dims();
     std::vector<int64_t> origin_out_shape;
