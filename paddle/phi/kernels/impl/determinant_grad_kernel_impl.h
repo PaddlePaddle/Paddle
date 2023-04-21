@@ -140,10 +140,10 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Second: inverse(A).transpose(-2, -1)
   DenseTensor transpose_inverse_A;
   if (!std::is_same<MPType, T>::value) {
-    transpose_inverse_A = phi::TransposeLast2Dim<T>(
+    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(
         dev_ctx, phi::Cast<T, Context>(dev_ctx, inverse_A, DataType::FLOAT32));
   } else {
-    transpose_inverse_A = phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
+    transpose_inverse_A = phi::TransposeLast2Dim<MPType>(dev_ctx, inverse_A);
   }
 
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
