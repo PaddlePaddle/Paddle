@@ -138,7 +138,6 @@ class PipeLineModelAdaptor:
     def peek_model(self, model_dir: str):
         for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
-                layers = []
                 group = self._src_parallel_config.pipe_parallel_group(i, j)
                 dirs = [
                     "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
@@ -335,7 +334,8 @@ class PipeLineModelAdaptor:
             for i in range(1, config.pp):
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
 
-        for segs in segments:
+        for (pp_rank, segs) in enumerate(segments):
+            print(f"segmentment result for pp_rank {pp_rank}:")
             print(50 * "=")
             for seg in segs:
                 print(f"{seg[0]} => {seg[1]}")
@@ -573,28 +573,20 @@ def main():
     args = parse_args()
 
     src_parallel_config = ParallelConfig(
-        args.src_mp,
-        args.src_pp,
-        args.src_vp,
-        args.sharding,
-        args.transformer_layer_num,
-        args.segment_method,
+        args.src_mp, args.src_pp, args.src_vp, args.sharding
     )
 
     dst_parallel_config = ParallelConfig(
-        args.dst_mp,
-        args.dst_pp,
-        args.dst_vp,
-        args.sharding,
-        args.transformer_layer_num,
-        args.segment_method,
+        args.dst_mp, args.dst_pp, args.dst_vp, args.sharding
     )
 
     adaptor = PipeLineModelAdaptor(
         src_parallel_config,
         dst_parallel_config,
-        1,
+        args.transformer_layer_num,
+        args.segment_method,
     )
+
     if args.method == "peek_model":
         adaptor.peek_model(args.dst_path)
     elif args.method == "adapt_model":
