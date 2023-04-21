@@ -341,20 +341,9 @@ class CauchyTestError(unittest.TestCase):
 
     @parameterize_func(
         [
-            (0,),  # int
             ((0.3,),),  # tuple
-            (
-                [
-                    0.3,
-                ],
-            ),  # list
-            (
-                np.array(
-                    [
-                        0.3,
-                    ]
-                ),
-            ),  # ndarray
+            ([0.3],),  # list
+            (np.array([0.3]),),  # ndarray
             (-1j + 1,),  # complex
             ('0',),  # str
         ]
@@ -366,13 +355,13 @@ class CauchyTestError(unittest.TestCase):
                 [_] = self.executor.run(
                     self.program,
                     feed={},
-                    fetch_list=[Cauchy(loc=0.0, scale=param)],
+                    fetch_list=[Cauchy(loc=0.0, scale=param).scale],
                 )
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
                     self.program,
                     feed={},
-                    fetch_list=[Cauchy(loc=param, scale=1.0)],
+                    fetch_list=[Cauchy(loc=param, scale=1.0).loc],
                 )
 
     def test_bad_property(self):

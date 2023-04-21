@@ -267,34 +267,10 @@ class CauchyTest(unittest.TestCase):
 class CauchyTestFeature(CauchyTest):
     @parameterize_func(
         [
-            (
-                paddle.to_tensor(
-                    [
-                        -0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        1.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        5.3,
-                    ]
-                ),
-            ),
+            (paddle.to_tensor([-0.3]),),
+            (paddle.to_tensor([0.3]),),
+            (paddle.to_tensor([1.3]),),
+            (paddle.to_tensor([5.3]),),
             (paddle.to_tensor(0.3, dtype='float64'),),
         ]
     )
@@ -318,34 +294,10 @@ class CauchyTestFeature(CauchyTest):
 
     @parameterize_func(
         [
-            (
-                paddle.to_tensor(
-                    [
-                        -0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        1.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        5.3,
-                    ]
-                ),
-            ),
+            (paddle.to_tensor([-0.3]),),
+            (paddle.to_tensor([0.3]),),
+            (paddle.to_tensor([1.3]),),
+            (paddle.to_tensor([5.3]),),
             (paddle.to_tensor(0.3, dtype='float64'),),
         ]
     )
@@ -369,34 +321,10 @@ class CauchyTestFeature(CauchyTest):
 
     @parameterize_func(
         [
-            (
-                paddle.to_tensor(
-                    [
-                        -0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        0.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        1.3,
-                    ]
-                ),
-            ),
-            (
-                paddle.to_tensor(
-                    [
-                        5.3,
-                    ]
-                ),
-            ),
+            (paddle.to_tensor([-0.3]),),
+            (paddle.to_tensor([0.3]),),
+            (paddle.to_tensor([1.3]),),
+            (paddle.to_tensor([5.3]),),
             (paddle.to_tensor(0.3, dtype='float64'),),
         ]
     )
@@ -700,10 +628,10 @@ class CauchyTestError(unittest.TestCase):
 
     @parameterize_func(
         [
-            (0.0, -0.1, ValueError),  # negetive scale
             (-1j + 1, 0.0, TypeError),  # complex
-            (0.0, paddle.full((), 0.0), ValueError),  # mix float and tensor
-            (paddle.full((), 0.0), 0.0, ValueError),  # mix float and tensor
+            (np.array(0.0), 0.0, TypeError),  # ndarray
+            ([0.0, 0.0], 0.0, TypeError),  # list
+            ((0.0, 0.0), 0.0, TypeError),  # tuple
         ]
     )
     def test_bad_init(self, loc, scale, error):

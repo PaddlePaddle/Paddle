@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
+
 import numpy as np
 
 import paddle
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import tensor
+from paddle.fluid import framework
 
 
 class Cauchy(distribution.Distribution):
@@ -45,7 +45,7 @@ class Cauchy(distribution.Distribution):
             # init Cauchy with float
             rv = Cauchy(loc=0.1, scale=1.2)
             print(rv.entropy())
-            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # Tensor(shape=1, dtype=float32, place=Place(cpu), stop_gradient=True,
             #        2.71334577)
 
             # init Cauchy with N-Dim tensor
@@ -56,40 +56,31 @@ class Cauchy(distribution.Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        if not _non_static_mode():
-            check_type(
-                loc,
-                'loc',
-                (float, tensor.Variable),
-                'Cauchy',
-            )
-            check_type(
-                scale,
-                'scale',
-                (float, tensor.Variable),
-                'Cauchy',
-            )
-
         self.name = name if name is not None else 'Cauchy'
 
-        # Get/convert params to tensor.
-        if self._validate_args(loc, scale):
-            self.loc = loc
-            self.scale = scale
-            self.dtype = convert_dtype(loc.dtype)
+        if not isinstance(loc, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of loc is Real|Variable, but got {type(loc)}"
+            )
+        if not isinstance(scale, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of scale is Real|Variable, but got {type(scale)}"
+            )
+
+        if isinstance(loc, numbers.Real):
+            loc = paddle.full(shape=(), fill_value=loc)
+
+        if isinstance(scale, numbers.Real):
+            scale = paddle.full(shape=(), fill_value=scale)
+
+        if loc.shape != scale.shape:
+            self.loc, self.scale = paddle.broadcast_tensors([loc, scale])
         else:
-            [self.loc, self.scale] = self._to_tensor(loc, scale)
-            self.dtype = paddle.get_default_dtype()
+            self.loc, self.scale = loc, scale
 
-        # Check `scale` must be positive.
-        if _non_static_mode():
-            """Not use `paddle.any` in static mode, which always be `True`."""
-            if paddle.any(self.scale <= 0):
-                raise ValueError("The arg of `scale` must be positive.")
+        self.dtype = self.loc.dtype
 
-        super().__init__(
-            batch_shape=(self.loc + self.scale).shape, event_shape=()
-        )
+        super().__init__(batch_shape=self.loc.shape, event_shape=())
 
     @property
     def mean(self):
@@ -196,12 +187,10 @@ class Cauchy(distribution.Distribution):
                 # [10, 2, 2]
         """
         name = name if name is not None else (self.name + '_rsample')
-        if not _non_static_mode():
-            check_type(
-                shape,
-                'shape',
-                (np.ndarray, tensor.Variable, list, tuple),
-                name,
+
+        if not isinstance(shape, (np.ndarray, framework.Variable, list, tuple)):
+            raise TypeError(
+                f"Expected type of shape is Sequence[int], but got {type(shape)}"
             )
 
         shape = shape if isinstance(shape, tuple) else tuple(shape)
@@ -261,8 +250,11 @@ class Cauchy(distribution.Distribution):
                 #        [0.10753712, 0.02195240])
         """
         name = self.name + '_prob'
-        if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+
+        if not isinstance(value, framework.Variable):
+            raise TypeError(
+                f"Expected type of value is Variable, but got {type(value)}"
+            )
 
         return self.log_prob(value).exp(name=name)
 
@@ -307,8 +299,11 @@ class Cauchy(distribution.Distribution):
                 #        [-2.22991920, -3.81887865])
         """
         name = self.name + '_log_prob'
-        if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+
+        if not isinstance(value, framework.Variable):
+            raise TypeError(
+                f"Expected type of value is Variable, but got {type(value)}"
+            )
 
         value = self._check_values_dtype_in_probs(self.loc, value)
         loc, scale, value = paddle.broadcast_tensors(
@@ -371,8 +366,11 @@ class Cauchy(distribution.Distribution):
                 #        [0.80256844, 0.87888104])
         """
         name = self.name + '_cdf'
-        if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+
+        if not isinstance(value, framework.Variable):
+            raise TypeError(
+                f"Expected type of value is Variable, but got {type(value)}"
+            )
 
         value = self._check_values_dtype_in_probs(self.loc, value)
         loc, scale, value = paddle.broadcast_tensors(
@@ -450,8 +448,11 @@ class Cauchy(distribution.Distribution):
                 #        [0.19819736, 0.31532931])
         """
         name = self.name + '_kl_divergence'
-        if not _non_static_mode():
-            check_type(other, 'other', Cauchy, name)
+
+        if not isinstance(other, Cauchy):
+            raise TypeError(
+                f"Expected type of other is Cauchy, but got {type(other)}"
+            )
 
         a_loc = self.loc
         b_loc = other.loc
