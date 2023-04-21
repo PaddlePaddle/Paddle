@@ -177,9 +177,9 @@ void TransposeCooKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      d_perm,
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      perm.data(),
                      sizeof(int) * perm.size(),
                      dev_ctx.stream());
@@ -252,9 +252,9 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int) * perm.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      d_perm,
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      perm.data(),
                      sizeof(int) * perm.size(),
                      dev_ctx.stream());
@@ -263,9 +263,9 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int64_t) * x.dims().size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      d_x_dims,
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      x.dims().Get(),
                      sizeof(int64_t) * x.dims().size(),
                      dev_ctx.stream());
@@ -274,9 +274,9 @@ void TransposeCsrKernel(const Context &dev_ctx,
       sizeof(int64_t) * out_dims.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      d_out_dims,
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      out_dims.Get(),
                      sizeof(int64_t) * out_dims.size(),
                      dev_ctx.stream());

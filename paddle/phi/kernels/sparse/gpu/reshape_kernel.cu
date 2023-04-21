@@ -85,9 +85,9 @@ void ReshapeCooKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_x_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_x_sparse_part_strides_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      reinterpret_cast<void*>(destination_x_sparse_part_strides),
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      x_sparse_part_strides.Get(),
                      sizeof(int64_t) * x_sparse_part_strides.size(),
                      dev_ctx.stream());
@@ -98,9 +98,9 @@ void ReshapeCooKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   destination_out_sparse_part_strides = reinterpret_cast<int64_t*>(
       destination_out_sparse_part_strides_tensor->ptr());
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      destination_out_sparse_part_strides,
-                     dev_ctx.GetPlace(),
+                     phi::CPUPlace(),
                      out_sparse_part_strides.Get(),
                      sizeof(int64_t) * out_sparse_part_strides.size(),
                      dev_ctx.stream());
