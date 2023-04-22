@@ -227,10 +227,8 @@ KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("elementwise_pow_grad",
-                         {"X", "Y", "Out@GRAD"},
-                         {},
-                         {"X@GRAD", "Y@GRAD"});
+  return KernelSignature(
+      "elementwise_pow_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 }  // namespace phi
 
