@@ -491,7 +491,7 @@ void FusedFeedForwardGradKernel(
     const DenseTensor& dropout2_mask,
     const DenseTensor& linear1_out,
     const DenseTensor& dropout1_out,
-    const DenseTensor& dropout2_out,
+    const paddle::optional<DenseTensor>& dropout2_out,
     const paddle::optional<DenseTensor>& ln1_scale,
     const paddle::optional<DenseTensor>& ln1_bias,
     const paddle::optional<DenseTensor>& ln1_out,
@@ -528,17 +528,9 @@ void FusedFeedForwardGradKernel(
     DenseTensor* linear2_bias_grad) {
   using U = phi::funcs::LayerNormParamType<T>;
 
-  auto d_out = &out_grad;
-  auto x_ptr = x;
-
-  auto dropout1_mask_ptr = &dropout1_mask;
-  auto dropout2_mask_ptr = &dropout2_mask;
-  auto linear1_out_ptr = &linear1_out;
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;
-  auto* dropout2_out_ptr = &dropout2_out;
-  auto linear1_weight_ptr = &linear1_weight;
+  auto* dropout2_out_ptr = dropout2_out.get_ptr();
   auto* linear1_bias_ptr = &linear1_bias;
-  auto linear2_weight_ptr = &linear2_weight;
   auto* ln1_mean_ptr = pre_layer_norm ? ln1_mean.get_ptr() : nullptr;
   auto* ln1_variance_ptr = pre_layer_norm ? ln1_variance.get_ptr() : nullptr;
   auto* ln1_scale_ptr = pre_layer_norm ? ln1_scale.get_ptr() : nullptr;
@@ -612,7 +604,7 @@ void FusedFeedForwardGradKernel(
   int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
 
   FFNGrad<T, Context>(dev_ctx,
-                      *d_out,
+                      out_grad,
                       x,
                       dropout1_mask,
                       dropout2_mask,
