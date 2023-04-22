@@ -26,7 +26,7 @@ using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T>
 class TruncFunctor {
  public:
-  __device__ TruncFunctor(const T x) : x_(x) {}
+  __device__ TruncFunctor(T x) : x_(x) {}
   __device__ T operator()() {
     if constexpr (std::is_same<T, phi::dtype::float16>::value ||
                   std::is_same<T, phi::dtype::bfloat16>::value) {
@@ -37,7 +37,7 @@ class TruncFunctor {
   }
 
  public:
-  const T x_;
+  T x_;
 };
 
 template <>
