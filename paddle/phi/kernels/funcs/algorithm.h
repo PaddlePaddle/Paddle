@@ -48,7 +48,7 @@ HOSTDEVICE inline size_t LowerBound(const T1 *x, size_t num, const T2 &val) {
   while (count > 0) {
     int64_t step = (count >> 1);
     auto *it = first + step;
-    if (*it < val) {
+    if (static_cast<float>(*it) < static_cast<float>(val)) {
       first = ++it;
       count -= (step + 1);
     } else {
@@ -71,7 +71,7 @@ HOSTDEVICE inline size_t UpperBound(const T1 *x, size_t num, const T2 &val) {
   while (count > 0) {
     auto step = (count >> 1);
     auto *it = first + step;
-    if (val < *it) {
+    if (static_cast<float>(val) < static_cast<float>(*it)) {
       count = step;
     } else {
       first = ++it;
