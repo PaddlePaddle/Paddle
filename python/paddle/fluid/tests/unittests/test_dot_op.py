@@ -106,8 +106,7 @@ class DotOpEmptyInput(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
         y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
         pd_out = paddle.dot(x, y)
-
-        self.assertEqual(pd_out.shape, (0, 1))
+        self.assertEqual(pd_out.shape, (0,))
 
     def test_3d_input_error(self):
         data = np.array([], dtype=np.float32)
