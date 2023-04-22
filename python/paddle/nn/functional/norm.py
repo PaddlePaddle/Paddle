@@ -546,7 +546,7 @@ def local_response_norm(
 
     from functools import reduce
 
-    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:], 1)
 
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:

@@ -613,7 +613,7 @@ class TestListIndex(unittest.TestCase):
         np.random.seed(2022)
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def test_static_graph_list_index(self):
         paddle.enable_static()
