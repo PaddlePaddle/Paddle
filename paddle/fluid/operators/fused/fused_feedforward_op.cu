@@ -672,8 +672,6 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->InputAt(10).SetDataType(phi::DataType::FLOAT32);
-    kernel->InputAt(15).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
