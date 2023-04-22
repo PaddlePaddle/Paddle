@@ -4405,7 +4405,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
