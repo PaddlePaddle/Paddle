@@ -73,7 +73,11 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
       int64_t src_row = static_cast<int64_t>(chunk_start + threadIdx.y);
       int64_t dst_row = indices_batch[src_row - batch_start];
       if (src_row < K && feature < stride) {
-        my_s[threadIdx.x] = static_cast<T>(output[src_row * D + feature]);
+        if (UseLimit && dst_row == kInvalidId) {
+          my_s[threadIdx.x] = static_cast<T>(0);
+        } else {
+          my_s[threadIdx.x] = static_cast<T>(output[src_row * D + feature]);
+        }
       }
 
       __syncthreads();
