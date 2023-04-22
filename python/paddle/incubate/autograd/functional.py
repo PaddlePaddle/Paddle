@@ -225,7 +225,7 @@ class Jacobian:
 
 
             x = paddle.to_tensor([[1., 2.], [3., 4.]])
-            J = paddle.incubate.autograd.Jacobian(func, [x, x])
+            J = paddle.incubate.autograd.functional.Jacobian(func, [x, x])
             print(J[:, :])
             # Tensor(shape=[4, 8], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[1., 3., 0., 0., 1., 0., 2., 0.],
@@ -297,7 +297,7 @@ class Hessian:
 
 
         x = paddle.rand([2, 2])
-        h = paddle.incubate.autograd.Hessian(reducer, x)
+        h = paddle.incubate.autograd.functional.Hessian(reducer, x)
         print(h[:])
         # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
         #        [[2., 0., 0., 0.],

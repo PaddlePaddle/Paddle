@@ -71,7 +71,9 @@ class TestJacobianPrim(unittest.TestCase):
                 ]
                 for arg in static_args:
                     arg.stop_gradient = False
-                jac = paddle.incubate.autograd.Jacobian(fun, static_args)[:]
+                jac = paddle.incubate.autograd.functional.Jacobian(
+                    fun, static_args
+                )[:]
                 if paddle.incubate.autograd.prim_enabled():
                     paddle.incubate.autograd.prim2orig()
             exe = paddle.static.Executor()
@@ -143,7 +145,9 @@ class TestHessianPrim(unittest.TestCase):
                 ]
                 for arg in static_args:
                     arg.stop_gradient = False
-                hessian = paddle.incubate.autograd.Hessian(fun, static_args)[:]
+                hessian = paddle.incubate.autograd.functional.Hessian(
+                    fun, static_args
+                )[:]
                 if paddle.incubate.autograd.prim_enabled():
                     paddle.incubate.autograd.prim2orig()
             exe = paddle.static.Executor()
