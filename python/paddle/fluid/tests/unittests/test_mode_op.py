@@ -69,7 +69,6 @@ class TestModeOp(OpTest):
         self.op_type = "mode"
         self.python_api = paddle.mode
         self.dtype = np.float64
-        np.random.seed(666)
         self.input_data = np.random.rand(2, 64, 1)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -114,8 +113,9 @@ class TestModeFP16Op(OpTest):
         self.op_type = "mode"
         self.python_api = paddle.mode
         self.dtype = np.float16
-        np.random.seed(666)
-        self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
+        self.input_data = (
+            np.random.rand(2, 64, 1).astype(np.float16).astype(np.float32)
+        )
         self.init_args()
         self.inputs = {'X': self.input_data.astype(self.dtype)}
         self.attrs = {'axis': self.axis}
@@ -165,10 +165,8 @@ class TestModeBF16Op(OpTest):
         self.op_type = "mode"
         self.python_api = paddle.mode
         self.dtype = np.uint16
-        np.random.seed(6666)
-        self.input_data = np.random.rand(2, 64, 1)
+        self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
         self.init_args()
-        self.input_data = self.input_data.astype(np.float32)
         self.input_data = convert_uint16_to_float(
             convert_float_to_uint16(self.input_data)
         )
