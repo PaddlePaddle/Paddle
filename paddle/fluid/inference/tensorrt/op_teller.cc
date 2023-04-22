@@ -357,6 +357,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "range") {
+      return false;
       if (!with_dynamic_shape) {
         return false;
       }
