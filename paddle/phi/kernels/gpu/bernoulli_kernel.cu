@@ -36,13 +36,17 @@ template <typename T>
 __device__ T convert_to_T(float rand_value, T x_value);
 
 template <>
-__device__ phi::dtype::float16 convert_to_T<phi::dtype::float16>(float rand_value, phi::dtype::float16 x_value) {
-  return static_cast<phi::dtype::float16>(rand_value <= static_cast<float>(x_value));
+__device__ phi::dtype::float16 convert_to_T<phi::dtype::float16>(
+    float rand_value, phi::dtype::float16 x_value) {
+  return static_cast<phi::dtype::float16>(rand_value <=
+                                          static_cast<float>(x_value));
 }
 
 template <>
-__device__ phi::dtype::bfloat16 convert_to_T<phi::dtype::bfloat16>(float rand_value, phi::dtype::bfloat16 x_value) {
-  return static_cast<phi::dtype::bfloat16>(rand_value <= static_cast<float>(x_value));
+__device__ phi::dtype::bfloat16 convert_to_T<phi::dtype::bfloat16>(
+    float rand_value, phi::dtype::bfloat16 x_value) {
+  return static_cast<phi::dtype::bfloat16>(rand_value <=
+                                           static_cast<float>(x_value));
 }
 
 template <>
