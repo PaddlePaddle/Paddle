@@ -241,7 +241,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Note: whether to use deterministic algorithm in embedding op.
  *       If true, it will use deterministic CUDA kernel in embedding op.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     embedding_deterministic,
     false,
     "Whether allow using an deterministic algorithm for embedding "
