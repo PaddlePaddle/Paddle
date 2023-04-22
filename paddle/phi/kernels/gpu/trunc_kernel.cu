@@ -28,8 +28,8 @@ class TruncFunctor {
  public:
   __device__ TruncFunctor(T x) : x_(x) {}
   __device__ T operator()() {
-    if constexpr (std::is_same<T, phi::dtype::float16>::value ||
-                  std::is_same<T, phi::dtype::bfloat16>::value) {
+    if (phi::is_same<T, phi::dtype::float16>::value ||
+        phi::is_same<T, phi::dtype::bfloat16>::value) {
       return static_cast<T>(trunc(static_cast<float>(x_)));
     } else {
       return trunc(x_);
