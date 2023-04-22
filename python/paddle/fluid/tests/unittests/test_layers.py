@@ -1426,6 +1426,7 @@ class TestLayer(LayerTest):
             exe.run(fluid.default_startup_program())
             # x = np.random.rand(3, 32, 32).astype("float32")
             # y = np.array([[1], [0], [1]])
+
             static_out = exe.run(
                 feed={"input": x, "label": y}, fetch_list=result
             )
