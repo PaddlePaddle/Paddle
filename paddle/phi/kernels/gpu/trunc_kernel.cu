@@ -27,7 +27,13 @@ template <typename T>
 class TruncFunctor {
  public:
   __device__ TruncFunctor(const T x) : x_(x) {}
-  __device__ T operator()() { return trunc(x_); }
+  __device__ T operator()() {
+    if constexpr (std::is_same<T, phi::dtype::float16>::value || std::is_same<T, phi::dtype::bfloat16>::value) {
+      return static_cast<T>(trunc(static_cast<float>(x_)));
+    } else {
+      return trunc(x_);
+    }
+  }
 
  public:
   const T x_;
