@@ -78,8 +78,8 @@ void cub_sort_pairs(int len,
                     const V *in_vals,
                     V *out_vals,
                     cudaStream_t stream,
-                    std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
-                    const paddle::platform::Place &place_) {
+                    std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
+                    const paddle::platform::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRadixSort::SortPairs(NULL,
                                              temp_storage_bytes,
@@ -92,13 +92,13 @@ void cub_sort_pairs(int len,
                                              8 * sizeof(K),
                                              stream,
                                              false));
-  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
-    d_buf_ = memory::AllocShared(
-        place_,
+  if (d_buf == NULL || d_buf->size() < temp_storage_bytes) {
+    d_buf = memory::AllocShared(
+        place,
         temp_storage_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   }
-  CUDA_CHECK(cub::DeviceRadixSort::SortPairs(d_buf_->ptr(),
+  CUDA_CHECK(cub::DeviceRadixSort::SortPairs(d_buf->ptr(),
                                              temp_storage_bytes,
                                              in_keys,
                                              out_keys,
@@ -121,8 +121,8 @@ void cub_runlength_encode(int N,
                           V *out_sizes,
                           TNum *d_out_len,
                           cudaStream_t stream,
-                          std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
-                          const paddle::platform::Place &place_) {
+                          std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
+                          const paddle::platform::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(NULL,
                                                 temp_storage_bytes,
@@ -132,13 +132,13 @@ void cub_runlength_encode(int N,
                                                 d_out_len,
                                                 N,
                                                 stream));
-  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
-    d_buf_ = memory::AllocShared(
-        place_,
+  if (d_buf == NULL || d_buf->size() < temp_storage_bytes) {
+    d_buf = memory::AllocShared(
+        place,
         temp_storage_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   }
-  CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(d_buf_->ptr(),
+  CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(d_buf->ptr(),
                                                 temp_storage_bytes,
                                                 in_keys,
                                                 out_keys,
@@ -156,19 +156,19 @@ void cub_exclusivesum(int N,
                       const K *in,
                       K *out,
                       cudaStream_t stream,
-                      std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
-                      const paddle::platform::Place &place_) {
+                      std::shared_ptr<phi::Allocation> &d_buf,  // NOLINT
+                      const paddle::platform::Place &place) {
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, in, out, N, stream));
-  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
-    d_buf_ = memory::AllocShared(
-        place_,
+  if (d_buf == NULL || d_buf->size() < temp_storage_bytes) {
+    d_buf = memory::AllocShared(
+        place,
         temp_storage_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   }
   CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
-      d_buf_->ptr(), temp_storage_bytes, in, out, N, stream));
+      d_buf->ptr(), temp_storage_bytes, in, out, N, stream));
 }
 
 template <typename T>
@@ -212,65 +212,70 @@ __global__ void kernel_fill_restore_idx_by_search(size_t N,
 }
 
 // For unique node and inverse id.
-int dedup_keys_and_fillidx(int total_nodes_num,
-                           const uint64_t *d_keys,
+int dedup_keys_and_fillidx(const uint64_t *d_keys,
+                           int total_nodes_num,
                            uint64_t *d_merged_keys,  // input
-                           uint64_t *d_sorted_keys,  // output
                            uint32_t *d_restore_idx,  // inverse
-                           uint32_t *d_sorted_idx,
-                           uint32_t *d_offset,
-                           uint32_t *d_merged_cnts,
-                           cudaStream_t stream,
-                           std::shared_ptr<phi::Allocation> &d_buf_,  // NOLINT
-                           const paddle::platform::Place &place_) {
+                           const paddle::platform::Place &place,
+                           cudaStream_t stream) {
+  auto d_sorted_keys = memory::AllocShared(place, total_nodes_num * sizeof(uint64_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint64_t* d_sorted_keys_ptr = reinterpret_cast<uint64_t *>(d_sorted_keys->ptr());
+  auto d_sorted_idx = memory::AllocShared(place, total_nodes_num * sizeof(uint32_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint32_t* d_sorted_idx_ptr = reinterpret_cast<uint32_t *>(d_sorted_idx->ptr());
+  auto d_offset = memory::AllocShared(place, total_nodes_num * sizeof(uint32_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint32_t* d_offset_ptr = reinterpret_cast<uint32_t *>(d_offset->ptr());
+  auto d_merged_cnts = memory::AllocShared(place, total_nodes_num * sizeof(uint32_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint32_t* d_merged_cnts_ptr = reinterpret_cast<uint32_t *>(d_merged_cnts->ptr());
+  std::shared_ptr<phi::Allocation> d_buf = NULL;
+
   int merged_size = 0;  // Final num
-  auto d_index_in =
-      memory::Alloc(place_,
-                    sizeof(uint32_t) * (total_nodes_num + 1),
-                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  uint32_t *d_index_in_ptr = reinterpret_cast<uint32_t *>(d_index_in->ptr());
-  int *d_merged_size =
-      reinterpret_cast<int *>(&d_index_in_ptr[total_nodes_num]);
+  auto d_index_in = memory::Alloc(place, sizeof(uint32_t) * (total_nodes_num + 1),
+                            phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint32_t* d_index_in_ptr = reinterpret_cast<uint32_t *>(d_index_in->ptr());
+  int *d_merged_size = reinterpret_cast<int *>(&d_index_in_ptr[total_nodes_num]);
   fill_idx<<<GET_BLOCKS(total_nodes_num), CUDA_NUM_THREADS, 0, stream>>>(
       d_index_in_ptr, total_nodes_num);
   cub_sort_pairs(total_nodes_num,
                  d_keys,
-                 d_sorted_keys,
+                 d_sorted_keys_ptr,
                  d_index_in_ptr,
-                 d_sorted_idx,
+                 d_sorted_idx_ptr,
                  stream,
-                 d_buf_,
-                 place_);
+                 d_buf,
+                 place);
   cub_runlength_encode(total_nodes_num,
-                       d_sorted_keys,
+                       d_sorted_keys_ptr,
                        d_merged_keys,
-                       d_merged_cnts,
+                       d_merged_cnts_ptr,
                        d_merged_size,
                        stream,
-                       d_buf_,
-                       place_);
+                       d_buf,
+                       place);
   CUDA_CHECK(cudaMemcpyAsync(&merged_size,
                              d_merged_size,
                              sizeof(int),
                              cudaMemcpyDeviceToHost,
                              stream));
   CUDA_CHECK(cudaStreamSynchronize(stream));
-  cub_exclusivesum(
-      merged_size, d_merged_cnts, d_offset, stream, d_buf_, place_);
+  cub_exclusivesum(merged_size, d_merged_cnts_ptr, d_offset_ptr, stream, d_buf, place);
 
   if (total_nodes_num < merged_size * 2) {
     kernel_fill_restore_idx<<<GET_BLOCKS(merged_size),
                               CUDA_NUM_THREADS,
                               0,
                               stream>>>(
-        merged_size, d_sorted_idx, d_offset, d_merged_cnts, d_restore_idx);
+        merged_size, d_sorted_idx_ptr, d_offset_ptr, d_merged_cnts_ptr, d_restore_idx);
   } else {
     // used mid search fill idx when high dedup rate
     kernel_fill_restore_idx_by_search<<<GET_BLOCKS(total_nodes_num),
                                         CUDA_NUM_THREADS,
                                         0,
                                         stream>>>(
-        total_nodes_num, d_sorted_idx, merged_size, d_offset, d_restore_idx);
+        total_nodes_num, d_sorted_idx_ptr, merged_size, d_offset_ptr, d_restore_idx);
   }
   CUDA_CHECK(cudaStreamSynchronize(stream));
   return merged_size;
@@ -1826,20 +1831,19 @@ std::shared_ptr<phi::Allocation> GetReindexResult(
     int64_t *center_nodes,
     int *final_nodes_len,
     int reindex_table_size,
-    std::shared_ptr<phi::Allocation>& d_reindex_table_key,
-    std::shared_ptr<phi::Allocation>& d_reindex_table_value,
-    std::shared_ptr<phi::Allocation>& d_reindex_table_index,
     int node_len,
     int64_t neighbor_len,
     const paddle::platform::Place &place,
     cudaStream_t stream) {
-  // Reset reindex table
-  int64_t *d_reindex_table_key_ptr =
-      reinterpret_cast<int64_t *>(d_reindex_table_key->ptr());
-  int *d_reindex_table_value_ptr =
-      reinterpret_cast<int *>(d_reindex_table_value->ptr());
-  int *d_reindex_table_index_ptr =
-      reinterpret_cast<int *>(d_reindex_table_index->ptr());
+  auto d_reindex_table_key = memory::AllocShared(place, reindex_table_size * sizeof(int64_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  int64_t *d_reindex_table_key_ptr = reinterpret_cast<int64_t *>(d_reindex_table_key->ptr());
+  auto d_reindex_table_value = memory::AllocShared(place, reindex_table_size * sizeof(int),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  int *d_reindex_table_value_ptr = reinterpret_cast<int *>(d_reindex_table_value->ptr());
+  auto d_reindex_table_index = memory::AllocShared(place, reindex_table_size * sizeof(int),
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  int *d_reindex_table_index_ptr = reinterpret_cast<int *>(d_reindex_table_index->ptr());
 
   // Fill table with -1.
   cudaMemsetAsync(d_reindex_table_key_ptr,
@@ -1908,17 +1912,12 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
   int *inverse_ptr = reinterpret_cast<int *>(inverse->ptr());
   int64_t *uniq_nodes_data = reinterpret_cast<int64_t *>(uniq_nodes->ptr());
   int uniq_len = dedup_keys_and_fillidx(
-      len,
       node_ids,
+      len,
       reinterpret_cast<uint64_t *>(uniq_nodes_data),
-      reinterpret_cast<uint64_t *>(d_sorted_keys_->ptr()),
       reinterpret_cast<uint32_t *>(inverse_ptr),
-      reinterpret_cast<uint32_t *>(d_sorted_idx_->ptr()),
-      reinterpret_cast<uint32_t *>(d_offset_->ptr()),
-      reinterpret_cast<uint32_t *>(d_merged_cnts_->ptr()),
-      sample_stream_,
-      d_buf_,
-      place_);
+      place_,
+      sample_stream_);
   int len_samples = samples_.size();
 
   VLOG(2) << "Sample Neighbors and Reindex";
@@ -1967,9 +1966,6 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
                                               uniq_nodes_data,
                                               &final_nodes_len,
                                               conf_.reindex_table_size,
-                                              d_reindex_table_key_,
-                                              d_reindex_table_value_,
-                                              d_reindex_table_index_,
                                               uniq_len,
                                               neighbors_len,
                                               place_,
@@ -1983,9 +1979,6 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
                                               final_nodes_data,
                                               &final_nodes_len,
                                               conf_.reindex_table_size,
-                                              d_reindex_table_key_,
-                                              d_reindex_table_value_,
-                                              d_reindex_table_index_,
                                               final_nodes_len_vec[i - 1],
                                               neighbors_len,
                                               place_,
@@ -2238,15 +2231,6 @@ void GraphDataGenerator::clear_gpu_mem() {
     d_sampleidx2rows_[i].reset();
   }
   delete table_;
-  if (conf_.sage_mode) {
-    d_reindex_table_key_.reset();
-    d_reindex_table_value_.reset();
-    d_reindex_table_index_.reset();
-    d_sorted_keys_.reset();
-    d_sorted_idx_.reset();
-    d_offset_.reset();
-    d_merged_cnts_.reset();
-  }
 }
 
 int GraphDataGenerator::FillInferBuf() {
@@ -3152,37 +3136,8 @@ void GraphDataGenerator::AllocResource(
         1 << static_cast<size_t>(1 + std::log2(conf_.reindex_table_size >> 1));
     conf_.reindex_table_size = next_pow2 << 1;
 
-    d_reindex_table_key_ = memory::AllocShared(
-        place_,
-        conf_.reindex_table_size * sizeof(int64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    d_reindex_table_value_ = memory::AllocShared(
-        place_,
-        conf_.reindex_table_size * sizeof(int),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    d_reindex_table_index_ = memory::AllocShared(
-        place_,
-        conf_.reindex_table_size * sizeof(int),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
     edge_type_graph_ =
         gpu_graph_ptr->get_edge_type_graph(conf_.gpuid, edge_to_id_len_);
-
-    d_sorted_keys_ = memory::AllocShared(
-        place_,
-        (conf_.batch_size * 2 * 2) * sizeof(uint64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    d_sorted_idx_ = memory::AllocShared(
-        place_,
-        (conf_.batch_size * 2 * 2) * sizeof(uint32_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    d_offset_ = memory::AllocShared(
-        place_,
-        (conf_.batch_size * 2 * 2) * sizeof(uint32_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    d_merged_cnts_ = memory::AllocShared(
-        place_,
-        (conf_.batch_size * 2 * 2) * sizeof(uint32_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
   }
 
   // parse infer_node_type

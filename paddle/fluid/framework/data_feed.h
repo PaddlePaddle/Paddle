@@ -1069,15 +1069,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_pair_num_;
   std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
   std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_key_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_value_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_index_;
   std::vector<std::shared_ptr<phi::Allocation>> edge_type_graph_;
-  std::shared_ptr<phi::Allocation> d_sorted_keys_;
-  std::shared_ptr<phi::Allocation> d_sorted_idx_;
-  std::shared_ptr<phi::Allocation> d_offset_;
-  std::shared_ptr<phi::Allocation> d_merged_cnts_;
-  std::shared_ptr<phi::Allocation> d_buf_;
 
   // sage mode batch data
   std::vector<std::shared_ptr<phi::Allocation>> pair_label_vec_;
