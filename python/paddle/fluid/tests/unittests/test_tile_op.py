@@ -35,6 +35,9 @@ class TestTileOpRank1(OpTest):
         self.attrs = {'repeat_times': self.repeat_times}
         output = np.tile(self.inputs['X'], self.repeat_times)
         self.outputs = {'Out': output}
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.public_python_api = paddle.tile
 
     def init_data(self):
         self.ori_shape = [100]
@@ -44,25 +47,79 @@ class TestTileOpRank1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.init_data()
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'repeat_times': self.repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.public_python_api = paddle.tile
+
     def init_data(self):
         self.ori_shape = []
         self.repeat_times = []
 
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.init_data()
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'repeat_times': self.repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.public_python_api = paddle.tile
+
     def init_data(self):
         self.ori_shape = []
         self.repeat_times = [2]
 
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.init_data()
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'repeat_times': self.repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.public_python_api = paddle.tile
+
     def init_data(self):
         self.ori_shape = []
         self.repeat_times = [2, 3]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 # with dimension expanding

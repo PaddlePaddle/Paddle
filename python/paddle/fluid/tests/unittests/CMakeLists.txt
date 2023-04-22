@@ -861,6 +861,7 @@ set_tests_properties(test_imperative_star_gan_with_gradient_penalty
 
 set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_meshgrid_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_nearest_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
@@ -1114,7 +1115,8 @@ set(TEST_CINN_OPS
     test_cast_op
     test_dropout_op
     test_group_norm_op
-    test_roll_op)
+    test_roll_op
+    test_tile_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
