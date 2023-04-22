@@ -15,10 +15,16 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_numeric_gradient,
+)
 
 import paddle
 from paddle.fluid import core
+from paddle.fluid.tests.unittests.testsuite import create_op
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -154,8 +160,10 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         if self.is_bfloat16_op():
             input = np.random.random(self.shape).astype(np.float32)
-            input = convert_uint16_to_float(convert_float_to_uint16(np.round(input * 100.0, 2)))
-            
+            input = convert_uint16_to_float(
+                convert_float_to_uint16(np.round(input * 100.0, 2))
+            )
+
         else:
             input = np.random.random(self.shape).astype(self.dtype)
             input = np.round(input * 100.0, 2)
@@ -188,6 +196,8 @@ class TestMaxPoolWithIndex_Op(OpTest):
                 'Out': convert_float_to_uint16(output),
                 "Mask": mask,
             }
+            self.inputs_fp32 = {'X': input}
+
         else:
             self.inputs = {'X': input}
             self.outputs = {'Out': output, "Mask": mask}
@@ -289,6 +299,16 @@ def create_test_bf16_class(parent):
         def init_dtype(self):
             self.dtype = np.uint16
 
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(
+                scope, self.op_type, self.inputs, self.outputs, self.attrs
+            )
+            return get_numeric_gradient(
+                place, scope, op, self.inputs_fp32, check_name, ['Out']
+            )
+
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -296,8 +316,11 @@ def create_test_bf16_class(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, {'X'}, ['Out'])
+                self.check_grad_with_place(
+                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestMaxPool3dBF16.__name__ = cls_name
@@ -411,6 +434,16 @@ def create_test_bf16_class(parent):
         def init_dtype(self):
             self.dtype = np.uint16
 
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(
+                scope, self.op_type, self.inputs, self.outputs, self.attrs
+            )
+            return get_numeric_gradient(
+                place, scope, op, self.inputs_fp32, check_name, ['Out']
+            )
+
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -418,8 +451,11 @@ def create_test_bf16_class(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, {'X'}, ['Out'])
+                self.check_grad_with_place(
+                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestMaxPool2dBF16.__name__ = cls_name
