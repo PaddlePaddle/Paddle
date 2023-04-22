@@ -39,15 +39,15 @@ class TestNextafterAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
-                name='X', shape=self.x_np.shape, dtype='float32'
+                name='x', shape=self.x_np.shape, dtype='float32'
             )
             y = paddle.static.data(
-                name='Y', shape=self.y_np.shape, dtype='float32'
+                name='y', shape=self.y_np.shape, dtype='float32'
             )
             out = paddle.nextafter(x, y)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
-                feed={'X': self.x_np, 'Y': self.y_np}, fetch_list=[out]
+                feed={'x': self.x_np, 'y': self.y_np}, fetch_list=[out]
             )
         out_ref = ref_nextafter(self.x_np, self.y_np)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
@@ -71,8 +71,8 @@ class TestNextafterOP(OpTest):
         x = np.array([1, 2]).astype(self.dtype)
         y = np.array([2, 1]).astype(self.dtype)
         out = np.nextafter(x, y)
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': out}
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': out}
 
     def test_check_output(self):
         self.check_output()
