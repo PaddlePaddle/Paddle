@@ -1174,7 +1174,7 @@ PHI_DEFINE_EXPORTED_string(jit_engine_type,
  * Example:
  * Note: Enable NPU Storage Format for Ascend910 performance improvement.
  */
-PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
+PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**
