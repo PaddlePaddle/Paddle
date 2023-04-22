@@ -337,11 +337,18 @@ class _Jacobian:
             [self._cached_evaluate(i) for i in lazy_indexes],
             axis=self._lazy_axis,
         ).reshape(shape)
-        return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
+        result = part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
+
+        # squeeze redundant 1 in shape
+        if len(result.shape) > len(self.shape):
+            for _ in range(len(result.shape) - len(self.shape)):
+                result = result.squeeze(-1)
+
+        return result
 
     def _cached_evaluate(self, k):
         if k is None:
-            return self._cached_evaluate(0)[(0,)]
+            return self._cached_evaluate(0).reshape([])
         v = self._cache.get(k)
         if v is None:
             v = self._evaluate(k)
@@ -485,16 +492,70 @@ def jacobian(
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[List[List[Jacobian]], List[Jacobian], Jacobian]:
-    """Function that computes the jacobian of ys deriveted from xs.
+    r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
+    variable ``xs``.
+
+    Where ``ys`` represents the output of ``xs`` after a certain operation, ``ys`` and
+    ``xs`` can be Tensor or tuple of Tensors, ``batch_axis`` indicates the position of
+    the batch dimension of the parameter data.
+
+    When the input is a tuple Tensors, the returned result is a ``Jacobian`` object with
+    the same number of nesting levels as ``xs``, and each Jacobian has the same shape as
+    The ``xs`` tuples are identical in one-to-one correspondence.
+
+    - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
+        supported, assuming the shape of ``xs`` is ``[N, ]``, the shape of ``ys`` is
+        ``[M, ]``, then the output Jacobian matrix shape is ``[M, N]``.
+
+    - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
+        supported, assuming the shape of ``xs`` is ``[B, N]``, The shape of ``ys`` is
+        ``[B, M]``, then the output Jacobian matrix shape is ``[B, M, N]``.
+
+    After the ``Jacobian`` object is created, the actual calculation process does not
+    occur, but the lazy evaluation method is used for calculation. It can be
+    multi-dimensional indexed to obtain the entire Jacobian matrix or sub-matrix, and
+    the actual calculation will be performed at this time the value is calculated and
+    the result is returned. At the same time, in the actual evaluation process, the
+    calculated sub-matrix will be cached to avoid duplicate calculations in the
+    subsequent indexing process.
+
+    For example, assuming ``Jacobian`` instance ``J`` has shape ``[B, M, N]``, assuming
+    ``M > 4`` , then ``J[:, 1:4:1, :]`` means to get the values from row ``1`` to row
+    ``3`` of ``J``. In actual calculation, only the rows ``1`` to ``3`` are evaluated,
+    and the calculation results of ``1`` to ``3`` will be cached at the granularity of
+    the row, and will be used next time. When obtaining one or more rows of results
+    above, the already calculated parts will not be recalculated.
 
     Args:
+
         ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or list of outputs derived from xs.
         xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
+
         Union[List[List[Jacobian]], List[Jacobian], Jacobian]: Jacobian(s) of ys
             deriveted from xs.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x1 = paddle.randn([3, ])
+            x2 = paddle.randn([3, ])
+            x1.stop_gradient = False
+            x2.stop_gradient = False
+
+            y = x1 + x2
+
+            J = paddle.autograd.jacobian(y, (x1, x2))
+            J_y_x1 = J[0][:] # evaluate result of dy/dx1
+            J_y_x2 = J[1][:] # evaluate result of dy/dx2
+
+            print(J_y_x1.shape) # [3, 3]
+            print(J_y_x2.shape) # [3, 3]
     """
 
     if batch_axis is not None and batch_axis != 0:
@@ -523,16 +584,65 @@ def hessian(
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[List[List[Hessian]], Hessian]:
-    """Function that computes the hessians of ys deriveted from xs.
+    r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
+    variable ``xs``.
+
+    Among them, ``ys`` means the output of ``xs`` after a certain operation, ``ys`` can
+    only be a single Tensor, ``xs`` can be a Tensor or a Tensor tuple, and
+    ``batch_axis`` means The position of the batch dimension of the parameter data.
+
+    When the input ``xs`` is a Tensor tuple, the returned result is a ``Hessian`` tuple,
+    assuming that the internal shape of the ``xs`` tuple is composed of
+    ``([M1, ], [M2, ]) ``, the shape of the returned result consists of
+    ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
+
+    - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
+    supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]``(0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
+
+    - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
+    supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is `` [B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
+
+    After the ``Hessian`` object is created, the complete calculation process does not
+    occur, but a partial lazy evaluation method is used for calculation. It can be
+    multi-dimensionally indexed to obtain the entire Hessian matrix or sub-matrix. At
+    this time, the actual Evaluates the computation and returns the result. At the same
+    time, in the actual evaluation process, the calculated sub-matrix will be cached to
+    avoid repeated calculations in the subsequent indexing process.
 
     Args:
+
         ys (paddle.Tensor): Output or list of outputs derived from xs.
         xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
+
         Union[List[List[Hessian]], List[Hessian], Hessian]: Hessian(s) of ys
             deriveted from xs.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x1 = paddle.randn([3, ])
+            x2 = paddle.randn([4, ])
+            x1.stop_gradient = False
+            x2.stop_gradient = False
+
+            y = x1.sum() + x2.sum()
+
+            H = paddle.autograd.hessian(y, (x1, x2))
+            H_y_x1_x1 = H[0][0][:] # evaluate result of ddy/dx1x1
+            H_y_x1_x2 = H[0][1][:] # evaluate result of ddy/dx1x2
+            H_y_x2_x1 = H[1][0][:] # evaluate result of ddy/dx2x1
+            H_y_x2_x2 = H[1][1][:] # evaluate result of ddy/dx2x2
+
+            print(H_y_x1_x1.shape) # [3, 3]
+            print(H_y_x1_x2.shape) # [3, 4]
+            print(H_y_x2_x1.shape) # [4, 3]
+            print(H_y_x2_x2.shape) # [4, 4]
     """
 
     if batch_axis is None:
