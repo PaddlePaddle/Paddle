@@ -27,8 +27,8 @@ def ref_nextafter(x, y):
 
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
-        self.x_np = np.random.rand(1, 2).astype('float32')
-        self.y_np = np.random.rand(1, 2).astype('float32')
+        self.x = np.random.rand(1, 2).astype('float32')
+        self.y = np.random.rand(1, 2).astype('float32')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -39,17 +39,15 @@ class TestNextafterAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
-                name='x', shape=self.x_np.shape, dtype='float32'
+                name='x', shape=self.x.shape, dtype='float32'
             )
             y = paddle.static.data(
-                name='y', shape=self.y_np.shape, dtype='float32'
+                name='y', shape=self.y.shape, dtype='float32'
             )
             out = paddle.nextafter(x, y)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                feed={'x': self.x_np, 'y': self.y_np}, fetch_list=[out]
-            )
-        out_ref = ref_nextafter(self.x_np, self.y_np)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+        out_ref = ref_nextafter(self.x, self.y)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_dygraph_api(self):

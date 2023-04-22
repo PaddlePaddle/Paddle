@@ -5446,8 +5446,8 @@ def nextafter(x, y, name=None):
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
         op_type = "nextafter"
         helper = LayerHelper(op_type, **locals())
-        inputs = {"X": x, "Y": y}
+        inputs = {"x": x, "y": y}
         out = helper.create_variable_for_type_inference(dtype=paddle.float32)
-        outputs = {"Out": out}
+        outputs = {"out": out}
         helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
