@@ -52,10 +52,10 @@ class TestNextafterAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        y = paddle.to_tensor(self.y_np)
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
         out = paddle.nextafter(x, y)
-        out_ref = ref_nextafter(self.x_np, self.y_np)
+        out_ref = ref_nextafter(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
