@@ -1770,6 +1770,44 @@ void gelu_grad(const Tensor& x,
 }
 
 template <typename T>
+void tile_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& repeat_times,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto repeat_times_data = repeat_times.GetData();
+    auto out_grad_shape = phi::vectorize<int>(out_grad.dims());
+    auto x_shape = phi::vectorize<int>(x.dims());
+
+    if (repeat_times_data.size() < x_shape.size()) {
+      int diff = x_shape.size() - repeat_times_data.size();
+      repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
+    } else {
+      int diff = repeat_times_data.size() - x_shape.size();
+      x_shape.insert(x_shape.begin(), diff, 1);
+    }
+    for (int i = 0; i < static_cast<int>(out_grad_shape.size()); i++) {
+      if (out_grad_shape[i] == -1) {
+        out_grad_shape[i] = x_shape[i] * repeat_times_data[i];
+      }
+    }
+    auto result = reshape<T>(out_grad, out_grad_shape);
+
+    for (int i = 0; i < static_cast<int>(repeat_times_data.size()); i++) {
+      int size = out_grad_shape[i] / repeat_times_data[i];
+      std::vector<int> sections(repeat_times_data[i], size);
+      auto split_arr = split<T>(result, IntArray(sections), i);
+      result = full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
+      for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
+        result = split_arr[j] + result;
+      }
+    }
+    result = reshape<T>(result, x.shape());
+    set_output<T>(result, x_grad);
+  }
+}
+
+template <typename T>
 void roll_grad(const Tensor& x,
                const Tensor& out_grad,
                const IntArray& shifts,
