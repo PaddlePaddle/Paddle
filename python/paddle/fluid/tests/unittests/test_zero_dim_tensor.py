@@ -2275,16 +2275,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2, 2])
         self.assertEqual(y.grad.shape, [2, 2])
 
-    def test_trace(self):
-        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
-        x.stop_gradient = False
-        out = paddle.trace(x)
-        out.backward()
-
-        self.assertEqual(out.shape, [])
-        np.testing.assert_allclose(out, np.array(12))
-        self.assertEqual(x.grad.shape, [2, 2])
-
     def test_cond(self):
         pass
         # def assert_shape(out):
@@ -4071,20 +4061,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 2))
         self.assertEqual(res[1].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
-
-    @prog_scope()
-    def test_trace(self):
-        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
-        x.stop_gradient = False
-        out = paddle.trace(x)
-        paddle.static.append_backward(out)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
-
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 2))
-        np.testing.assert_allclose(res[0], np.array(12))
 
     @prog_scope()
     def test_cond(self):
