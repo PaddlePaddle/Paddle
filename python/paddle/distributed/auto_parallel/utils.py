@@ -1684,7 +1684,7 @@ def get_standalone_cost_data(distributed_programs):
                 ].split(",")
                 shape = [int(x.strip()) for x in shape]
                 dtype_factor = 1
-                total_static_input_size += reduce(lambda x, y: x * y, shape)
+                total_static_input_size += reduce(lambda x, y: x * y, shape, 1)
                 if op.type == "c_embedding":
                     arg_name_lower = (
                         "w" if arg_name_lower == "weight" else "ids"
@@ -1838,7 +1838,7 @@ def get_var_numel(var):
     """
     assert isinstance(var, Variable)
     assert -1 not in var.shape
-    return reduce(lambda x, y: x * y, var.shape)
+    return reduce(lambda x, y: x * y, var.shape, 1)
 
 
 def get_lr(optimizer):

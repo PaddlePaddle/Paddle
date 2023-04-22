@@ -2120,7 +2120,7 @@ class RuleBasedTuner:
             has_used_devices = 0
             self.device_meshes_list.append([])
             for device_mesh in device_meshes:
-                devices = reduce(lambda x, y: x * y, device_mesh)
+                devices = reduce(lambda x, y: x * y, device_mesh, 1)
                 processes = list(
                     range(has_used_devices, has_used_devices + devices)
                 )

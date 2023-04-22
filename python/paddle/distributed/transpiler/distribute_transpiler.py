@@ -117,7 +117,7 @@ def slice_variable(var_list, slice_count, min_block_size):
     blocks = []
     for var in var_list:
         split_count = slice_count
-        var_numel = reduce(lambda x, y: x * y, var.shape)
+        var_numel = reduce(lambda x, y: x * y, var.shape, 1)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
@@ -127,7 +127,7 @@ def slice_variable(var_list, slice_count, min_block_size):
 
         if len(var.shape) >= 2:
             # align by dim1(width)
-            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+            dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
             remains = block_size % dim1
             if remains != 0:
                 block_size += dim1 - remains
@@ -2286,7 +2286,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             orig_shape = orig_var.shape
             orig_dim1_flatten = 1
             if len(orig_shape) >= 2:
-                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
+                orig_dim1_flatten = reduce(
+                    lambda x, y: x * y, orig_shape[1:], 1
+                )
 
             for i, block in enumerate(split):
                 size = block[1]
