@@ -48,6 +48,16 @@ void NaiveExecutor::Prepare(Scope *scope,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
+template <typename T>
+void print(T *cpu_data, int num, std::string var_name) {
+  std::string file_name = std::string("/root/paddlejob/workspace/env_run/zkk/cpp/") + var_name; 
+  FILE* f = fopen(file_name.c_str(), "a+");
+  for (int i = 0; i < num; i++) {
+    fprintf(f,"%f\n", cpu_data[i]);
+  }
+  fclose(f);
+}
+
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -73,7 +83,45 @@ void NaiveExecutor::Run() {
       }
     }
 
+
+    // std::cout << op->Type() << "run" << std::endl;
+    // paddle::platform::DeviceContextPool &pool =
+    //     paddle::platform::DeviceContextPool::Instance();
+    // auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
+    // auto success = cudaStreamSynchronize(dev_ctx->stream());
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+
     op->Run(*scope_, place_);
+    // std::cout << op->OutputVars(true).front() << std::endl;
+    // success = cudaStreamSynchronize(dev_ctx->stream());
+    // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+
+
+    // if ("tensorrt_engine" == op->Type() && 0) {
+    //   for (auto name : op->OutputVars(true)) {
+    //     std::cout << name << ": ";
+    //     auto tensor = FindTensor(name);
+    //     auto dims = tensor->dims();
+    //     if (tensor->dtype() == paddle::experimental::DataType::FLOAT32) {
+    //       float *cpu_data = new float[tensor->numel()];
+    //       float *tensor_data = tensor->data<float>();
+    //       if (tensor->place() == platform::CPUPlace()) {
+    //         memcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel());
+    //       } else {
+    //         cudaMemcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel(),
+    //                    cudaMemcpyDeviceToHost);
+    //       }
+    //       if(0)print(cpu_data, 100, name);
+    //       for (int64_t i = 0; i < dims.size(); i++) {
+    //         std::cout << dims[i] << " ";
+    //       }
+    //       delete[] cpu_data;
+    //     } else if (tensor->dtype() == paddle::experimental::DataType::INT32) {
+    //     }
+    //   }
+    // }
+
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
