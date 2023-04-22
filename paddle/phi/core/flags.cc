@@ -241,9 +241,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: whether to use deterministic algorithm in embedding op.
  *       If true, it will use deterministic CUDA kernel in embedding op.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PADDLE_DEFINE_EXPORTED_int64(
     embedding_deterministic,
-    false,
+    0,
     "Whether allow using an deterministic algorithm for embedding "
     "operator. The deterministic algorithm may be slower. If "
     "true, the algorithm is deterministic.");

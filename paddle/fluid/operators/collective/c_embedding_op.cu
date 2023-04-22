@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-DECLARE_bool(cudnn_deterministic);
+DECLARE_int64(embedding_deterministic);
 
 namespace paddle {
 namespace operators {
@@ -166,7 +166,7 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
-    if (FLAGS_cudnn_deterministic) {
+    if (FLAGS_embedding_deterministic == 1) {
       if (index_type == framework::proto::VarType::INT32) {
         phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
             dev_ctx,
@@ -191,6 +191,10 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
         return;
       }
     } else {
+      if (FLAGS_embedding_deterministic > 1) {
+        VLOG(2) << "Run grad kernel of embedding with single thread.";
+        blocks = 1;
+      }
       const int64_t end_idx = start_idx + N;
       if (index_type == framework::proto::VarType::INT32) {
         CEmbeddingGrad<T, int32_t>

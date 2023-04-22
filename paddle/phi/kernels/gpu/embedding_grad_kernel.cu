@@ -26,7 +26,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-DECLARE_bool(embedding_deterministic);
+DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -103,13 +103,18 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      if (FLAGS_embedding_deterministic) {
+      if (FLAGS_embedding_deterministic == 1) {
         phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
             dev_ctx_, ids, d_output, d_table, N, D, K);
       } else {
         const int gridx = 2 * dev_ctx_.GetSMCount();
         dim3 threads(128, 8);
         dim3 grids(gridx, 1);
+        if (FLAGS_embedding_deterministic > 1) {
+          VLOG(2) << "Run grad kernel of embedding with single thread.";
+          grids.x = 1;
+          threads.y = 1;
+        }
         EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
             d_table, d_output, ids, N, K, D);
       }
