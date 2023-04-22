@@ -1427,7 +1427,7 @@ class TestLayer(LayerTest):
             # x = np.random.rand(3, 32, 32).astype("float32")
             # y = np.array([[1], [0], [1]])
             static_out = exe.run(
-                feed={"input": x, "label": y}, fetch_list=result[0]
+                feed={"input": x, "label": y}, fetch_list=result
             )
 
         with self.dynamic_graph(force_to_use_cpu=True):

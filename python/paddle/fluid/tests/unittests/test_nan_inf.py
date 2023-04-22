@@ -50,11 +50,15 @@ class TestNanInf(unittest.TestCase):
         assert (out + err).find(b'There are NAN or INF') != -1
 
     def test_nan_inf_in_static_mode(self):
-        self._python_interp += " check_nan_inf_base.py"
+        self._python_interp += (
+            " " + os.path.dirname(__file__) + "/check_nan_inf_base.py"
+        )
         self.check_nan_inf()
 
     def test_nan_inf_in_dynamic_mode(self):
-        self._python_interp += " check_nan_inf_base_dygraph.py"
+        self._python_interp += (
+            " " + os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
+        )
         self.check_nan_inf()
 
 
