@@ -96,7 +96,7 @@ class TensorCost:
             shape = self.shape
             dtype = self.dtype
 
-        total_count = reduce(lambda x, y: x * y, shape)
+        total_count = reduce(lambda x, y: x * y, shape, 1)
 
         if dtype == paddle.float32 or dtype == paddle.int32:
             dtype_factor = 4

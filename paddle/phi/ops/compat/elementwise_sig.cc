@@ -210,13 +210,13 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "maximum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "minimum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
@@ -227,10 +227,8 @@ KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("elementwise_pow_grad",
-                         {"X", "Y", "Out@GRAD"},
-                         {"axis"},
-                         {"X@GRAD", "Y@GRAD"});
+  return KernelSignature(
+      "elementwise_pow_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 }  // namespace phi
 

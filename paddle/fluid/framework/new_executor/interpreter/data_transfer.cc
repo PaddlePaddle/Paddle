@@ -214,6 +214,9 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
           *(op_with_kernel->PhiKernelSignature()),
           runtime_context,
           *dev_ctx);
+    } else if (new_op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+               phi::KernelRegisteredType::STRUCTURE) {
+      (*new_op_func_node.phi_kernel_)(&exec_ctx);
     } else {
       phi::KernelContext phi_kernel_context;
       op_with_kernel->BuildPhiKernelContext(

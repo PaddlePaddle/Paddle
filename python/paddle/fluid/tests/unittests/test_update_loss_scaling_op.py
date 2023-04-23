@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 from paddle.static.amp import amp_nn
 
 
@@ -81,8 +82,10 @@ class TestUpdateLossScalingOp(OpTest):
     def init(self):
         self.incr_ratio = 2.0
         self.decr_ratio = 0.8
-        self.dtype = np.float32
-        self.prev_loss_scaling = np.array([2048]).astype(self.dtype)
+        self.init_dtype()
+        self.prev_loss_scaling = np.array([2048]).astype(
+            self.loss_scaling_dtype
+        )
         self.num_good_steps = np.array([999], dtype=np.int32)
         self.num_bad_steps = np.array([1], dtype=np.int32)
         self.zero_steps = np.array([0], dtype=np.int32)
@@ -94,8 +97,75 @@ class TestUpdateLossScalingOp(OpTest):
             'decr_ratio': self.decr_ratio,
         }
 
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.loss_scaling_dtype = np.float32
+
     def test_check_output(self):
         self.check_output(no_check_set=['Out'])
+
+
+class TestUpdateLossScalingFP16Op(TestUpdateLossScalingOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.loss_scaling_dtype = np.float32
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestUpdateLossScalingBF16Op(OpTest):
+    def init(self):
+        self.incr_ratio = 2.0
+        self.decr_ratio = 0.8
+        self.dtype = np.uint16
+        self.np_dtype = "float32"
+        self.prev_loss_scaling = np.array([2048]).astype(self.np_dtype)
+        self.num_good_steps = np.array([999], dtype=np.int32)
+        self.num_bad_steps = np.array([1], dtype=np.int32)
+        self.zero_steps = np.array([0], dtype=np.int32)
+        self.stop_update = np.array([False], dtype=np.bool_)
+        self.attrs = {
+            'incr_every_n_steps': 1000,
+            'decr_every_n_nan_or_inf': 2,
+            'incr_ratio': self.incr_ratio,
+            'decr_ratio': self.decr_ratio,
+        }
+
+    def setUp(self):
+        self.op_type = "update_loss_scaling"
+        self.init()
+        self.python_api = update_loss_scaling_wrapper
+        self.python_out_sig = [
+            "out0",
+            "LossScaling",
+            "OutGoodSteps",
+            "OutBadSteps",
+        ]
+        found_inf = np.array([False], dtype=np.bool_)
+        x = np.random.random((1024, 1024)).astype(self.np_dtype)
+
+        self.inputs = {
+            'X': [('x0', convert_float_to_uint16(x))],
+            'FoundInfinite': found_inf,
+            # do not convert
+            'PrevLossScaling': self.prev_loss_scaling,
+            'InGoodSteps': self.num_good_steps,
+            'InBadSteps': self.num_bad_steps,
+        }
+
+        self.outputs = {
+            'Out': [('out0', convert_float_to_uint16(x))],
+            # do not convert
+            'LossScaling': self.prev_loss_scaling * self.incr_ratio,
+            'OutGoodSteps': self.zero_steps,
+            'OutBadSteps': self.zero_steps,
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), no_check_set=['Out'])
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):

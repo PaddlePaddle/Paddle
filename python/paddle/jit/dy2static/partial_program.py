@@ -189,15 +189,20 @@ class PartialProgramLayer:
         self._infer_info = ProgramInfo()
         self._forward_end_index_map = {}
 
-        custom_white_list, custom_black_list = None, None
+        amp_dtype, custom_white_list, custom_black_list = None, None, None
         tracer = framework._dygraph_tracer()
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
-        # For AMP training
-        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
-            custom_white_list=custom_white_list,
-            custom_black_list=custom_black_list,
-        )
+            amp_dtype = tracer._amp_dtype
+        if amp_dtype is not None and amp_dtype in ['float16', 'bfloat16']:
+            # For AMP training
+            self._amp_list = (
+                paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
+                    custom_white_list=custom_white_list,
+                    custom_black_list=custom_black_list,
+                    dtype=amp_dtype,
+                )
+            )
 
         # program_id -> list(scope)
         self._scope_cache = {}
