@@ -208,6 +208,7 @@ class PartialProgramLayer:
         self._scope_cache = {}
         self._hooker = None
         self._backend = kwargs.get('backend', None)
+        self._grad_var_names = []
 
     def __call__(self, inputs):
         """
@@ -654,7 +655,9 @@ class PartialProgramLayer:
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             with backend_guard(self._backend):
                 inputs = [
-                    program.block(0).var(var.name) for var in self._inputs
+                    program.block(0).var(var.name)
+                    for var in self._inputs
+                    if isinstance(var, framework.Variable)
                 ] + [program.block(0).var(var.name) for var in self._params]
                 grad_vars = backward.gradients(targets=targets, inputs=inputs)
                 self._grad_var_names = []
@@ -727,8 +730,14 @@ class PartialProgramLayer:
             self.program_id,
         ]
 
-        if self.training:
-            inputs_size = len(self._inputs.tolist())
+        if self.training and self._grad_var_names:
+            inputs_size = len(
+                [
+                    var
+                    for var in self._inputs
+                    if isinstance(var, framework.Variable)
+                ]
+            )
             params_size = len(self._params)
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
