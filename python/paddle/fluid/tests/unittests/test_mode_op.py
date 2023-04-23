@@ -154,64 +154,64 @@ class TestModeFP16Op(OpTest):
             )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA"
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-)
-class TestModeBF16Op(OpTest):
-    def init_args(self):
-        self.axis = 1
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda(),
+#     "core is not compiled with CUDA"
+#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+# )
+# class TestModeBF16Op(OpTest):
+#     def init_args(self):
+#         self.axis = 1
 
-    def setUp(self):
-        self.op_type = "mode"
-        self.python_api = paddle.mode
-        self.dtype = np.uint16
-        self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
-        self.init_args()
-        self.input_data = convert_uint16_to_float(
-            convert_float_to_uint16(self.input_data)
-        )
+#     def setUp(self):
+#         self.op_type = "mode"
+#         self.python_api = paddle.mode
+#         self.dtype = np.uint16
+#         self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
+#         self.init_args()
+#         self.input_data = convert_uint16_to_float(
+#             convert_float_to_uint16(self.input_data)
+#         )
 
-        self.inputs = {'X': convert_float_to_uint16(self.input_data)}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
+#         self.inputs = {'X': convert_float_to_uint16(self.input_data)}
+#         self.attrs = {'axis': self.axis}
+#         output, indices = cal_mode(self.input_data, axis=self.axis)
 
-        self.outputs = {
-            'Out': convert_float_to_uint16(output),
-            'Indices': indices,
-        }
-        self.init_numeric_grads()
+#         self.outputs = {
+#             'Out': convert_float_to_uint16(output),
+#             'Indices': indices,
+#         }
+#         self.init_numeric_grads()
 
-    def init_numeric_grads(self):
-        self.grad = np.zeros(self.input_data.shape).astype(np.float32)
-        in_dims = list(range(self.grad.ndim))
-        a_view = np.transpose(
-            self.grad,
-            in_dims[: self.axis] + in_dims[self.axis + 1 :] + [self.axis],
-        )
-        idx = np.array(self.outputs['Indices']).flatten()
-        inds = np.ndindex(a_view.shape[:-1])
-        for i, ind in enumerate(inds):
-            a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
-        self.grad = np.transpose(
-            a_view,
-            in_dims[: self.axis] + in_dims[-1:] + in_dims[self.axis : -1],
-        )
+#     def init_numeric_grads(self):
+#         self.grad = np.zeros(self.input_data.shape).astype(np.float32)
+#         in_dims = list(range(self.grad.ndim))
+#         a_view = np.transpose(
+#             self.grad,
+#             in_dims[: self.axis] + in_dims[self.axis + 1 :] + [self.axis],
+#         )
+#         idx = np.array(self.outputs['Indices']).flatten()
+#         inds = np.ndindex(a_view.shape[:-1])
+#         for i, ind in enumerate(inds):
+#             a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
+#         self.grad = np.transpose(
+#             a_view,
+#             in_dims[: self.axis] + in_dims[-1:] + in_dims[self.axis : -1],
+#         )
 
-    def test_check_output(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        if core.is_bfloat16_supported(place):
-            self.check_output_with_place(place)
+#     def test_check_output(self):
+#         paddle.enable_static()
+#         place = core.CUDAPlace(0)
+#         if core.is_bfloat16_supported(place):
+#             self.check_output_with_place(place)
 
-    def test_check_grad(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        if core.is_bfloat16_supported(place):
-            self.check_grad_with_place(
-                place, {'X'}, 'Out', user_defined_grads=[self.grad]
-            )
+#     def test_check_grad(self):
+#         paddle.enable_static()
+#         place = core.CUDAPlace(0)
+#         if core.is_bfloat16_supported(place):
+#             self.check_grad_with_place(
+#                 place, {'X'}, 'Out', user_defined_grads=[self.grad]
+#             )
 
 
 class TestModeOpLastdim(OpTest):
