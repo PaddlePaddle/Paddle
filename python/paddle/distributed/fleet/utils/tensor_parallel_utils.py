@@ -321,10 +321,7 @@ def add_extra_synchronization(
     )
 
     # adopt for static pipeline opt
-    if program._pipeline_opt is not None:
-        assert (
-            program._pipeline_opt['section_program'] is not None
-        ), "Pipeline is enable but section_program is None"
+    if 'section_program' in program._pipeline_opt:
         program = program._pipeline_opt['section_program']
 
     # step1: collect the param that need to be sync
