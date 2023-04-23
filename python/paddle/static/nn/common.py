@@ -3601,7 +3601,7 @@ def layer_norm(
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
-    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
+    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
     if scale:
         assert (
             param_attr is not False

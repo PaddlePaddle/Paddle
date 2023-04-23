@@ -923,17 +923,6 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   }
 
   if (!none_axes.empty()) {
-    // Deal with cases when all axes are decreased.
-    // After slice, the shape of out is [1], which should have been
-    // [], but Paddle doesn't support scalar.
-    // In order to ensure the correctness of the final shape of out,
-    // one dimension of out needs to be decreased.
-    // For example:
-    // # x.shape: (2,3,4)
-    // out = x[0, 1, 1, None] # out.shape : (1)
-    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-      none_axes.pop_back();
-    }
     if (!none_axes.empty()) {
       paddle::Tensor new_out;
       {

@@ -1068,18 +1068,6 @@ void BindImperative(py::module *m_ptr) {
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
              if (!none_axes.empty()) {
-               // Deal with cases when all axes are decreased.
-               // After slice, the shape of out is [1], which should have been
-               // [], but Paddle doesn't support scalar.
-               // In order to ensure the correctness of the final shape of out,
-               // one dimension of out needs to be decreased.
-               // For example:
-               // # x.shape: (2,3,4)
-               // out = x[0, 1, 1, None] # out.shape : (1)
-               if (static_cast<int>(decrease_axis.size()) ==
-                   tensor->dims().size()) {
-                 none_axes.pop_back();
-               }
                if (!none_axes.empty()) {
                  // Deal with cases that decrease_axes is not empty
                  // For example:

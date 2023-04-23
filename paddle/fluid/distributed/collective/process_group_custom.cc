@@ -139,11 +139,12 @@ void ProcessGroupCustom::BroadcastUniqueCustomID(
 // create CustomCCLManager cache for places_key
 void ProcessGroupCustom::CreateCustomManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
-  PADDLE_ENFORCE_EQ(places_key.empty(),
-                    false,
-                    platform::errors::PreconditionNotMet(
-                        "Not able to create/get the HCCL Communicator since "
-                        "the NPU place are not known"));
+  PADDLE_ENFORCE_EQ(
+      places_key.empty(),
+      false,
+      platform::errors::PreconditionNotMet(
+          "Not able to create/get the CustomCCL Communicator since "
+          "the NPU place are not known"));
   const std::string device_type = places.back().GetDeviceType();
 
   std::vector<std::shared_ptr<CustomCCLCommManager>> ccl_comms;
