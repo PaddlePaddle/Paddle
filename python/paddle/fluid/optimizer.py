@@ -232,7 +232,7 @@ class Optimizer:
 
             if not isinstance(self._learning_rate, _LearningRateEpochDecay):
                 var_tmp = None
-                var_temp = framework._varbase_creator(
+                var_temp = framework._create_tensor(
                     None, name='global_step', dtype='int32'
                 )
 
@@ -5967,7 +5967,7 @@ class PipelineOptimizer:
         }
         assert -1 not in var.shape
         return (
-            reduce(lambda x, y: x * y, var.shape)
+            reduce(lambda x, y: x * y, var.shape, 1)
             * dtype_to_size[var.dtype]
             / 1024.0
             / 1024.0

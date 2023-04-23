@@ -26,7 +26,7 @@ SEED = 2049
 np.random.seed(SEED)
 
 
-def matrix_rank_wraper(x, tol=None, hermitian=False, use_default_tol=True):
+def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
     return paddle.linalg.matrix_rank(x, tol, hermitian)
 
 

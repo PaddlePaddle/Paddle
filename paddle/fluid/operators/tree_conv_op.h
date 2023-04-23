@@ -23,7 +23,7 @@
 namespace paddle {
 namespace operators {
 using DDim = framework::DDim;
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TreeConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -73,7 +73,7 @@ class TreeConvKernel : public framework::OpKernel<T> {
     }
   }
 };
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TreeConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

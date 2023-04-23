@@ -16,9 +16,9 @@ from .. import core
 from ..framework import (
     Variable,
     convert_np_dtype_to_dtype_,
-    _varbase_creator,
     in_dygraph_mode,
 )
+from ..framework import _create_tensor as framework_create_tensor
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
@@ -78,7 +78,7 @@ def monkey_patch_math_varbase():
                 shape, value, dtype, framework._current_expected_place()
             )
         else:
-            out = _varbase_creator(dtype=dtype)
+            out = framework_create_tensor(dtype=dtype)
             out = _legacy_C_ops.fill_constant(
                 out,
                 'dtype',
