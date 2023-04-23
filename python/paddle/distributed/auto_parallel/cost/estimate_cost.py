@@ -252,7 +252,7 @@ class CostEstimator:
 
     def _calculate_bytes(self, sizes, dtype):
         if sizes:
-            total_count = reduce(lambda x, y: x * y, sizes)
+            total_count = reduce(lambda x, y: x * y, sizes, 1)
         else:
             total_count = 0
 

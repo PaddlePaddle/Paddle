@@ -138,6 +138,12 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
     // Node Construction
     auto grad_node =
         std::shared_ptr<Conv2dGradNodeFinal>(new Conv2dGradNodeFinal(1, 2));
+
+    // Set forward's stack
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);

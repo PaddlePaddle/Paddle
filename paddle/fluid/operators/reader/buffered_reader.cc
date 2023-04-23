@@ -99,7 +99,6 @@ BufferedReader::BufferedReader(
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
   npu_buffer_.resize(buffer_size);
-  mlu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -387,8 +386,6 @@ void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
     *out = std::move(cuda_buffer_[i]);
   } else if (platform::is_npu_place(place_)) {
     *out = std::move(npu_buffer_[i]);
-  } else if (platform::is_mlu_place(place_)) {
-    *out = std::move(mlu_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);
   } else if (platform::is_custom_place(place_)) {

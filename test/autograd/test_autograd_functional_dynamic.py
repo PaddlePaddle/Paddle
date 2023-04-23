@@ -256,7 +256,10 @@ def jac(grad_fn, f, inputs):
             _vs = vs.copy()
             _vs[i] = _v
             _, grads = grad_fn(f, inputs, _vs)
-            d_outs = paddle.concat([d_out.flatten() for d_out in grads])
+            if isinstance(grads, typing.Sequence):
+                d_outs = paddle.concat([d_out.flatten() for d_out in grads])
+            else:
+                d_outs = grads.flatten()
             JJ_cols.append(d_outs)
     # JJ is the fully unrolled jacobian
     JJ = paddle.stack(JJ_cols)
