@@ -24,6 +24,7 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 DECLARE_bool(embedding_deterministic);
 
@@ -79,11 +80,12 @@ __global__ void EmbeddingGradDeterministic(T* table,
                                            const IdT* ids,
                                            const int64_t K,
                                            const int64_t D) {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   extern __shared__ char buf[];
-  T* smem = reinterpret_cast<T*>(buf);
-  T* my_s = smem + WARP_SIZE * threadIdx.y;
+  MT* smem = reinterpret_cast<MT*>(buf);
+  MT* my_s = smem + WARP_SIZE * threadIdx.y;
   int64_t* indices_batch =
-      reinterpret_cast<int64_t*>(buf + sizeof(T) * WARP_SIZE * BLOCKDIMY);
+      reinterpret_cast<int64_t*>(buf + sizeof(MT) * WARP_SIZE * BLOCKDIMY);
 
   const int stride = static_cast<int>(D);
 
@@ -115,7 +117,7 @@ __global__ void EmbeddingGradDeterministic(T* table,
       int64_t src_row = static_cast<int64_t>(chunk_start + threadIdx.y);
       int64_t dst_row = indices_batch[src_row - batch_start];
       if (src_row < K && feature < stride)
-        my_s[threadIdx.x] = static_cast<T>(output[src_row * D + feature]);
+        my_s[threadIdx.x] = static_cast<MT>(output[src_row * D + feature]);
 
       __syncthreads();
 
@@ -202,11 +204,12 @@ struct EmbeddingGradCUDAFunctor {
       if (FLAGS_embedding_deterministic) {
         dim3 threads(WARP_SIZE, BLOCKDIMY);
         dim3 grids(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
+        using MT = typename dtype::MPTypeTrait<T>::Type;
         EmbeddingGradDeterministic<T, IdT>
             <<<grids,
                threads,
-               sizeof(T) * WARP_SIZE * BLOCKDIMY +
-                   sizeof(int) * WARP_SIZE * BLOCKDIMY,
+               sizeof(MT) * WARP_SIZE * BLOCKDIMY +
+                   sizeof(IdT) * WARP_SIZE * BLOCKDIMY,
                dev_ctx_.stream()>>>(d_table, d_output, ids, K, D);
       } else {
         const int gridx = 2 * dev_ctx_.GetSMCount();
