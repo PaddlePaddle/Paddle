@@ -80,21 +80,19 @@ class TensorCheckerConfig:
     The purpose of this class is to collect the configuration for checking NaN and Inf values in the tensors of a module or operator. It takes the following arguments:
 
     Args:
-        enable: A boolean value indicating whether to enable the detection of NaN and Inf values in tensors. The default value is False, which means that these tools will not be used.
-        debug_mode: A parameter that determines the type of debugging to be used. There are 4 available modes:
-            - CHECK_NAN_INF_AND_ABORT (default): This mode prints or saves information about Tensors that contain NaN/Inf and interrupts the program.
-            - CHECK_NAN_INF: This mode prints or saves critical information about Tensors that contain NaN/Inf but allows the program to continue running.
-            - CHECK_ALL_FOR_OVERFLOW: This mode checks the output of the FP32 operator and prints or saves information about key Tensors that exceed the FP16 representation range, such as overflow or underflow.
-            - CHECK_ALL: This mode prints or saves output Tensor key information for all operators.
-        output_dir: The path to store collected data. If this parameter is set to None, the data will be printed to the terminal.
+        enable(bool): Indicating whether to enable the detection of NaN and Inf values in tensors. The default value is False, which means that these tools will not be used.
 
-        checked_op_list: Specifies a list of operators that need to be checked during program execution, for example, checked_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should be checked for nan/inf during program execution.
+        debug_mode(DebugMode, optional): A parameter that determines the type of debugging to be used. Default is DebugMode.CHECK_NAN_INF_AND_ABORT.
 
-        skipped_op_list: Specifies a list of operators that do not need to be checked during program execution, for example, skipped_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should not be checked for nan/inf during program execution.
+        output_dir(string, optional): The path to store collected data. If this parameter is set to None, the data will be printed to the terminal. Default is None.
 
-        debug_step: A list or tuple used primarily for nan/inf checking during model training. For example, debug_step=[1,5] indicates that nan/inf checking should only be performed on model training iterations 1 to 5.
+        checked_op_list(list, optional): Specifies a list of operators that need to be checked during program execution, for example, checked_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should be checked for nan/inf during program execution. Default is None.
 
-        stack_height_limit: An integer value specifying the maximum depth of the call stack. This feature supports printing the call stack at the error location. Currently, only enabling or disabling call stack printing is supported. If you want to print the corresponding C++ call stack when NaN is detected in GPU Kernel, set stack_height_limit to 1, otherwise set it to 0.
+        skipped_op_list(list, optional): Specifies a list of operators that do not need to be checked during program execution, for example, skipped_op_list=['elementwise_add', 'conv2d'], indicating that the output results of elementwise_add and conv2d should not be checked for nan/inf during program execution. None is None.
+
+        debug_step(list|tuple, optional): A list or tuple used primarily for nan/inf checking during model training. For example, debug_step=[1,5] indicates that nan/inf checking should only be performed on model training iterations 1 to 5. Default is None.
+
+        stack_height_limit(int, optional): An integer value specifying the maximum depth of the call stack. This feature supports printing the call stack at the error location. Currently, only enabling or disabling call stack printing is supported. If you want to print the corresponding C++ call stack when NaN is detected in GPU Kernel, set stack_height_limit to 1, otherwise set it to 0. Default is 1.
 
     Examples:
 
@@ -132,7 +130,7 @@ class TensorCheckerConfig:
         checked_op_list=None,
         skipped_op_list=None,
         debug_step=None,
-        stack_height_limit=3,
+        stack_height_limit=1,
     ):
 
         self.enable = enable
@@ -193,7 +191,7 @@ class TensorCheckerConfig:
         if self.initial_seed != self.seed:
             self.seed = self.initial_seed
 
-        if self.seed > 4294967295 or self.seed < 0:
+        if self.seed > np.iinfo(np.uint32).max or self.seed < 0:
             print("[Warnning: Seed must be between 0 and 2**32 - 1")
             self.seed = 123
 
@@ -454,11 +452,11 @@ def enable_tensor_checker(checker_config):
             #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
             # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            #Traceback (most recent call last):
-            #  File "tp.py", line 8, in <module>
-            #    res = paddle.pow(x, y)
-            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #    return _C_ops.elementwise_pow(x, y)
+            # Traceback (most recent call last):
+            #   File "tp.py", line 8, in <module>
+            #     res = paddle.pow(x, y)
+            #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            #     return _C_ops.elementwise_pow(x, y)
 
     """
     if checker_config.update_and_check_step_id():
@@ -492,10 +490,10 @@ def disable_tensor_checker():
             #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
             # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            #Traceback (most recent call last):
-            #    res = paddle.pow(x, y)
-            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #    return _C_ops.elementwise_pow(x, y)
+            # Traceback (most recent call last):
+            #     res = paddle.pow(x, y)
+            #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            #     return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})

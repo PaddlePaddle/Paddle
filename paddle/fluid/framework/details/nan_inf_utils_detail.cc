@@ -30,7 +30,7 @@ namespace details {
 struct DebugTools {
   DebugTools() {}
   std::string path = "";
-  int stack_limit = 3;
+  int stack_limit = 1;
 };
 static DebugTools debug_nan_inf;
 
