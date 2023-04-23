@@ -54,16 +54,16 @@ struct UniformGenerator {
 };
 
 template <typename T, typename Context>
-void UniformKernel(const Context& dev_ctx,
-                   const IntArray& shape,
-                   DataType dtype,
-                   const Scalar& min,
-                   const Scalar& max,
-                   int seed,
-                   DenseTensor* out) {
-  int diag_num = 0;
-  int diag_step = 0;
-  float diag_val = 0.0f;
+void UniformRawKernel(const Context& dev_ctx,
+                      const IntArray& shape,
+                      DataType dtype,
+                      const Scalar& min,
+                      const Scalar& max,
+                      int seed,
+                      int diag_num,
+                      int diag_step,
+                      float diag_val,
+                      DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
@@ -86,10 +86,10 @@ void UniformKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform,
+PD_REGISTER_KERNEL(uniform_raw,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformKernel,
+                   phi::UniformRawKernel,
                    float,
                    double,
                    phi::dtype::float16,
