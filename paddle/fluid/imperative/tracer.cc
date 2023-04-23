@@ -41,6 +41,7 @@ DECLARE_string(throw_use_error_op);
 
 namespace paddle {
 namespace imperative {
+thread_local std::string Tracer::python_stack_ = "";
 
 thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
