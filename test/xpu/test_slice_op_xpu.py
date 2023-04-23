@@ -166,7 +166,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.starts = [0, 1, 2, 3]
             self.ends = [1, 2, 3, 4]
             self.axes = [0, 1, 2, 3]
-            self.decrease_axis = [0, 1, 2, 3]
+            self.decrease_axis = [0, 1, 2]
             self.infer_flags = [1, 1, 1]
             self.out = self.input[0, 1, 2, 3:4]
 
@@ -188,7 +188,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.axes = [0, 1, 2, 3]
             self.decrease_axis = [0, 1, 2, 3]
             self.infer_flags = [1, 1, 1]
-            self.out = self.input[0, 1, 2, 3:4]
+            self.out = self.input[0, 1, 2, 3]
 
 
 support_types = get_xpu_op_support_types('slice')

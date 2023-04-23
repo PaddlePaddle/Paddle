@@ -52,5 +52,6 @@ PD_REGISTER_KERNEL(trace,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
