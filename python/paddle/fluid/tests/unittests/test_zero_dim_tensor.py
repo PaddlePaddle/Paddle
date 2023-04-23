@@ -3429,7 +3429,7 @@ class TestSundryAPIStatic(unittest.TestCase):
     def test_gather_nd(self):
         x1 = paddle.full([10], 1.0, 'float32')
         x1.stop_gradient = False
-        x2 = paddle.to_tensor([2, 3], 1.0, 'float32')
+        x2 = paddle.full([2, 3], 1.0, 'float32')
         x2.stop_gradient = False
 
         index1 = paddle.full([1], 1, 'int64')
