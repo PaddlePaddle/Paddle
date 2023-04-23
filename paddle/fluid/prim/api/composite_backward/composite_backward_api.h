@@ -391,7 +391,6 @@ template <typename T>
 void elementwise_pow_grad(const Tensor& x,
                           const Tensor& y,
                           const Tensor& out_grad,
-                          int axis,
                           Tensor* dx,
                           Tensor* dy) {
   if (dy) {
@@ -1380,7 +1379,6 @@ template <typename T>
 void maximum_grad(const Tensor& x,
                   const Tensor& y,
                   const Tensor& out_grad,
-                  int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
   if (x_grad) {
