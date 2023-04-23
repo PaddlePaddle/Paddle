@@ -14,37 +14,43 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 
 
-class TestSetItem(unittest.TestCase):
+class TestSetItemBase(unittest.TestCase):
     def setUp(self) -> None:
         pass
 
     def init_data(self):
         paddle.seed(2023)
-        x = paddle.randn([4, 8])
+        x = paddle.randn([4, 8, 16, 32])
         x.stop_gradient = False
         return x
 
-    def test_case1(self):
+    def init_func(self):
         def foo(x):
             y = x + 1
             y[:, 2] = x[:, 2] + 1
-            # y = paddle.fluid.framework._setitem_impl_(y, (slice(None,None,None), 2) , x[:, 2]+1)
+            # breakpoint()
             return y
 
-        # dy_res = self.run_dygrah(foo)
-        st_res = self.run_to_static(foo)
+        return foo
 
-        # for dy_out, st_out in zip(dy_res, st_res):
-        #     np.testing.assert_allclose(dy_out.numpy, st_out.numpy())
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygrah(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
     def run_dygrah(self, func):
         x = self.init_data()
         y = func(x)
         x_grad = paddle.grad(y, x)[0]
-        print(y, x_grad)
+        # print(y, x_grad)
         return y, x_grad
 
     def run_to_static(self, func):

@@ -36,6 +36,7 @@ from .ifelse_transformer import IfElseTransformer
 from .logical_transformer import LogicalTransformer
 from .loop_transformer import LoopTransformer
 from .return_transformer import ReturnTransformer
+from .slice_transformer import SliceTransformer
 from .static_analysis import StaticAnalysisVisitor
 from .tensor_shape_transformer import TensorShapeTransformer
 from .typehint_transformer import TypeHintTransformer
@@ -92,6 +93,7 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node_wrapper.node)
 
         transformers = [
+            SliceTransformer,
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)

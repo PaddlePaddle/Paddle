@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+from paddle.fluid.framework import Variable
+
 from .base_transformer import BaseTransformer
 from .static_analysis import AstNodeWrapper
 from .utils import ast_to_source_code, gast
@@ -19,9 +22,34 @@ from .utils import ast_to_source_code, gast
 __all__ = []
 
 
+class GetSetter:
+    """
+    GetSetter is a Proxy class implenenting Python getter / setter magic method. It's basic unit
+    for _jst.GSet(...) to make us not care what ast is like.
+    """
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getitem__(self, item):
+        return self.obj[item]
+
+    def __setitem__(self, item, value):
+        if isinstance(self.obj, Variable):
+            return paddle.fluid.framework._setitem_impl_(self.obj, item, value)
+        elif hasattr(self.obj, '__setitem__'):
+            return self.obj.__setitem__(item, value)
+        else:
+            raise RuntimeError(
+                "Unsupport _jst.GSet for {} because it has no __setitem__ method.".format(
+                    self.obj
+                )
+            )
+
+
 class SliceTransformer(BaseTransformer):
     """
-    This calss transforms Expr[...] = Expr into _jst.SetItem.
+    This calss transforms Expr[...] = Expr into _jst.GSet(Expr)[...] = Expr.
     """
 
     def __init__(self, wrapper_root):
@@ -34,28 +62,12 @@ class SliceTransformer(BaseTransformer):
     def transform(self):
         self.visit(self.root)
 
-    def visit_Assign(self, node):
+    def visit_Subscript(self, node):
         self.generic_visit(node)
 
-        if self._no_need_convert(node):
-            return node
-
-        assert isinstance(node.target, gast.SubScript)
-        target = ast_to_source_code(node.targets.value).strip()
-        index = ast_to_source_code(node.targets.slice).strip()
         value = ast_to_source_code(node.value).strip()
-        new_func_str = f"_jst.SetItem({target}, {index}, {value})"
-        new_value_node = gast.parse(new_func_str).body[0].value
+        new_value_str = f"_jst.GSet({value})"
+        new_value_node = gast.parse(new_value_str).body[0].value
         node.value = new_value_node
 
         return node
-
-    def _no_need_convert(self, node):
-        """
-        Return True if node.target is not Subscript
-        """
-        flag = False
-        if isinstance(node, gast.Assign):
-            flag = isinstance(node.target, gast.SubScript)
-
-        return flag
