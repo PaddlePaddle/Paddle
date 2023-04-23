@@ -118,6 +118,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out);
 }  // namespace phi

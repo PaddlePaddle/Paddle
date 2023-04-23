@@ -288,6 +288,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out) {
   auto x_dim = x.dims();
@@ -331,13 +332,6 @@ void FusedMultiTransformerXpuInferMeta(
                       phi::errors::InvalidArgument(
                           "The first dim of CacheKV must be 2, but got %d",
                           c_dim[0]));  // 2
-    PADDLE_ENFORCE_EQ(c_dim[1],
-                      x_dim[0],
-                      phi::errors::InvalidArgument(
-                          "The second dim of CacheKV must be equal with "
-                          "batch size %d, but got %d",
-                          x_dim[0],
-                          c_dim[1]));  // batch_size
     PADDLE_ENFORCE_EQ(c_dim[2],
                       trans_qkvw ? y_dim[1] : y_dim[2],
                       phi::errors::InvalidArgument(
