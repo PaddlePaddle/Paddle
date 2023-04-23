@@ -312,22 +312,6 @@ class TestHessianNoBatch(unittest.TestCase):
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
-    def func_single_input(self):
-        def func(x):
-            return paddle.sum(paddle.matmul(x, x))
-
-        numerical_hessian = utils._compute_numerical_hessian(
-            func, self.x, self.numerical_delta, self.np_dtype
-        )
-        numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
-
-        self.x.stop_gradient = False
-        y = func(self.x)
-        hessian = paddle.autograd.hessian(y, self.x, batch_axis=None)
-        np.testing.assert_allclose(
-            hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
-        )
-
     def func_single_input_attribute_operator(self):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
@@ -601,7 +585,6 @@ class TestHessianNoBatch(unittest.TestCase):
 
     def test_all_cases(self):
         self.setUpClass()
-        self.func_single_input()
         self.func_single_input_attribute_operator()
         self.func_multi_input()
         self.func_allow_unused_true()
