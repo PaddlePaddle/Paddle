@@ -159,7 +159,7 @@ def log(x, name=None):
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log"
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], "log"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
@@ -288,7 +288,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'stanh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'stanh'
         )
 
         helper = LayerHelper('stanh', **locals())
@@ -513,7 +513,15 @@ def _elementwise_op(helper):
             'complex128',
         ]
     else:
-        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
+        data_type = [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+        ]
     check_variable_and_dtype(
         x,
         'x',
@@ -2062,8 +2070,7 @@ def inner(x, y, name=None):
         xshape = x.shape
         yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-        if len(dstshape) == 0:
-            dstshape = [1]
+
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
@@ -2203,7 +2210,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
         )
 
         helper = LayerHelper('logsumexp', **locals())
@@ -2348,7 +2355,10 @@ def max(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('max', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'max',
         )
         if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
@@ -2706,7 +2716,7 @@ def log1p(x, name=None):
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log1p"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
@@ -2758,7 +2768,7 @@ def log2(x, name=None):
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log2"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log2"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log2', **locals())
@@ -2810,7 +2820,7 @@ def log10(x, name=None):
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log10"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log10"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log10', **locals())
@@ -3115,7 +3125,15 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             check_dtype(
                 x.dtype,
                 'Input',
-                ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+                [
+                    'bool',
+                    'int32',
+                    'int64',
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                ],
                 'diagonal',
             )
 
@@ -3274,7 +3292,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'cumsum',
         )
         check_type(x, 'x', (Variable), 'cumsum')
@@ -3348,7 +3366,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], "logcumsumexp"
         )
 
         helper = LayerHelper('logcumsumexp', **locals())
@@ -3422,7 +3440,16 @@ def cumprod(x, dim=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'cumprod',
         )
         check_type(dim, 'dim', int, 'cumprod')
@@ -3466,7 +3493,14 @@ def isfinite(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'isfinite',
         )
         out = helper.create_variable_for_type_inference('bool')
@@ -3502,7 +3536,17 @@ def isinf(x, name=None):
     else:
         helper = LayerHelper("isinf_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isinf',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3535,7 +3579,17 @@ def isnan(x, name=None):
     else:
         helper = LayerHelper("isnan_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isnan',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3650,7 +3704,7 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3668,7 +3722,7 @@ def tanh(x, name=None):
         out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3689,7 +3743,7 @@ def tanh(x, name=None):
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tanh'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'tanh'
         )
         check_type(x, 'x', (Variable), 'tanh')
         helper = LayerHelper('tanh', **locals())
@@ -3965,6 +4019,7 @@ def conj(x, name=None):
                 'complex64',
                 'complex128',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
@@ -4011,7 +4066,9 @@ def digamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.digamma(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'digamma'
+        )
         helper = LayerHelper('digamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
@@ -4194,7 +4251,7 @@ def logit(x, eps=None, name=None):
         return _C_ops.logit(x, eps)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logit'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'logit'
         )
         helper = LayerHelper("logit", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -4828,7 +4885,17 @@ def angle(x, name=None):
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'angle',
         )
         op_type = "angle"
         helper = LayerHelper(op_type, **locals())

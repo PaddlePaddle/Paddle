@@ -31,10 +31,10 @@ from paddle.fluid.framework import (
     EagerParamBase,
     Program,
     Variable,
+    _create_tensor,
     _current_expected_place,
     _dygraph_tracer,
     _non_static_mode,
-    _varbase_creator,
 )
 
 from .io_utils import (
@@ -133,7 +133,7 @@ def _load_state_dict_from_save_params(model_path):
     # 2. create and load Tensor
     with fluid.dygraph.guard():
         for name in var_name_list:
-            new_var = _varbase_creator(name=name, persistable=True)
+            new_var = _create_tensor(name=name, persistable=True)
             _dygraph_tracer().trace_op(
                 type='load',
                 inputs={},
@@ -458,7 +458,7 @@ def _ndarray_to_tensor(obj, return_numpy):
 
 
 def _lod_tensor2varbase(tensor):
-    return_var = _varbase_creator()
+    return_var = _create_tensor()
     return_var.value().get_tensor().set(tensor, _current_expected_place())
     return return_var
 

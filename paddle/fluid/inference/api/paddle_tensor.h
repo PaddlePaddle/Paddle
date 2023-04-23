@@ -26,6 +26,10 @@
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
 
+namespace paddle {
+class Tensor;
+}
+
 namespace paddle_infer {
 
 /// \brief  Experimental.

@@ -84,6 +84,7 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
            "python/paddle/incubate/autograd/composite_rules.py"
 	   "python/paddle/incubate/autograd/primitives.py"
+       "paddle/fluid/prim/api/api.yaml"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -206,7 +207,7 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
             echo_line="You must have one RD (chenwhql, phlrain, zyfncg, YuanRisheng) approval for changing ${API_FILE} , which manages the underlying code for PaddlePaddle PHI Library.\n"
             check_approval chenwhql phlrain zyfncg YuanRisheng
-      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ]; then
+      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ] || ["${API_FILE}" == "paddle/fluid/prim/api/api.yaml"]; then
             echo_line="You must have one RD (JiabinYang, cxxly(chenxiaoxu) , xiaoguoguo626807(wangruting)) approval for changing ${API_FILE} , which manages the code for PaddlePaddle Composite Bacward Prim API.\n"
             check_approval 1 JiabinYang cxxly xiaoguoguo626807
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
@@ -248,8 +249,8 @@ fi
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen or qili93) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
-    check_approval 1 22165420 6836917 46661762 26922892 16605440 2002279
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen, qili93 or ZzSean) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 22165420 6836917 46661762 26922892 16605440 2002279 32410583
   fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
@@ -456,8 +457,8 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
         CHECK_OP=${CHECK_WHOLE//+/'\n+'}
-        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
-        check_approval 1 6836917 47554610 12538138 43953930 35824027 6888866 16605440 2002279
+        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, lanxianghit, phlrain or ZzSean) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
+        check_approval 1 6836917 47554610 12538138 43953930 35824027 6888866 16605440 2002279 32410583
     fi
 fi
 

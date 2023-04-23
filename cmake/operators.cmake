@@ -62,7 +62,6 @@ function(op_library TARGET)
   set(hip_cc_srcs)
   set(xpu_cc_srcs)
   set(xpu_kp_cc_srcs)
-  set(mlu_cc_srcs)
   set(cudnn_cu_cc_srcs)
   set(miopen_cu_cc_srcs)
   set(cudnn_cu_srcs)
@@ -307,9 +306,8 @@ function(op_library TARGET)
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc source files.
-      compose_unity_target_sources(
-        ${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
-        ${mlu_cc_srcs})
+      compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs}
+                                   ${mkldnn_cc_srcs} ${xpu_cc_srcs})
       if(TARGET ${UNITY_TARGET})
         # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
         target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -325,7 +323,7 @@ function(op_library TARGET)
     else()
       cc_library(
         ${TARGET}
-        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${mlu_cc_srcs}
+        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   endif()
@@ -337,7 +335,6 @@ function(op_library TARGET)
   list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
-  list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
 
   # Define operators that don't need pybind here.
   foreach(
@@ -368,7 +365,8 @@ function(op_library TARGET)
     # Add PHI Kernel Registry Message
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
@@ -420,7 +418,8 @@ function(op_library TARGET)
     # Add PHI Kernel Registry Message
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
@@ -436,7 +435,8 @@ function(op_library TARGET)
     find_register(${hip_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_KERNEL")
     find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
-    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
       set(pybind_flag 1)
@@ -559,7 +559,6 @@ function(register_operators)
     "*_op.cc")
   string(REPLACE "_mkldnn" "" OPS "${OPS}")
   string(REPLACE "_xpu" "" OPS "${OPS}")
-  string(REPLACE "_mlu" "" OPS "${OPS}")
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)
   list(LENGTH register_operators_DEPS register_operators_DEPS_len)

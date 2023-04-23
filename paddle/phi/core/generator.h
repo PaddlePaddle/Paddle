@@ -24,11 +24,8 @@ limitations under the License. */
 #include <random>
 #include <typeinfo>
 #include <utility>
-static uint64_t GetRandomSeed() {
-  std::random_device rd;
-  // double has 53 bit significant, so limit uint64 to 53 bits
-  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
-}
+
+#include "paddle/phi/common/place.h"
 
 namespace phi {
 
@@ -84,6 +81,9 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator();
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
 
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
+
+const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+    const phi::CustomPlace& place);
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
