@@ -288,7 +288,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'stanh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'stanh'
         )
 
         helper = LayerHelper('stanh', **locals())
@@ -2070,8 +2070,7 @@ def inner(x, y, name=None):
         xshape = x.shape
         yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-        if len(dstshape) == 0:
-            dstshape = [1]
+
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
@@ -2717,7 +2716,7 @@ def log1p(x, name=None):
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log1p"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
@@ -2769,7 +2768,7 @@ def log2(x, name=None):
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log2"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log2"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log2', **locals())
@@ -2821,7 +2820,7 @@ def log10(x, name=None):
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log10"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log10"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log10', **locals())
@@ -4252,7 +4251,7 @@ def logit(x, eps=None, name=None):
         return _C_ops.logit(x, eps)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logit'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'logit'
         )
         helper = LayerHelper("logit", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)

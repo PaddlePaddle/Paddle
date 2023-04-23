@@ -192,9 +192,9 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
 
             def func(x):
-                s = paddle.zeros([1])
-                i = paddle.ones([1])
-                max_len = paddle.shape(x)[0]
+                s = paddle.zeros([])
+                i = paddle.ones([])
+                max_len = paddle.shape(x)
 
                 def cond(i, s, x):
                     return i < max_len
