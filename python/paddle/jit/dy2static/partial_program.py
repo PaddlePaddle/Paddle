@@ -653,7 +653,12 @@ class PartialProgramLayer:
         if targets:
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             with backend_guard(self._backend):
-                backward.gradients(targets=targets, inputs=[])
+                inputs = [
+                    program.block(0).var(var.name) for var in self._inputs
+                ] + [program.block(0).var(var.name) for var in self._params]
+                breakpoint()
+                grad_vars = backward.gradients(targets=targets, inputs=inputs)
+                self._grad_var_names = [var.name for var in grad_vars]
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
@@ -718,17 +723,23 @@ class PartialProgramLayer:
         ]
 
         if self.training:
+            inputs_size = len(self._inputs.tolist())
+            params_size = len(self._params)
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
             # the correct names of the parameter grads from program. And out grads are similar to above.
             attrs.extend(
                 (
                     'param_grad_names',
-                    self._param_grad_names,
+                    # self._param_grad_names,
+                    self._grad_var_names[
+                        inputs_size : inputs_size + params_size
+                    ],
                     'out_grad_names',
                     self._out_grad_names,
                     'x_grad_names',
-                    self._x_grad_names,
+                    # self._x_grad_names,
+                    self._grad_var_names[0:inputs_size],
                 )
             )
         if self._cuda_graph_capture_mode:
