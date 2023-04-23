@@ -140,6 +140,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("use_static_engine", true);
   engine_op_desc.SetAttr("dynamic_shape_names", std::vector<std::string>{"x"});
   engine_op_desc.SetAttr("dynamic_shape_lens", std::vector<int>{4});
+  engine_op_desc.SetAttr("with_dynamic_shape", true);
   engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 1, 1, 1});
   engine_op_desc.SetAttr("max_input_shape", std::vector<int>{16, 16, 16, 16});
   engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 4, 4});

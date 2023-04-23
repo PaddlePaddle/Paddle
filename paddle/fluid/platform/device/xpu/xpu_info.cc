@@ -57,7 +57,6 @@ void MemcpySyncH2D(void* dst,
                    const platform::XPUPlace& dst_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(dst_place);
-  dev_ctx->Wait();
   phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
 
@@ -67,7 +66,6 @@ void MemcpySyncD2H(void* dst,
                    const platform::XPUPlace& src_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
-  dev_ctx->Wait();
   phi::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
 }
 

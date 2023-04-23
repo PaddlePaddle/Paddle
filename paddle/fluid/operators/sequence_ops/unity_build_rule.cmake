@@ -22,7 +22,6 @@ register_unity_group(
   sequence_softmax_op.cc
   sequence_topk_avg_pooling_op.cc
   sequence_unpad_op.cc
-  sequence_concat_op.cu.cc
   sequence_conv_op.cu.cc)
 register_unity_group(
   cu

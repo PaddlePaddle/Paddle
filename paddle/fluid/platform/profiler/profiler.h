@@ -34,7 +34,6 @@ namespace platform {
 
 static constexpr uint32_t kProfileCPUOptionBit = 0;
 static constexpr uint32_t kProfileGPUOptionBit = 1;
-static constexpr uint32_t kProfileMLUOptionBit = 2;
 static constexpr uint32_t kProfileCustomDeviceOptionBit = 3;
 
 void SynchronizeDevice();

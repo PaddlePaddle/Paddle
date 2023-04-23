@@ -1534,7 +1534,7 @@ class Fleet:
                 # i.e. users can not modify current computation graph anymore
                 context["graph_optimize_ops"] = optimize_ops
                 context["graph_optimize_grads"] = params_grads
-            else:
+            elif loss.block.program._pass_applied is None:
                 apply_ir_passes(loss.block.program, startup_program, self)
 
             if not self._role_maker._is_heter_parameter_server_mode:
