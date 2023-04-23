@@ -65,6 +65,11 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   template <typename T>
+  static Getter CreateDefaultValueGetter(const T &var) {
+    return [=]() -> py::object { return py::cast(var); };
+  }
+
+  template <typename T>
   static Setter CreateSetter(T *var) {
     return [var](const py::object &obj) { *var = py::cast<T>(obj); };
   }
@@ -268,14 +273,16 @@ struct RegisterGetterSetterVisitor {
           name_,
           is_public,
           GlobalVarGetterSetterRegistry::CreateGetter(value),
-          GlobalVarGetterSetterRegistry::CreateGetter(default_value),
+          GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(
+              default_value),
           GlobalVarGetterSetterRegistry::CreateSetter(&value));
     } else {
       instance->Register(
           name_,
           is_public,
           GlobalVarGetterSetterRegistry::CreateGetter(value),
-          GlobalVarGetterSetterRegistry::CreateGetter(default_value));
+          GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(
+              default_value));
     }
   }
 
