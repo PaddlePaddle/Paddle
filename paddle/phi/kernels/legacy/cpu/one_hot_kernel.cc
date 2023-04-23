@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/one_hot_kernel.h"
-
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -63,11 +63,12 @@ struct OneHotV2OpFunctor {
 };
 
 template <typename T, typename Context>
-void OneHotKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& depth,
-                  DenseTensor* out) {
-  DataType dtype = phi::DataType::FLOAT32;
+void OneHotRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const Scalar& depth,
+                     DataType dtype,
+                     bool allow_out_of_range,
+                     DenseTensor* out) {
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
@@ -81,6 +82,7 @@ void OneHotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+PD_REGISTER_KERNEL(
+    one_hot_raw, CPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
