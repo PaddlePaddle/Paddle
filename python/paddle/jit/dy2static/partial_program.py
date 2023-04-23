@@ -656,9 +656,14 @@ class PartialProgramLayer:
                 inputs = [
                     program.block(0).var(var.name) for var in self._inputs
                 ] + [program.block(0).var(var.name) for var in self._params]
-                breakpoint()
                 grad_vars = backward.gradients(targets=targets, inputs=inputs)
-                self._grad_var_names = [var.name for var in grad_vars]
+                self._grad_var_names = []
+                for i in range(len(grad_vars)):
+                    var = grad_vars[i]
+                    if isinstance(var, framework.Variable):
+                        self._grad_var_names.append(var.name)
+                    else:
+                        self._grad_var_names.append(inputs[i].name + "@GRAD")
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
