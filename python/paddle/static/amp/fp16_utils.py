@@ -170,8 +170,15 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             in_var = block._find_var_recursive(in_var_name)
             if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
                 continue
+            # op's input is already casted to dest_dtype before. Set the in_var.name to cast_name.
+            cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+            casted_var = block._find_var_recursive(cast_name)
+            if casted_var and casted_var.dtype == dest_dtype:
+                _rename_arg(op, in_var.name, casted_var.name)
+                continue
+
+            # insert cast for op's input.
             if in_var.dtype == src_dtype:
-                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
                 out_var = block.vars.get(cast_name)
                 if out_var is None or out_var.dtype != dest_dtype:
                     op_device = op.attr('op_device')
@@ -503,7 +510,7 @@ def get_amp_dst_dtype(
             # if this op has inputs
             if in_name:
                 for in_var_name in op.input(in_name):
-                    in_var = block.var(in_var_name)
+                    in_var = block._find_var_recursive(in_var_name)
                     # this in_var isn't the output of other op
                     if in_var.op is None:
                         continue
