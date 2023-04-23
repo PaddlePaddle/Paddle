@@ -2483,21 +2483,32 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       std::unique_ptr<phi::KernelKey> new_expected_kernel_key = nullptr;
-      if (run_phi_kernel_ && in_def != nullptr &&
-          in_def->backend != phi::Backend::ALL_BACKEND) {
-        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
-        if ((in_def->backend != tensor_backend &&
-             !(in_def->backend == phi::Backend::GPUDNN &&
-               tensor_backend == phi::Backend::GPU) &&
-             !(in_def->backend == phi::Backend::KPS &&
-               tensor_backend == phi::Backend::XPU) &&
-             !(in_def->backend == phi::Backend::ONEDNN &&
-               tensor_backend == phi::Backend::CPU)) ||
-            tensor_in->place().GetType() == AllocationType::GPUPINNED) {
-          new_expected_kernel_key =
-              std::make_unique<phi::KernelKey>(in_def->backend,
-                                               expected_kernel_key.layout(),
-                                               expected_kernel_key.dtype());
+      if (run_phi_kernel_) {
+        if (phi_kernel_->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::STRUCTURE) {
+          if (!backends_are_same_class(kernel_type_for_var.backend(),
+                                       expected_kernel_key.backend())) {
+            new_expected_kernel_key =
+                std::make_unique<phi::KernelKey>(expected_kernel_key.backend(),
+                                                 expected_kernel_key.layout(),
+                                                 expected_kernel_key.dtype());
+          }
+        } else if (in_def != nullptr &&  // KernelRegisteredType is Function
+                   in_def->backend != phi::Backend::ALL_BACKEND) {
+          auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+          if ((in_def->backend != tensor_backend &&
+               !(in_def->backend == phi::Backend::GPUDNN &&
+                 tensor_backend == phi::Backend::GPU) &&
+               !(in_def->backend == phi::Backend::KPS &&
+                 tensor_backend == phi::Backend::XPU) &&
+               !(in_def->backend == phi::Backend::ONEDNN &&
+                 tensor_backend == phi::Backend::CPU)) ||
+              tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+            new_expected_kernel_key =
+                std::make_unique<phi::KernelKey>(in_def->backend,
+                                                 expected_kernel_key.layout(),
+                                                 expected_kernel_key.dtype());
+          }
         }
       }
 

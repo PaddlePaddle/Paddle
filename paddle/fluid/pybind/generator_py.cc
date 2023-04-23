@@ -88,6 +88,7 @@ void BindGenerator(py::module* m_ptr) {
   m.def("default_cpu_generator", &phi::DefaultCPUGenerator);
   m.def("default_cuda_generator", &phi::DefaultCUDAGenerator);
   m.def("default_xpu_generator", &phi::DefaultXPUGenerator);
+  m.def("default_custom_device_generator", &phi::DefaultCustomDeviceGenerator);
   m.def("set_random_seed_generator", &phi::SetRandomSeedGenerator);
   m.def("get_random_seed_generator", &phi::GetRandomSeedGenerator);
 }

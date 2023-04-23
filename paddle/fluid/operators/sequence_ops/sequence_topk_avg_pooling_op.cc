@@ -137,9 +137,13 @@ REGISTER_OPERATOR(
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
-REGISTER_OP_CPU_KERNEL(
-    sequence_topk_avg_pooling,
-    ops::SequenceTopkAvgPoolingKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_topk_avg_pooling_grad,
-    ops::SequenceTopkAvgPoolingGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(sequence_topk_avg_pooling,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceTopkAvgPoolingKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_topk_avg_pooling_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceTopkAvgPoolingGradKernel,
+                          float) {}

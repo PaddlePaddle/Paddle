@@ -1148,7 +1148,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-def _varbase_creator(
+def _create_tensor(
     type=core.VarDesc.VarType.LOD_TENSOR,
     name=None,
     shape=None,
@@ -3836,7 +3836,7 @@ class Block:
 
     def create_var(self, *args, **kwargs):
         if _non_static_mode():
-            var = _varbase_creator(*args, **kwargs)
+            var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
@@ -5334,6 +5334,8 @@ class Program:
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        self._pass_applied = None
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
