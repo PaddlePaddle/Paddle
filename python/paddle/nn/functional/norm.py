@@ -213,7 +213,7 @@ def batch_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            x, 'input', ['float16', 'uint16', 'float32', 'float64'], 'BatchNorm'
         )
 
         # for static need dict
