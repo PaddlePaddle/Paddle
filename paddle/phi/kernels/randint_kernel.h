@@ -27,13 +27,4 @@ void RandintKernel(const Context& dev_ctx,
                    DataType dtype,
                    DenseTensor* out);
 
-template <typename T, typename Context>
-void RandintRawKernel(const Context& dev_ctx,
-                      int low,
-                      int high,
-                      const IntArray& shape,
-                      DataType dtype,
-                      int seed,
-                      DenseTensor* out);
-
 }  // namespace phi
