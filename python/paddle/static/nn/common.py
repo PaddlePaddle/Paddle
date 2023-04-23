@@ -306,7 +306,10 @@ def instance_norm(
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'instance_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'instance_norm',
     )
     if param_attr is False:
         assert (
@@ -3598,7 +3601,7 @@ def layer_norm(
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
-    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
+    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
     if scale:
         assert (
             param_attr is not False

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -527,6 +529,44 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, dout, ddy_safe, dx, axis);
 
+      } else if ((!dx) && dy) {
+        DenseTensor tmp_a(ddout->dtype());
+        tmp_a.Resize(ddout->dims());
+
+        dev_ctx.template Alloc<T>(&tmp_a);
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::MultiplyFunctor<T>,
+                                          funcs::InverseMultiplyFunctor<T>>(
+            dev_ctx, x, ddy_safe, &tmp_a, axis);
+
+        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::MultiplyFunctor<T>,
+                                          funcs::InverseMultiplyFunctor<T>>(
+            dev_ctx, ddx_safe, y, ddout, axis);
+
+        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        ddout_t2.device(place) = ddout_t2 + ddout_t1;
+
+        // NOTE: in the following ElemwiseGradCompute, for the
+        // first output tensor is nullptr, the branch to calculate first
+        // output tensor will not be activated, DivGradDx function will not
+        // be called and can be ignored, the first branch has little effect
+        // on running speed.
+        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+            dev_ctx,
+            ddx_safe,
+            ddy_safe,
+            dout,
+            dout,
+            axis,
+            nullptr,
+            dy,
+            MulGradDX<T>(),
+            MulGradDY<T>());
       } else {
         DenseTensor tmp_a(ddout->dtype());
         tmp_a.Resize(ddout->dims());
@@ -552,19 +592,18 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
       }
     }
   } else {
-    if (dx && dy) {
-      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          dout,
-          dout,
-          axis,
-          dx,
-          dy,
-          MulGradDX<T>(),
-          MulGradDY<T>());
-    }
+    VLOG(3) << "Calculating here with dx: " << dx << ", dy: " << dy;
+    phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        dev_ctx,
+        ddx_safe,
+        ddy_safe,
+        dout,
+        dout,
+        axis,
+        dx,
+        dy,
+        MulGradDX<T>(),
+        MulGradDY<T>());
   }
 }
 

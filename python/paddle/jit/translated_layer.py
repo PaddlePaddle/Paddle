@@ -21,10 +21,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
@@ -654,7 +650,7 @@ def _load_persistable_vars_by_program(
                 persistable=True,
             )
         else:
-            new_var = framework._varbase_creator(
+            new_var = framework._create_tensor(
                 type=each_var.type(),
                 name=each_var.name(),
                 shape=each_var.shape(),
@@ -742,9 +738,7 @@ def _load_persistable_vars(
                 persistable=True,
             )
         else:
-            new_var = framework._varbase_creator(
-                name=new_name, persistable=True
-            )
+            new_var = framework._create_tensor(name=new_name, persistable=True)
 
         new_var.stop_gradient = extra_var_info[name]['stop_gradient']
         load_var_dict[new_name] = new_var
@@ -976,10 +970,7 @@ def _run_dygraph(instance, input, program_holder):
             )
         )
 
-    use_interpretorcore = (
-        _is_enable_standalone_executor()
-        and _is_dy2st_enable_standalone_executor()
-    )
+    use_interpretorcore = True
     attrs.extend(('use_interpretorcore', use_interpretorcore))
     if use_interpretorcore:
         attrs.extend(

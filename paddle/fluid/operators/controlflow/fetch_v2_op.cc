@@ -156,7 +156,8 @@ class FetchV2Kernel {
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place());
+                         platform::is_cuda_pinned_place(src_item.place()) ||
+                         platform::is_custom_place(src_item.place());
       PADDLE_ENFORCE_EQ(
           check_place,
           true,

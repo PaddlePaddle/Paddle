@@ -1,18 +1,18 @@
 # This file is designed for fusion C++ farward operators, which manages the
 # generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
-# "support_dygraph_mode" is and extra configuration item in this file,
+# "support_dygraph_mode" is an extra configuration item in this file,
 # if one operator have "support_dygraph_mode : true", it supports dygraph mode,
 # otherwise the operator only could be used in static mode.
 
 - op : conv2d_xpu
-  args : (Tensor input, Tensor input_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
-  output : Tensor(output), Tensor(output_max)
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
+  output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : Conv2dXPUInferMeta
   kernel :
     func : conv2d_xpu
-    data_type : input
-  optional : bias, branch, input_max
+    data_type : x
+  optional : bias, branch, x_max
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
@@ -34,10 +34,12 @@
   optional : bias, x_max
 
 - op : fused_dropout_add
-  args : (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
+  optional : seed_tensor
   output : Tensor(out), Tensor(seed_offset)
   infer_meta :
     func : FusedDropoutAddInferMeta
+    param : [x, y]
   kernel :
     func : fused_dropout_add
     data_type : x

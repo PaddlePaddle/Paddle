@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
@@ -465,44 +465,6 @@ class TestCustomOptionalJit(unittest.TestCase):
             np.random.random((3, 2)).astype("float32"),
         ]
 
-    def check_output(self, out, pd_out, name):
-        if out is None and pd_out is None:
-            return
-        assert out is not None, "out value of " + name + " is None"
-        assert pd_out is not None, "pd_out value of " + name + " is None"
-        if isinstance(out, list) and isinstance(pd_out, list):
-            for idx in range(len(out)):
-                np.testing.assert_array_equal(
-                    out[idx],
-                    pd_out[idx],
-                    err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                        name, out[idx], name, pd_out[idx]
-                    ),
-                )
-        else:
-            np.testing.assert_array_equal(
-                out,
-                pd_out,
-                err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                    name, out, name, pd_out
-                ),
-            )
-
-    def check_output_allclose(self, out, pd_out, name):
-        if out is None and pd_out is None:
-            return
-        assert out is not None, "out value of " + name + " is None"
-        assert pd_out is not None, "pd_out value of " + name + " is None"
-        np.testing.assert_allclose(
-            out,
-            pd_out,
-            rtol=5e-5,
-            atol=1e-2,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
-        )
-
     def test_optional_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -526,9 +488,9 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
 
     def test_optional_dynamic_add(self):
         for device in self.devices:
@@ -553,9 +515,9 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
 
     def test_optional_inplace_static_add(self):
         for device in self.devices:
@@ -576,13 +538,11 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_tuple[0], pd_tuple[0], "x")
-                    self.check_output(custom_tuple[1], pd_tuple[1], "out")
-                    self.check_output(custom_tuple[2], pd_tuple[2], "x_grad")
+                    check_output(custom_tuple[0], pd_tuple[0], "x")
+                    check_output(custom_tuple[1], pd_tuple[1], "out")
+                    check_output(custom_tuple[2], pd_tuple[2], "x_grad")
                     if len(custom_tuple) > 3:
-                        self.check_output(
-                            custom_tuple[3], pd_tuple[3], "y_grad"
-                        )
+                        check_output(custom_tuple[3], pd_tuple[3], "y_grad")
 
     def test_optional_inplace_dynamic_add(self):
         for device in self.devices:
@@ -619,16 +579,16 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(pd_y, pd_outy, "inplace_pd_y")
-                    self.check_output(custom_y, custom_outy, "inplace_custom_y")
+                    check_output(pd_y, pd_outy, "inplace_pd_y")
+                    check_output(custom_y, custom_outy, "inplace_custom_y")
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_outx, pd_outx, "outx")
-                    self.check_output(custom_y, pd_y, "y")
-                    self.check_output(custom_outy, pd_outy, "outy")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                    self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_outx, pd_outx, "outx")
+                    check_output(custom_y, pd_y, "y")
+                    check_output(custom_outy, pd_outy, "outy")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_y_grad, pd_y_grad, "y_grad")
 
     def test_optional_vector_static_add(self):
         for device in self.devices:
@@ -653,9 +613,9 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
 
     def test_optional_vector_dynamic_add(self):
         for device in self.devices:
@@ -680,9 +640,9 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
 
     def test_optional_inplace_vector_static_add(self):
         for device in self.devices:
@@ -703,16 +663,12 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(custom_tuple[0], pd_tuple[0], "x")
-                    self.check_output(custom_tuple[1], pd_tuple[1], "out")
-                    self.check_output(custom_tuple[2], pd_tuple[2], "x_grad")
+                    check_output(custom_tuple[0], pd_tuple[0], "x")
+                    check_output(custom_tuple[1], pd_tuple[1], "out")
+                    check_output(custom_tuple[2], pd_tuple[2], "x_grad")
                     if len(custom_tuple) > 3:
-                        self.check_output(
-                            custom_tuple[3], pd_tuple[3], "y1_grad"
-                        )
-                        self.check_output(
-                            custom_tuple[4], pd_tuple[4], "y2_grad"
-                        )
+                        check_output(custom_tuple[3], pd_tuple[3], "y1_grad")
+                        check_output(custom_tuple[4], pd_tuple[4], "y2_grad")
 
     def test_optional_inplace_vector_dynamic_add(self):
         for device in self.devices:
@@ -749,16 +705,16 @@ class TestCustomOptionalJit(unittest.TestCase):
                         np_y,
                     )
 
-                    self.check_output(pd_y, pd_outy, "inplace_pd_y")
-                    self.check_output(custom_y, custom_outy, "inplace_custom_y")
+                    check_output(pd_y, pd_outy, "inplace_pd_y")
+                    check_output(custom_y, custom_outy, "inplace_custom_y")
 
-                    self.check_output(custom_x, pd_x, "x")
-                    self.check_output(custom_outx, pd_outx, "outx")
-                    self.check_output(custom_y, pd_y, "y")
-                    self.check_output(custom_outy, pd_outy, "outy")
-                    self.check_output(custom_out, pd_out, "out")
-                    self.check_output(custom_x_grad, pd_x_grad, "x_grad")
-                    self.check_output(custom_y_grad, pd_y_grad, "y_grad")
+                    check_output(custom_x, pd_x, "x")
+                    check_output(custom_outx, pd_outx, "outx")
+                    check_output(custom_y, pd_y, "y")
+                    check_output(custom_outy, pd_outy, "outy")
+                    check_output(custom_out, pd_out, "out")
+                    check_output(custom_x_grad, pd_x_grad, "x_grad")
+                    check_output(custom_y_grad, pd_y_grad, "y_grad")
 
 
 if __name__ == "__main__":
