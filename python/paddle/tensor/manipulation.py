@@ -2542,7 +2542,7 @@ def unsqueeze(x, axis, name=None):
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
@@ -2596,6 +2596,7 @@ def unsqueeze(x, axis, name=None):
             input,
             'input',
             [
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
