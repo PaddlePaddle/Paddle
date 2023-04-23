@@ -4500,6 +4500,7 @@ void TransposeGradInferMeta(const MetaTensor& x,
   }
 
   TransposeInferMeta(x, reversed_axis, out);
+  out->set_layout(static_cast<DataLayout>(x.layout()));
 }
 
 void UnbindInferMeta(const MetaTensor& x,
