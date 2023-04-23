@@ -22,7 +22,7 @@ from paddle.fluid import core, framework, global_scope
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-from .fp16_lists import AutoMixedPrecisionLists
+from .fp16_lists import AutoMixedPrecisionLists, get_low_precision_dtypestr
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -101,6 +101,8 @@ def _keep_fp32_input(op, in_name):
         # Scale, Bias, Mean, Variance should be float32.
         return in_name != 'X'
     if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
+        return in_name != 'X'
+    if op_type == 'instance_norm':
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
@@ -438,7 +440,8 @@ def cast_model_to_fp16(
     """
 
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists()
+        dtype = get_low_precision_dtypestr(dest_type)
+        amp_lists = AutoMixedPrecisionLists(dtype)
     amp_lists.unsupported_list -= {
         "conditional_block_grad",
         "conditional_block",
@@ -623,11 +626,14 @@ def cast_parameters_to_fp16(
     for block in program.blocks:
         all_parameters.extend(block.all_parameters())
 
+    dtype_str = get_low_precision_dtypestr(dest_type)
     fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
         if param.name in fp16_var_names:
-            _logger.debug(f"---- cast {param.name} to fp16/bf16 dtype ----")
+            _logger.debug(
+                f"-- cast {param.name} to {dtype_str}, place is {place}"
+            )
             if var_scope.find_var(param.name):
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)
