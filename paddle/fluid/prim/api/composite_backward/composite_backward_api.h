@@ -121,7 +121,6 @@ void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,
                  const Scalar& axis,
-                 bool overwrite,
                  Tensor* grad_x) {
   auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
   std::vector<int> tmp_perm;
