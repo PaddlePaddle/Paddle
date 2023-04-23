@@ -15,6 +15,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle import ParamAttr
 from paddle.nn import BatchNorm, Linear
@@ -63,6 +65,26 @@ class TestGradNameParse(unittest.TestCase):
                 assert param.shape == param.grad.shape
 
         opt.minimize(loss)
+
+
+def tanh_high_order_grad(x):
+    y = paddle.tanh(x)
+    return paddle.grad(y, x, create_graph=True)[0]
+
+
+class TestXGradNameParse(unittest.TestCase):
+    def test_x_grad_name_parse(self):
+        x1 = paddle.ones((1,))
+        x1.stop_gradient = False
+        y1 = tanh_high_order_grad(x1)
+        g1 = paddle.grad(y1, x1)
+
+        x2 = paddle.ones((1,))
+        x2.stop_gradient = False
+        y2 = paddle.jit.to_static(tanh_high_order_grad)(x2)
+        g2 = paddle.grad(y2, x2)
+
+        np.testing.assert_equal(g1[0].numpy(), g2[0].numpy())
 
 
 if __name__ == "__main__":

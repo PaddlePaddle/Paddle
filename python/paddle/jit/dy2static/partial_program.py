@@ -460,6 +460,10 @@ class PartialProgramLayer:
             len(self._outputs.var_ids),
         )
 
+    @LazyInitialized
+    def _x_grad_names(self):
+        return _param_grad_names(self._train_program.desc, self._inputs)
+
     @property
     def program(self):
         """
@@ -723,6 +727,8 @@ class PartialProgramLayer:
                     self._param_grad_names,
                     'out_grad_names',
                     self._out_grad_names,
+                    'x_grad_names',
+                    self._x_grad_names,
                 )
             )
         if self._cuda_graph_capture_mode:

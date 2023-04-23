@@ -1476,16 +1476,17 @@ def _param_grad_names(program_desc, params):
                 pre_count = var_name.count(GRAD_PREFIX)
                 if GRAD_PREFIX * pre_count + suffix == var_name:
                     candidate.append(var_name)
-
         if candidate:
-            names.append(
-                max(
-                    candidate,
-                    key=lambda name: name.count(GRAD_PREFIX)
-                    if GRAD_PREFIX in name
-                    else name.count(GRAD_SUFFIX),
+            if any(
+                [True if GRAD_PREFIX in name else False for name in candidate]
+            ):
+                names.append(
+                    max(candidate, key=lambda name: name.count(GRAD_PREFIX))
                 )
-            )
+            else:
+                names.append(
+                    max(candidate, key=lambda name: name.count(GRAD_SUFFIX))
+                )
         else:
             names.append(param.name + GRAD_SUFFIX)
     return names
