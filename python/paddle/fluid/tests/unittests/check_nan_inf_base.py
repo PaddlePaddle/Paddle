@@ -97,7 +97,7 @@ def check(use_cuda):
                 step += 1
                 print(
                     'iter={:.0f},cost={},acc1={}'.format(
-                        step, outs[1][0], outs[2][0]
+                        step, outs[1][0], outs[2]
                     )
                 )
 

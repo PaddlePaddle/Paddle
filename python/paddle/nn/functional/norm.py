@@ -213,7 +213,7 @@ def batch_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            x, 'input', ['float16', 'uint16', 'float32', 'float64'], 'BatchNorm'
         )
 
         # for static need dict
@@ -546,7 +546,7 @@ def local_response_norm(
 
     from functools import reduce
 
-    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:], 1)
 
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:

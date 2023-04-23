@@ -48,7 +48,7 @@ PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor = CreateTensorWithValue(ddim,
                                                   paddle::platform::CUDAPlace(),
@@ -89,7 +89,7 @@ TEST(Benchmark, EagerMatmulCUDA) {
   paddle::platform::CUDAPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CUDAPlace(),
@@ -143,7 +143,7 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
   tracer->SetExpectedPlace(place);
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CUDAPlace(),
@@ -197,7 +197,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
   tracer->SetExpectedPlace(place);
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
                                              paddle::platform::CUDAPlace(),
