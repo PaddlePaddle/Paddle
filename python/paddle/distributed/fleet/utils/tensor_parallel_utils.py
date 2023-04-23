@@ -22,6 +22,9 @@ ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+from paddle.distributed.auto_parallel.operators.comm import (
+    is_model_parallel_allreduce_op,
+)
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 from paddle.fluid import core
 from paddle.static import Parameter
@@ -78,7 +81,7 @@ def resolute_tensor_parallel_ring_id(program):
     ring_id = None
 
     for op in ops:
-        if op.type == "c_identity":
+        if op.type == "c_identity" or is_model_parallel_allreduce_op(op):
             if ring_id is None:
                 ring_id = int(op.attr("ring_id"))
             else:
@@ -168,6 +171,7 @@ def insert_synchronization(
     sync_param,
     sync_grad,
     sync_moment,
+    sync_master_param,
     sync_mode,
     src_rank,
 ):
@@ -203,6 +207,7 @@ def insert_synchronization(
                         op_role,
                     )
 
+                if sync_master_param:
                     if (
                         "MasterParamOut" in op.output_names
                         and len(op.output("MasterParamOut")) == 1
@@ -285,6 +290,7 @@ def add_extra_synchronization(
     sync_param=True,
     sync_grad=False,
     sync_moment=False,
+    sync_master_param=False,
     src_rank=0,
     sync_ring_id=None,
 ):
@@ -317,7 +323,7 @@ def add_extra_synchronization(
         )
     )
 
-    # adopt for pipeline opt
+    # adopt for static pipeline opt
     if program._pipeline_opt is not None:
         assert (
             program._pipeline_opt['section_program'] is not None
@@ -341,16 +347,19 @@ def add_extra_synchronization(
         sync_ring_id = resolute_tensor_parallel_ring_id(program)
 
     # step3: insert synchronization
-    # TODO support gradient merge with different update block
-    block = program.global_block()
-    insert_synchronization(
-        block,
-        params_to_sync,
-        tp_degree,
-        sync_ring_id,
-        sync_param,
-        sync_grad,
-        sync_moment,
-        sync_mode,
-        src_rank,
-    )
+    # NOTE AutoParallel pass like gradient merge maywould move optimization ops to another block and add useless blocks into program.
+    # But those program would not be executed, therefore we add extra synchronization to all blocks that has optimizer operator.
+    # TODO support autoparallel resolute tp degree.
+    for block in program.blocks:
+        insert_synchronization(
+            block,
+            params_to_sync,
+            tp_degree,
+            sync_ring_id,
+            sync_param,
+            sync_grad,
+            sync_moment,
+            sync_master_param,
+            sync_mode,
+            src_rank,
+        )

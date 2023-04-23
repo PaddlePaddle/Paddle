@@ -533,6 +533,14 @@ def is_global_norm_sync_op(op):
     )
 
 
+def is_model_parallel_allreduce_op(op):
+    return (
+        op.type in ["c_allreduce_sum"]
+        and op.desc.has_attr("op_namescope")
+        and ParallelMode.ModelParallel in op.desc.attr("op_namescope")
+    )
+
+
 def is_in_backward_phase(dist_ctx):
     # NOTE currently high-order differential in Paddle dose NOT distinguish gradient computation operators
     # in Forward phase and operators in Backward phase (both with op_role=1), which will mislead
