@@ -151,16 +151,19 @@ class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
+
     .. note::
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.
         **2. LoDTensorArray is not currently supported in the output.
+
     Args:
         main_program(Program): The main program that contains ops need to be executed.
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
+
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
@@ -521,7 +524,9 @@ class PartialProgramLayer:
             Can't just return paddle.static.Program(), because self.backward_program is a property,
             whenever we call this method, a tmp Program() object is created and is gc immediatly
             after executed the following line in PartialProgramLayer.__call__.
+
             >>> self.backward_program.desc.block(0),
+
             When we access RunProgramAPI, it's possible to get an invalid backward_program address.
             """
             return self._empty_backward_program_for_eval
@@ -548,6 +553,7 @@ class PartialProgramLayer:
             x = 2 * in  # <---- x is a non-leaf node in program.
             y = x + 3
             return x, y
+
         loss = forward(in)[0].sum()
         loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
         """
