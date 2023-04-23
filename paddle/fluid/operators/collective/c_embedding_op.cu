@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -82,7 +84,7 @@ __global__ void CEmbeddingGrad(T *table,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -136,7 +138,7 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -164,6 +166,10 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
+    if (FLAGS_cudnn_deterministic) {
+      VLOG(2) << "Run grad kernel of embedding with single thread.";
+      blocks = 1;
+    }
     if (index_type == framework::proto::VarType::INT32) {
       CEmbeddingGrad<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
@@ -195,17 +201,27 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(c_embedding,
-                        ops::CEmbeddingCUDAKernel<float>,
-                        ops::CEmbeddingCUDAKernel<double>,
+
+PD_REGISTER_STRUCT_KERNEL(c_embedding,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingCUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::CEmbeddingCUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::CEmbeddingCUDAKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(c_embedding_grad,
-                        ops::CEmbeddingGradCUDAKernel<float>,
-                        ops::CEmbeddingGradCUDAKernel<double>,
+                          plat::float16) {
+}
+
+PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingGradCUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::CEmbeddingGradCUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::CEmbeddingGradCUDAKernel<plat::float16>);
+                          plat::float16) {
+}

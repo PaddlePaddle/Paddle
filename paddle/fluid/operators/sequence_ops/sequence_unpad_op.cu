@@ -15,14 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_unpad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_unpad,
-                        ops::SequenceUnpadOpKernel<phi::GPUContext, float>,
-                        ops::SequenceUnpadOpKernel<phi::GPUContext, double>,
-                        ops::SequenceUnpadOpKernel<phi::GPUContext, int>,
-                        ops::SequenceUnpadOpKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_unpad_grad,
-    ops::SequenceUnpadGradOpKernel<phi::GPUContext, float>,
-    ops::SequenceUnpadGradOpKernel<phi::GPUContext, double>,
-    ops::SequenceUnpadGradOpKernel<phi::GPUContext, int>,
-    ops::SequenceUnpadGradOpKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_unpad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceUnpadOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_unpad_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceUnpadGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

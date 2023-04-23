@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -161,7 +162,7 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
+  OperatorRegistrarRecursive(const char* op_type UNUSED, OpInfo* info UNUSED) {}
 };
 
 template <typename T>
@@ -319,7 +320,7 @@ struct OpInfoFiller<T, kVarTypeInference> {
 
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
-  void operator()(const char* op_type, OpInfo* info) const {
+  void operator()(const char* op_type UNUSED, OpInfo* info) const {
     // Note: if fill InferShapeFN by this Filler, the infershape here
     // will overwrite the op->InferShape func registered in kOperator Filler
     info->infer_shape_ = [](InferShapeContext* ctx) {
@@ -359,7 +360,7 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
 // A fake OpInfoFiller of void
 template <>
 struct OpInfoFiller<void, kUnknown> {
-  void operator()(const char* op_type, OpInfo* info) const {}
+  void operator()(const char* op_type UNUSED, OpInfo* info UNUSED) const {}
 };
 
 }  // namespace details

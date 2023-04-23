@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
+#include <atomic>
 #include <random>
 #include <string>
 
@@ -34,12 +35,15 @@ namespace allocation {
 
 std::string GetIPCName() {
   static std::random_device rd;
+  static std::atomic<uint64_t> counter{0};
   std::string handle = "/paddle_";
 #ifdef _WIN32
   handle += std::to_string(GetCurrentProcessId());
 #else
   handle += std::to_string(getpid());
 #endif
+  handle += "_";
+  handle += std::to_string(counter.fetch_add(1));
   handle += "_";
   handle += std::to_string(rd());
   return handle;
@@ -216,26 +220,18 @@ void RefcountedMemoryMapAllocation::close() {
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
-  try {
-    PADDLE_ENFORCE_NE(
-        munmap(this->ptr(), this->size()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unmap the shared memory file %s", this->ipc_name()));
-  } catch (std::exception &e) {
+  if (munmap(this->ptr(), this->size()) == -1) {
+    platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                  this->ipc_name());
   }
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
-  try {
-    PADDLE_ENFORCE_NE(
-
-        munmap(this->ptr(), this->size()),
-        -1,
-        platform::errors::Unavailable(
-            "could not unmap the shared memory file %s", this->ipc_name()));
-  } catch (std::exception &e) {
+  if (munmap(this->ptr(), this->size()) == -1) {
+    platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                  this->ipc_name());
   }
+
   /* Here we do not pay attention to the result of shm_unlink,
      because the memory mapped file may have been cleared due to the
      MemoryMapFdSet::Clear() */

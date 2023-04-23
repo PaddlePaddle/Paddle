@@ -17,7 +17,11 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle import fluid
@@ -312,6 +316,49 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
         np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestLogcumsumexpBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'logcumsumexp'
+        self.dtype = np.uint16
+        self.python_api = logcumsumexp_wrapper
+        x = np.arange(100, dtype=np.float64).reshape(10, 10)
+        output = np_logcumsumexp(x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=place
+        )
+
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (10, 10))
+        hist, _ = np.histogram(outs[0], range=(-3, 5))
+        hist = hist.astype("float64")
+        hist /= float(outs[0].size)
+
+        x = np.arange(100, dtype=np.float64).reshape(10, 10)
+        data = np_logcumsumexp(x)
+        hist2, _ = np.histogram(data, range=(-3, 5))
+        hist2 = hist2.astype("float64")
+        hist2 /= float(outs[0].size)
+        np.testing.assert_allclose(hist, hist2, rtol=0.3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.5, max_relative_error=0.5
+        )
 
 
 if __name__ == '__main__':

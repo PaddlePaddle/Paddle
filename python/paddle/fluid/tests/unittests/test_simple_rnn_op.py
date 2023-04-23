@@ -22,9 +22,9 @@ from eager_op_test import OpTest
 import paddle
 from paddle.fluid import core
 
-sys.path.append("./rnn")
-from rnn.convert import get_params_for_net
-from rnn.rnn_numpy import SimpleRNN
+sys.path.append("../../../../../test/rnn")
+from convert import get_params_for_net
+from rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -68,10 +68,10 @@ class TestSimpleRNNOp(OpTest):
         weight_names = []
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.weight_{}".format(i, j))
+                weight_names.append(f"{i}.weight_{j}")
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.bias_{}".format(i, j))
+                weight_names.append(f"{i}.bias_{j}")
         return weight_names
 
     def setUp(self):

@@ -17,11 +17,11 @@ import unittest
 import numpy
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def calculate_momentum_by_numpy(

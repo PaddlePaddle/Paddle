@@ -159,7 +159,7 @@ def log(x, name=None):
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log"
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], "log"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
@@ -285,10 +285,10 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
 
     if in_dygraph_mode():
-        return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+        return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'stanh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'stanh'
         )
 
         helper = LayerHelper('stanh', **locals())
@@ -492,8 +492,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     bf16_and_complex_supported_ops = [
         "elementwise_add",
         "elementwise_sub",
@@ -513,7 +513,15 @@ def _elementwise_op(helper):
             'complex128',
         ]
     else:
-        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
+        data_type = [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+        ]
     check_variable_and_dtype(
         x,
         'x',
@@ -2062,8 +2070,7 @@ def inner(x, y, name=None):
         xshape = x.shape
         yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-        if len(dstshape) == 0:
-            dstshape = [1]
+
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
@@ -2203,7 +2210,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'logsumexp'
         )
 
         helper = LayerHelper('logsumexp', **locals())
@@ -2348,7 +2355,10 @@ def max(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('max', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'max',
         )
         if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
@@ -2706,7 +2716,7 @@ def log1p(x, name=None):
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log1p"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
@@ -2758,7 +2768,7 @@ def log2(x, name=None):
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log2"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log2"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log2', **locals())
@@ -2810,7 +2820,7 @@ def log10(x, name=None):
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log10"
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log10"
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log10', **locals())
@@ -3115,7 +3125,15 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             check_dtype(
                 x.dtype,
                 'Input',
-                ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+                [
+                    'bool',
+                    'int32',
+                    'int64',
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                ],
                 'diagonal',
             )
 
@@ -3274,7 +3292,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'cumsum',
         )
         check_type(x, 'x', (Variable), 'cumsum')
@@ -3348,7 +3366,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp"
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], "logcumsumexp"
         )
 
         helper = LayerHelper('logcumsumexp', **locals())
@@ -3422,7 +3440,16 @@ def cumprod(x, dim=None, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'cumprod',
         )
         check_type(dim, 'dim', int, 'cumprod')
@@ -3466,7 +3493,14 @@ def isfinite(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'isfinite',
         )
         out = helper.create_variable_for_type_inference('bool')
@@ -3502,7 +3536,17 @@ def isinf(x, name=None):
     else:
         helper = LayerHelper("isinf_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isinf',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3535,7 +3579,17 @@ def isnan(x, name=None):
     else:
         helper = LayerHelper("isnan_v2", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'isnan',
         )
         out = helper.create_variable_for_type_inference(dtype='bool')
         helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
@@ -3650,7 +3704,7 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sign'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3668,7 +3722,7 @@ def tanh(x, name=None):
         out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3689,7 +3743,7 @@ def tanh(x, name=None):
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tanh'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'tanh'
         )
         check_type(x, 'x', (Variable), 'tanh')
         helper = LayerHelper('tanh', **locals())
@@ -3965,6 +4019,7 @@ def conj(x, name=None):
                 'complex64',
                 'complex128',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
@@ -4011,7 +4066,9 @@ def digamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.digamma(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'digamma'
+        )
         helper = LayerHelper('digamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
@@ -4027,7 +4084,7 @@ def lgamma(x, name=None):
 
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4046,7 +4103,9 @@ def lgamma(x, name=None):
     if in_dygraph_mode():
         return _C_ops.lgamma(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'lgamma'
+        )
         helper = LayerHelper('lgamma', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})
@@ -4192,7 +4251,7 @@ def logit(x, eps=None, name=None):
         return _C_ops.logit(x, eps)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logit'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'logit'
         )
         helper = LayerHelper("logit", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -4215,9 +4274,9 @@ def lerp(x, y, weight, name=None):
             lerp(x, y, weight) = x + weight * (y - x).
 
     Args:
-        x (Tensor): An N-D Tensor with starting points, the data type is float32, float64.
-        y (Tensor): An N-D Tensor with ending points, the data type is float32, float64.
-        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float32, float64.
+        x (Tensor): An N-D Tensor with starting points, the data type is float16, float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is float16, float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4241,10 +4300,14 @@ def lerp(x, y, weight, name=None):
     if in_dygraph_mode():
         return _C_ops.lerp(x, y, weight)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
-        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
         check_variable_and_dtype(
-            weight, 'weight', ['float32', 'float64'], 'lerp'
+            x, 'x', ['float16', 'float32', 'float64'], 'lerp'
+        )
+        check_variable_and_dtype(
+            y, 'y', ['float16', 'float32', 'float64'], 'lerp'
+        )
+        check_variable_and_dtype(
+            weight, 'weight', ['float16', 'float32', 'float64'], 'lerp'
         )
 
         helper = LayerHelper('lerp', **locals())
@@ -4822,7 +4885,17 @@ def angle(x, name=None):
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+                'uint16',
+            ],
+            'angle',
         )
         op_type = "angle"
         helper = LayerHelper(op_type, **locals())
@@ -5192,7 +5265,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
             dx = 1.0
         dx = paddle.to_tensor(dx)
         if dx.dim() > 1:
-            raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
+            raise ValueError(f'Expected dx to be a scalar, got dx={dx}')
     else:
         if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
             raise TypeError(
@@ -5333,3 +5406,79 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             #         [3.50000000, 8.        ]])
     """
     return _trapezoid(y, x, dx, axis, mode='cumsum')
+
+
+def vander(x, n=None, increasing=False, name=None):
+    """
+    Generate a Vandermonde matrix.
+
+    The columns of the output matrix are powers of the input vector. Order of the powers is
+    determined by the increasing Boolean parameter. Specifically, when the increment is
+    "false", the ith output column is a step-up in the order of the elements of the input
+    vector to the N - i - 1 power. Such a matrix with a geometric progression in each row
+    is named after Alexandre-Theophile Vandermonde.
+
+    Args:
+        x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
+        n (int): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
+        increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns:
+        Tensor, A vandermonde matrix with shape (len(x), N). If increasing is False, the first column is :math:`x^{(N-1)}`, the second :math:`x^{(N-2)}` and so forth.
+        If increasing is True, the columns are :math:`x^0`, :math:`x^1`, ..., :math:`x^{(N-1)}`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([1., 2., 3.], dtype="float32")
+            out = paddle.vander(x)
+            print(out.numpy())
+            # [[1., 1., 1.],
+            #  [4., 2., 1.],
+            #  [9., 3., 1.]]
+            out1 = paddle.vander(x,2)
+            print(out1.numpy())
+            # [[1., 1.],
+            #  [2., 1.],
+            #  [3., 1.]]
+            out2 = paddle.vander(x, increasing = True)
+            print(out2.numpy())
+            # [[1., 1., 1.],
+            #  [1., 2., 4.],
+            #  [1., 3., 9.]]
+            real = paddle.to_tensor([2., 4.])
+            imag = paddle.to_tensor([1., 3.])
+            complex = paddle.complex(real, imag)
+            out3 = paddle.vander(complex)
+            print(out3.numpy())
+            # [[2.+1.j, 1.+0.j],
+            #  [4.+3.j, 1.+0.j]]
+    """
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+        'vander',
+    )
+    if x.dim() != 1:
+        raise ValueError(
+            "The input of x is expected to be a 1-D Tensor."
+            "But now the dims of Input(X) is %d." % x.dim()
+        )
+
+    if n is None:
+        n = x.shape[0]
+
+    if n < 0:
+        raise ValueError("N must be non-negative.")
+
+    res = paddle.empty([x.shape[0], n], dtype=x.dtype)
+
+    if n > 0:
+        res[:, 0] = paddle.to_tensor([1], dtype=x.dtype)
+    if n > 1:
+        res[:, 1:] = x[:, None]
+        res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
+    res = res[:, ::-1] if not increasing else res
+    return res

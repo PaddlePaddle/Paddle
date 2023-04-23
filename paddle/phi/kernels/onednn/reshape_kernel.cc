@@ -120,7 +120,7 @@ void ExecuteReshape(const Context& dev_ctx,
                     const DDim& x_dims,
                     DenseTensor* out) {
   auto out_dims = ValidateShape(shape.GetData(), x_dims);
-  auto x_vec_dims = vectorize(x_dims);
+  auto x_vec_dims = x.mem_desc().dims();
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
@@ -143,8 +143,9 @@ void ExecuteReshape(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  out->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
+  const auto reshape_dims =
+      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
+  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 template <typename T, typename Context>
