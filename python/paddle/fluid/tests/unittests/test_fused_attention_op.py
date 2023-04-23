@@ -106,6 +106,7 @@ class TestFusedAttentionOp(OpTest):
         self.transpose_qkv_wb = False
 
     def generate_input_data(self):
+        np.random.seed(1234)
         self.query = np.random.rand(
             self.batch_size, self.query_length, self.embed_dim
         ).astype(self.x_type)
@@ -235,7 +236,7 @@ class TestFusedAttentionOp(OpTest):
         )
         return final_out, tensor_query.grad
 
-    def GetFusedAttentionOut(self):
+    def GetFusedAttentionOut(self, dropout_seed=None, attn_dropout_seed=None):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         q_proj_weight = paddle.to_tensor(
             self.q_proj.weight, stop_gradient=False
@@ -324,8 +325,8 @@ class TestFusedAttentionOp(OpTest):
             out_linear_bias,
             cache_kv,
             attn_mask,
-            None,
-            None,
+            dropout_seed,
+            attn_dropout_seed,
             self.dropout_prob,
             self.attn_dropout_prob,
             ln2_epsilon,
@@ -350,6 +351,23 @@ class TestFusedAttentionOp(OpTest):
         np.testing.assert_allclose(
             x_grad_ref, x_grad.numpy(), rtol=self.rtol, atol=self.atol
         )
+
+    def test_fused_attention_op_seed(self):
+        self.dropout_prob = 0.1
+        self.attn_dropout_prob = 0.1
+        dropout_seed = paddle.to_tensor(
+            [1234], place=paddle.CUDAPlace(0), dtype='int32'
+        )
+        attn_dropout_seed = paddle.to_tensor(
+            [1234], place=paddle.CUDAPlace(0), dtype='int32'
+        )
+        final_out, _ = self.GetFusedAttentionOut(
+            dropout_seed, attn_dropout_seed
+        )
+        new_final_out, _ = self.GetFusedAttentionOut(
+            dropout_seed, attn_dropout_seed
+        )
+        np.testing.assert_array_equal(final_out.numpy(), new_final_out.numpy())
 
 
 class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):

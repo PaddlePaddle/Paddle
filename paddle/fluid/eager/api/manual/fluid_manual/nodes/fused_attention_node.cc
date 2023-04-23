@@ -162,6 +162,10 @@ fused_attentionGradNodeCompat::operator()(
     auto Ln2Scale = egr::EagerUtils::RecoverTensorWrapper(&this->Ln2Scale_);
     if (Ln2Scale.defined()) {
       ins0["Ln2Scale"] = egr::EagerUtils::TrySyncToVars(Ln2Scale);
+      if (Ln2Scale.defined() && (!out_metas[9].empty()) &&
+          (!out_metas[9][0].IsStopGradient()))
+        outs0["Ln2Scale@GRAD"] = {std::make_shared<egr::EagerVariable>(
+            egr::Controller::Instance().GenerateUniqueName())};
     }
 
     auto Ln2Bias = egr::EagerUtils::RecoverTensorWrapper(&this->Ln2Bias_);

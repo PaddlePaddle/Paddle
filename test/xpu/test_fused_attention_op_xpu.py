@@ -287,6 +287,8 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
                 out_linear_bias,
                 cache_kv,
                 attn_mask,
+                None,
+                None,
                 self.dropout_prob,
                 self.attn_dropout_prob,
                 ln2_epsilon,
