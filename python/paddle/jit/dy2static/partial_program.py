@@ -448,6 +448,18 @@ class PartialProgramLayer:
             paddle.utils._hash_with_id(program, self)
         ]
 
+    @LazyInitialized
+    def _out_grad_names(self):
+        return _out_grad_names(
+            self._train_program.desc,
+            self.get_forward_end_op_idx(self._train_program),
+            len(self._outputs.var_ids),
+        )
+
+    @LazyInitialized
+    def _x_grad_names(self):
+        return _param_grad_names(self._train_program.desc, self._inputs)
+
     @property
     def program(self):
         """
@@ -736,9 +748,15 @@ class PartialProgramLayer:
                     'param_grad_names',
                     self._grad_var_names.get('param', []),
                     'out_grad_names',
+<<<<<<< HEAD
                     self._grad_var_names.get('out', []),
                     'x_grad_names',
                     self._grad_var_names.get('x', []),
+=======
+                    self._out_grad_names,
+                    'x_grad_names',
+                    self._x_grad_names,
+>>>>>>> [Dy2St]Fix x grad names when high order gradient
                 )
             )
         if self._cuda_graph_capture_mode:

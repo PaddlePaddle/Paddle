@@ -691,6 +691,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                              std::vector<paddle::Tensor> *x_grad) {
     auto x_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("x_grad_names"));
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         x.size(),
         x_grad_names.size(),
@@ -699,6 +700,13 @@ class GradNodeRunProgram : public egr::GradNodeBase {
             "But received x.size() = %d, x_grad_names.size() = %d",
             x.size(),
             x_grad_names.size()));
+=======
+    PADDLE_ENFORCE_EQ(x.size(),
+                      x_grad_names.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The x.size() and "
+                          "x_grad_names.size() should be equal."));
+>>>>>>> [Dy2St]Fix x grad names when high order gradient
 
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
