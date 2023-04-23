@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -39,7 +40,11 @@ struct EigenGenericI0eGrad<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {}
+                   const InType& dout) {
+    auto y = in.bessel_i0e();
+    auto partial_x = in.bessel_i1e() - in.sign() * y;
+    din.device(dev) = dout * partial_x;
+  }
 };
 
 template <typename T>
@@ -64,7 +69,10 @@ struct EigenGenericI0Grad<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType din,
                    const InType& in,
-                   const InType& dout) {}
+                   const InType& dout) {
+    auto partial_x = in.bessel_i1();
+    din.device(dev) = dout * partial_x;
+  }
 };
 
 #define INSTANTIATION(FUNCTOR)                          \

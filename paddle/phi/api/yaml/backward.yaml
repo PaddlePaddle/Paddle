@@ -777,21 +777,21 @@
 
 - backward_op : i0_grad
   forward : i0 (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [x]
   kernel :
     func : i0_grad
 
 - backward_op : i0e_grad
   forward : i0e (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [x]
   kernel :
     func : i0e_grad
 

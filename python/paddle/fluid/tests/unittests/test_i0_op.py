@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from scipy import special
 
 import paddle
@@ -98,6 +99,26 @@ class TestI0Float64Zero2EightCase(TestI0API):
 class TestI0Float64OverEightCase(TestI0API):
     DTYPE = "float64"
     DATA = [9, 10, 11, 12]
+
+
+class TestI0Op(OpTest):
+    def setUp(self) -> None:
+        self.op_type = "i0"
+        self.python_api = paddle.i0
+        self.init_config()
+        self.outputs = {"out": self.target}
+
+    def init_config(self):
+        self.dtype = np.float64
+        self.case = np.random.randint(2, 10, size=(2, 60)).astype(self.dtype)
+        self.inputs = {'x': self.case}
+        self.target = output_i0(self.inputs['x'])
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x'], 'out')
 
 
 if __name__ == "__main__":

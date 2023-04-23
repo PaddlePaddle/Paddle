@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/i0_grad_kernel.h"
 
@@ -21,11 +25,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void I0GradKernel(const Context& ctx,
+                  const DenseTensor& x,
                   const DenseTensor& out_grad,
                   DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-  phi::funcs::SetConstant<Context, T> functor;
-  functor(ctx, x_grad, static_cast<T>(0));
+
+  auto eigen_x = EigenVector<T>::Flatten(x);
+  auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
+  auto eigen_dout = EigenVector<T>::Flatten(out_grad);
+  auto& place = *ctx.eigen_device();
+  phi::funcs::EigenGenericI0Grad<std::decay_t<decltype(place)>, T>::Eval(
+      place, eigen_dx, eigen_x, eigen_dout);
 }
 
 }  // namespace phi

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/i0e_kernel.h"
+#include "paddle/phi/kernels/i0_kernel.h"
 
 namespace phi {
 

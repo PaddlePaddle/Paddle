@@ -5613,9 +5613,7 @@ def i0(x, name=None):
 
         helper = LayerHelper("i0", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i0', inputs={'X': x}, outputs={'Out': out}, attrs={}
-        )
+        helper.append_op(type='i0', inputs={'x': x}, outputs={'out': out})
     return out
 
 
@@ -5646,7 +5644,5 @@ def i0e(x, name=None):
 
         helper = LayerHelper("i0e", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i0e', inputs={'X': x}, outputs={'Out': out}, attrs={}
-        )
+        helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
     return out

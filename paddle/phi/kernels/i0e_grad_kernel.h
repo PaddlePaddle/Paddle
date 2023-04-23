@@ -21,6 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void I0eGradKernel(const Context& ctx,
+                   const DenseTensor& x,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad);
 
