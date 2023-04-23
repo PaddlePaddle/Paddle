@@ -174,10 +174,14 @@ def insert_synchronization(
 ):
 
     unsync_param_names = [p.name for p in params_to_sync]
+    is_opt_block = False
 
     for idx, op in reversed(list(enumerate(block.ops))):
 
         if op.type in _supported_optimizer_type:
+
+            is_opt_block = True
+
             assert "Param" in op.input_names
             assert len(op.input("Param")) == 1
             param_name = op.input("Param")[0]
@@ -272,11 +276,12 @@ def insert_synchronization(
                         op_role,
                     )
 
-    assert (
-        len(unsync_param_names) == 0
-    ), "The following param is unsync by some error: {}".format(
-        unsync_param_names
-    )
+    if is_opt_block:
+        assert (
+            len(unsync_param_names) == 0
+        ), "The following param is unsync by some error: {}".format(
+            unsync_param_names
+        )
 
 
 def add_extra_synchronization(
