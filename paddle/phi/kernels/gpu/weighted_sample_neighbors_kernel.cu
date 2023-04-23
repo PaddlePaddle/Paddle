@@ -343,7 +343,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<int>(out_count);  // finally copy sample_count
   int* neighbor_count_ptr = nullptr;
   std::shared_ptr<phi::Allocation> neighbor_count;
-  auto sample_count = paddle::memory_utils::Alloc(
+  auto sample_count = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       (bs + 1) * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -351,7 +351,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
 
   int grid_size = (bs + 127) / 128;
   if (need_neighbor_count) {
-    neighbor_count = paddle::memory_utils::AllocShared(
+    neighbor_count = phi::memory_utils::AllocShared(
         dev_ctx.GetPlace(),
         (bs + 1) * sizeof(int),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -369,7 +369,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
             col_ptr_data, x_data, sample_count_ptr, nullptr, sample_size, bs);
   }
 
-  auto sample_offset = paddle::memory_utils::Alloc(
+  auto sample_offset = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       (bs + 1) * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -435,7 +435,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                     dev_ctx.stream());
     cudaStreamSynchronize(dev_ctx.stream());
 
-    auto tmh_weights = paddle::memory_utils::Alloc(
+    auto tmh_weights = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         target_neighbor_counts * sizeof(float),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
