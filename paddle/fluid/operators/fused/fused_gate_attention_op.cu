@@ -484,7 +484,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
-    const bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
+    bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -498,6 +498,17 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
                                       merge_qkv,
                                       has_gating,
                                       use_flash_attn);
+
+    const phi::DenseTensor *fwd_out = nullptr;
+    const phi::DenseTensor *fwd_bias = nullptr;
+    const phi::DenseTensor *fwd_mask = nullptr;
+    const phi::DenseTensor *fwd_softmax_lse = nullptr;
+    if (merge_qkv && use_flash_attn) {
+      fwd_bias = ctx.Input<phi::DenseTensor>("NonbatchedBias");
+      fwd_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+      fwd_softmax_lse = ctx.Input<phi::DenseTensor>("SoftmaxLse");
+      fwd_out = fmha_out;
+    }
 
     phi::DenseTensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
@@ -533,15 +544,37 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     }
 
     auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeBackward(q_transpose_out,
-                                 k_transpose_out,
-                                 v_transpose_out,
-                                 qkv_transpose_out,
-                                 softmax_out,
-                                 &fmha_out_grad,
-                                 nullptr,
-                                 nonbatched_bias_grad,
-                                 &config);
+
+    if (use_flash_attn) {
+      const phi::DenseTensor *fwd_bias =
+          ctx.Input<phi::DenseTensor>("NonbatchedBias");
+      const phi::DenseTensor *fwd_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+      const phi::DenseTensor *fwd_softmax_lse =
+          ctx.Input<phi::DenseTensor>("SoftmaxLse");
+      fmha_compute.ComputeBackward(q_transpose_out,
+                                   k_transpose_out,
+                                   v_transpose_out,
+                                   qkv_transpose_out,
+                                   softmax_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config,
+                                   fmha_out,  // fwd_out
+                                   fwd_softmax_lse,
+                                   fwd_bias,
+                                   fwd_mask);
+    } else {
+      fmha_compute.ComputeBackward(q_transpose_out,
+                                   k_transpose_out,
+                                   v_transpose_out,
+                                   qkv_transpose_out,
+                                   softmax_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config);
+    }
 
     bool use_addto = has_gating ? true : false;
     if (merge_qkv) {

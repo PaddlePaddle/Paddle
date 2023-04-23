@@ -284,12 +284,19 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool merge_qkv = PADDLE_GET_CONST(bool, op->GetAttr("merge_qkv"));
+    bool use_flash_attn = PADDLE_GET_CONST(bool, op->GetAttr("use_flash_attn"));
 
     if (merge_qkv) {
       op->SetInput("QKVWeight", this->Input("QKVWeight"));
       op->SetOutput(framework::GradVarName("QKVWeight"),
                     this->InputGrad("QKVWeight"));
       op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
+
+      if (use_flash_attn) {
+        op->SetInput("NonbatchedBias", this->Input("NonbatchedBias"));
+        op->SetInput("SrcMask", this->Input("SrcMask"));
+        op->SetInput("SoftmaxLse", this->Output("SoftmaxLse"));
+      }
     } else {
       op->SetInput("Key", this->Input("Key"));
       op->SetOutput(framework::GradVarName("Key"), this->InputGrad("Key"));
