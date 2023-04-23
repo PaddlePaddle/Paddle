@@ -14,15 +14,6 @@
 
 # TODO: import framework api under this directory
 
-# Do the *DUPLICATED* monkey-patch for the tensor object.
-# We need remove the duplicated code here once we fix
-# the illogical implement in the monkey-patch methods later.
-from ..fluid.layers.math_op_patch import monkey_patch_variable
-from ..fluid.dygraph.math_op_patch import monkey_patch_math_tensor
-
-monkey_patch_variable()
-monkey_patch_math_tensor()
-
 from . import random  # noqa: F401
 from .random import seed  # noqa: F401
 from .framework import get_default_dtype  # noqa: F401
@@ -53,6 +44,11 @@ from .io_utils import _pack_loaded_dict
 from .io_utils import _unpack_saved_dict
 from .io_utils import _load_program_scope
 
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
+from ..fluid.layers.math_op_patch import monkey_patch_variable
+from ..fluid.dygraph.math_op_patch import monkey_patch_math_tensor
 from ..fluid.framework import disable_signal_handler  # noqa: F401
 from ..fluid.framework import get_flags  # noqa: F401
 from ..fluid.framework import set_flags  # noqa: F401
