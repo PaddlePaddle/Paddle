@@ -155,7 +155,9 @@ class TestModeFP16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA"
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
 )
 class TestModeBF16Op(OpTest):
     def init_args(self):
