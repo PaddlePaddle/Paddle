@@ -45,5 +45,10 @@ class TestFleetMetaOptimizerPrecision(TestDistBase):
             )
 
 
+class TestFleetMetaOptimizerPrecisionWithSync(TestFleetMetaOptimizerPrecision):
+    def need_envs(self):
+        return {'FLAGS_sync_before_allreduce': '1'}
+
+
 if __name__ == '__main__':
     unittest.main()
