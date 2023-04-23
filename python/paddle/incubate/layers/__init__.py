@@ -13,11 +13,25 @@
 # limitations under the License.
 
 from . import nn
-from .nn import *
-
-from . import metric_op
-from .metric_op import *
+from .nn import (
+    fused_embedding_seq_pool,
+    fused_seqpool_cvm,
+    multiclass_nms2,
+    search_pyramid_hash,
+    shuffle_batch,
+    partial_concat,
+    partial_sum,
+    tdm_child,
+    tdm_sampler,
+    rank_attention,
+    batch_fc,
+    _pull_box_extended_sparse,
+    bilateral_slice,
+    correlation,
+    fused_bn_add_act,
+    pow2_decay_with_linear_warmup,
+    _pull_gpups_sparse,
+    _pull_box_sparse,
+)
 
 __all__ = []
-__all__ += nn.__all__
-__all__ += metric_op.__all__

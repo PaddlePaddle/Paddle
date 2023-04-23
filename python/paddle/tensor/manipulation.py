@@ -4197,9 +4197,6 @@ def tensordot(x, y, axes=2, name=None):
             shape_out.append(shape_y[i])
             not_contraction_size_y *= shape_y[i]
 
-    if not shape_out:
-        shape_out = [1]
-
     x = x.transpose(perm=perm_x).reshape(
         [not_contraction_size_x, contraction_size]
     )
