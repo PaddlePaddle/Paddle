@@ -83,7 +83,7 @@ class TestTrapezoidAPI(unittest.TestCase):
                     )
                 if self.dx is not None:
                     dx = paddle.static.data(
-                        name="dx", shape=[1], dtype='float32'
+                        name="dx", shape=[], dtype='float32'
                     )
 
                 exe = paddle.static.Executor(place)

@@ -95,9 +95,6 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::NPU:
       os << "NPU";
       break;
-    case Backend::MLU:
-      os << "MLU";
-      break;
     case Backend::ONEDNN:
       os << "ONEDNN";
       break;
@@ -143,8 +140,6 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::XPU;
   } else if (s == std::string("NPU")) {
     return Backend::NPU;
-  } else if (s == std::string("MLU")) {
-    return Backend::MLU;
   } else if (s == std::string("OneDNN")) {
     return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
@@ -181,8 +176,6 @@ inline std::string BackendToString(const Backend& backend) {
       return "XPU";
     case Backend::NPU:
       return "NPU";
-    case Backend::MLU:
-      return "MLU";
     case Backend::ONEDNN:
       return "ONEDNN";
     case Backend::GPUDNN:
