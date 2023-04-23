@@ -18,11 +18,6 @@ import logging
 from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 
-__all__ = [
-    "AutoMixedPrecisionLists",
-]
-
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )

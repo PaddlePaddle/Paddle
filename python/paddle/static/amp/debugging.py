@@ -18,11 +18,6 @@ import logging
 import paddle
 from paddle.fluid.log_helper import get_logger
 
-__all__ = [
-    "collect_operator_stats",
-]
-
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -156,6 +151,15 @@ def _merge_op_stats(op_stats_list):
 
 
 def _get_op_stats_list(program):
+    def _is_special_ops_with_input_x(op_type):
+        # operators have input X and have inputs different dtypes.
+        special_op_list = ['cast', 'batch_norm', 'instance_norm', 'layer_norm']
+        if op_type in special_op_list:
+            return True
+        if op_type.replace("_grad", "") in special_op_list:
+            return True
+        return False
+
     op_stats_list = []
     for block in program.blocks:
         block_op_stats_dict = {}
@@ -172,13 +176,7 @@ def _get_op_stats_list(program):
                 'create_double_buffer_reader',
             ]:
                 compute_dtype = None
-            elif op.type in [
-                'cast',
-                'layer_norm',
-                'layer_norm_grad',
-                'batch_norm',
-                'batch_norm_grad',
-            ]:
+            elif _is_special_ops_with_input_x(op.type):
                 # Not check the input and output dtype difference for this operators.
                 compute_dtype = _get_var_dtype_from_block(block, op, 'X', True)
             elif "Param" in op.input_names:

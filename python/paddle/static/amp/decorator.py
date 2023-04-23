@@ -34,10 +34,6 @@ from .fp16_utils import (
 )
 from .function_overload import FunctionType, overload
 
-__all__ = [
-    "decorate",
-]
-
 
 class OptimizerWithMixedPrecision:
     """
@@ -751,6 +747,7 @@ def decorate(
     amp_lists=None,
     level='O1',
     dtype='float16',
+    master_weight=None,
     init_loss_scaling=2**15,
     incr_every_n_steps=1000,
     decr_every_n_nan_or_inf=2,
@@ -772,6 +769,22 @@ def decorate(
         raise ValueError(
             "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
         )
+
+    if optimizer is not None:
+        if not isinstance(
+            optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+        ):
+            raise RuntimeError(
+                "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+                    type(optimizer)
+                )
+            )
+
+        # support master_weight
+        multi_precision = not (master_weight is False)
+        if multi_precision and hasattr(optimizer, "_multi_precision"):
+            optimizer._multi_precision = multi_precision
 
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer,
