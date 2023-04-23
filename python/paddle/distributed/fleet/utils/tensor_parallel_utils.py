@@ -123,13 +123,14 @@ def copy_parameters(block_, params):
 def insert_sync_op(
     block, idx, tp_degree, sync_mode, sync_ring_id, src_rank, varname, op_role
 ):
-
+    # adopt for subblock
+    var = block._var_recursive(varname)
     if sync_mode == "broadcast":
         block._insert_op_without_sync(
             idx,
             type='c_broadcast',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            inputs={'X': var},
+            outputs={'Out': var},
             attrs={
                 'ring_id': sync_ring_id,
                 'root': src_rank,
@@ -142,15 +143,15 @@ def insert_sync_op(
         block._insert_op_without_sync(
             idx,
             type='scale',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            inputs={'X': var},
+            outputs={'Out': var},
             attrs={'scale': 1.0 / tp_degree, OP_ROLE_KEY: op_role},
         )
         block._insert_op_without_sync(
             idx,
             type='c_allreduce_sum',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            inputs={'X': var},
+            outputs={'Out': var},
             attrs={
                 'ring_id': sync_ring_id,
                 'use_calc_stream': True,
@@ -177,10 +178,14 @@ def insert_synchronization(
 ):
 
     unsync_param_names = [p.name for p in params_to_sync]
+    is_opt_block = False
 
     for idx, op in reversed(list(enumerate(block.ops))):
 
         if op.type in _supported_optimizer_type:
+
+            is_opt_block = True
+
             assert "Param" in op.input_names
             assert len(op.input("Param")) == 1
             param_name = op.input("Param")[0]
@@ -275,11 +280,12 @@ def insert_synchronization(
                         op_role,
                     )
 
-    assert (
-        len(unsync_param_names) == 0
-    ), "The following param is unsync by some error: {}".format(
-        unsync_param_names
-    )
+    if is_opt_block:
+        assert (
+            len(unsync_param_names) == 0
+        ), "The following param is unsync by some error: {}".format(
+            unsync_param_names
+        )
 
 
 def add_extra_synchronization(
@@ -324,10 +330,7 @@ def add_extra_synchronization(
     )
 
     # adopt for static pipeline opt
-    if program._pipeline_opt is not None:
-        assert (
-            program._pipeline_opt['section_program'] is not None
-        ), "Pipeline is enable but section_program is None"
+    if 'section_program' in program._pipeline_opt:
         program = program._pipeline_opt['section_program']
 
     # step1: collect the param that need to be sync
