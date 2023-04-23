@@ -53,7 +53,7 @@ TEST(Benchmark, FluidScaleCUDA) {
   platform::CUDAPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
@@ -108,7 +108,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
   platform::CUDAPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
     std::shared_ptr<imperative::VarBase> Y(new imperative::VarBase(true, "Y"));
@@ -176,7 +176,7 @@ TEST(Benchmark, FluidMLPCUDA) {
   platform::CUDAPlace place;
   eager_test::InitEnv(place);
 
-  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
