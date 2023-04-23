@@ -4130,14 +4130,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         out1 = paddle.unstack(x1, 0)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out1])
-        self.assertEqual(res[0][0].shape, ())
+        self.assertEqual(res[0].shape, ())
 
         x2 = paddle.full([2], 2, 'float32')
         out2 = paddle.unstack(x2, 0)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out2])
-        self.assertEqual(res[0][0].shape, ())
-        self.assertEqual(res[0][1].shape, ())
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
     @prog_scope()
     def test_unbind(self):
@@ -4145,14 +4145,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         out1 = paddle.unbind(x1, 0)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out1])
-        self.assertEqual(res[0][0].shape, ())
+        self.assertEqual(res[0].shape, ())
 
         x2 = paddle.full([2], 2, 'float32')
         out2 = paddle.unbind(x2, 0)
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={}, fetch_list=[out2])
-        self.assertEqual(res[0][0].shape, ())
-        self.assertEqual(res[0][1].shape, ())
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
 
     @prog_scope()
     def test_maseked_select(self):
