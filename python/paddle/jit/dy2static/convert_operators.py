@@ -51,6 +51,19 @@ def convert_load(x):
     return x
 
 
+def convert_setitem(x, index, value):
+    if isinstance(x, Variable):
+        return paddle.static.setitem(x, index, value)
+    elif hasattr(x, '__setitem__'):
+        return x.__setitem__(index, value)
+    else:
+        raise RuntimeError(
+            "Unsupport exec _jst.SetItem for {} because it has no __setitem__ method.".format(
+                x
+            )
+        )
+
+
 def indexable(x, code=None):
     if isinstance(x, Variable):
         return x

@@ -23,6 +23,7 @@ from .convert_operators import convert_logical_not as Not  # noqa: F401
 from .convert_operators import convert_logical_or as Or  # noqa: F401
 from .convert_operators import convert_pop as Pop  # noqa: F401
 from .convert_operators import convert_shape as Shape  # noqa: F401
+from .convert_operators import convert_setitem as SetItem  # noqa: F401
 from .convert_operators import convert_while_loop as While  # noqa: F401
 from .convert_operators import unpack_by_structure as Unpack  # noqa: F401
 from .convert_operators import convert_attr as Attr  # noqa: F401
