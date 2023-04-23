@@ -462,7 +462,14 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _x_grad_names(self):
-        return _param_grad_names(self._train_program.desc, self._inputs)
+        return _param_grad_names(
+            self._train_program.desc,
+            [
+                var
+                for var in self._inputs
+                if isinstance(var, framework.Variable)
+            ],
+        )
 
     @property
     def program(self):
