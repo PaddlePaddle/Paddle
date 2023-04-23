@@ -203,12 +203,6 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       }
     }
 
-    // NOTE(liym27): Paddle does not support that the rank of Tensor is 0, and
-    // uses [1] instead.
-    if (new_shape.size() == 0) {
-      new_shape.push_back(1);
-    }
-
     decreased_dims = phi::make_ddim(new_shape);
   }
   return decreased_dims;

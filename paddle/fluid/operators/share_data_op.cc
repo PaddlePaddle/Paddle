@@ -62,18 +62,22 @@ Return a tensor $Out$ that shares data with the input tensor $X$ and without ten
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     share_data,
     ops::ShareDataOp,
     ops::ShareDataOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(share_data,
-                       ops::ShareDataKernel<bool>,
-                       ops::ShareDataKernel<int>,
-                       ops::ShareDataKernel<int8_t>,
-                       ops::ShareDataKernel<uint8_t>,
-                       ops::ShareDataKernel<paddle::platform::float16>,
-                       ops::ShareDataKernel<int64_t>,
-                       ops::ShareDataKernel<float>,
-                       ops::ShareDataKernel<double>)
+PD_REGISTER_STRUCT_KERNEL(share_data,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ShareDataKernel,
+                          bool,
+                          int,
+                          int8_t,
+                          uint8_t,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16) {}

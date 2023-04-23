@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _non_static_mode, _varbase_creator
+from paddle.fluid.framework import Variable, _create_tensor, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import ConstantInitializer
 
@@ -74,9 +74,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
     """
     if _non_static_mode():
         if correct is None:
-            correct = _varbase_creator(dtype="int32")
+            correct = _create_tensor(dtype="int32")
         if total is None:
-            total = _varbase_creator(dtype="int32")
+            total = _create_tensor(dtype="int32")
 
         _k = np.array(k).item(0) if isinstance(k, Variable) else k
         topk_out, topk_indices = _legacy_C_ops.top_k_v2(
@@ -89,7 +89,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'accuracy'
+        input, 'input', ['float16', 'uint16', 'float32', 'float64'], 'accuracy'
     )
     topk_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     topk_indices = helper.create_variable_for_type_inference(dtype="int64")
