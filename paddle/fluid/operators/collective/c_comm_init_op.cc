@@ -61,8 +61,7 @@ class CCommInitOp : public framework::OperatorBase {
 #endif
 
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
-            platform::is_mlu_place(place),
+        platform::is_gpu_place(place) || platform::is_xpu_place(place),
         true,
         platform::errors::PreconditionNotMet(
             "CCommInitOp can run on gpu or xpu or mlu place only."));

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
+#include "paddle/fluid/operators/collective/c_identity_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
@@ -485,6 +486,17 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
   }
 };
 
+template <typename DeviceContext, typename T>
+class CSyncCalcStreamCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    auto dev_ctx = static_cast<DeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    dev_ctx->GetStream()->Synchronize();
+  }
+};
+
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
@@ -499,12 +511,12 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       run_program,
       device_type,
       paddle::operators::
-          RunProgramOpKernel<paddle::platform::CustomDeviceContext, float>);
+          RunProgramOpKernel<float, paddle::platform::CustomDeviceContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       run_program_grad,
       device_type,
       paddle::operators ::
-          RunProgramGradOpKernel<paddle::platform::CustomDeviceContext, float>);
+          RunProgramGradOpKernel<float, paddle::platform::CustomDeviceContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       save_combine,
       device_type,
@@ -520,15 +532,15 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       load_combine,
       device_type,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, float>,
+          LoadCombineOpKernel<float, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, double>,
+          LoadCombineOpKernel<double, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int>,
+          LoadCombineOpKernel<int, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int8_t>,
+          LoadCombineOpKernel<int8_t, paddle::platform::CustomDeviceContext>,
       paddle::operators::
-          LoadCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
+          LoadCombineOpKernel<int64_t, paddle::platform::CustomDeviceContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_concat,
       device_type,
@@ -589,6 +601,41 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           paddle::platform::CustomDeviceContext,
           paddle::platform::float16>) {}
 
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      c_identity,
+      device_type,
+      paddle::operators::
+          CIdentityOpKernel<float, paddle::platform::CustomDeviceContext>,
+      paddle::operators::
+          CIdentityOpKernel<double, paddle::platform::CustomDeviceContext>,
+      paddle::operators::
+          CIdentityOpKernel<int, paddle::platform::CustomDeviceContext>,
+      paddle::operators::
+          CIdentityOpKernel<int64_t, paddle::platform::CustomDeviceContext>,
+      paddle::operators::CIdentityOpKernel<
+          paddle::platform::float16,
+          paddle::platform::CustomDeviceContext>) {}
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      c_sync_calc_stream,
+      device_type,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int16_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int32_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int64_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          float>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          double>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>) {}
 #endif
 }
 

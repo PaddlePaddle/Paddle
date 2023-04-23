@@ -42,10 +42,12 @@ namespace sparse {
 #endif
 """
         self.kernels_lists = {
-            "hnn": "static std::vector<fp16_gather_gemm_scatter> fp16_nn_kernels = {",
-            "snn": "static std::vector<fp32_gather_gemm_scatter> fp32_nn_kernels = {",
-            "snt": "static std::vector<fp32_gather_gemm_scatter> fp32_nt_kernels = {",
-            "stn": "static std::vector<fp32_gather_gemm_scatter> fp32_tn_kernels = {",
+            "hnn75": "static std::vector<gather_hgemm_scatter> sm75_fp16_nn_kernels = {",
+            "snn75": "static std::vector<gather_sgemm_f16_scatter> sm75_fp32_nn_kernels = {",
+            "hnn80": "static std::vector<gather_hgemm_scatter> sm80_fp16_nn_kernels = {",
+            "snn80": "static std::vector<gather_sgemm_scatter> sm80_fp32_nn_kernels = {",
+            "snt80": "static std::vector<gather_sgemm_scatter> sm80_fp32_nt_kernels = {",
+            "stn80": "static std::vector<gather_sgemm_scatter> sm80_fp32_tn_kernels = {",
         }
 
     def __enter__(self):
@@ -81,7 +83,9 @@ namespace sparse {
 
         if operations[0].layout_name() == 'tn':
             self.kernels_lists[
-                operations[0].short_math_name() + operations[0].layout_name()
+                operations[0].short_math_name()
+                + operations[0].layout_name()
+                + str(operations[0].arch)
             ] += (
                 """
 launchKernel<"""
@@ -91,7 +95,9 @@ launchKernel<"""
             )
         else:
             self.kernels_lists[
-                operations[0].short_math_name() + operations[0].layout_name()
+                operations[0].short_math_name()
+                + operations[0].layout_name()
+                + str(operations[0].arch)
             ] += (
                 """
 launchKernel<"""

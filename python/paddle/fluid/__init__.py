@@ -17,7 +17,7 @@ import sys
 import atexit
 
 # The legacy core need to be removed before "import core",
-# in case of users installing paddlepadde without -U option
+# in case of users installing paddlepaddle without -U option
 core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
@@ -219,7 +219,7 @@ monkey_patch_varbase()
 atexit.register(core.clear_executor_cache)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
-# NOTE(wangran16): clean up DeviceManger in advance manually.
+# NOTE(wangran16): clean up DeviceManager in advance manually.
 # Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)
