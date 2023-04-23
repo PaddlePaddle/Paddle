@@ -20,7 +20,7 @@ set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
 set(FLASHATTN_SOURCE_SUBDIR csrc/flash_attn)
 set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
 set(FLASHATTN_REPOSITORY ${GIT_URL}/JamesLim-sy/flash-attention.git)
-set(FLASHATTN_TAG edeaea701e0c0e712f1a43a8970b5d59f5256e3b)
+set(FLASHATTN_TAG opitmization_for_alphafold2)
 
 #set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
 #set(FLASHATTN_TAG f0edf243a813a65d05c75fcb331b2a95faf96bbc)

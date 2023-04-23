@@ -548,7 +548,7 @@ class FMHAGateRef {
       uint64_t inc = batch_size_ * num_heads_ * 32;
       auto seed_offset_pair = gen->IncrementOffset(inc);
       uint64_t seed = seed_offset_pair.first;
-      uint64_t offset = 1908576;  // seed_offset_pair.second;
+      uint64_t offset = seed_offset_pair.second;
 
       GetFlashAttnDimsString("softmax_out", softmax_out->dims());
       GetFlashAttnDimsString("softmax_lse", softmax_lse.dims());
@@ -566,8 +566,8 @@ class FMHAGateRef {
           static_cast<const void*>(k_ptr),
           static_cast<const void*>(v_ptr),
           nullptr,  // for calculation workspace size
-          static_cast<const void*>(cu_seq_q.data<int32_t>()),
-          static_cast<const void*>(cu_seq_k.data<int32_t>()),
+          cu_seq_q.data<int32_t>(),
+          cu_seq_k.data<int32_t>(),
           total_q_,
           total_k_,
           batch_size_,
@@ -628,8 +628,8 @@ class FMHAGateRef {
           static_cast<const void*>(v_ptr),
           static_cast<void*>(
               fmha_out->data()),  // for calculation workspace size
-          static_cast<const void*>(cu_seq_q.data<int32_t>()),
-          static_cast<const void*>(cu_seq_k.data<int32_t>()),
+          cu_seq_q.data<int32_t>(),
+          cu_seq_k.data<int32_t>(),
           total_q_,
           total_k_,
           batch_size_,
@@ -859,11 +859,6 @@ class FMHAGateRef {
 
       int seq_batch_size = static_cast<int>(config->batch_size) *
                            static_cast<int>(config->seq_len_m);
-      qkv_transpose_out->Resize(
-          {3,
-           seq_batch_size * static_cast<int>(config->seq_len_r),
-           static_cast<int>(config->num_heads),
-           static_cast<int>(config->head_dim)});
       DBG_WAIT;
 
       // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
@@ -871,7 +866,8 @@ class FMHAGateRef {
       int64_t start = 0;
       int64_t step = static_cast<int>(config->seq_len_r);
       int64_t end_size = (seq_batch_size + 1);
-      int64_t end = end_size, int64_t seq_size = 0;
+      int64_t end = end_size;
+      int64_t seq_size = 0;
       phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
       cu_seq_q.Resize({end_size});
       cu_seq_k.Resize({end_size});
@@ -908,7 +904,10 @@ class FMHAGateRef {
       dims_merge_func(src_mask, &temp_mask, "[Grad] mask_dim");
       dims_merge_func(nonbatched_bias, &temp_bias, "[Grad] bias_dim");
 
-      auto& qkv_dims = qkv_transpose_out->dims();
+      phi::DDim qkv_dims({3,
+                          seq_batch_size * static_cast<int>(config->seq_len_r),
+                          static_cast<int>(config->num_heads),
+                          static_cast<int>(config->head_dim)});
       int batch_size_ = seq_batch_size;
       int total_q_ = qkv_dims[1];    // q.dims()[0]
       int total_k_ = qkv_dims[1];    // q.dims()[0]
@@ -916,7 +915,6 @@ class FMHAGateRef {
       int head_size_ = qkv_dims[3];  // q.dims()[2]
       int max_seqlen_q_ = batch_size_;
       int max_seqlen_k_ = batch_size_;
-      int num_splits = 0;
       VLOG(6) << "[Flash_attn Grad] batch_size : " << batch_size_;
       VLOG(6) << "[Flash_attn Grad] total_q   : " << total_q_;
       VLOG(6) << "[Flash_attn Grad] total_k   : " << total_k_;
@@ -927,9 +925,9 @@ class FMHAGateRef {
 
       // 5. construct softmax_lse
       int last_q_dim = ((max_seqlen_q_ + 16 - 1) / 16) * 16;
-      softmax_lse->Resize({batch_size_, num_heads_, last_q_dim});
-      AllocWithDebugInfo<float>(
-          dev_ctx_, "flash_attn: softmax_lse", softmax_lse);
+      // softmax_lse->Resize({batch_size_, num_heads_, last_q_dim});
+      // AllocWithDebugInfo<float>(
+      //     dev_ctx_, "flash_attn: softmax_lse", softmax_lse);
       DBG_WAIT;
 
       phi::DenseTensor softmax_d = phi::Empty<float, phi::GPUContext>(
@@ -957,26 +955,33 @@ class FMHAGateRef {
       v_grad_ptr = dev_ctx_.Alloc<T>(&v_transpose_out_grad,
                                      v_transpose_out_grad.numel() * sizeof(T));
 
+      // 6. construct random seed
+      auto gen = dev_ctx_.GetGenerator();
+      uint64_t inc = batch_size_ * num_heads_ * 32;
+      auto seed_offset_pair = gen->IncrementOffset(inc);
+      uint64_t seed = seed_offset_pair.first;
+      uint64_t offset = seed_offset_pair.second;
+
       // 7. flas_attn part one, get temp worksapce size.
       uint64_t workspace_size;
       float p_dropout = 0.f;
       float softmax_scale = static_cast<float>(1);
       cudaStream_t stream = dev_ctx_.stream();
       int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-      succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
+      bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
           static_cast<const void*>(q_ptr),
           static_cast<const void*>(k_ptr),
           static_cast<const void*>(v_ptr),
-          q_grad_ptr,
-          k_grad_ptr,
-          v_grad_ptr,
-          static_cast<void*>(
-              fmha_out->data()),  // total_q x num_heads x head_size, total_k :=
+          static_cast<void*>(q_grad_ptr),
+          static_cast<void*>(k_grad_ptr),
+          static_cast<void*>(v_grad_ptr),
+          static_cast<const void*>(
+              fmha_out->data()),  // total_q x num_heads x head_size, total_k :
                                   // \sum_{i=0}^{b} s_i
-          static_cast<void*>(
+          static_cast<const void*>(
               fmha_out_grad->data()),  // total_q x num_heads, x head_size
-          static_cast<const void*>(cu_seq_q.data<int32_t>()),
-          static_cast<const void*>(cu_seq_k.data<int32_t>()),
+          cu_seq_q.data<int32_t>(),
+          cu_seq_k.data<int32_t>(),
           total_q_,
           total_k_,
           batch_size_,
@@ -990,16 +995,16 @@ class FMHAGateRef {
           /*is_causal=*/false,
           is_bf16,
           num_splits,
-          softmax_lse.data(),
+          softmax_lse->data(),
           softmax_d.data(),
-          nullptr,
           bias_d.data(),
+          nullptr,
           &workspace_size,
           stream,
           seed,
           offset,
-          src_mask ? temp_mask.data() : nullptr,
           nonbatched_bias ? temp_bias.data() : nullptr,
+          src_mask ? temp_mask.data() : nullptr,
           temp_mask.dims().Get(),
           temp_bias.dims().Get());
       if (!succ) {
@@ -1020,16 +1025,13 @@ class FMHAGateRef {
           static_cast<const void*>(q_ptr),
           static_cast<const void*>(k_ptr),
           static_cast<const void*>(v_ptr),
-          q_grad_ptr,
-          k_grad_ptr,
-          v_grad_ptr,
-          static_cast<void*>(
-              fmha_out->data()),  // total_q x num_heads x head_size, total_k :=
-                                  // \sum_{i=0}^{b} s_i
-          static_cast<void*>(
-              fmha_out_grad->data()),  // total_q x num_heads, x head_size
-          static_cast<const void*>(cu_seq_q.data<int32_t>()),
-          static_cast<const void*>(cu_seq_k.data<int32_t>()),
+          static_cast<void*>(q_grad_ptr),
+          static_cast<void*>(k_grad_ptr),
+          static_cast<void*>(v_grad_ptr),
+          static_cast<const void*>(fmha_out->data()),
+          static_cast<const void*>(fmha_out_grad->data()),
+          cu_seq_q.data<int32_t>(),
+          cu_seq_k.data<int32_t>(),
           total_q_,
           total_k_,
           batch_size_,
@@ -1043,10 +1045,10 @@ class FMHAGateRef {
           /*is_causal=*/false,
           is_bf16,
           num_splits,
-          softmax_lse.data(),
+          softmax_lse->data(),
           softmax_d.data(),
-          workspace.data(),
           bias_d.data(),
+          workspace.data(),
           &workspace_size,
           stream,
           seed,
@@ -1055,6 +1057,32 @@ class FMHAGateRef {
           nonbatched_bias ? temp_bias.data() : nullptr,
           temp_mask.dims().Get(),
           temp_bias.dims().Get());
+      if (!succ) {
+        PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+      }
+      DBG_WAIT;
+
+      if (nonbatched_bias) {
+        // compare block reduce
+        // auto size = attn_bias->sizes();
+        // dbias = ds.reshape({ -1, size[0], size[1], size[2], size[3] }).sum({
+        // 0 }); result.push_back( dbias );
+        const auto temp_bias_num = temp_bias.numel();
+        const auto bias_d_num = bias_d.numel();
+        auto dbias_first_dim = bias_d_num / temp_bias_num;
+        bias_d.Resize({dbias_first_dim,
+                       temp_bias.dims()[0],
+                       temp_bias.dims()[1],
+                       temp_bias.dims()[2],
+                       temp_bias.dims()[3]});
+        phi::funcs::
+            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+                dev_ctx_,
+                bias_d,
+                nonbatched_bias_grad,
+                kps::IdentityFunctor<T>(),
+                {0});
+      }
     } else {
       if (merge_qkv_) {
         PADDLE_ENFORCE_NOT_NULL(
