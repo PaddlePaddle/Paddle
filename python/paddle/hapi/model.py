@@ -184,6 +184,37 @@ def init_communicator(
                 'ring_id': 0,
             },
         )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        bkcl_id_var = block.create_var(
+            name=fluid.unique_name.generate('xccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_xccl_id',
+            inputs={},
+            outputs={'Out': bkcl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):

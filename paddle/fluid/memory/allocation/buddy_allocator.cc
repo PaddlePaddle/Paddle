@@ -52,6 +52,7 @@ BuddyAllocator::BuddyAllocator(
       return phi::DeviceManager::GetReallocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
+    is_custom_device_ = true;
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
@@ -234,7 +235,11 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   static_cast<MemoryBlock*>(p)->Init(
       &cache_, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
-
+  // Why add an offset on the device pointer?
+  // Remove offsets for non-pointer managed devices, such as OPENCL, MPS, etc.
+  if (is_custom_device_) {
+    return p;
+  }
   return static_cast<MemoryBlock*>(p)->Data();
 }
 
