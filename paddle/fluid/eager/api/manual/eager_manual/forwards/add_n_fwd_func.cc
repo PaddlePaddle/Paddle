@@ -56,11 +56,9 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
           << "add_n_ad_func";
   auto api_result = paddle::experimental::add_n(x);
 
-  std::string forward_trace = "";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("add_n", api_result);
-    forward_trace = egr::Controller::Instance().GetPythonStack();
   }
 
   // Get Outputs
@@ -89,7 +87,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
 
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(forward_trace);
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
 
     // SetAttributes if needed
