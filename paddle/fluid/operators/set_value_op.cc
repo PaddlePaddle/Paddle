@@ -111,6 +111,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
                  framework::proto::VarType::FP32,
                  framework::proto::VarType::FP64,
                  framework::proto::VarType::FP16,
+                 framework::proto::VarType::BF16,
                  framework::proto::VarType::COMPLEX64,
                  framework::proto::VarType::COMPLEX128})
         .SetDefault(framework::proto::VarType::FP32);
