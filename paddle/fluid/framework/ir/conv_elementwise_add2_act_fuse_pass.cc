@@ -192,7 +192,11 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
         base_op_desc, bias_name, bias1_name, act_op_type, act_op_out);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("can_run_by_cutlass_backend", true);
+    }
+
+    if (cudnn_can_fuse) {
+      new_op_desc.SetAttr("can_run_by_cudnn_backend", true);
     }
 
     // Create a new node for the fused op.

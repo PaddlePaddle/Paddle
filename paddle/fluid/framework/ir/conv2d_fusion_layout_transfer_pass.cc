@@ -166,8 +166,9 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
     auto op_desc = op_node->Op();
     bool use_cutlass = false;
-    if (op_desc->HasAttr("use_cutlass")) {
-      use_cutlass = op_desc->GetAttrIfExists<bool>("use_cutlass");
+    if (op_desc->HasAttr("can_run_by_cutlass_backend")) {
+      use_cutlass =
+          op_desc->GetAttrIfExists<bool>("can_run_by_cutlass_backend");
     }
 
     return use_cutlass && cutlass_enable;
@@ -194,13 +195,11 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
 
-      if (CutlassIsValid(op_node)) {
-        op_desc->SetType("conv2d_fusion_cutlass");
-        // conv2d_fusion_cutlass must have this attribute because of signature.
-        if (!op_desc->HasAttr("fuse_alpha")) {
-          op_desc->SetAttr("fuse_alpha", 0.f);
-        }
+      // conv2d_fusion must have this attribute because of signature.
+      if (!op_desc->HasAttr("fuse_alpha")) {
+        op_desc->SetAttr("fuse_alpha", 0.f);
       }
+
       op_desc->SetAttr("data_format", std::string{"NHWC"});
       op_desc->Flush();
 

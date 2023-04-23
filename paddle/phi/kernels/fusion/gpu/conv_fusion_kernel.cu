@@ -373,6 +373,7 @@ void ConvFusionKernel(const Context& ctx,
                       bool exhaustive_search,
                       const std::vector<int>& channels,
                       int user_workspace_size,
+                      float fuse_alpha,
                       DenseTensor* output,
                       std::vector<DenseTensor*> outs) {
   auto handle = ctx.cudnn_handle();
