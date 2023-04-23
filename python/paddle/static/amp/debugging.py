@@ -198,8 +198,8 @@ def collect_operator_stats(program=None, print_subblocks=False):
     types, namely float32, float16, bfloat16 and others.
 
     Args:
-        program(Program): The program to parse. Default None, and the default main_program will be parsed.
-        print_subblocks(bool): Whether to print the operator stats for each subblock. Default False.
+        program(Program, optional): The program to parse. Default None, and the default main_program will be parsed.
+        print_subblocks(bool, optional): Whether to print the operator stats for each subblock. Default False.
 
     Examples:
 
@@ -213,7 +213,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
             def __init__(self):
                 super().__init__()
                 self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-                self.linear = paddle.nn.Linear(in_features=6, out_features=10)
+                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
 
             def forward(self, x):
                 out = self.conv(x)
@@ -232,7 +232,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
                 )
                 out = model(x)
                 loss = paddle.mean(out)
-                optimizer = paddle.optimizer.AdamW(multi_precision=True)
+                optimizer = paddle.optimizer.AdamW()
                 optimizer = paddle.static.amp.decorate(optimizer)
                 optimizer.minimize(loss)
         paddle.static.amp.debugging.collect_operator_stats(main_program)
