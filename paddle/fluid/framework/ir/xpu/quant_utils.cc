@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
+#include <thread>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
 
 namespace paddle {
 namespace framework {
@@ -105,6 +109,30 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
 }
 
 static float FindMaxAbs(const float* data, int len) {
+#ifdef PADDLE_WITH_MKLML
+  int32_t numThreads = omp_get_num_procs();
+  float* out = new float[numThreads];
+  float max_tmp = 0.0f;
+#pragma omp parallel for
+  for (int i = 0; i < len; ++i) {
+    float max = std::abs(data[i]);
+    if (max > max_tmp) {
+      max_tmp = max;
+    }
+  }
+  out[omp_get_thread_num()] = max_tmp;
+
+#pragma omp barrier
+  float max_f = out[0];
+#pragma omp single
+  // std::cout << "end " << omp_get_thread_num() << std::endl;
+  for (int i = 1; i < numThreads; i++) {
+    if (out[i] > max_f) {
+      max_f = out[i];
+    }
+  }
+  delete[] out;
+#else
   float max_f = 0.0f;
   for (int i = 0; i < len; ++i) {
     float max = std::abs(data[i]);
@@ -112,6 +140,7 @@ static float FindMaxAbs(const float* data, int len) {
       max_f = max;
     }
   }
+#endif
   return max_f;
 }
 
@@ -202,9 +231,13 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
                               int16_t* dst_ptr,
                               float max_val,
                               int numel) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
   for (int i = 0; i < numel; i++) {
     dst_ptr[i] = Fp32ToIntx<int16_t, 32767>(src_ptr[i], max_val);
   }
+  // std::cout << "run " << omp_get_num_threads() << std::endl;
 }
 
 template <typename T>
