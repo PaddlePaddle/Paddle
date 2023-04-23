@@ -221,6 +221,23 @@ class TestModelCastBF16(unittest.TestCase):
 
 
 class TestProgramBF16(AmpTestBase):
+    def _check_optimizer(self, program, expected_num_mp):
+        optimizers = []
+        for block in program.blocks:
+            for op in block.ops:
+                if "Param" in op.input_names and "Grad" in op.input_names:
+                    optimizers.append(op)
+
+        actual_num_mp = 0
+        for op in optimizers:
+            if op.has_attr("multi_precision") and op.attr("multi_precision"):
+                actual_num_mp += 1
+        self.assertEqual(
+            actual_num_mp,
+            expected_num_mp,
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+        )
+
     def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
         for op_type, value in expected_bf16_calls.items():
             self.assertEqual(
@@ -234,6 +251,7 @@ class TestProgramBF16(AmpTestBase):
             True, "bfloat16", "O1"
         )
         self.assertEqual(main_program.num_blocks, 1)
+        self._check_optimizer(main_program, 0)
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
@@ -263,6 +281,11 @@ class TestProgramBF16(AmpTestBase):
             "squared_l2_norm": 2,
             "adamw": 2,
         }
+        self._check_optimizer(
+            main_program,
+            expected_bf16_calls["matmul_v2"]
+            + expected_bf16_calls["elementwise_add"],
+        )
         self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
 
 

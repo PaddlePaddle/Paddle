@@ -35,6 +35,21 @@ from .fp16_utils import (
 from .function_overload import FunctionType, overload
 
 
+def _set_multi_precision(optimizer, multi_precision):
+    if not isinstance(
+        optimizer,
+        (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+    ):
+        raise RuntimeError(
+            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+                type(optimizer)
+            )
+        )
+
+    if multi_precision and hasattr(optimizer, "_multi_precision"):
+        optimizer._multi_precision = multi_precision
+
+
 class OptimizerWithMixedPrecision:
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common
@@ -771,20 +786,9 @@ def decorate(
         )
 
     if optimizer is not None:
-        if not isinstance(
-            optimizer,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
-        ):
-            raise RuntimeError(
-                "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
-                    type(optimizer)
-                )
-            )
-
         # support master_weight
         multi_precision = not (master_weight is False)
-        if multi_precision and hasattr(optimizer, "_multi_precision"):
-            optimizer._multi_precision = multi_precision
+        _set_multi_precision(optimizer, multi_precision)
 
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer,
