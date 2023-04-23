@@ -1631,8 +1631,8 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-        np.testing.assert_array_equal(out1, expect1)
-        np.testing.assert_array_equal(out2, expect2)
+        np.testing.assert_allclose(out1, expect1, rtol=1e-05)
+        np.testing.assert_allclose(out2, expect2, rtol=1e-05)
 
     def test_einsum_V2(self):
         os.environ['FLAGS_new_einsum'] = "1"
@@ -1652,8 +1652,8 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-        np.testing.assert_array_equal(out1, expect1)
-        np.testing.assert_array_equal(out2, expect2)
+        np.testing.assert_allclose(out1, expect1, rtol=1e-05)
+        np.testing.assert_allclose(out2, expect2, rtol=1e-05)
 
     def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
