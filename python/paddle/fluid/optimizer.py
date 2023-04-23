@@ -232,7 +232,7 @@ class Optimizer:
 
             if not isinstance(self._learning_rate, _LearningRateEpochDecay):
                 var_tmp = None
-                var_temp = framework._varbase_creator(
+                var_temp = framework._create_tensor(
                     None, name='global_step', dtype='int32'
                 )
 
@@ -3215,6 +3215,7 @@ class AdadeltaOptimizer(Optimizer):
                 param_and_grad[1],
                 avg_squared_grad_acc,
                 avg_squared_update_acc,
+                self._create_param_lr(param_and_grad),
                 master_weight,
                 self._rho,
                 self._epsilon,
@@ -3227,6 +3228,7 @@ class AdadeltaOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],
@@ -5966,7 +5968,7 @@ class PipelineOptimizer:
         }
         assert -1 not in var.shape
         return (
-            reduce(lambda x, y: x * y, var.shape)
+            reduce(lambda x, y: x * y, var.shape, 1)
             * dtype_to_size[var.dtype]
             / 1024.0
             / 1024.0

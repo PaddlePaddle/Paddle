@@ -28,6 +28,7 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
+    convert_float_to_uint16,
 )
 from ..fluid.framework import (
     Variable,
@@ -200,6 +201,7 @@ def create_parameter(
         [
             'bool',
             'float16',
+            'uint16',
             'float32',
             'float64',
             'int8',
@@ -332,7 +334,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -342,7 +344,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -352,7 +354,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'linspace',
         )
         if (
@@ -612,7 +614,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                 data = data.astype(default_type)
 
     if dtype and convert_dtype(dtype) != data.dtype:
-        data = data.astype(convert_dtype(dtype))
+        if convert_dtype(dtype) in ['uint16']:
+            # should not ndarray.astype('uint16') directly, data bits is wrong
+            data = convert_float_to_uint16(data.astype('float32'))
+        else:
+            data = data.astype(convert_dtype(dtype))
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(
@@ -1293,6 +1299,14 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
+    out_shape = None
+    if not in_dygraph_mode() and (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1324,13 +1338,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',
@@ -1352,7 +1359,7 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1785,7 +1792,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
@@ -1954,13 +1961,29 @@ def empty_like(x, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)

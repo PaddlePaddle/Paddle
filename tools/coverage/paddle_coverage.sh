@@ -113,8 +113,6 @@ function gen_full_html_report_npu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    gen_full_html_report_npu || true
 else
     gen_full_html_report || true
 fi
@@ -213,8 +211,6 @@ echo "Assert Python Diff Coverage"
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    echo "NPU has no python coverage!"
 else
     if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]]; then
         python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1

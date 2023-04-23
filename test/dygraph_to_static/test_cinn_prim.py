@@ -163,5 +163,20 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             )
 
 
+class TestBackend(unittest.TestCase):
+    def test_backend(self):
+        x = paddle.randn([2, 4])
+        out1 = self.forward(x, 'CINN')
+        out2 = self.forward(x, None)
+        np.testing.assert_allclose(out1, out2, rtol=1e-6)
+
+    def forward(self, x, backend=None):
+        paddle.seed(2022)
+        net = PrimeNet()
+        net = paddle.jit.to_static(net, backend=backend)
+        out = net(x)
+        return out
+
+
 if __name__ == '__main__':
     unittest.main()

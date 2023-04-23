@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
-
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
@@ -27,6 +23,7 @@ limitations under the License. */
 // new phi apis
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/include/tensor_utils.h"
 
 // phi common headers
 #include "paddle/phi/common/backend.h"

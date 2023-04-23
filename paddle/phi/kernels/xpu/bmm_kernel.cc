@@ -68,6 +68,8 @@ void BmmKernel(const Context& dev_ctx,
     MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
     MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, xpu_ctx);
+  } else if (fccal_type == XPUFCCalcType::FC_INT_WITH_LL) {
+    MatMulXPUFunction<T, int_with_ll_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else {
     MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   }

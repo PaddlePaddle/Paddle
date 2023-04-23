@@ -115,8 +115,6 @@ function gen_full_html_report_npu() {
 
 # if [ ${WITH_XPU:-OFF} == "ON" ]; then
 #     gen_full_html_report_xpu || true
-# elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-#     gen_full_html_report_npu || true
 # else
 #     gen_full_html_report || true
 # fi
@@ -241,8 +239,6 @@ function cov_rate_judge() {
 
     if [ ${WITH_XPU:-OFF} == "ON" ]; then
         echo "XPU has no python coverage!"
-    elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-        echo "NPU has no python coverage!"
     else
         if [[ python-coverage-diff.info ]]; then
             python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
@@ -268,20 +264,20 @@ function main() {
     local CMD=$1
     lcov_init
     case $CMD in
-    gen_cov_info)
-        gen_cpp_covinfo
-        gen_py_covinfo
-        ;;
-    combine_cov_info)
-        covinfo_combine_full
-        gen_diff_html_report || true
-        gen_python_diff_html_report || true
-        cov_rate_judge
-        ;;
-    *)
-        print_usage
-        exit 1
-        ;;
+        gen_cov_info)
+            gen_cpp_covinfo
+            gen_py_covinfo
+            ;;
+        combine_cov_info)
+            covinfo_combine_full
+            gen_diff_html_report || true
+            gen_python_diff_html_report || true
+            cov_rate_judge
+            ;;
+        *)
+            print_usage
+            exit 1
+            ;;
     esac
 }
 
