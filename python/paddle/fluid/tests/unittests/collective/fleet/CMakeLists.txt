@@ -189,7 +189,7 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21976;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_pp_adaptor PROPERTIES TIMEOUT
-                                                                   "600")
+                                                                   "500")
 endif()
 if((WITH_GPU
     OR WITH_XPU
