@@ -20,6 +20,7 @@ from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver
+from paddle.incubate.layers.nn import fused_embedding_seq_pool
 
 
 @skip_check_grad_ci(
@@ -114,7 +115,7 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
                     name='word', shape=[-1, 1], dtype='int64', lod_level=1
                 )
                 padding_idx = np.random.randint(1, 10)
-                out = fluid.contrib.fused_embedding_seq_pool(
+                out = fused_embedding_seq_pool(
                     input=data_t,
                     size=[dict_size, 32],
                     param_attr='w',
