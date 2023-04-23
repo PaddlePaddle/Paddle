@@ -433,25 +433,20 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
-            if not self.calc_comm_same_stream:
-                block._insert_op_without_sync(
-                    after_idx + 1,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: OpRole.Backward},
-                )
         idx = 0
         if not self.calc_comm_same_stream:
             for i in range(len(grad_param_segments)):
-                while block.ops[idx].type != 'c_allreduce_sum':
+                while (
+                    block.ops[idx].type != 'c_allreduce_sum'
+                    or fused_vars[i].name not in block.ops[idx].input_arg_names
+                ):
                     idx += 1
                 grad_segment, param_segment = grad_param_segments[i]
                 for grad in grad_segment:
                     block._insert_op_without_sync(
                         idx + 1,
                         type='depend',
-                        inputs={'X': grad, 'Dep': fused_var},
+                        inputs={'X': grad, 'Dep': fused_vars[i]},
                         outputs={'Out': grad},
                     )
                     idx += 1
