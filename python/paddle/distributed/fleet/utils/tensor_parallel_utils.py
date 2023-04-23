@@ -24,7 +24,7 @@ logger.addHandler(ch)
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 from paddle.fluid import core
-from paddle.static import Parameter
+from paddle.fluid.framework import Parameter
 
 _supported_optimizer_type = [
     "adam",
@@ -111,7 +111,7 @@ def copy_parameters(block_, params):
         )
         assert (
             param.is_distributed is False
-        ), f"Try to sync Distribted Parameter: {param}"
+        ), "Try to sync Distribted Parameter: {}".format(param)
         new_p.is_distributed = False
 
     block_.vars[new_p.name] = new_p
@@ -156,7 +156,7 @@ def insert_sync_op(
         )
     else:
         raise NotImplementedError(
-            f'Sync mode of [{sync_mode}] is NOT supported.'
+            'Sync mode of [{}] is NOT supported.'.format(sync_mode)
         )
 
 
