@@ -219,17 +219,19 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
 
-            # 2) x is ND
             if api in [
                 paddle.sum,
                 paddle.mean,
                 paddle.nanmean,
                 paddle.nansum,
-                paddle.max,
             ]:
                 return
 
-            x = paddle.rand([3, 5])
+            # 2) x is ND, reduce to 0D
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, [3, 5]).astype('bool')
+            else:
+                x = paddle.rand([3, 5])
             x.stop_gradient = False
             out = api(x, None)
             out.retain_grads()
@@ -239,6 +241,21 @@ class TestReduceAPI(unittest.TestCase):
             if x.grad is not None:
                 self.assertEqual(out.grad.shape, [])
                 self.assertEqual(x.grad.shape, [3, 5])
+
+            # 3) x is 1D, axis=0, reduce to 0D
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, [5]).astype('bool')
+            else:
+                x = paddle.rand([5])
+            x.stop_gradient = False
+            out = api(x, 0)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.grad.shape, [5])
 
         paddle.enable_static()
 
@@ -284,16 +301,19 @@ class TestReduceAPI(unittest.TestCase):
                     np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
 
-                # 2) x is ND
                 if api in [
                     paddle.sum,
                     paddle.mean,
                     paddle.nanmean,
                     paddle.nansum,
-                    paddle.max,
                 ]:
                     return
 
+                # 2) x is ND, reduce to 0D
+                if api in [paddle.all, paddle.any]:
+                    x = paddle.randint(0, 2, [3, 5]).astype('bool')
+                else:
+                    x = paddle.rand([3, 5])
                 x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, None)
@@ -308,6 +328,25 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
                     self.assertEqual(res[2].shape, (3, 5))
+
+                # 3) x is 1D, axis=0, reduce to 0D
+                if api in [paddle.all, paddle.any]:
+                    x = paddle.randint(0, 2, [5]).astype('bool')
+                else:
+                    x = paddle.rand([5])
+                x.stop_gradient = False
+                out = api(x, 0)
+                paddle.static.append_backward(out)
+
+                fetch_list = [out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([out.grad_name, x.grad_name])
+
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                if len(res) > 1:
+                    self.assertEqual(res[1].shape, ())
+                    self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
 

@@ -752,7 +752,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : OriginReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : max
   backward : max_grad

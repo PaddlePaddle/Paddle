@@ -179,7 +179,7 @@ def monkey_patch_math_varbase():
 
     @property
     def _size_(var):
-        return np.prod(var.shape)
+        return int(np.prod(var.shape))
 
     @property
     def _T_(var):
