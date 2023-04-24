@@ -673,22 +673,18 @@ class PartialProgramLayer:
                 ]
 
                 fn = (
-                    lambda var, grad_var: grad_var.name
+                    lambda grad_var: grad_var.name
                     if isinstance(grad_var, framework.Variable)
-                    else var.name + '@GRAD'
+                    else framework.EMPTY_VAR_NAME
                 )
                 x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
-                self._grad_var_names['x'] = list(map(fn, x_vars, x_grad_vars))
+                self._grad_var_names['x'] = list(map(fn, x_grad_vars))
                 param_grad_vars = backward._get_grad_vars(
                     grad_info_map, param_vars
                 )
-                self._grad_var_names['param'] = list(
-                    map(fn, param_vars, param_grad_vars)
-                )
+                self._grad_var_names['param'] = list(map(fn, param_grad_vars))
                 out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
-                self._grad_var_names['out'] = list(
-                    map(fn, out_vars, out_grad_vars)
-                )
+                self._grad_var_names['out'] = list(map(fn, out_grad_vars))
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
