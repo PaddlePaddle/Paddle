@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
