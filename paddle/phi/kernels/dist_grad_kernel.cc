@@ -52,6 +52,10 @@ void DistGradKernel(const Context& dev_ctx,
                     float p,
                     DenseTensor* x_grad,
                     DenseTensor* y_grad) {
+  if ((!x_grad) && (!y_grad)) {
+    return;
+  }
+
   auto t = Subtract<T, Context>(dev_ctx, x, y);
   DenseTensor x_grad_tmp;
   x_grad_tmp.Resize(t.dims());
@@ -59,26 +63,32 @@ void DistGradKernel(const Context& dev_ctx,
   y_grad_tmp.Resize(t.dims());
   PNormGradKernel<T, Context>(
       dev_ctx, t, out, out_grad, p, -1, 1e-12, false, true, &x_grad_tmp);
-  ScaleKernel<T, Context>(dev_ctx, x_grad_tmp, -1.0, 0.0, false, &y_grad_tmp);
-  // do reduce, the implemetation of cpu SumKernel has bug, it changes
-  // the dims of output iternally, so we Resize x/y_grad twice.
-  auto res_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
-  if (!std::get<0>(res_x).empty()) {
-    x_grad->Resize(phi::make_ddim(std::get<1>(res_x)));
-    SumKernel<T, Context>(
-        dev_ctx, x_grad_tmp, std::get<0>(res_x), x.dtype(), false, x_grad);
-    x_grad->Resize(x.dims());
-  } else {
-    x_grad->ShareBufferWith(x_grad_tmp);
+
+  if (x_grad) {
+    // do reduce, the implemetation of cpu SumKernel has bug, it changes
+    // the dims of output iternally, so we Resize x/y_grad twice.
+    auto res_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
+    if (!std::get<0>(res_x).empty()) {
+      x_grad->Resize(phi::make_ddim(std::get<1>(res_x)));
+      SumKernel<T, Context>(
+          dev_ctx, x_grad_tmp, std::get<0>(res_x), x.dtype(), false, x_grad);
+      x_grad->Resize(x.dims());
+    } else {
+      x_grad->ShareBufferWith(x_grad_tmp);
+    }
   }
-  auto res_y = GetReduceDims(y_grad_tmp.dims(), y.dims());
-  if (!std::get<0>(res_y).empty()) {
-    y_grad->Resize(phi::make_ddim(std::get<1>(res_y)));
-    SumKernel<T, Context>(
-        dev_ctx, y_grad_tmp, std::get<0>(res_y), y.dtype(), false, y_grad);
-    y_grad->Resize(y.dims());
-  } else {
-    y_grad->ShareBufferWith(y_grad_tmp);
+
+  if (y_grad) {
+    ScaleKernel<T, Context>(dev_ctx, x_grad_tmp, -1.0, 0.0, false, &y_grad_tmp);
+    auto res_y = GetReduceDims(y_grad_tmp.dims(), y.dims());
+    if (!std::get<0>(res_y).empty()) {
+      y_grad->Resize(phi::make_ddim(std::get<1>(res_y)));
+      SumKernel<T, Context>(
+          dev_ctx, y_grad_tmp, std::get<0>(res_y), y.dtype(), false, y_grad);
+      y_grad->Resize(y.dims());
+    } else {
+      y_grad->ShareBufferWith(y_grad_tmp);
+    }
   }
 }
 
