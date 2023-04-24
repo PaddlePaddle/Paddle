@@ -844,7 +844,7 @@ void _sliceDapper(const phi::DenseTensor *in,
 template <typename T>
 inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        const phi::CPUContext &ctx,
-                                       py::object obj,
+                                       py::object obj UNUSED,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
