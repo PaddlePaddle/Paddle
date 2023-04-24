@@ -33,7 +33,6 @@ class TestSetItemBase(unittest.TestCase):
         def foo(x):
             y = x + 1
             y[:, 2] = x[:, 2] + 1
-            # breakpoint()
             return y
 
         return foo
@@ -50,12 +49,104 @@ class TestSetItemBase(unittest.TestCase):
         x = self.init_data()
         y = func(x)
         x_grad = paddle.grad(y, x)[0]
-        # print(y, x_grad)
         return y, x_grad
 
     def run_to_static(self, func):
         func = paddle.jit.to_static(func)
         return self.run_dygrah(func)
+
+
+class TestCase1(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[2] = x[2] + 1  # (2, )
+            return y
+
+        return foo
+
+
+class TestCase2(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[:] = x[:] + 1  # slice(None,None,None)
+            return y
+
+        return foo
+
+
+class TestCase3(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[1::2] = x[1::2] + 1  # slice(1,None,2)
+            return y
+
+        return foo
+
+
+class TestCase4(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[1, 2] = x[1, 2] + 1  # (1, 2)
+            return y
+
+        return foo
+
+
+class TestCase5(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[[1, 2], [2, 3]] = x[[1, 2], [2, 3]] + 1  # ([1,2],[2,3])
+            return y
+
+        return foo
+
+
+class TestCase6(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[1, :, 3] = x[1, :, 3] + 1  # slice(None,None,None),3)
+            return y
+
+        return foo
+
+
+class TestCase7(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[1, ..., 2] = x[1, ..., 2] + 1  # (1, ..., 2)
+            return y
+
+        return foo
+
+
+class TestCase8(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            index = paddle.to_tensor([1, 2], dtype="int64")
+            y[index] = x[index] + 1  # Tensor([1,2])
+            return y
+
+        return foo
+
+
+class TestCase9(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            one = paddle.to_tensor([1], dtype="int64")
+            two = paddle.to_tensor([2], dtype="int64")
+            y[one, :, :, 2] = x[1, :, :, two] + 1  # Tensor([1]), Tensor([2])
+            return y
+
+        return foo
 
 
 if __name__ == '__main__':
