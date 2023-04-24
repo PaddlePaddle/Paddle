@@ -650,7 +650,7 @@ def _load_persistable_vars_by_program(
                 persistable=True,
             )
         else:
-            new_var = framework._varbase_creator(
+            new_var = framework._create_tensor(
                 type=each_var.type(),
                 name=each_var.name(),
                 shape=each_var.shape(),
@@ -738,9 +738,7 @@ def _load_persistable_vars(
                 persistable=True,
             )
         else:
-            new_var = framework._varbase_creator(
-                name=new_name, persistable=True
-            )
+            new_var = framework._create_tensor(name=new_name, persistable=True)
 
         new_var.stop_gradient = extra_var_info[name]['stop_gradient']
         load_var_dict[new_name] = new_var

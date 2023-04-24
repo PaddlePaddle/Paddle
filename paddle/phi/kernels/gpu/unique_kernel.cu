@@ -100,24 +100,23 @@ struct BinaryNotEqual {
 };
 
 // The core logic of computing Unique for a flattend DenseTensor
-template <typename Context,
-          typename InT,
-          typename IndexT,
-          typename equal_T,
-          typename not_equal_T>
-static void UniqueFlattendCUDATensor(const Context& context,
-                                     const DenseTensor& in,
-                                     DenseTensor* out,
-                                     DenseTensor* indices,
-                                     DenseTensor* index,
-                                     DenseTensor* counts,
-                                     bool return_index,
-                                     bool return_inverse,
-                                     bool return_counts,
-                                     equal_T equal,
-                                     not_equal_T not_equal,
-                                     int64_t num_input) {
+template <typename Context, typename InT, typename IndexT>
+static typename std::enable_if<
+    !std::is_same<InT, phi::dtype::float16>::value &&
+    !std::is_same<InT, phi::dtype::bfloat16>::value>::type
+UniqueFlattendCUDATensor(const Context& context,
+                         const DenseTensor& in,
+                         DenseTensor* out,
+                         DenseTensor* indices,
+                         DenseTensor* index,
+                         DenseTensor* counts,
+                         bool return_index,
+                         bool return_inverse,
+                         bool return_counts,
+                         int64_t num_input) {
   // 0. Prepration
+  auto equal = thrust::equal_to<InT>();
+  auto not_equal = thrust::not_equal_to<InT>();
   DenseTensor in_hat;
   phi::Copy(context, in, context.GetPlace(), false, &in_hat);
   auto* in_data_hat = context.template Alloc<InT>(&in_hat);
@@ -186,6 +185,97 @@ static void UniqueFlattendCUDATensor(const Context& context,
                           equal);
     indices->Resize(phi::make_ddim({num_out}));
   }
+
+  // 4. Calculate 'counts'
+  if (return_counts) {
+    counts->Resize(phi::make_ddim({num_out}));
+    auto count_data = context.template Alloc<IndexT>(counts);
+    // init 'count_data' as 0
+    thrust::fill(thrust::device, count_data, count_data + num_out, 0);
+    thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
+    range_data_ptr_dev[num_out] = num_input;
+    thrust::adjacent_difference(thrust::device,
+                                range_data_ptr + 1,
+                                range_data_ptr + num_out + 1,
+                                count_data);
+  }
+}
+
+// The core logic of computing Unique for a flattend DenseTensor
+template <typename Context, typename InT, typename IndexT>
+static typename std::enable_if<
+    std::is_same<InT, phi::dtype::float16>::value ||
+    std::is_same<InT, phi::dtype::bfloat16>::value>::type
+UniqueFlattendCUDATensor(const Context& context,
+                         const DenseTensor& in,
+                         DenseTensor* out,
+                         DenseTensor* indices,
+                         DenseTensor* index,
+                         DenseTensor* counts,
+                         bool return_index,
+                         bool return_inverse,
+                         bool return_counts,
+                         int64_t num_input) {
+  // 1. Sort indices
+  DenseTensor in_resize;
+  in_resize.ShareDataWith(in);
+  in_resize.Resize(phi::make_ddim({num_input}));
+  const InT* in_data = in_resize.data<InT>();
+  auto equal = BinaryEqual<InT>(1, in_data);
+  auto not_equal = BinaryNotEqual<InT>(1, in_data);
+
+  indices->Resize(phi::make_ddim({num_input}));
+  auto* indices_data = context.template Alloc<IndexT>(indices);
+
+  thrust::sequence(thrust::device, indices_data, indices_data + num_input);
+  thrust::sort(thrust::device,
+               indices_data,
+               indices_data + num_input,
+               LessThan<InT>(1, in_data));
+
+  // 2. Calculate inverse indices: 'index'
+  if (return_inverse) {
+    index->Resize(phi::make_ddim({num_input}));
+    auto* inverse_data = context.template Alloc<IndexT>(index);
+    DenseTensor inv_loc;
+    inv_loc.Resize(phi::make_ddim({num_input}));
+    auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
+    thrust::adjacent_difference(thrust::device,
+                                indices_data,
+                                indices_data + num_input,
+                                inv_loc_data_ptr,
+                                not_equal);
+    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
+    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
+    thrust::inclusive_scan(thrust::device,
+                           inv_loc_data_ptr,
+                           inv_loc_data_ptr + num_input,
+                           inv_loc_data_ptr);
+    thrust::scatter(thrust::device,
+                    inv_loc_data_ptr,
+                    inv_loc_data_ptr + num_input,
+                    indices_data,
+                    inverse_data);
+  }
+
+  // 3. Calculate op result and sorted index: 'out' & 'indices'
+  DenseTensor range;
+  range.Resize(phi::make_ddim({num_input + 1}));
+  auto* range_data_ptr = context.template Alloc<IndexT>(&range);
+  thrust::sequence(
+      thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
+  int num_out;
+  num_out = thrust::unique_by_key(thrust::device,
+                                  indices_data,
+                                  indices_data + num_input,
+                                  range_data_ptr,
+                                  equal)
+                .first -
+            indices_data;
+  indices->Resize(phi::make_ddim({num_out}));
+  out->Resize(phi::make_ddim({num_out}));
+  context.template Alloc<InT>(out);
+  phi::IndexSelectKernel<InT, Context>(context, in_resize, *indices, 0, out);
 
   // 4. Calculate 'counts'
   if (return_counts) {
@@ -409,8 +499,6 @@ struct UniqueFlattendCUDAFunctor {
                                                    return_index_,
                                                    return_inverse_,
                                                    return_counts_,
-                                                   thrust::equal_to<InT>(),
-                                                   thrust::not_equal_to<InT>(),
                                                    in_.numel());
   }
 };
@@ -548,8 +636,16 @@ void UniqueKernel(const Context& context,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    unique, GPU, ALL_LAYOUT, phi::UniqueKernel, float, double, int64_t, int) {
+PD_REGISTER_KERNEL(unique,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UniqueKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t,
+                   int) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
@@ -561,6 +657,8 @@ PD_REGISTER_KERNEL(unique_raw,
                    phi::UniqueRawKernel,
                    float,
                    double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t,
                    int) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);

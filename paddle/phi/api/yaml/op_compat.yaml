@@ -50,11 +50,44 @@
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
+- op : adam_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      tensor_name : Beta1Tensor
+    beta2 :
+      data_type : float
+      tensor_name : Beta2Tensor
+    episilon :
+      data_type : float
+      tensor_name : EpisilonTensor
+  manual_signature : [adam_]
+
 - op : adamax_
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
+
+- op : adamw_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      tensor_name : Beta1Tensor
+    beta2 :
+      data_type : float
+      tensor_name : Beta2Tensor
+    episilon :
+      data_type : float
+      tensor_name : EpisilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -922,8 +955,6 @@
 
 - op : gather
   backward : gather_grad
-  extra :
-    attrs : [bool overwrite = true]
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -1441,11 +1472,34 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mean_all (mean)
+  backward : mean_all_grad (mean_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : merge_selected_rows
   inputs :
     x : X
   outputs :
     out : Out
+
+- op : merged_adam_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      support_tensor : true
+    beta2 :
+      data_type : float
+      support_tensor : true
+    epsilon :
+      data_type : float
+      support_tensor : true
 
 - op : merged_momentum_
   inputs :
@@ -1809,6 +1863,14 @@
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
     {param_out: ParamOut, moment_out: MomentOut, mean_square_out: MeanSquareOut, mean_grad_out: MeanGradOut, master_param_outs: MasterParamOut}
+
+- op : rnn
+  backward : rnn_grad
+  inputs:
+    { x : Input, pre_state : PreState, weight_list : WeightList, sequence_length : SequenceLength}
+  outputs:
+    { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
+  drop_empty_grad : [pre_state_grad, weight_list_grad]
 
 - op : roll
   backward : roll_grad
@@ -2365,6 +2427,21 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op: lu
+  backward: lu_grad
+  inputs:
+    x: X
+  outputs:
+    {out: Out, pivots : Pivots, infos : Infos}
+  attrs:
+    pivot : pivots
+
+- op: reindex_graph (graph_reindex)
+  inputs :
+    {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
+  outputs :
+    {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

@@ -33,6 +33,7 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "legacy/kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
@@ -76,10 +77,14 @@ if(WITH_MKLDNN)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
     "sparse/cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "strings/*.cc"
     "strings/cpu/*.cc"
     "onednn/*.cc"
@@ -92,10 +97,14 @@ else()
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
     "sparse/cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
@@ -105,7 +114,7 @@ endif()
 file(
   GLOB kernel_xpu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+  "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 if(WITH_GPU OR WITH_ROCM)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
@@ -115,6 +124,8 @@ endif()
 if(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/legacy/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})

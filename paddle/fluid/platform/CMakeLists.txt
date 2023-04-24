@@ -127,8 +127,7 @@ cc_library(
        ${dgc_deps}
        dlpack
        phi
-       ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS})
+       ${XPU_CTX_DEPS})
 
 cc_library(
   collective_helper

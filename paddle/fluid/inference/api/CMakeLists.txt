@@ -97,85 +97,8 @@ else()
          infer_io_utils model_utils)
 endif()
 
-cc_test(
-  test_paddle_inference_api
-  SRCS api_tester.cc
-  DEPS paddle_inference_api)
-
-cc_test(
-  inference_api_helper_test
-  SRCS helper_test.cc
-  DEPS paddle_inference_api)
-
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
   copy_onnx(test_paddle_inference_api)
-endif()
-
-if(WITH_TESTING)
-  if(NOT APPLE AND NOT WIN32)
-    inference_base_test(
-      test_api_impl
-      SRCS
-      api_impl_tester.cc
-      DEPS
-      paddle_inference_shared
-      ARGS
-      --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-      --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-  elseif(WIN32)
-    inference_base_test(
-      test_api_impl
-      SRCS
-      api_impl_tester.cc
-      DEPS
-      ${inference_deps}
-      ARGS
-      --word2vec_dirname=${WORD2VEC_MODEL_DIR}
-      --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
-  endif()
-endif()
-
-if(NOT APPLE AND NOT WIN32)
-  cc_test_old(
-    test_analysis_predictor
-    SRCS
-    analysis_predictor_tester.cc
-    DEPS
-    paddle_inference_shared
-    ARGS
-    --dirname=${WORD2VEC_MODEL_DIR})
-elseif(WIN32)
-  cc_test_old(
-    test_analysis_predictor
-    SRCS
-    analysis_predictor_tester.cc
-    DEPS
-    analysis_predictor
-    benchmark
-    ${inference_deps}
-    ARGS
-    --dirname=${WORD2VEC_MODEL_DIR})
-endif()
-
-if(WITH_TESTING AND WITH_MKLDNN)
-  if(NOT APPLE AND NOT WIN32)
-    cc_test(
-      test_mkldnn_quantizer
-      SRCS mkldnn_quantizer_tester.cc
-      DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
-  elseif(WIN32)
-    cc_test(
-      test_mkldnn_quantizer
-      SRCS mkldnn_quantizer_tester.cc
-      DEPS analysis_predictor benchmark ${inference_deps} ARGS
-           --dirname=${WORD2VEC_MODEL_DIR})
-  endif()
-endif()
-
-if(WITH_TESTING AND TEST test_api_impl)
-  if(NOT APPLE)
-    set_tests_properties(test_api_impl PROPERTIES TIMEOUT 120)
-  endif()
 endif()

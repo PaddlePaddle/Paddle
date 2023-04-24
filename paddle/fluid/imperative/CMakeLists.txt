@@ -156,10 +156,4 @@ endif()
 cc_library(
   gradient_accumulator
   SRCS gradient_accumulator.cc
-  DEPS operator
-       lod_tensor
-       selected_rows_utils
-       var_type_traits
-       layer
-       phi
-       ${MLU_DEPS})
+  DEPS operator lod_tensor selected_rows_utils var_type_traits layer phi)

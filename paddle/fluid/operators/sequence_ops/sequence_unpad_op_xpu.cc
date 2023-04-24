@@ -18,6 +18,6 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(sequence_unpad,
-                       ops::SequenceUnpadOpKernel<phi::XPUContext, float>);
+                       ops::SequenceUnpadOpKernel<float, phi::XPUContext>);
 
 #endif
