@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "glog/logging.h"
@@ -23,6 +24,38 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
+
+// remove leading and tailing spaces
+std::string trim_spaces(const std::string& str) {
+  const char* p = str.c_str();
+  while (*p != 0 && isspace(*p)) {
+    p++;
+  }
+  size_t len = strlen(p);
+  while (len > 0 && isspace(p[len - 1])) {
+    len--;
+  }
+  return std::string(p, len);
+}
+
+std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos,
+                    std::string::npos,
+                    phi::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
@@ -346,6 +379,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  const std::unordered_set<std::string> custom_attrs_type(
+      {"bool",
+       "int",
+       "float",
+       "int64_t",
+       "std::string",
+       "std::vector<int>",
+       "std::vector<float>",
+       "std::vector<int64_t>",
+       "std::vector<std::string>"});
+  for (const auto& attr : attrs) {
+    auto attr_type_str = ParseAttrStr(attr)[1];
+    if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, "
+          "Please check whether the attribute data type and "
+          "data type string are matched.",
+          attr_type_str));
+    }
+  }
   info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }

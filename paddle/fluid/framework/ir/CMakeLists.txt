@@ -245,6 +245,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
+               xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -528,4 +530,8 @@ if(WITH_XPU)
     test_stack_fuse_pass
     SRCS xpu/stack_fuse_pass_test.cc
     DEPS stack_fuse_pass)
+  cc_test(
+    test_fused_multi_transformer_cachekv_layout_trans_pass
+    SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
+    DEPS fused_multi_transformer_cachekv_layout_trans_pass)
 endif()

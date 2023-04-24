@@ -64,7 +64,7 @@ from ..fluid.framework import dygraph_only  # noqa: F401
 from ..fluid.framework import dygraph_not_support  # noqa: F401
 from ..fluid.framework import (
     convert_np_dtype_to_dtype_,
-    _varbase_creator,
+    _create_tensor,
     OpProtoHolder,
 )  # noqa: F401
 from ..fluid.framework import _dygraph_tracer  # noqa: F401

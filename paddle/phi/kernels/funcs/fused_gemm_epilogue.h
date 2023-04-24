@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/utils/optional.h"
 
 DECLARE_int64(cublaslt_exhaustive_search_times);
@@ -488,62 +489,105 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
       phi::dynload::cublasLtMatrixLayoutDestroy(out_desc));
 }
 
-enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
+struct BwdFusedEpilogueSetter {
+ public:
+  static phi::funcs::MatmulFusedType SetForDx(
+      const std::string& activation_grad) {
+    if (activation_grad == "none") {
+      return kMatmulGrad;
+    } else if (activation_grad == "relu_grad") {
+      return kMatmulReluGrad;
+    } else if (activation_grad == "gelu_grad") {
+      return kMatmulGeluGrad;
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Fued linear epilogue type should be one of {none, relu, gelu}."
+          "But received activation is %s, please check",
+          activation_grad));
+    }
+  }
 
-template <bool TransX, bool TransY>
-struct FusedGEMMGradTrait;
-
-template <>
-struct FusedGEMMGradTrait<false, false> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = true;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = false;
+  template <typename DYT, bool TransY>
+  static phi::funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
+                                              phi::DenseTensor* dbias) {
+    if (dbias != nullptr) {
+      dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
+      return TransY ? kMatmulBiasGradToB : kMatmulBiasGradToA;
+    } else {
+      return kMatmulGradWithoutBias;
+    }
+  }
 };
 
-template <>
-struct FusedGEMMGradTrait<true, false> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = true;
+template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
+void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
+                                          const phi::DenseTensor* dout,
+                                          const phi::DenseTensor* x,
+                                          const phi::DenseTensor* y,
+                                          const phi::DenseTensor* reserve_space,
+                                          int64_t M,
+                                          int64_t N,
+                                          int64_t K,
+                                          const std::string activation_grad,
+                                          phi::DenseTensor* dx,
+                                          phi::DenseTensor* dy,
+                                          phi::DenseTensor* dbias,
+                                          bool use_addto_dx,
+                                          bool use_addto_dy) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  static_assert(std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value,
+                "");
+  static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value,
+                "");
+  using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradATrans = false;
-  static constexpr auto kYGradBTrans = false;
-};
-
-template <>
-struct FusedGEMMGradTrait<false, true> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradATrans = false;
-  static constexpr auto kXGradBTrans = false;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = false;
-};
-
-template <>
-struct FusedGEMMGradTrait<true, true> {
-  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
-  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
-  static constexpr auto kXGradATrans = true;
-  static constexpr auto kXGradBTrans = true;
-
-  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
-  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
-  static constexpr auto kYGradATrans = true;
-  static constexpr auto kYGradBTrans = true;
-};
+  if (dx) {
+    constexpr auto kXGradAIsDZ = (Trait::kXGradA == FusedGEMMGradInType::kDZ);
+    auto fused_type = BwdFusedEpilogueSetter::SetForDx(activation_grad);
+    void* reserve_data = (fused_type == kMatmulGrad)
+                             ? nullptr
+                             : const_cast<void*>(reserve_space->data());
+    dev_ctx.Alloc<DXT>(dx, dx->numel() * sizeof(DXT));
+    phi::funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
+        dev_ctx,
+        dout,
+        y,
+        dx,
+        nullptr,
+        reserve_data,
+        M,
+        N,
+        K,
+        fused_type,
+        Trait::kXGradATrans,
+        Trait::kXGradBTrans,
+        use_addto_dx,
+        kXGradAIsDZ);
+  }
+  if (dy) {
+    auto fused_type =
+        BwdFusedEpilogueSetter::SetForDy<DYT, TransY>(dev_ctx, dbias);
+    constexpr auto kYGradAIsDZ = (Trait::kYGradA == FusedGEMMGradInType::kDZ);
+    // Caution: DYT is in front of DXT in this template arguments.
+    dev_ctx.Alloc<DYT>(dy, dy->numel() * sizeof(DYT));
+    phi::funcs::LinearGradWithCublasLt<T, DXT, DYT, TransX, TransY>::Run(
+        dev_ctx,
+        dout,
+        x,
+        dy,
+        dbias ? static_cast<const void*>(dbias->data<DYT>()) : nullptr,
+        nullptr,
+        M,
+        N,
+        K,
+        fused_type,
+        Trait::kYGradATrans,
+        Trait::kYGradBTrans,
+        use_addto_dy,
+        kYGradAIsDZ,
+        /*is_dx=*/false);
+  }
+}
 
 static constexpr auto BoolToCuBlasEnum(bool transpose) {
   return transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -567,20 +611,21 @@ static cublasLtEpilogue_t GetEpilogueGradType(
 }
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
-                                          const phi::DenseTensor* dout,
-                                          const phi::DenseTensor* x,
-                                          const phi::DenseTensor* y,
-                                          const phi::DenseTensor* reserve_space,
-                                          int64_t M,
-                                          int64_t N,
-                                          int64_t K,
-                                          const std::string activation_grad,
-                                          phi::DenseTensor* dx,
-                                          phi::DenseTensor* dy,
-                                          phi::DenseTensor* dbias,
-                                          bool use_addto_dx,
-                                          bool use_addto_dy) {
+void ComputeFusedGemmEpilogueBackwardImplDev(
+    const phi::GPUContext& dev_ctx,
+    const phi::DenseTensor* dout,
+    const phi::DenseTensor* x,
+    const phi::DenseTensor* y,
+    const phi::DenseTensor* reserve_space,
+    int64_t M,
+    int64_t N,
+    int64_t K,
+    const std::string activation_grad,
+    phi::DenseTensor* dx,
+    phi::DenseTensor* dy,
+    phi::DenseTensor* dbias,
+    bool use_addto_dx,
+    bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
