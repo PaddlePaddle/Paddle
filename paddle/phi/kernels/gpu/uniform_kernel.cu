@@ -61,9 +61,6 @@ void UniformKernel(const Context& dev_ctx,
                    const Scalar& max,
                    int seed,
                    DenseTensor* out) {
-  int diag_num = 0;
-  int diag_step = 0;
-  float diag_val = 0.0f;
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
@@ -77,9 +74,9 @@ void UniformKernel(const Context& dev_ctx,
     auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
                                     static_cast<T>(max.to<float>()),
                                     seed,
-                                    diag_num,
-                                    diag_step,
-                                    static_cast<T>(diag_val));
+                                    0,
+                                    0,
+                                    static_cast<T>(0.0));
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
