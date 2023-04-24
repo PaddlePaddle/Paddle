@@ -361,9 +361,7 @@ class TestJacobianNoBatch(unittest.TestCase):
             if isinstance(self.xs, typing.Sequence)
             else paddle.to_tensor(self.xs)
         )
-        self._actual = paddle.incubate.autograd.functional.Jacobian(
-            self.func, xs, False
-        )
+        self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, False)
         self._expected = self._get_expected()
 
         Index = collections.namedtuple('Index', ('type', 'value'))
@@ -437,9 +435,7 @@ class TestJacobianBatchFirst(unittest.TestCase):
             if isinstance(self.xs, typing.Sequence)
             else paddle.to_tensor(self.xs)
         )
-        self._actual = paddle.incubate.autograd.functional.Jacobian(
-            self.func, xs, True
-        )
+        self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, True)
         self._expected = self._get_expected()
 
         Index = collections.namedtuple('Index', ('type', 'value'))
@@ -520,7 +516,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
 
         self.x.stop_gradient = False
-        hessian = paddle.incubate.autograd.functional.Hessian(func, self.x)
+        hessian = paddle.incubate.autograd.Hessian(func, self.x)
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
@@ -535,9 +531,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.incubate.autograd.functional.Hessian(
-            func, [self.x, self.y]
-        )
+        hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
         np.testing.assert_allclose(
             hessian[:].numpy(),
             numerical_hessian,
@@ -555,9 +549,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.incubate.autograd.functional.Hessian(
-            func, [self.x, self.y]
-        )
+        hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
@@ -571,7 +563,7 @@ class TestHessianNoBatch(unittest.TestCase):
         )
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
-        hessian = paddle.incubate.autograd.functional.Hessian(func, self.x)
+        hessian = paddle.incubate.autograd.Hessian(func, self.x)
         assert not hessian[:].stop_gradient
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
@@ -582,7 +574,7 @@ class TestHessianNoBatch(unittest.TestCase):
             return x * x
 
         with self.assertRaises(RuntimeError):
-            paddle.incubate.autograd.functional.Hessian(func, paddle.ones([3]))
+            paddle.incubate.autograd.Hessian(func, paddle.ones([3]))
 
     def test_all_cases(self):
         self.setUpClass()
@@ -627,9 +619,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             func, self.x, self.numerical_delta, self.np_dtype
         )
 
-        H = paddle.incubate.autograd.functional.Hessian(
-            func, self.x, is_batched=True
-        )
+        H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)
         actual = utils._np_transpose_matrix_format(
             H[:].numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
         )
@@ -654,7 +644,7 @@ class TestHessianBatchFirst(unittest.TestCase):
 
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        H = paddle.incubate.autograd.functional.Hessian(
+        H = paddle.incubate.autograd.Hessian(
             func, [self.x, self.y], is_batched=True
         )
         actual = utils._np_transpose_matrix_format(
@@ -681,7 +671,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             expected, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM
         )
 
-        actual = paddle.incubate.autograd.functional.Hessian(
+        actual = paddle.incubate.autograd.Hessian(
             func, [self.x, self.y], is_batched=True
         )[:]
 
@@ -699,9 +689,7 @@ class TestHessianBatchFirst(unittest.TestCase):
 
         x = self.x.clone()
         x.stop_gradient = True
-        H = paddle.incubate.autograd.functional.Hessian(
-            func, self.x, is_batched=True
-        )[:]
+        H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)[:]
         actual = utils._np_transpose_matrix_format(
             H[:].numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
         )
@@ -714,7 +702,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             return x * x
 
         with self.assertRaises(RuntimeError):
-            paddle.incubate.autograd.functional.Hessian(
+            paddle.incubate.autograd.Hessian(
                 func, paddle.ones((3, 3)), is_batched=True
             )
 
