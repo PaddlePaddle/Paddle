@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import paddle
 from paddle.fluid import framework
@@ -181,8 +181,6 @@ class Jacobian:
 
 
 class Hessian(Jacobian):
-    """Hessian class, same as Jacobian except classname"""
-
     pass
 
 
@@ -451,7 +449,7 @@ def jacobian(
     ys: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
-) -> Union[List[List[Jacobian]], List[Jacobian], Jacobian]:
+) -> Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]:
     r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
 
@@ -488,13 +486,13 @@ def jacobian(
 
     Args:
 
-        ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or list of outputs derived from xs.
-        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
+        ys (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Output or tuple of outputs derived from xs.
+        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or tuple of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
 
-        Union[List[List[Jacobian]], List[Jacobian], Jacobian]: Jacobian(s) of ys
+        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys
             deriveted from xs.
 
     Examples:
@@ -526,13 +524,13 @@ def jacobian(
     # TODO(HydrogenSulfate): support batch_axis > 0
     is_batched = batch_axis is not None
     if isinstance(ys, Sequence) and isinstance(xs, Sequence):
-        _jacobian = [
-            [Jacobian(_ys, _xs, is_batched) for _xs in xs] for _ys in ys
-        ]
+        _jacobian = tuple(
+            tuple(Jacobian(_ys, _xs, is_batched) for _xs in xs) for _ys in ys
+        )
     elif isinstance(ys, Sequence) and not isinstance(xs, Sequence):
-        _jacobian = [Jacobian(_ys, xs, is_batched) for _ys in ys]
+        _jacobian = tuple(Jacobian(_ys, xs, is_batched) for _ys in ys)
     elif not isinstance(ys, Sequence) and isinstance(xs, Sequence):
-        _jacobian = [Jacobian(ys, _xs, is_batched) for _xs in xs]
+        _jacobian = tuple(Jacobian(ys, _xs, is_batched) for _xs in xs)
     else:
         _jacobian = Jacobian(ys, xs, is_batched)
 
@@ -543,7 +541,7 @@ def hessian(
     ys: paddle.Tensor,
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
-) -> Union[List[List[Hessian]], Hessian]:
+) -> Union[Tuple[Tuple[Hessian, ...], ...], Hessian]:
     r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
 
@@ -571,13 +569,13 @@ def hessian(
 
     Args:
 
-        ys (paddle.Tensor): Output or list of outputs derived from xs.
-        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or list of inputs.
+        ys (paddle.Tensor): Output derived from xs which contain one element.
+        xs (Union[paddle.Tensor, Tuple[paddle.Tensor, ...]]): Input or tuple of inputs.
         batch_axis (Optional[int], optional): Index of batch axis. Defaults to None.
 
     Returns:
 
-        Union[List[List[Hessian]], List[Hessian], Hessian]: Hessian(s) of ys
+        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys
             deriveted from xs.
 
     Examples:
@@ -632,9 +630,7 @@ def hessian(
         # change classname to Hessian instead of Jacobian.
         hessian.__class__ = Hessian
     else:
-        hessian = []
-        for _j in _jacobian:
-            hessian.append(jacobian(_j, xs, batch_axis))
+        hessian = tuple(jacobian(_j, xs, batch_axis) for _j in _jacobian)
 
         # change classname to Hessian instead of Jacobian.
         for i in range(len(hessian)):
