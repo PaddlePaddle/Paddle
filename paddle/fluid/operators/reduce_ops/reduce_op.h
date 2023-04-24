@@ -629,7 +629,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
-              "float16 can only be used on GPU or NPU or MLU or XPU place"));
+              "float16 can only be used on GPU or NPU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
