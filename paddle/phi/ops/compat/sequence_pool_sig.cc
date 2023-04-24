@@ -23,10 +23,20 @@ KernelSignature SequencePoolOpArgumentMapping(
 
 KernelSignature SequencePoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("sequence_pool_grad",
-                         {"X", "MaxIndex", "Out@GRAD"},
-                         {"is_test", "pooltype", "pad_value"},
-                         {"X@GRAD"});
+  const auto& use_pooltype_maxindex =
+      paddle::any_cast<std::string>(ctx.Attr("pooltype"));
+
+  if (use_pooltype_maxindex == "SUN") {
+    return KernelSignature("sequence_pool_grad",
+                           {"X", "Out@GRAD"},
+                           {"is_test", "pooltype", "pad_value"},
+                           {"X@GRAD"});
+  } else {
+    return KernelSignature("sequence_pool_grad",
+                           {"X", "MaxIndex", "Out@GRAD"},
+                           {"is_test", "pooltype", "pad_value"},
+                           {"X@GRAD"});
+  }
 }
 
 }  // namespace phi
