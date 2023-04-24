@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
@@ -30,21 +31,19 @@ limitations under the License. */
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
-<<<<<<< HEAD
 #include "paddle/phi/core/flags.h"
-=======
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/program_utils.h"
->>>>>>> bf2039d0a7... add graph support sharding and dump fields param (#253)
 
 PHI_DECLARE_bool(enable_exit_when_partial_worker);
+PHI_DECLARE_int32(enable_adjust_op_order);
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_force_device_batch_num_equal,
     false,
     "enable force_device_batch_num_equal, default false");
-DECLARE_bool(enable_dump_main_program);
+PHI_DECLARE_bool(enable_dump_main_program);
 namespace paddle {
 namespace framework {
 
@@ -259,11 +258,9 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
   auto &block = program.Block(0);
   op_names_.clear();
   auto all_desc = block.AllOps();
+  std::set<size_t> remove_ids;
+  size_t op_index = 0;
   for (auto &op_desc : all_desc) {
-    // skip remove ops
-    if (remove_ops_.find(op_desc) != remove_ops_.end()) {
-      continue;
-    }
     // skip feed fetch op
     if (op_desc->Type() == "feed" || op_desc->Type() == "fetch") {
       for (auto &o : op_desc->Inputs()) {
@@ -283,8 +280,51 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     if (need_skip) {
       continue;
     }
+    // skip remove ops
+    if (remove_ops_.find(op_desc) != remove_ops_.end()) {
+      if (FLAGS_enable_adjust_op_order) {
+        remove_ids.insert(op_index);
+      } else {
+        continue;
+      }
+    }
+
     op_names_.push_back(op_desc->Type());
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
+    op_index++;
+  }
+  if (FLAGS_enable_adjust_op_order) {
+    std::vector<size_t> new_order;
+    size_t start_index = 0;
+    for (auto &op : ops_) {
+      int op_role = op->Attr<int>("op_role");
+      if ((op_role == static_cast<int>(OpRole::kForward)) ||
+          (op_role == (static_cast<int>(OpRole::kForward) |
+                       static_cast<int>(OpRole::kLoss))) ||
+          (op_role == static_cast<int>(OpRole::kLRSched))) {
+        start_index++;
+      } else {
+        break;
+      }
+    }
+
+    if (start_index < ops_.size()) {
+      interpreter::DependencyBuilderSimplify depend_builder;
+      // depend_builder.Build(ops_, start_index, sharding_mode_);  hbm not safe
+      // shoud run in debug model need to fix
+      depend_builder.Build(ops_, start_index, false);
+      new_order = depend_builder.get_new_exexutor_order();
+      std::vector<std::unique_ptr<OperatorBase>> new_ops;
+      std::vector<size_t> final_order;
+      for (auto index : new_order) {
+        if (remove_ids.count(index) == 0) {
+          new_ops.push_back(std::move(ops_[index]));
+          final_order.push_back(index);
+        }
+      }
+      new_order = final_order;
+      ops_ = std::move(new_ops);
+    }
   }
   operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
       program, 0, ops_);
@@ -345,16 +385,6 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
     }
     all_param_.push_back(name);
     if (var->Persistable()) {
-<<<<<<< HEAD
-      auto *ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
-          thread_id_ != 0) {
-        int tensor_dim = static_cast<int>(root_scope_->FindVar(var->Name())
-                                              ->GetMutable<phi::DenseTensor>()
-                                              ->numel());
-        auto *ptr1 = thread_scope_->Var(var->Name());
-=======
       ++persist_total;
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
         Variable *root_var = root_scope_->FindVar(name);
@@ -364,7 +394,6 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           continue;
         }
         auto *ptr1 = thread_scope_->Var(name);
->>>>>>> bf2039d0a7... add graph support sharding and dump fields param (#253)
         InitializeVariable(ptr1, var->GetType());
         phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
 #define MemsetCallback(cpp_type, proto_type)                                 \

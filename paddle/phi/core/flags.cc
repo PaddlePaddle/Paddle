@@ -909,6 +909,19 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Distributed related FLAG
+ * Name: enable_adjust_op_order
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Control  whether adjust op order in worker to reduce hbm cost.
+ */
+PADDLE_DEFINE_EXPORTED_int32(
+    enable_adjust_op_order,
+    0,
+    "It controls whether adjust op order in worker to reduce hbm cost");
+
+/**
+ * Distributed related FLAG
  * Name: enable_exit_when_partial_worker
  * Since Version: 2.2.0
  * Value Range: bool, default=false
