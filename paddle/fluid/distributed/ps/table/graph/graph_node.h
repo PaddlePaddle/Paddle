@@ -38,31 +38,35 @@ class Node {
   int64_t get_py_id() { return (int64_t)id; }
   void set_id(uint64_t id) { this->id = id; }
 
-  virtual void build_edges(bool is_weighted) {}
-  virtual void build_sampler(std::string sample_type) {}
-  virtual void add_edge(uint64_t id, float weight) {}
+  virtual void build_edges(bool is_weighted UNUSED) {}
+  virtual void build_sampler(std::string sample_type UNUSED) {}
+  virtual void add_edge(uint64_t id UNUSED, float weight UNUSED) {}
   virtual std::vector<int> sample_k(
-      int k, const std::shared_ptr<std::mt19937_64> rng) {
+      int k UNUSED, const std::shared_ptr<std::mt19937_64> rng UNUSED) {
     return std::vector<int>();
   }
-  virtual uint64_t get_neighbor_id(int idx) { return 0; }
-  virtual float get_neighbor_weight(int idx) { return 1.; }
+  virtual uint64_t get_neighbor_id(int idx UNUSED) { return 0; }
+  virtual float get_neighbor_weight(int idx UNUSED) { return 1.; }
 
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
-  virtual std::string get_feature(int idx) { return std::string(""); }
-  virtual int get_feature_ids(std::vector<uint64_t> *res) const { return 0; }
-  virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
+  virtual std::string get_feature(int idx UNUSED) { return std::string(""); }
+  virtual int get_feature_ids(std::vector<uint64_t> *res UNUSED) const {
     return 0;
   }
-  virtual int get_feature_ids(int slot_idx,
-                              std::vector<uint64_t> &feature_id,      // NOLINT
-                              std::vector<uint8_t> &slot_id) const {  // NOLINT
+  virtual int get_feature_ids(int slot_idx UNUSED,
+                              std::vector<uint64_t> *res UNUSED) const {
     return 0;
   }
-  virtual void set_feature(int idx, const std::string &str) {}
-  virtual void set_feature_size(int size) {}
+  virtual int get_feature_ids(
+      int slot_idx UNUSED,
+      std::vector<uint64_t> &feature_id UNUSED,      // NOLINT
+      std::vector<uint8_t> &slot_id UNUSED) const {  // NOLINT
+    return 0;
+  }
+  virtual void set_feature(int idx UNUSED, const std::string &str UNUSED) {}
+  virtual void set_feature_size(int size UNUSED) {}
   virtual void shrink_to_fit() {}
   virtual int get_feature_size() { return 0; }
   virtual size_t get_neighbor_size() { return 0; }
