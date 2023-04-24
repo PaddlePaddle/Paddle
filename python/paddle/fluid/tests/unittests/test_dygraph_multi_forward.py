@@ -113,7 +113,7 @@ class TestDygraphMultiForward(unittest.TestCase):
             paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=mnist.parameters()
+                learning_rate=1e-3, parameters=mnist.parameters()
             )
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True

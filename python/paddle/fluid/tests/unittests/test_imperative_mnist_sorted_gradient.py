@@ -36,7 +36,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
             mnist2 = MNIST()
             sgd2 = paddle.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=mnist2.parameters()
+                learning_rate=1e-3, parameters=mnist2.parameters()
             )
             train_reader2 = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True

@@ -55,7 +55,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             )
 
             sgd = paddle.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=ptb_model.parameters()
+                learning_rate=1e-3, parameters=ptb_model.parameters()
             )
             dy_param_updated = {}
             dy_param_init = {}

@@ -81,7 +81,7 @@ class TestImperativeMnist(unittest.TestCase):
             loss = paddle.sum(loss_probs)
 
             sgd = paddle.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=policy.parameters()
+                learning_rate=1e-3, parameters=policy.parameters()
             )
 
             dy_param_init_value = {}

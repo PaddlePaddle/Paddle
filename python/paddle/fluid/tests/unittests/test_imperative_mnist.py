@@ -125,7 +125,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=mnist.parameters()
+                learning_rate=1e-3, parameters=mnist.parameters()
             )
 
             batch_py_reader = fluid.io.PyReader(capacity=1)

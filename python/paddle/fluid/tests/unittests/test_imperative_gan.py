@@ -150,7 +150,7 @@ class TestDygraphGAN(unittest.TestCase):
             generator = Generator()
             sgd = paddle.optimizer.SGD(
                 learning_rate=1e-3,
-                parameter_list=(
+                parameters=(
                     discriminator.parameters() + generator.parameters()
                 ),
             )
@@ -205,7 +205,7 @@ class TestDygraphGAN(unittest.TestCase):
             generator2 = Generator()
             sgd2 = paddle.optimizer.SGD(
                 learning_rate=1e-3,
-                parameter_list=(
+                parameters=(
                     discriminator2.parameters() + generator2.parameters()
                 ),
             )

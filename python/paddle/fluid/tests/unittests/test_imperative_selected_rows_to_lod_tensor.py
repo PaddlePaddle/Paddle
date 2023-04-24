@@ -126,7 +126,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     sgd = paddle.optimizer.SGD(
                         learning_rate=1e-3,
-                        parameter_list=simple_net.parameters(),
+                        parameters=simple_net.parameters(),
                     )
                     dy_param_updated = {}
                     dy_param_init = {}
