@@ -155,7 +155,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     r = xpu::hard_cross_entropy<XPUType, int32_t>(
         dev_ctx.x_context(),
         softmax_data,
-        labels.data<int32_t>(),
+        labels_int_ptr_l3,
         loss_data,
         nullptr,
         axis == rank - 1 ? n : n * d / t,
