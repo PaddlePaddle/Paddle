@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -1545,13 +1546,74 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
+def check_submodules():
+    def get_submodule_folder():
+        git_submodules_path = os.path.join(TOP_DIR, ".gitmodules")
+        with open(git_submodules_path) as f:
+            return [
+                os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
+                for line in f.readlines()
+                if line.strip().startswith("path")
+            ]
+
+    def submodules_not_exists_or_empty(folder):
+        return not os.path.exists(folder) or (
+            os.path.isdir(folder) and len(os.listdir(folder)) == 0
+        )
+
+    def check_for_files_of_submodule(folder, files):
+        if not any(os.path.exists(os.path.join(folder, f)) for f in files):
+            print(
+                "Could not find any of {} in {}".format(
+                    ", ".join(files), folder
+                )
+            )
+            print("Did you run 'git submodule update --init --recursive'?")
+            sys.exit(1)
+
+    submodule_folders = get_submodule_folder()
+    # f none of the submodule folders exists, try to initialize them
+    if all(
+        submodules_not_exists_or_empty(folder) for folder in submodule_folders
+    ):
+        try:
+            print(' --- Trying to initialize submodules')
+            start = time.time()
+            subprocess.check_call(
+                ["git", "submodule", "update", "--init", "--recursive"],
+                cwd=TOP_DIR,
+            )
+            end = time.time()
+            print(
+                ' --- Submodule initialization took {:.2f} sec'.format(
+                    end - start
+                )
+            )
+        except Exception:
+            print(' --- Submodule initalization failed')
+            print('Please run:\n\tgit submodule update --init --recursive')
+            sys.exit(1)
+    for folder in submodule_folders:
+        check_for_files_of_submodule(
+            folder,
+            [
+                "CMakeLists.txt",
+                "Makefile",
+                "setup.py",
+                "LICENSE",
+                "LICENSE.md",
+                "LICENSE.txt",
+            ],
+        )
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
     # check build dependency
     check_build_dependency()
-
+    check_submodules()
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
