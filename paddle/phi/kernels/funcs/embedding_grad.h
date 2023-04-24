@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 namespace funcs {
@@ -27,12 +28,13 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
                                                  const int64_t D,
                                                  const int64_t start_idx,
                                                  const int64_t end_idx) {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   constexpr int64_t kInvalidId = -1;
   extern __shared__ char buf[];
-  T* smem = reinterpret_cast<T*>(buf);
-  T* my_s = smem + WarpSize * threadIdx.y;
-  int64_t* indices_batch =
-      reinterpret_cast<int64_t*>(buf + sizeof(T) * WarpSize * BlockDimY);
+  MT* smem = reinterpret_cast<MT*>(buf);
+  MT* my_s = smem + WarpSize * threadIdx.y;
+  IdT* indices_batch =
+      reinterpret_cast<IdT*>(buf + sizeof(MT) * WarpSize * BlockDimY);
 
   const int stride = static_cast<int>(D);
 
@@ -74,9 +76,9 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
       int64_t dst_row = indices_batch[src_row - batch_start];
       if (src_row < K && feature < stride) {
         if (UseLimit && dst_row == kInvalidId) {
-          my_s[threadIdx.x] = static_cast<T>(0);
+          my_s[threadIdx.x] = static_cast<MT>(0);
         } else {
-          my_s[threadIdx.x] = static_cast<T>(output[src_row * D + feature]);
+          my_s[threadIdx.x] = static_cast<MT>(output[src_row * D + feature]);
         }
       }
 
@@ -118,7 +120,9 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
             matchmask ^= (1 << first_remaining_peer);
           }
           if (feature < stride && (!UseLimit || dst_row != kInvalidId)) {
-            table[dst_row * D + feature] += static_cast<T>(my_s[threadIdx.x]);
+            auto table_idx = dst_row * D + feature;
+            table[table_idx] = static_cast<T>(
+                static_cast<MT>(table[table_idx]) + my_s[threadIdx.x]);
           }
         }
       }
@@ -144,8 +148,9 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& ctx,
 #endif
   dim3 threads(kWarpSize, kBlockDimY);
   dim3 grids(static_cast<int>((D + kWarpSize - 1) / kWarpSize));
-  constexpr auto kSharedMemSize =
-      sizeof(T) * kWarpSize * kBlockDimY + sizeof(int) * kWarpSize * kBlockDimY;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  constexpr auto kSharedMemSize = sizeof(MT) * kWarpSize * kBlockDimY +
+                                  sizeof(IdT) * kWarpSize * kBlockDimY;
   if (start_idx < 0) {
     EmbeddingGradDeterministicKernel<T, IdT, kWarpSize, kBlockDimY, false>
         <<<grids, threads, kSharedMemSize, ctx.stream()>>>(
