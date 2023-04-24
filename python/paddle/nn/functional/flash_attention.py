@@ -18,17 +18,27 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
+g_enable_math = None
+g_enable_flash = None
+g_enable_mem_efficient = None
+
 
 @signature_safe_contextmanager
 def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
     global g_enable_math, g_enable_flash, g_enable_mem_efficient
+    original_enable_math = g_enable_math
+    original_enable_flash = g_enable_math
+    original_enable_mem_efficient = g_enable_mem_efficient
+
     g_enable_math = enable_math
     g_enable_flash = enable_flash
     g_enable_mem_efficient = enable_mem_efficient
     try:
         yield
     finally:
-        pass
+        g_enable_math = original_enable_math
+        g_enable_flash = original_enable_flash
+        g_enable_mem_efficient = original_enable_mem_efficient
 
 
 def math_attention(
@@ -72,8 +82,7 @@ def select_sdp_cuda(head_dim):
 def select_sdp(head_dim):
     place = paddle.get_device()
     # not use sdp_kernel
-    if 'g_enable_flash' not in globals():
-        # if not isinstance(place, paddle.CUDAPlace):
+    if g_enable_flash is None:
         if "gpu" not in place:
             return "math"
         else:
