@@ -234,10 +234,7 @@ REGISTER_OPERATOR(tree_conv,
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 
-REGISTER_OP_CPU_KERNEL(tree_conv,
-                       ops::TreeConvKernel<phi::CPUContext, float>,
-                       ops::TreeConvKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(tree_conv_grad,
-                       ops::TreeConvGradKernel<phi::CPUContext, float>,
-                       ops::TreeConvGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv, CPU, ALL_LAYOUT, ops::TreeConvKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv_grad, CPU, ALL_LAYOUT, ops::TreeConvGradKernel, float, double) {}
