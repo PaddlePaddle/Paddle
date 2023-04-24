@@ -2310,7 +2310,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         elif is_composite_grad_api:
             if composite_grad_api_name in prim_white_list:
                 grad_function_call_str = f"""
-
 {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
 {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
