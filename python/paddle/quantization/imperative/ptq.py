@@ -250,9 +250,7 @@ class ImperativePTQ:
             if self._is_quant_layer(sub_layer):
                 cur_num += 1
                 if cur_num % 5 == 0:
-                    _logger.info(
-                        "Process the %s / %s layer" % (cur_num, total_num)
-                    )
+                    _logger.info(f"Process the {cur_num} / {total_num} layer")
 
                 quant_config = sub_layer._quant_config
 

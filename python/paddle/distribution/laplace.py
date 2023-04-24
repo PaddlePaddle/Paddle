@@ -48,7 +48,7 @@ class Laplace(distribution.Distribution):
 
                         m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                         m.sample()  # Laplace distributed with loc=0, scale=1
-                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                         # [3.68546247])
 
     """
@@ -209,7 +209,7 @@ class Laplace(distribution.Distribution):
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m.entropy()
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [1.69314718])
         """
         return 1 + paddle.log(2 * self.scale)
@@ -304,14 +304,10 @@ class Laplace(distribution.Distribution):
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m.sample()  # Laplace distributed with loc=0, scale=1
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [3.68546247])
         """
-        if not isinstance(shape, tuple):
-            raise TypeError(
-                f'Expected shape should be tuple[int], but got {type(shape)}'
-            )
-
+        shape = shape if isinstance(shape, tuple) else tuple(shape)
         with paddle.no_grad():
             return self.rsample(shape)
 
@@ -336,22 +332,16 @@ class Laplace(distribution.Distribution):
         """
 
         eps = self._get_eps()
-        shape = self._extend_shape(shape) or (1,)
+        shape = self._extend_shape(shape)
         uniform = paddle.uniform(
             shape=shape,
             min=float(np.nextafter(-1, 1)) + eps / 2,
             max=1.0 - eps / 2,
             dtype=self.loc.dtype,
         )
-
-        if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
-            loc, scale, uniform = paddle.broadcast_tensors(
-                [self.loc, self.scale, uniform]
-            )
-        else:
-            loc, scale = self.loc, self.scale
-
-        return loc - scale * uniform.sign() * paddle.log1p(-uniform.abs())
+        return self.loc - self.scale * uniform.sign() * paddle.log1p(
+            -uniform.abs()
+        )
 
     def _get_eps(self):
         """
@@ -410,7 +400,7 @@ class Laplace(distribution.Distribution):
                             m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m2 = paddle.distribution.Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
                             m1.kl_divergence(m2)
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [1.04261160])
         """
 

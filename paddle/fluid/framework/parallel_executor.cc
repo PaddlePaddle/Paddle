@@ -523,19 +523,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-      if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(place, max_memory_size));
-      } else {
-        gc.reset(new MLUStreamGarbageCollector(place, max_memory_size));
-      }
-      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-#else
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use MLU device since it's not compiled with MLU,"
-          "Please recompile or reinstall Paddle with MLU support."));
-#endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc.reset(new XPUGarbageCollector(place, max_memory_size));
@@ -553,20 +540,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
-#endif
-    } else if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-      if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
-      } else {
-        gc.reset(new NPUUnsafeFastGarbageCollector(place, max_memory_size));
-      }
-      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
-#else
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use NPU device since it's not compiled with "
-          "NPU,"
-          "Please recompile or reinstall Paddle with NPU support."));
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)

@@ -15,6 +15,7 @@
 import copy
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -59,14 +60,14 @@ def start_local_trainers(
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = open("workerlog.%d" % idx, "a")
         proc = subprocess.Popen(
@@ -138,7 +139,7 @@ class TestMultipleCustomCPU(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 
@@ -154,8 +155,11 @@ class TestProcessGroup(TestMultipleCustomCPU):
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. && make -j8'.format(
-            self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
+            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} && make -j8'.format(
+            self.temp_dir.name,
+            os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
+            sys.executable,
         )
         os.system(cmd)
 

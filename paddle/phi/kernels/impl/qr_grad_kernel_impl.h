@@ -149,17 +149,13 @@ void QrGradKernel(const Context& ctx,
     // Calculate dX and dY individually and concatenate them to get dA
     ctx.template Alloc<phi::dtype::Real<T>>(&dA);
 
-    auto Y = SliceKernel<T, Context>(
-        ctx, A, {A.dims().size() - 1}, {m}, {n}, {1}, {});
-    auto U = SliceKernel<T, Context>(
-        ctx, R, {R.dims().size() - 1}, {0}, {m}, {1}, {});
+    auto Y = Slice<T, Context>(ctx, A, {A.dims().size() - 1}, {m}, {n});
+    auto U = Slice<T, Context>(ctx, R, {R.dims().size() - 1}, {0}, {m});
     DenseTensor dY, dX, dV, dR_tmp, dQ_prime;
 
     if (dR.initialized()) {
-      dV = SliceKernel<T, Context>(
-          ctx, dR, {dR.dims().size() - 1}, {m}, {n}, {1}, {});
-      dR_tmp = SliceKernel<T, Context>(
-          ctx, dR, {dR.dims().size() - 1}, {0}, {m}, {1}, {});
+      dV = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {m}, {n});
+      dR_tmp = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {0}, {m});
       // Y * dV^H
       dQ_prime =
           Matmul<T, Context>(ctx, Y, TransposeLast2Dim<T, Context>(ctx, dV));

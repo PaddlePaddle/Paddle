@@ -174,7 +174,7 @@ class TestAccuracyDynamic(unittest.TestCase):
                         np.array(res_f, dtype='float64'),
                         rtol=1e-3,
                     )
-                ), "Accuracy precision error: {} != {}".format(res_m, res_f)
+                ), f"Accuracy precision error: {res_m} != {res_f}"
                 acc.reset()
                 assert np.sum(acc.total) == 0
                 assert np.sum(acc.count) == 0
@@ -230,7 +230,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             res_f = accuracy(pred, label, self.topk)
             assert np.all(
                 np.isclose(np.array(res_m), np.array(res_f), rtol=1e-3)
-            ), "Accuracy precision error: {} != {}".format(res_m, res_f)
+            ), f"Accuracy precision error: {res_m} != {res_f}"
             acc.reset()
             assert np.sum(acc.total) == 0
             assert np.sum(acc.count) == 0

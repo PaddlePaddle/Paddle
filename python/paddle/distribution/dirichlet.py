@@ -62,10 +62,10 @@ class Dirichlet(exponential_family.ExponentialFamily):
             dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
 
             print(dirichlet.entropy())
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [-1.24434423])
             print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [10.80000114])
 
     """
@@ -164,7 +164,10 @@ def _dirichlet(concentration, name=None):
     else:
         op_type = 'dirichlet'
         check_variable_and_dtype(
-            concentration, 'concentration', ['float32', 'float64'], op_type
+            concentration,
+            'concentration',
+            ['float16', 'float32', 'float64', 'uint16'],
+            op_type,
         )
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(

@@ -491,8 +491,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -961,7 +963,7 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(
         y.shape
-    ), "the y shape should be {}".format(predshape)
+    ), f"the y shape should be {predshape}"
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -1445,13 +1447,9 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis0 out of range, axis0 = {}".format(axes[0])
-        )
+        raise ValueError(f"Rotation axis0 out of range, axis0 = {axes[0]}")
     if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis1 out of range, axis1 = {}".format(axes[1])
-        )
+        raise ValueError(f"Rotation axis1 out of range, axis1 = {axes[1]}")
 
     k %= 4
     if k == 0:
@@ -1973,6 +1971,7 @@ def split(x, num_or_sections, axis=0, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
@@ -2202,6 +2201,7 @@ def squeeze(x, axis=None, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2478,7 +2478,10 @@ def unique(
         return tuple(outs)
     else:
         check_variable_and_dtype(
-            x, "input", ['float32', 'float64', 'int32', 'int64'], 'unique'
+            x,
+            "input",
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'unique',
         )
         check_type(return_index, 'return_index', bool, 'unique')
         check_type(return_inverse, 'return_inverse', bool, 'unique')
@@ -2598,6 +2601,7 @@ def unsqueeze(x, axis, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2805,7 +2809,15 @@ def unbind(input, axis=0):
         check_dtype(
             dtype,
             'unbind',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'unbind',
         )
         outs = [
@@ -3148,19 +3160,19 @@ def tile(x, repeat_times, name=None):
         )
         if isinstance(repeat_times, Variable):
             assert (
-                len(repeat_times.shape) == 1
-            ), 'repeat_times must be an 1-D Tensor.'
+                repeat_times.numel() == 1
+            ), 'repeat_times must be a Tensor with one element.'
         else:
             for elem in repeat_times:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3404,23 +3416,31 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
+            assert shape.numel() == 1, 'shape must be a Tensor with one element'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in shape must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                    ), 'Elements in shape must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'expand',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'expand')
@@ -3852,7 +3872,15 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'strided_slice',
         )
         check_type(axes, 'axes', (list, tuple), 'strided_slice')
@@ -4168,9 +4196,6 @@ def tensordot(x, y, axes=2, name=None):
             perm_y.append(i)
             shape_out.append(shape_y[i])
             not_contraction_size_y *= shape_y[i]
-
-    if not shape_out:
-        shape_out = [1]
 
     x = x.transpose(perm=perm_x).reshape(
         [not_contraction_size_x, contraction_size]
@@ -4534,7 +4559,15 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'take_along_axis',
         )
         check_variable_and_dtype(
@@ -4606,7 +4639,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'put_along_axis',
         )
         check_variable_and_dtype(
@@ -4688,7 +4729,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
     check_variable_and_dtype(
@@ -4700,7 +4741,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         value,
         'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
 
