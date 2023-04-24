@@ -78,10 +78,17 @@ void InitGpuProperties(Place place,
       for (const int32_t& arch : compiled_archs) {
         compile_arch_str += std::to_string(arch) + " ";
       }
-      LOG(WARNING) << "Paddle with runtime capability " << *compute_capability
-                   << " is not compatible with Paddle installation with arch: "
-                   << compile_arch_str
-                   << ". Please check compiled version of Paddle. ";
+      // LOG(WARNING) << "Paddle with runtime capability " <<
+      // *compute_capability
+      //              << " is not compatible with Paddle installation with arch:
+      //              "
+      //              << compile_arch_str
+      //              << ". Please check compiled version of Paddle. ";
+      LOG(WARNING) << "The GPU architecture in your current machine is Pascal, "
+                      "which does not match the architecture supported by the "
+                      "wheel package of Paddle. It is recommended to install "
+                      "the corresponding wheel package according to the "
+                      "installation information on the official Paddle website";
     }
   }
 #endif
