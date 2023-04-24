@@ -117,7 +117,7 @@ __global__ void GPUSigmoidFocalLossBackward(const T *x_data,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -148,7 +148,7 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -187,11 +187,15 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sigmoid_focal_loss,
-    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, float>,
-    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    sigmoid_focal_loss_grad,
-    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, float>,
-    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GPUSigmoidFocalLossKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GPUSigmoidFocalLossGradKernel,
+                          float,
+                          double) {}

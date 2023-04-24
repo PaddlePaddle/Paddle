@@ -313,7 +313,7 @@ def _find_loss_op_(loss):
             loss.op = op
             break
     if loss.op is None:
-        raise ValueError("loss.op is None. Should not happend")
+        raise ValueError("loss.op is None. Should not happen")
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -1361,7 +1361,7 @@ def _append_backward_ops_(
             sub_block = program.block(op._block_attr_id("sub_block"))
             grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
-            # see follwing comments for why set None here.
+            # see following comments for why set None here.
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
@@ -1383,7 +1383,7 @@ def _append_backward_ops_(
             grad_sub_block_list.append(grad_sub_block.desc)
         # In primitive mode, raw phi GradOp will be split into multiple small
         # primitive operators, and the split rules are defined in c++ level,
-        # see detials: paddle/fluid/prim/api/manual/backward/composite_backward_api.h
+        # see details: paddle/fluid/prim/api/manual/backward/composite_backward_api.h
         # It means that the output's shape and dtype of previous operators which
         # maybe used as the input of next operators must be known. Therefore,
         # we infer shape and dtype in a sandbox block(named composite_block) for
@@ -1391,7 +1391,7 @@ def _append_backward_ops_(
         # For example:
         #   forward:
         #       z = multiply(x, y) //maybe broadcast in kernel
-        #   bcckward:
+        #   backward:
         #       x_grad_unreduce = z_grad * y // maybe unreduce
         #       reduced_axes = get_reduced_axes(x_grad.shape, x.shape) // need known shape
         #       x_grad = reduce_sum(x_grad_unreduce)
@@ -1515,7 +1515,7 @@ def _append_backward_ops_(
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-    # record mapping bewteen grad var name and var name (Only for auto parallel)
+    # record mapping between grad var name and var name (Only for auto parallel)
     grad_var_to_var = None
     if distop_context is not None:
         grad_var_to_var = distop_context.grad_var_to_var[
@@ -1548,7 +1548,9 @@ def _append_backward_ops_(
             op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
         ]
     else:
-        logging.debug("Runing backward composite and disable find_not_need_ops")
+        logging.debug(
+            "Running backward composite and disable find_not_need_ops"
+        )
 
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1716,7 +1718,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
 def infershape_for_composite(block, grad_op_desc):
     # NOTE: why pruning the operator with empty output here ?
-    # Some backward operator will output emtpy var, which will cause infer
+    # Some backward operator will output empty var, which will cause infer
     # shape error, such assign with input's stop_gradient=True
     if len(grad_op_desc.output_arg_names()) == 0:
         return
@@ -1748,7 +1750,7 @@ def infershape_for_composite(block, grad_op_desc):
                 for name, args in grad_op_desc.outputs().items()
             },
             # NOTE Runtime attr will be ignore as the c++ GetRuntimeAttr
-            # interface cann't be exported to python. Please note the WARNNING
+            # interface cann't be exported to python. Please note the WARNING
             # message logged in RuntimeAttrs of composite_grad_desc_maker.h
             attrs=grad_op_desc.get_attr_map(),
         )

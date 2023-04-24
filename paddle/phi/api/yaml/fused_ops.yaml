@@ -34,10 +34,12 @@
   optional : bias, x_max
 
 - op : fused_dropout_add
-  args : (Tensor x, Tensor y, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
+  optional : seed_tensor
   output : Tensor(out), Tensor(seed_offset)
   infer_meta :
     func : FusedDropoutAddInferMeta
+    param : [x, y]
   kernel :
     func : fused_dropout_add
     data_type : x

@@ -224,7 +224,7 @@ class TransformFunctor {
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
-  inline void RunRowWise(int n, int pre) const {
+  inline void RunRowWise(int n) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -243,7 +243,7 @@ class TransformFunctor {
     }
   }
 
-  inline void RunMidWise(int n, int pre, int post) const {
+  inline void RunMidWise(int n, int post) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -435,10 +435,10 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
   }
 
   if (post == 1) {
-    functor.RunRowWise(n, pre);
+    functor.RunRowWise(n);
     return;
   } else {
-    functor.RunMidWise(n, pre, post);
+    functor.RunMidWise(n, post);
     return;
   }
 }

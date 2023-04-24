@@ -24,7 +24,7 @@ from util import SubstituteTemplate
 CommonCutlassConvKernelDeclare = """
 cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
   using kernel_base =
-  typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
+  typename cutlass::conv::kernel::${conv_kind_name}<
     ${element_a},
     ${layout_a},
     ${element_b},
@@ -71,6 +71,7 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
   int ow = params.ow;
   int dilation_h = params.dilation_h;
   int dilation_w = params.dilation_w;
+  int split_k_slices = ${split_k_slices};
 
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
                                                 {oc, kh, kw, ic / groups},
@@ -79,7 +80,7 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
                                                 {dilation_h, dilation_w},
                                                 {batch, oh, ow, oc},
                                                 cutlass::conv::Mode::kCrossCorrelation,
-                                                1,
+                                                split_k_slices,
                                                 groups);
 """
 
@@ -183,7 +184,7 @@ CommonTail = '''
 '''
 
 
-# wrap different sm versions into a function
+# Wrap different sm versions into a function called by phi
 def GenerateFunctionForPhi(
     sm_versions, support_epi_funcs, underscore_names, camel_names
 ):
@@ -202,3 +203,20 @@ def GenerateFunctionForPhi(
         op_dicts["op_name"] = camel_names[epi_func]
         generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
     return generated_code
+
+
+# We modify some template parameters based on CommonCutlassConvKernelDeclare.
+CommonCutlassConv2dDepthwiseKernelDeclare = (
+    CommonCutlassConvKernelDeclare.replace(
+        "${align_a}", "cutlass::MatrixShape<${strided_shape}>"
+    )
+    .replace("${align_b}", "cutlass::MatrixShape<${dilation_shape}>")
+    .replace("ImplicitGemmConvolution", "DirectConvolution")
+    .replace(
+        "cutlass::gemm::GemmShape<${Tshape}>,",
+        '''cutlass::gemm::GemmShape<${Tshape}>,
+       cutlass::conv::TensorNHWCShape<${T_output_shape}>,
+       cutlass::MatrixShape<${filter_shape}>,
+     ''',
+    )
+)
