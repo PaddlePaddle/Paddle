@@ -247,14 +247,15 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
 }
 
 /* Public vars are designed to be writable. */
-#define REGISTER_PUBLIC_GLOBAL_VAR(var)                                    \
-  do {                                                                     \
-    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();     \
-    instance->Register(#var,                                               \
-                       /*is_public=*/true,                                 \
-                       GlobalVarGetterSetterRegistry::CreateGetter(var),   \
-                       GlobalVarGetterSetterRegistry::CreateGetter(var),   \
-                       GlobalVarGetterSetterRegistry::CreateSetter(&var)); \
+#define REGISTER_PUBLIC_GLOBAL_VAR(var)                                \
+  do {                                                                 \
+    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance(); \
+    instance->Register(                                                \
+        #var,                                                          \
+        /*is_public=*/true,                                            \
+        GlobalVarGetterSetterRegistry::CreateGetter(var),              \
+        GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(var),  \
+        GlobalVarGetterSetterRegistry::CreateSetter(&var));            \
   } while (0)
 
 struct RegisterGetterSetterVisitor {

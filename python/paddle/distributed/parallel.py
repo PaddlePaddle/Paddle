@@ -919,10 +919,10 @@ def _get_modified_flags():
 
 def _print_modified_flags(modified_flags):
     if len(modified_flags) > 0:
-        print("############## Modefied FLAGS detected ##############")
+        print("============== Modified FLAGS detected ==============")
         for flag in modified_flags:
             print(flag)
-        print("#####################################################")
+        print("=====================================================")
 
 
 def init_parallel_env():
