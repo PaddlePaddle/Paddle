@@ -23,16 +23,16 @@ namespace phi {
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const IntArray& shape UNUSED,
-                 DataType dtype  UNUSED,
+                 DataType dtype UNUSED,
                  DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 }
 
 template <typename T, typename Context>
-void EmptyLikeKernel(const Context& dev_ctx  UNUSED,
-                     const DenseTensor& x  UNUSED,
-                     DataType dtype  UNUSED,
+void EmptyLikeKernel(const Context& dev_ctx UNUSED,
+                     const DenseTensor& x UNUSED,
+                     DataType dtype UNUSED,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 }

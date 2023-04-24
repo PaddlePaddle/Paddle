@@ -97,7 +97,9 @@ class PSServer {
   virtual int32_t StartS2S() { return 0; }
 
   virtual ::std::future<int32_t> SendPServer2PServerMsg(
-      int msg_type  UNUSED, int to_pserver_id  UNUSED, const std::string &msg  UNUSED) {
+      int msg_type UNUSED,
+      int to_pserver_id UNUSED,
+      const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError: PSServer::send_pserver2pserver_msg";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -125,9 +127,9 @@ class PSServer {
     }
     return itr->second(msg_type, from_pserver_id, msg);
   }
-  virtual int32_t ReceiveFromPServer(int msg_type  UNUSED,
-                                     int pserver_id  UNUSED,
-                                     const std::string &msg  UNUSED) {
+  virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
+                                     int pserver_id UNUSED,
+                                     const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
     return -1;
   }
