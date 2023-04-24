@@ -129,7 +129,9 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_prim=True
+            )
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -140,6 +142,8 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self.public_python_api = paddle.scatter_nd_add
+        self.prim_op_type = "prim"
         self._set_dtype()
         if self.dtype == np.float64:
             target_dtype = "float64"
@@ -168,7 +172,7 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
 
 
 class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
@@ -201,7 +205,9 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_prim=True
+            )
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -212,6 +218,8 @@ class TestScatterNdAddWithHighRankSame(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self.public_python_api = paddle.scatter
+        self.prim_op_type = "prim"
         self._set_dtype()
         if self.dtype == np.float64:
             target_dtype = "float64"
@@ -243,7 +251,7 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
 
 
 class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
@@ -276,7 +284,9 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_prim=True
+            )
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
@@ -287,6 +297,8 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         self.python_api = paddle.scatter_nd_add
+        self.public_python_api = paddle.scatter
+        self.prim_op_type = "prim"
         shape = (8, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("double")
         index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
@@ -302,7 +314,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
 
 
 # Test Python API
