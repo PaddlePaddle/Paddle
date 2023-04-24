@@ -79,7 +79,7 @@ function make_ubuntu_trt7_dockerfile(){
 function make_centos_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
   sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
-  sed -i "s#<setcuda>##g" ${dockerfile_name}
+  sed -i "s#<setcuda>#RUN apt-get install -y gcc g++ make#g" ${dockerfile_name}
   sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
   sed -i "s#RUN apt-key del 7fa2af80##g" ${dockerfile_name}
   sed -i 's#RUN rm /etc/apt/sources.list.d/\*##g' ${dockerfile_name}
