@@ -40,6 +40,10 @@ void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
 
+void SetNanInfStackLimit(const int& stack_limit);
+
+int GetNanInfStackLimit();
+
 template <typename T,
           typename MT,
           std::enable_if_t<std::is_same<T, float>::value, bool> = true>
