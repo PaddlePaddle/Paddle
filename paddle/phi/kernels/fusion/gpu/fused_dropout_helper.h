@@ -30,6 +30,8 @@
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
+DECLARE_bool(use_fast_math);
+
 namespace phi {
 namespace fusion {
 
@@ -292,9 +294,9 @@ class FusedDropoutHelper {
                           T* d_bias,
                           const std::string& act_method) {
     if (act_method == "gelu") {
-      phi::funcs::GeluGradFunctor<T> gelu_grad;
+      phi::fusion::GeluGradFunctor<T> gelu_grad;
       phi::fusion::
-          LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::GeluGradFunctor<T>>(
+          LaunchDropoutActBiasGrad<T, MaskType, phi::fusion::GeluGradFunctor<T>>(
               gelu_grad,
               dout,
               mask,
