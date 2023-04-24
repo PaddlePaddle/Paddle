@@ -34,7 +34,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = fluid.global_scope()
         scope.var("LearningRate").get_tensor().set([0.01], place)
-        scope.var("Ids").get_tensor().set([i for i in range(100)], place)
+        scope.var("Ids").get_tensor().set(list(range(100)), place)
 
         init_program = fluid.Program()
 

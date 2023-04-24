@@ -56,7 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -155,11 +155,10 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
   }
 }
-}  // namespace
 
-bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
-                             phi::DenseTensor *t,
-                             const platform::Place &place) {
+bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
+                               phi::DenseTensor *t,
+                               const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
   if (pt.dtype == PaddleDType::INT64) {
@@ -270,6 +269,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
   t->set_lod(lod);
   return true;
 }
+}  // namespace
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -376,14 +376,6 @@ void AnalysisPredictor::InitPlace() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
-  } else if (config_.use_npu()) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use NPU forward propagation, but Paddle was not compiled "
-        "with WITH_ASCEND_CL."));
-#endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
       place_ = paddle::platform::CPUPlace();
@@ -510,14 +502,18 @@ void *AnalysisPredictor::GetExecStream() const {
       return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
           ->stream();
     }
-  } else {
-    return nullptr;
   }
-  return nullptr;
-#else
+#endif
+#if defined(PADDLE_WITH_XPU)
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
-#endif
 }
 
 const void *AnalysisPredictor::GetDeviceContexts() const {
@@ -924,6 +920,17 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 }
 
 void AnalysisPredictor::MkldnnPreSet(
+    const std::vector<paddle::Tensor> &inputs) {
+#ifdef PADDLE_WITH_MKLDNN
+  std::vector<std::vector<int>> inputs_shape;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    inputs_shape.emplace_back(phi::vectorize<int>(inputs[i].dims()));
+  }
+  MkldnnPreSet(inputs_shape);
+#endif
+}
+
+void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
@@ -1037,6 +1044,70 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 
+bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
+                            std::vector<paddle::Tensor> *outputs) {
+  inference::DisplayMemoryInfo(place_, "before run");
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+#endif
+  VLOG(3) << "predict start";
+  // set feed variable
+  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::PreconditionNotMet("The scope should not be nullptr."));
+  if (!SetFeed(inputs, scope)) {
+    LOG(ERROR) << "fail to set feed";
+    return false;
+  }
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
+  // Run the inference program
+  // if share variables, we need not create variables
+  executor_->Run();
+
+  inference::DisplayMemoryInfo(place_, "after run");
+
+  // get fetch variable
+  if (!GetFetch(outputs, scope)) {
+    LOG(ERROR) << "fail to get fetches";
+    return false;
+  }
+
+  // All the containers in the scope will be hold in inference, but the
+  // operators assume that the container will be reset after each batch.
+  // Here is a bugfix, collect all the container variables, and reset then to a
+  // bool; the next time, the operator will call MutableData and construct a new
+  // container again, so that the container will be empty for each batch.
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
+  tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
+#if defined(PADDLE_WITH_MKLML)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+#endif
+  return true;
+}
+
 bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
@@ -1051,7 +1122,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     phi::DenseTensor *input = &feed_tensors_[i];
-    if (!PaddleTensorToLoDTensor(inputs[i], input, place_)) {
+    if (!PaddleTensorToDenseTensor(inputs[i], input, place_)) {
       return false;
     }
     int idx = -1;
@@ -1065,7 +1136,41 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
-    framework::SetFeedVariable(scope, *input, "feed", idx);
+    framework::SetFeedVariable(scope, *input, framework::kFeedOpType, idx);
+  }
+  return true;
+}
+
+bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
+                                framework::Scope *scope) {
+  VLOG(3) << "Predictor::set_feed";
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    feeds_.size(),
+                    platform::errors::InvalidArgument(
+                        "wrong feed input size, need %d but get %d.",
+                        feeds_.size(),
+                        inputs.size()));
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    PADDLE_ENFORCE_EQ(inputs[i].initialized(),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "The input Tensor expected to be initialized."));
+  }
+
+  if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
+        return !t.name().empty() && feed_names_.count(t.name());
+      })) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      auto &t = framework::GetVariableTensor(*scope, inputs[i].name());
+      t.ShareDataWith(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+    }
+  } else {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      auto &t = framework::GetVariableTensor(*scope, idx2feeds_[i]);
+      t.ShareDataWith(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+    }
   }
   return true;
 }
@@ -1104,7 +1209,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             idx,
             i));
     framework::FetchType &fetch_var =
-        framework::GetFetchVariable(*scope, "fetch", idx);
+        framework::GetFetchVariable(*scope, framework::kFetchOpType, idx);
     auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
@@ -1125,6 +1230,18 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
       LOG(ERROR) << "unknown type, only support float32, float16, int64 and "
                     "int32 now.";
     }
+  }
+  return true;
+}
+
+bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
+                                 framework::Scope *scope) {
+  VLOG(3) << "Predictor::get_fetch";
+  outputs->resize(fetches_.size());
+  for (size_t i = 0; i < fetches_.size(); ++i) {
+    auto const &name = idx2fetches_[i];
+    auto &t = framework::GetVariableTensor(*scope, name);
+    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
   }
   return true;
 }
@@ -1201,6 +1318,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
+  argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1208,7 +1326,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetUseXpu(config_.use_xpu_);
     argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
     argument_->SetXpuLocked(config_.xpu_locked_);
     argument_->SetXpuAutotune(config_.xpu_autotune_);
@@ -1316,7 +1433,7 @@ void AnalysisPredictor::PrepareArgument() {
   // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
-              << ", we will use a new PassStrategy. Note that only the GPU "
+              << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
@@ -1583,7 +1700,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
                               "The sub_scope should not be nullptr."));
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
-    if (op->Type() == "feed") {
+    if (op->Type() == framework::kFeedOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
@@ -1591,7 +1708,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
-    } else if (op->Type() == "fetch") {
+    } else if (op->Type() == framework::kFetchOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
@@ -1606,9 +1723,9 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument("The scope should not be nullptr."));
-  auto *var = scope->Var("feed");
+  auto *var = scope->Var(framework::kFeedOpType);
   var->GetMutable<framework::FeedList>();
-  var = scope->Var("fetch");
+  var = scope->Var(framework::kFetchOpType);
   var->GetMutable<framework::FetchList>();
 }
 
@@ -1757,9 +1874,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
@@ -1814,9 +1928,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
@@ -2190,7 +2301,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
       const std::string name = var->Name();
       auto *variable = executor_->GetScope()->FindVar(name);
       if (variable != nullptr && variable->IsType<phi::DenseTensor>() &&
-          name != "feed" && name != "fetch") {
+          name != framework::kFeedOpType && name != framework::kFetchOpType) {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
         auto *t = variable->GetMutable<phi::DenseTensor>();
         t->clear();
@@ -2435,13 +2546,11 @@ USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
-USE_TRT_CONVERTER(matmul);
-USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(matrix_multiply);
 USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
@@ -2567,12 +2676,15 @@ USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
+USE_TRT_CONVERTER(cumsum)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+USE_TRT_CONVERTER(qk_multihead_matmul)
 #endif
 #if IS_TRT_VERSION_GE(8510)
 USE_TRT_CONVERTER(grid_sampler)
@@ -2655,6 +2767,11 @@ std::map<std::string, DataType> Predictor::GetOutputTypes() {
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+
+bool Predictor::Run(const std::vector<paddle::Tensor> &inputs,
+                    std::vector<paddle::Tensor> *outputs) {
+  return predictor_->Run(inputs, outputs);
+}
 
 std::unique_ptr<Predictor> Predictor::Clone(void *stream) {
   auto analysis_pred = predictor_->Clone(stream);

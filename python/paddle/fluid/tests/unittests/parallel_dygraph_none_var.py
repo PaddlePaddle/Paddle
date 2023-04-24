@@ -40,7 +40,7 @@ class SimpleNet(paddle.nn.Layer):
         self.step = 0
 
     def forward(self, x):
-        return paddle.to_tensor(0.0, dtype='float32')
+        return paddle.to_tensor([0.0], dtype='float32')
 
 
 def fake_sample_reader():
@@ -64,7 +64,7 @@ class TestSimpleNet(TestParallelDyGraphRunnerBase):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        x_data = np.array([x for x in batch])
+        x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
         x = paddle.to_tensor(x_data)
         out = model(x)

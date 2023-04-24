@@ -419,6 +419,7 @@ class FleetTranspiler(Fleet):
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for inference,
@@ -453,6 +454,7 @@ class FleetTranspiler(Fleet):
                 None,
                 None,
                 export_for_deployment,
+                legacy_format=legacy_format,
             )
         else:
             paddle.static.save_inference_model(
@@ -465,6 +467,7 @@ class FleetTranspiler(Fleet):
                 None,
                 export_for_deployment,
                 True,
+                legacy_format=legacy_format,
             )
 
             model_basename = "__model__"
@@ -634,9 +637,7 @@ class FleetTranspiler(Fleet):
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append(
-                        "{}.block{}".format(reshaped_varname, i)
-                    )
+                    slice_varnames.append(f"{reshaped_varname}.block{i}")
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(

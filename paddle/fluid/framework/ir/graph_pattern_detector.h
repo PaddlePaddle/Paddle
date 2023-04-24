@@ -1135,10 +1135,10 @@ struct ElementwiseOp : public PatternBase {
 };
 
 struct MatmulElementwiseAdd : public PatternBase {
-  MatmulElementwiseAdd(PDPattern* pattern,
-                       const std::string& name_scope,
-                       const std::string& matmul_type,
-                       bool as_x)
+  MatmulElementwiseAdd(PDPattern* pattern UNUSED,
+                       const std::string& name_scope UNUSED,
+                       const std::string& matmul_type UNUSED,
+                       bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
 
   PDNode* operator()(const std::string& matmul_type, bool as_x);
@@ -1155,7 +1155,7 @@ struct MatmulElementwiseAdd : public PatternBase {
 struct ResidualElementwise : public PatternBase {
   ResidualElementwise(PDPattern* pattern,
                       const std::string& name_scope,
-                      bool as_x)
+                      bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var,
                      PDNode* residual_var,
@@ -2144,6 +2144,17 @@ struct MergeLayernormPattern : public PatternBase {
   PATTERN_DECL_NODE(layernorm_40_in_bias);
   PATTERN_DECL_NODE(layernorm_40_in_scale);
   PATTERN_DECL_NODE(layernorm_40_out);
+};
+
+// MulMatmulMatmulV2: ops(mul, matmul, matmul_v2)
+// Forward pass for ops(mul, matmul, matmul_v2) convert to matrix_multiply.
+struct MulMatmulMatmulV2 : public PatternBase {
+  MulMatmulMatmulV2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mul_matmul_matmul_v2") {}
+
+  void operator()(const std::unordered_set<std::string>& ops_type);
+  PATTERN_DECL_NODE(ops);
+  PATTERN_DECL_NODE(ops_out);
 };
 
 // Add support int8 flag

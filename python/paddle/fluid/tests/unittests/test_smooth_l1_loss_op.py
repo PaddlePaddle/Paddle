@@ -102,7 +102,7 @@ class TestSmoothL1LossOp2(OpTest):
             ['Y'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']),
+            no_grad_set={'X', 'InsideWeight', 'OutsideWeight'},
         )
 
     def test_check_grad_ingore_y(self):
@@ -110,7 +110,7 @@ class TestSmoothL1LossOp2(OpTest):
             ['X'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']),
+            no_grad_set={'Y', 'InsideWeight', 'OutsideWeight'},
         )
 
 

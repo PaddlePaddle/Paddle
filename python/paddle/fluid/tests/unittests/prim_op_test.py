@@ -632,13 +632,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
+            np.testing.assert_allclose(
                 ret[i],
                 self.eager_desire[i],
                 rtol=self.fw_comp_rtol,
                 atol=self.fw_comp_atol,
-            ):
-                msg = (
+                err_msg=(
                     'Check static comp forward api out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'static comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -649,8 +648,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
 
@@ -713,10 +712,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp forward api out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -727,8 +728,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
@@ -809,10 +810,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp with cinn forward api out failed. Mismatch between jit comp and eager on %s, '
                     'when enable_fw_comp is %s, enable_cinn is %s, the forward api out tensor\'s index is : %d \n'
                     'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -824,8 +827,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
@@ -1003,13 +1006,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
-            if not np.allclose(
+            np.testing.assert_allclose(
                 actual_ret[i],
                 self.eager_desire[i],
                 rtol=atol,
                 atol=rtol,
-            ):
-                msg = (
+                err_msg=(
                     'Check eager comp grad out failed. Mismatch between eager comp '
                     'and eager on %s, when enable_rev_comp is %s,the eager comp grad out tensor\'s index is : %d \n'
                     'eager comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
@@ -1020,8 +1022,8 @@ class PrimGradChecker(PrimForwardChecker):
                         actual_ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
@@ -1109,10 +1111,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
-            if not np.allclose(
-                actual_ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                actual_ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check static comp grad out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,enable_rev_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'static comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
@@ -1124,8 +1128,8 @@ class PrimGradChecker(PrimForwardChecker):
                         actual_ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         paddle.disable_static()
@@ -1224,10 +1228,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp grad out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s,the grad out tensor\'s index is : %d \n'
                     'jit comp grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
@@ -1239,8 +1245,8 @@ class PrimGradChecker(PrimForwardChecker):
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()
@@ -1354,10 +1360,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp with cinn grad out failed. Mismatch between jit comp with cinn '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s, enable_cinn is %s,'
                     'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
@@ -1370,8 +1378,9 @@ class PrimGradChecker(PrimForwardChecker):
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
+
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()

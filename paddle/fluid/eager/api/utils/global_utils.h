@@ -40,6 +40,8 @@ class UniqueNameGenerator {
 // TODO(jiabin): Now we are using imperative tracer, move it here when we
 // deprecate imperative.
 
+class GradNodeBase;
+
 class Controller {
  public:
   static Controller& Instance() { return *controller_; }
@@ -71,6 +73,12 @@ class Controller {
   void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
 
   void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
+
+  void SetPythonStack(std::string stack_str) {
+    tracer_->SetPythonStack(stack_str);
+  }
+
+  std::string GetPythonStack() { return tracer_->GetPythonStack(); }
 
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
@@ -119,6 +127,18 @@ class Controller {
 
   void ClearFinalBackwardHooks() { final_backward_hooks_.clear(); }
 
+  void ClearForceSequentialNodes() {
+    while (!force_sequential_nodes_.empty()) {
+      force_sequential_nodes_.pop();
+    }
+  }
+  void PushBackForceSequentialNodes(GradNodeBase* node) {
+    force_sequential_nodes_.push(node);
+  }
+  std::queue<GradNodeBase*> GetForceSequentialNodes() {
+    return force_sequential_nodes_;
+  }
+
  private:
   Controller() = default;
   static Controller* controller_;
@@ -132,6 +152,7 @@ class Controller {
                      std::vector<std::vector<std::unordered_map<int, int>>>>
       custom_edges_slot_map_;
   std::vector<std::shared_ptr<VoidHook>> final_backward_hooks_;
+  std::queue<GradNodeBase*> force_sequential_nodes_;
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 

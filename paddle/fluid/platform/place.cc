@@ -33,14 +33,6 @@ bool is_xpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::XPU;
 }
 
-bool is_mlu_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::MLU;
-}
-
-bool is_npu_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::NPU;
-}
-
 bool is_ipu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::IPU;
 }
@@ -77,10 +69,6 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return true;
     } else if (is_xpu_place(p1)) {
       return p1 == p2;
-    } else if (is_mlu_place(p1)) {
-      return p1 == p2;
-    } else if (is_npu_place(p1)) {
-      return p1 == p2;
     } else if (is_ipu_place(p1)) {
       return p1 == p2;
     } else if (is_custom_place(p1)) {
@@ -99,8 +87,6 @@ std::string PlaceHelper::GetDeviceType(const Place &place) {
     return "cpu";
   } else if (is_gpu_place(place)) {
     return "gpu";
-  } else if (is_npu_place(place)) {
-    return "npu";
   } else if (is_xpu_place(place)) {
     return "xpu";
   } else if (is_custom_place(place)) {

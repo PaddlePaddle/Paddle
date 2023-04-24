@@ -16,7 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import (
+    check_output_allclose,
+    extra_cc_args,
+    extra_nvcc_args,
+    paddle_includes,
+)
 
 import paddle
 from paddle.utils.cpp_extension import get_build_directory, load
@@ -24,9 +29,9 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_tanh\\custom_tanh.pyd'.format(get_build_directory())
+file = f'{get_build_directory()}\\custom_tanh\\custom_tanh.pyd'
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 custom_ops = load(
@@ -77,30 +82,9 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                 pd_out, pd_dx_grad, pd_dout = custom_tanh_double_grad_dynamic(
                     paddle.tanh, device, dtype, x
                 )
-                np.testing.assert_allclose(
-                    out,
-                    pd_out,
-                    rtol=1e-05,
-                    err_msg='custom op out: {},\n paddle api out: {}'.format(
-                        out, pd_out
-                    ),
-                )
-                np.testing.assert_allclose(
-                    dx_grad,
-                    pd_dx_grad,
-                    rtol=1e-05,
-                    err_msg='custom op dx grad: {},\n paddle api dx grad: {}'.format(
-                        dx_grad, pd_dx_grad
-                    ),
-                )
-                np.testing.assert_allclose(
-                    dout,
-                    pd_dout,
-                    rtol=1e-05,
-                    err_msg='custom op out grad: {},\n paddle api out grad: {}'.format(
-                        dout, pd_dout
-                    ),
-                )
+                check_output_allclose(out, pd_out, "out", rtol=1e-05)
+                check_output_allclose(dx_grad, pd_dx_grad, "out", rtol=1e-05)
+                check_output_allclose(dout, pd_dout, "dout", rtol=1e-05)
 
 
 if __name__ == "__main__":

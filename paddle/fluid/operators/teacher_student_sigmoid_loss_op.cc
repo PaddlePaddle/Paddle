@@ -249,10 +249,15 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);
 
-REGISTER_OP_CPU_KERNEL(teacher_student_sigmoid_loss,
-                       ops::TeacherStudentSigmoidLossOpKernel<float>,
-                       ops::TeacherStudentSigmoidLossOpKernel<double>);
-
-REGISTER_OP_CPU_KERNEL(teacher_student_sigmoid_loss_grad,
-                       ops::TeacherStudentSigmoidLossGradOpKernel<float>,
-                       ops::TeacherStudentSigmoidLossGradOpKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(teacher_student_sigmoid_loss,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::TeacherStudentSigmoidLossOpKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(teacher_student_sigmoid_loss_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::TeacherStudentSigmoidLossGradOpKernel,
+                          float,
+                          double) {}

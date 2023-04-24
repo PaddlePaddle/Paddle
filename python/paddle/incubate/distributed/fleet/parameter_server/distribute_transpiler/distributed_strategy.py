@@ -148,7 +148,7 @@ class TrainerRuntimeConfig:
 
         draws += border
 
-        _str = "\n{}\n".format(draws)
+        _str = f"\n{draws}\n"
         return _str
 
     def __repr__(self):
@@ -239,7 +239,7 @@ class DistributedStrategy:
                     self._trainer_runtime_config.runtime_configs[key] = Value
                 else:
                     raise ValueError(
-                        "TrainerRuntimeConfig doesn't have key: {}".format(key)
+                        f"TrainerRuntimeConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -270,7 +270,7 @@ class DistributedStrategy:
                     setattr(self._server_runtime_config, key, config[key])
                 else:
                     raise ValueError(
-                        "ServerRuntimeConfig doesn't have key: {}".format(key)
+                        f"ServerRuntimeConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -295,7 +295,7 @@ class DistributedStrategy:
                     setattr(self._execute_strategy, key, config[key])
                 else:
                     raise ValueError(
-                        "ExecutionStrategy doesn't have key: {}".format(key)
+                        f"ExecutionStrategy doesn't have key: {key}"
                     )
         else:
             raise TypeError(
@@ -319,9 +319,7 @@ class DistributedStrategy:
                 if hasattr(self._build_strategy, key):
                     setattr(self._build_strategy, key, config[key])
                 else:
-                    raise ValueError(
-                        "BuildStrategy doesn't have key: {}".format(key)
-                    )
+                    raise ValueError(f"BuildStrategy doesn't have key: {key}")
         else:
             raise TypeError(
                 "build_strategy only accept input type: dict or BuildStrategy"

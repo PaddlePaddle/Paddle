@@ -54,9 +54,13 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
 
+// set CINN global random seed
+template <typename DeviceContext>
+void SetCinnRandomSeed();
+
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnLaunchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -132,6 +136,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     platform::RecordEvent record_event_3("Step 3. Set CINN runtime FLAGS.");
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
+
+    // set CINN global random seed
+    details::SetCinnRandomSeed<DeviceContext>();
 
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order

@@ -14,8 +14,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/squared_l2_distance_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(squared_l2_distance,
-                        ops::SquaredL2DistanceKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    squared_l2_distance_grad,
-    ops::SquaredL2DistanceGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    squared_l2_distance, GPU, ALL_LAYOUT, ops::SquaredL2DistanceKernel, float) {
+}
+PD_REGISTER_STRUCT_KERNEL(squared_l2_distance_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SquaredL2DistanceGradKernel,
+                          float) {}

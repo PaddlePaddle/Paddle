@@ -350,8 +350,10 @@ void DropoutFwGPUKernelDriver(
       auto dst_functor =
           DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
 
-      std::vector<int64_t> out_dims = phi::vectorize<int64_t>(x.dims());
-      std::vector<int64_t> in_dims = phi::vectorize<int64_t>(mask->dims());
+      std::vector<int64_t> out_dims =
+          std::move(phi::vectorize<int64_t>(x.dims()));
+      std::vector<int64_t> in_dims =
+          std::move(phi::vectorize<int64_t>(mask->dims()));
       std::reverse(out_dims.begin(), out_dims.end());
       std::reverse(in_dims.begin(), in_dims.end());
       kps::details::BroadcastConfig broadcast_config(
@@ -408,6 +410,8 @@ void DropoutFwGPUKernelDriver(
                                          main_offset);
 #undef PD_DROPOUT_KERNEL_NAME
     }
+    VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
+            << ", seed_data:" << seed_data;
   } else {
     if (upscale_in_train) {
       // y = x
