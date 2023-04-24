@@ -299,7 +299,7 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 {}
     // Set for forward trace
   if (FLAGS_check_nan_inf) {{
-  {}
+    grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
   }}
     // SetAttributes if needed
 {}
@@ -490,10 +490,8 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   }}"""
 
 CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
-  std::string forward_trace ="";
   if (FLAGS_check_nan_inf) {{
       egr::CheckTensorHasNanOrInf("{}", {});
-      forward_trace = egr::Controller::Instance().GetPythonStack();
   }}
 """
 
@@ -1070,15 +1068,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         node_event_name = forward_api_name + " node_creation"
         node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
-        set_forward_trace = (
-            f"{indent} grad_node->SetForwardTrace(forward_trace);"
-        )
         if not for_backward:
             self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
                 node_creation_event_str,
                 pass_stop_gradient_args_str,
                 node_construction_str,
-                set_forward_trace,
                 set_attributes_str,
                 set_input_tensor_wrappers_str,
                 set_grad_out_meta_str,

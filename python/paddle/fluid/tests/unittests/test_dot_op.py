@@ -106,8 +106,7 @@ class DotOpEmptyInput(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
         y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
         pd_out = paddle.dot(x, y)
-
-        self.assertEqual(pd_out.shape, (0, 1))
+        self.assertEqual(pd_out.shape, (0,))
 
     def test_3d_input_error(self):
         data = np.array([], dtype=np.float32)
@@ -127,7 +126,7 @@ class DotOpBatch(DotOp):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+        self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -180,7 +179,7 @@ class TestDygraph(unittest.TestCase):
                 np.array([[2, 5], [6, 8]]).astype(np.float32)
             )
             np.testing.assert_array_equal(
-                paddle.dot(x1, y1).numpy(), np.array([[17], [58]])
+                paddle.dot(x1, y1).numpy(), np.array([17, 58])
             )
 
 
@@ -211,7 +210,7 @@ class TestComplexDotOp(OpTest):
         self.out = np.dot(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(1, self.dtype) + 1j * np.ones(1, self.dtype)
+        self.grad_out = np.ones([], self.dtype) + 1j * np.ones([], self.dtype)
         self.grad_x = self.grad_out * np.conj(self.y)
         self.grad_y = self.grad_out * np.conj(self.x)
 
@@ -269,12 +268,10 @@ class TestComplexDotOp2D(OpTest):
         self.y = np.random.random((2, 100)).astype(
             self.dtype
         ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1, 1)
+        self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones((2, 1), self.dtype) + 1j * np.ones(
-            (2, 1), self.dtype
-        )
+        self.grad_out = np.ones((2), self.dtype) + 1j * np.ones((2), self.dtype)
         self.grad_x = self._get_grad(self.grad_out, self.y)
         self.grad_y = self._get_grad(self.grad_out, self.x)
 
@@ -381,7 +378,7 @@ class DotFP16OpBatch(TestDotFP16Op):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(self.dtype).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+        self.out = np.sum(self.x * self.y, axis=1)
 
 
 @unittest.skipIf(
@@ -468,7 +465,7 @@ class DotBF16OpBatch(TestDotBF16Op):
         self.y = (
             np.random.uniform(1, 3, [132]).astype(np.float32).reshape([11, 12])
         )
-        self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+        self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
