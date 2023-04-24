@@ -326,9 +326,9 @@ void FusedMultiTransformerXPUPass::RemoveAssignGather(ir::Graph* graph) const {
     GET_IR_NODE(assign);
     GET_IR_NODE(assign_out);
     // Assign_out may not link to gather, so we find gather by input name.
-    auto* gather =
-        FindOpNodeByInputName(graph, "gather", "X", assign_out->Name());
-    if (gather == nullptr) return;
+    auto next_ops = FindOpNodeByInputName(graph, assign_out->Name());
+    if (next_ops.size() != 1 || next_ops[0]->Name() != "gather") return;
+    auto* gather = next_ops[0];
 
     // "assign_out" is used in multi blocks. "assign_out" should be reserved.
     auto* gather_index = gather->inputs[0];
