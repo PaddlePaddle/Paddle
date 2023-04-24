@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
+#include "test/cpp/eager/performance_tests/benchmark_utils.h"
 
 #include <iostream>
 #include <memory>
@@ -24,8 +24,8 @@
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
+#include "test/cpp/eager/test_utils.h"
 
 // Eager Generated
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
