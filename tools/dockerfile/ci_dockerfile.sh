@@ -81,27 +81,13 @@ function make_centos_dockerfile(){
   sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>##g" ${dockerfile_name}
   sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
-  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libsndfile1 zstd pigz libcurl4-openssl-dev gettext zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
-    tar -xvf git-2.17.1.tar.gz \&\& \
-    cd git-2.17.1 \&\& \
-    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
-    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libsndfile1 zstd pigz libcurl4-openssl-dev gettext zstd ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro \&\& pip3.9 install PyGithub wheel \&\& pip3.10 install PyGithub distro" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
-  sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
-    RUN bash /build_scripts/install_gcc.sh gcc122 \\
-    RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
-    RUN ln -sf /usr/local/gcc-12.2/bin/gcc /usr/local/bin/gcc \\
-    RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/local/bin/g++ \\
-    RUN ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc \\
-    RUN ln -s /usr/local/gcc-12.2/bin/g++ /usr/bin/g++ \\
-    ENV PATH=/usr/local/gcc-12.2/bin:\$PATH #g" ${dockerfile_name}
 }
 
 
