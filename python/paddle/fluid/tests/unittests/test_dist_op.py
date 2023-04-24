@@ -193,6 +193,64 @@ class TestDistAPI(unittest.TestCase):
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
 
+class TestDistFP16OP(TestDistOp):
+    def init_data_type(self):
+        self.data_type = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+
+class TestDistFP16OPCase1(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistFP16OPCase2(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (4, 10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistFP16OPCase3(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistFP16OPCase4(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistFP16OPCase5(TestDistFP16OP):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (4, 1, 4, 8)
+        self.p = 1.5
+
+
+class TestDistFP16API(TestDistAPI):
+    def init_data_type(self):
+        if core.is_compiled_with_cuda() and core.is_float16_supported(
+            core.CUDAPlace(0)
+        ):
+            self.data_type = 'float16'
+        else:
+            self.data_type = (
+                'float32' if core.is_compiled_with_rocm() else 'float64'
+            )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

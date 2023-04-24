@@ -706,8 +706,12 @@ def dist(x, y, p=2, name=None):
     if in_dygraph_mode():
         return _C_ops.dist(x, y, p)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
-    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(
+        x, 'dtype', ['float16', 'float32', 'float64'], 'dist'
+    )
+    check_variable_and_dtype(
+        y, 'dtype', ['float16', 'float32', 'float64'], 'dist'
+    )
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)

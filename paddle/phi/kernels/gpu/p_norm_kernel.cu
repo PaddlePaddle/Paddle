@@ -23,45 +23,6 @@
 namespace phi {
 
 template <typename T>
-__device__ __forceinline__ int sgn(T val) {
-  return (T(0) < val) - (val < T(0));
-}
-
-__device__ __forceinline__ dtype::float16 inline_abs(dtype::float16 x) {
-  return static_cast<dtype::float16>(abs(static_cast<float>(x)));
-}
-
-__device__ __forceinline__ dtype::bfloat16 inline_abs(dtype::bfloat16 x) {
-  return static_cast<dtype::bfloat16>(abs(static_cast<float>(x)));
-}
-
-__device__ __forceinline__ float inline_abs(float x) { return abs(x); }
-__device__ __forceinline__ double inline_abs(double x) { return abs(x); }
-
-__device__ __forceinline__ int inline_sign(dtype::float16 x) {
-  return sgn<dtype::float16>(x);
-}
-__device__ __forceinline__ int inline_sign(float x) { return sgn<float>(x); }
-__device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
-
-__device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
-                                                     dtype::float16 exponent) {
-  return static_cast<dtype::float16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
-}
-__device__ __forceinline__ dtype::bfloat16 inline_pow(
-    dtype::bfloat16 base, dtype::bfloat16 exponent) {
-  return static_cast<dtype::bfloat16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
-}
-__device__ __forceinline__ float inline_pow(float base, float exponent) {
-  return pow(base, exponent);
-}
-__device__ __forceinline__ double inline_pow(double base, double exponent) {
-  return pow(base, exponent);
-}
-
-template <typename T>
 struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
   HOSTDEVICE inline T operator()(const T x) const {
@@ -73,7 +34,7 @@ template <typename T>
 struct AbsFunctor {
   HOSTDEVICE explicit inline AbsFunctor() {}
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(inline_abs(x));
+    return static_cast<T>(abs(x));
   }
 };
 
@@ -83,7 +44,8 @@ struct UnsignedPowFunctor {
     this->porder = porder;
   }
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(inline_pow(inline_abs(x), static_cast<T>(porder)));
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    return static_cast<T>(pow(static_cast<MT>(abs(x)), porder));
   }
   float porder;
 };
@@ -112,7 +74,6 @@ void PNormKernel(const Context& dev_ctx,
                           "The dims of Input(X) should be greater than 0."));
   }
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
   if (porder == 0) {
     phi::funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis);
