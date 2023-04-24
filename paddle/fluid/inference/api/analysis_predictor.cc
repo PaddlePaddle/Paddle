@@ -56,7 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -1241,8 +1241,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];
     auto &t = framework::GetVariableTensor(*scope, name);
-    (*outputs)[i] =
-        std::move(paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name));
+    (*outputs)[i] = paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
   }
   return true;
 }
@@ -2553,13 +2552,11 @@ USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
-USE_TRT_CONVERTER(matmul);
-USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(matrix_multiply);
 USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
@@ -2685,6 +2682,7 @@ USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)

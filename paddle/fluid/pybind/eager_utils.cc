@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace pybind {
@@ -213,6 +214,22 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos) {
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
+}
+
+void SetPythonStack() {
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "this is SetPythonStack";
+    pybind11::gil_scoped_acquire gil;
+    PyObject* mod = PyImport_ImportModule("traceback");
+    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
+    std::string str = "";
+    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
+      PyObject* line = PyList_GetItem(traceback_list, i);
+      str += py::str(PyUnicode_AsUTF8(line));
+    }
+    std::string last = str + egr::Controller::Instance().GetPythonStack();
+    egr::Controller::Instance().SetPythonStack(last);
+  }
 }
 
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
@@ -770,11 +787,15 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
 
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
-  // NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
-  // https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+// NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
+// https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+#ifdef _WIN32
   PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
   PyObject* result = PyList_New((Py_ssize_t)value.size());
+#ifdef _WIN32
   PyGILState_Release(gstate);
+#endif
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {
