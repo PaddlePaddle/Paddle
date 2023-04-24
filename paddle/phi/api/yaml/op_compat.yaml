@@ -2387,6 +2387,8 @@
     {x : X,  gt_box : GTBox, gt_label : GTLabel ,gt_score : GTScore}
   outputs :
     {loss : Loss , objectness_mask : ObjectnessMask, gt_match_mask : GTMatchMask}
+  get_expected_kernel_type :
+    yolo_loss : GetYoloLossExpectedKernelType
 
 - op: lu
   backward: lu_grad
