@@ -1161,6 +1161,8 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1190,6 +1192,8 @@ set(STATIC_BUILD_TESTS
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
