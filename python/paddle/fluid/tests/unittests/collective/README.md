@@ -7,7 +7,7 @@
     the properties are the following:
 * `name`: the test's name
 * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, for example, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
-* `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported architectures are `gpu`, `xpu`, `ASCEND`, `ASCEND_CL` and `rocm`.
+* `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported architectures are `gpu`, `xpu` and `rocm`.
 * `timeout`: timeout of a unittest, whose unit is second. Blank means default.
 * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`, `EXCLUSIVE:NIGHTLY`, `DIST:NIGHTLY`，which are case-insensitive.
 * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name. Blank means test_runner.py.

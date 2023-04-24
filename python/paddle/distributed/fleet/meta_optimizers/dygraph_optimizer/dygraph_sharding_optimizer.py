@@ -111,7 +111,7 @@ class DygraphShardingOptimizer:
         for param in self._parameter_list:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
-            numel = reduce(lambda x, y: x * y, param.shape)
+            numel = reduce(lambda x, y: x * y, param.shape, 1)
             assert (
                 numel > 0
             ), "param [{}] should larger than 0, but it is [{}]".format(

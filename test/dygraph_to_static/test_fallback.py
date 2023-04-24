@@ -52,7 +52,7 @@ class UnsuppportNet(paddle.nn.Layer):
 
 class TestFallback(unittest.TestCase):
     def setUp(self):
-        self.x = paddle.to_tensor(2).astype('int')
+        self.x = paddle.to_tensor([2]).astype('int')
 
     def tearDown(self):
         pass
