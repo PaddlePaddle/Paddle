@@ -27,9 +27,6 @@ void UniformKernel(const Context &dev_ctx,
                    const Scalar &max,
                    int seed,
                    DenseTensor *out) {
-  int diag_num = 0;
-  int diag_step = 0;
-  float diag_val = 0.0f;
   out->Resize(phi::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
@@ -42,23 +39,6 @@ void UniformKernel(const Context &dev_ctx,
   }
   UniformRealDistribution<T>(
       data, size, min.to<float>(), max.to<float>(), engine);
-  if (diag_num > 0) {
-    PADDLE_ENFORCE_GT(
-        size,
-        (diag_num - 1) * (diag_step + 1),
-        phi::errors::InvalidArgument(
-            "ShapeInvalid: the diagonal's elements is equal (num-1) "
-            "* (step-1) with num %d, step %d,"
-            "It should be smaller than %d, but received %d",
-            diag_num,
-            diag_step,
-            (diag_num - 1) * (diag_step + 1),
-            size));
-    for (int64_t i = 0; i < diag_num; ++i) {
-      int64_t pos = i * diag_step + i;
-      data[pos] = diag_val;
-    }
-  }
 }
 
 }  // namespace phi
