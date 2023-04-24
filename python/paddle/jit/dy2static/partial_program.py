@@ -27,15 +27,11 @@ from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-<<<<<<< HEAD
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
     construct_grad_names,
 )
-=======
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
->>>>>>> Fix save load
 
 __all__ = []
 
@@ -647,11 +643,7 @@ class PartialProgramLayer:
                     (framework.Variable, list, tuple),
                     'paddle.static.gradients',
                 )
-<<<<<<< HEAD
                 grad_info_map = backward.calc_gradient_helper(
-=======
-                grad_info_map = backward._calc_and_ret_grad_infp_map(
->>>>>>> Fix save load
                     targets=targets, inputs=[]
                 )
 
