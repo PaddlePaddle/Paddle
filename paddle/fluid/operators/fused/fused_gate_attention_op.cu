@@ -560,7 +560,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
                                    nullptr,
                                    nonbatched_bias_grad,
                                    &config,
-                                   fmha_out,  // fwd_out
+                                   fmha_out,
                                    fwd_softmax_lse,
                                    fwd_bias,
                                    fwd_mask);

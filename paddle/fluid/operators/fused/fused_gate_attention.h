@@ -818,7 +818,7 @@ class FMHAGateRef {
                        const phi::DenseTensor* fmha_out = nullptr,
                        const phi::DenseTensor* softmax_lse = nullptr,
                        const phi::DenseTensor* nonbatched_bias = nullptr,
-                       const phi::DenseTensor* src_mask = = nullptr) {
+                       const phi::DenseTensor* src_mask = nullptr) {
     const T* q_ptr = nullptr;
     const T* k_ptr = nullptr;
     const T* v_ptr = nullptr;
@@ -975,11 +975,8 @@ class FMHAGateRef {
           static_cast<void*>(q_grad_ptr),
           static_cast<void*>(k_grad_ptr),
           static_cast<void*>(v_grad_ptr),
-          static_cast<const void*>(
-              fmha_out->data()),  // total_q x num_heads x head_size, total_k :
-                                  // \sum_{i=0}^{b} s_i
-          static_cast<const void*>(
-              fmha_out_grad->data()),  // total_q x num_heads, x head_size
+          static_cast<const void*>(fmha_out->data()),
+          static_cast<const void*>(fmha_out_grad->data()),
           cu_seq_q.data<int32_t>(),
           cu_seq_k.data<int32_t>(),
           total_q_,
@@ -1003,8 +1000,8 @@ class FMHAGateRef {
           stream,
           seed,
           offset,
-          nonbatched_bias ? temp_bias.data() : nullptr,
           src_mask ? temp_mask.data() : nullptr,
+          nonbatched_bias ? temp_bias.data() : nullptr,
           temp_mask.dims().Get(),
           temp_bias.dims().Get());
       if (!succ) {
