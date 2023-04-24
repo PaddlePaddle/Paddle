@@ -1652,7 +1652,6 @@ def main():
     # install cpp distribution
     if env_dict.get("WITH_CPP_DIST") == 'ON':
         paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
-        print("paddle_install_dir:", paddle_install_dir)
         install_cpp_dist(
             paddle_install_dir, headers, package_data['paddle.libs']
         )

@@ -908,7 +908,6 @@ def install_cpp_dist(paddle_install_dir):
     os.makedirs(lib_install_dir, exist_ok=True)
     # install libpaddle.ext
     paddle_libs = glob.glob('${PADDLE_BINARY_DIR}/paddle/fluid/pybind/${FLUID_CORE_NAME}.*')
-    print("paddle_libs: ", paddle_libs)
     for lib in paddle_libs:
         shutil.copy(lib, lib_install_dir)
     # install dependent libraries
@@ -921,7 +920,6 @@ def install_cpp_dist(paddle_install_dir):
 # install cpp distribution
 if '${WITH_CPP_DIST}' == 'ON':
     paddle_install_dir = '${PADDLE_INSTALL_DIR}'
-    print("paddle_install_dir:", paddle_install_dir)
     install_cpp_dist(paddle_install_dir)
     
 
