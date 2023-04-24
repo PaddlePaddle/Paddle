@@ -86,10 +86,10 @@ template <typename T>
 nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
                             std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GE(shape.size(),
+  PADDLE_ENFORCE_GT(shape.size(),
                     0UL,
                     platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 0 "
+                        "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input,
                         shape.size()));
