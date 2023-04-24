@@ -43,7 +43,7 @@ set(PHI_DEPS
     cblas
     utf8proc)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
 
