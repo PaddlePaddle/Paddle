@@ -749,7 +749,7 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns：
+    Returns:
         Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
@@ -765,7 +765,7 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns：
+    Returns:
         Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
