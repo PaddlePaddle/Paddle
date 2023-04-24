@@ -17,12 +17,18 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
+
+template <typename T>
+struct BroadcastMinElementWiseDirectCUDAFunctor {
+  HOSTDEVICE inline T operator()(const T min) const { return min; }
+};
 
 template <typename T>
 struct LerpElementWiseDirectCUDAFunctor {
@@ -63,15 +69,60 @@ static void LerpFunction(const Context &ctx,
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
     funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        ctx, inputs, &outputs, 0, functor);
+        ctx, inputs, &outputs, -1, functor);
   } else {
     inputs.reserve(3);
-    inputs.emplace_back(&x);
-    inputs.emplace_back(&y);
-    inputs.emplace_back(&weight);
+
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
+    if (x.dims().size() != y.dims().size() &&
+        weight.dims().size() != y.dims().size()) {
+      DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
+      std::vector<const DenseTensor *> broadcast_min_inputs;
+      std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
+      auto broadcast_min_functor =
+          BroadcastMinElementWiseDirectCUDAFunctor<T>();
+      if (x.dims().size() < y.dims().size() &&
+          x.dims().size() < weight.dims().size()) {
+        broadcast_min_inputs.emplace_back(&x);
+        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+            ctx,
+            broadcast_min_inputs,
+            &broadcast_min_outputs,
+            -1,
+            broadcast_min_functor);
+        inputs.emplace_back(&b_min);
+        inputs.emplace_back(&y);
+        inputs.emplace_back(&weight);
+      } else if (y.dims().size() < weight.dims().size()) {
+        broadcast_min_inputs.emplace_back(&y);
+        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+            ctx,
+            broadcast_min_inputs,
+            &broadcast_min_outputs,
+            -1,
+            broadcast_min_functor);
+        inputs.emplace_back(&x);
+        inputs.emplace_back(&b_min);
+        inputs.emplace_back(&weight);
+      } else {
+        broadcast_min_inputs.emplace_back(&weight);
+        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+            ctx,
+            broadcast_min_inputs,
+            &broadcast_min_outputs,
+            -1,
+            broadcast_min_functor);
+        inputs.emplace_back(&x);
+        inputs.emplace_back(&y);
+        inputs.emplace_back(&b_min);
+      }
+    } else {
+      inputs.emplace_back(&x);
+      inputs.emplace_back(&y);
+      inputs.emplace_back(&weight);
+    }
     funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
-        ctx, inputs, &outputs, 0, functor);
+        ctx, inputs, &outputs, -1, functor);
   }
 }
 
