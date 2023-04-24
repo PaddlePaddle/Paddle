@@ -503,29 +503,8 @@ class FMHAGateRef {
     int64_t gemm_m = config->seq_len_r;
     int64_t gemm_n = config->m_size;
     int64_t gemm_k = config->head_dim;
-    // attn = torch.matmul(q, k.transpose(-1, -2))
     T alpha = static_cast<T>(1.0 / sqrt(config->head_dim));
-    // ComputeBatchedGEMM(merge_qkv_ ?
-    //                         phi::slice_ddim(qkv_transpose_out->dims(),
-    //                                         1,
-    //                                         qkv_transpose_out->dims().size()
-    //                                         - 1) : q_transpose_out->dims(),
-    //                    merge_qkv_ ?
-    //                         phi::slice_ddim(qkv_transpose_out->dims(),
-    //                                         1,
-    //                                         qkv_transpose_out->dims().size()
-    //                                         - 1) : k_transpose_out->dims(),
-    //                    q_ptr,
-    //                    k_ptr,
-    //                    qk_out_ptr,
-    //                    false,
-    //                    true,
-    //                    gemm_m,
-    //                    gemm_n,
-    //                    gemm_k,
-    //                    gemm_batch_size,
-    //                    alpha);
-
+    // attn = matmul(q, k.transpose(-1, -2))
     ComputeBatchedGEMM(q_ptr,
                        k_ptr,
                        qk_out_ptr,
@@ -536,6 +515,7 @@ class FMHAGateRef {
                        gemm_k,
                        gemm_batch_size,
                        alpha);
+
     // attn = softmax_dropout(attn, 0, self.training, mask=mask, bias=bias)
     // softmax_out = softmax(qk_out + nonbatched_bias + src_mask)
     ComputeBiasMaskSoftmaxForward(
@@ -553,24 +533,8 @@ class FMHAGateRef {
     gemm_n = config->head_dim;
     gemm_k = config->m_size;
 
-    // o = torch.matmul(attn, v)
+    // o = matmul(attn, v)
     T* softmax_out_ptr = softmax_out->data<T>();
-    // ComputeBatchedGEMM(softmax_out->dims(),
-    //                    merge_qkv_ ?
-    //                         phi::slice_ddim(qkv_transpose_out->dims(),
-    //                                         1,
-    //                                         qkv_transpose_out->dims().size()
-    //                                         - 1) : v_transpose_out->dims(),
-    //                    softmax_out_ptr,
-    //                    v_ptr,
-    //                    qktv_out_ptr,
-    //                    false,
-    //                    false,
-    //                    gemm_m,
-    //                    gemm_n,
-    //                    gemm_k,
-    //                    gemm_batch_size);
-
     ComputeBatchedGEMM(softmax_out_ptr,
                        v_ptr,
                        qktv_out_ptr,
