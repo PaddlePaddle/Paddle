@@ -547,6 +547,16 @@
     data_type : x
   backward : dot_grad
 
+- op : edit_distance
+  args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
+  output : Tensor(sequencenum), Tensor(out)
+  infer_meta :
+    func : EditDistanceInferMeta
+  kernel :
+    func : edit_distance
+    data_type : float
+  optional : hypslength, refslength
+
 - op : eig
   args: (Tensor x)
   output: Tensor(out_w), Tensor(out_v)
