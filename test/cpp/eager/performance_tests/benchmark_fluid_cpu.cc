@@ -23,11 +23,11 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "test/cpp/eager/performance_tests/benchmark_utils.h"
+#include "test/cpp/eager/test_utils.h"
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"

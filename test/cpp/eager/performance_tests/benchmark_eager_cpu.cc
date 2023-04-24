@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // Eager Dygraph
+
 #include <paddle/fluid/framework/op_registry.h>
 
 #include <chrono>
@@ -21,10 +22,10 @@
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
-#include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
-#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/flags.h"
+#include "test/cpp/eager/performance_tests/benchmark_utils.h"
+#include "test/cpp/eager/test_utils.h"
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
@@ -32,42 +33,38 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
+
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(Benchmark, EagerScaleCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
-PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
-
-TEST(Benchmark, EagerScaleCUDA) {
-  eager_test::InitEnv(paddle::platform::CUDAPlace());
-
-  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
     paddle::Tensor tensor = CreateTensorWithValue(ddim,
-                                                  paddle::platform::CUDAPlace(),
+                                                  paddle::platform::CPUPlace(),
                                                   phi::DataType::FLOAT32,
                                                   phi::DataLayout::NCHW,
-                                                  5.0 /*value*/,
-                                                  true /*is_leaf*/);
+                                                  5.0,
+                                                  true);
     RetainGradForTensor(tensor);
 
     if (mode == "Accuracy") {
-      benchmark_eager_scale(tensor, true /* accuracy_check */);
-
-    } else if (mode == "WarmUp") {
-      benchmark_eager_scale(tensor);
+      benchmark_eager_scale(tensor, true /* accuracy_check*/);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("eager_scale_cuda.out");
+      ProfilerStart("eager_scale_cpu.out");
 #endif
       benchmark_eager_scale(tensor);
 
@@ -77,6 +74,7 @@ TEST(Benchmark, EagerScaleCUDA) {
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
@@ -85,14 +83,14 @@ TEST(Benchmark, EagerScaleCUDA) {
   }
 }
 
-TEST(Benchmark, EagerMatmulCUDA) {
-  paddle::platform::CUDAPlace place;
-  eager_test::InitEnv(place);
+TEST(Benchmark, EagerMatmulCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
-  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
+                                             paddle::platform::CPUPlace(),
                                              phi::DataType::FLOAT32,
                                              phi::DataLayout::NCHW,
                                              1.0,
@@ -101,7 +99,7 @@ TEST(Benchmark, EagerMatmulCUDA) {
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
     paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CUDAPlace(),
+                                             paddle::platform::CPUPlace(),
                                              phi::DataType::FLOAT32,
                                              phi::DataLayout::NCHW,
                                              2.0,
@@ -111,13 +109,10 @@ TEST(Benchmark, EagerMatmulCUDA) {
     if (mode == "Accuracy") {
       benchmark_eager_matmul(X, Y, true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_eager_matmul(X, Y);
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("eager_matmul_cuda.out");
+      ProfilerStart("eager_matmul_cpu.out");
 #endif
       benchmark_eager_matmul(X, Y);
 
@@ -135,18 +130,17 @@ TEST(Benchmark, EagerMatmulCUDA) {
   }
 }
 
-TEST(Benchmark, EagerIntermediateMatmulCUDA) {
-  paddle::platform::CUDAPlace place;
-  eager_test::InitEnv(place);
+TEST(Benchmark, EagerIntermediateMatmulCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
-  tracer->SetExpectedPlace(place);
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
+                                             paddle::platform::CPUPlace(),
                                              phi::DataType::FLOAT32,
                                              phi::DataLayout::NCHW,
                                              1.0,
@@ -155,7 +149,7 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
     paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CUDAPlace(),
+                                             paddle::platform::CPUPlace(),
                                              phi::DataType::FLOAT32,
                                              phi::DataLayout::NCHW,
                                              2.0,
@@ -165,13 +159,10 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
     if (mode == "Accuracy") {
       benchmark_eager_intermediate_matmul(X, Y, true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_eager_intermediate_matmul(X, Y);
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("eager_intermediate_matmul_cuda.out");
+      ProfilerStart("eager_intermediate_matmul_cpu.out");
 #endif
       benchmark_eager_intermediate_matmul(X, Y);
 
@@ -189,18 +180,17 @@ TEST(Benchmark, EagerIntermediateMatmulCUDA) {
   }
 }
 
-TEST(Benchmark, EagerIntermediateMLPCUDA) {
-  paddle::platform::CUDAPlace place;
-  eager_test::InitEnv(place);
+TEST(Benchmark, EagerIntermediateMLPCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   auto tracer = std::make_shared<paddle::imperative::Tracer>();
-  tracer->SetExpectedPlace(place);
   paddle::imperative::SetCurrentTracer(tracer);
 
-  for (const std::string mode : {"Accuracy", "WarmUp", "Performance"}) {
+  for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
     paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CUDAPlace(),
+                                             paddle::platform::CPUPlace(),
                                              phi::DataType::FLOAT32,
                                              phi::DataLayout::NCHW,
                                              MLP_X_VAL,
@@ -212,7 +202,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
       paddle::framework::DDim ddimW = phi::make_ddim({MLP_N, MLP_K});
       paddle::Tensor W = CreateTensorWithValue(ddimW,
-                                               paddle::platform::CUDAPlace(),
+                                               paddle::platform::CPUPlace(),
                                                phi::DataType::FLOAT32,
                                                phi::DataLayout::NCHW,
                                                MLP_W_VAL,
@@ -221,7 +211,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
 
       paddle::framework::DDim ddimB = phi::make_ddim({MLP_K});
       paddle::Tensor B = CreateTensorWithValue(ddimB,
-                                               paddle::platform::CUDAPlace(),
+                                               paddle::platform::CPUPlace(),
                                                phi::DataType::FLOAT32,
                                                phi::DataLayout::NCHW,
                                                MLP_B_VAL,
@@ -235,13 +225,10 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
     if (mode == "Accuracy") {
       benchmark_eager_intermediate_mlp(X, Ws, Bs, true /* accuracy_check */);
 
-    } else if (mode == "WarmUp") {
-      benchmark_eager_intermediate_mlp(X, Ws, Bs);
-
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
-      ProfilerStart("eager_intermediate_mlp_cuda.out");
+      ProfilerStart("eager_intermediate_mlp_cpu.out");
 #endif
       benchmark_eager_intermediate_mlp(X, Ws, Bs);
 
@@ -260,9 +247,6 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
 }
 
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
 USE_OP_ITSELF(reduce_sum);
-USE_OP_ITSELF(reduce_sum_grad);
-USE_OP_ITSELF(elementwise_add);
-
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
