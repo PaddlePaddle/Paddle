@@ -238,14 +238,6 @@ class TestProgramBF16(AmpTestBase):
             f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
         )
 
-    def _check_op_calls(self, op_stats_dict, expected_bf16_calls):
-        for op_type, value in expected_bf16_calls.items():
-            self.assertEqual(
-                op_stats_dict[op_type].bf16_calls,
-                value,
-                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
-            )
-
     def test_amp_bf16_o1(self):
         main_program, startup_program = build_embedding_model(
             True, "bfloat16", "O1"
