@@ -157,26 +157,24 @@ void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(branch);
 
     auto* fusion_op_desc = fusion_op->Op();
-    if (input->inputs[0]->IsOp()) {
-      for (auto next_op : input->inputs[0]->outputs) {
-        auto* var_desc = next_op->Var();
-        auto name = var_desc->Name();
-        if (name.find("_max") != std::string::npos) {
-          fusion_op_desc->SetInput("x_max", {next_op->Name()});
-          IR_NODE_LINK_TO(next_op, fusion_op);
+    if (input->inputs[0]->Op()->HasOutput("out_max")) {
+      auto input_max_name = input->inputs[0]->Op()->Output("out_max");
+      for (auto max_node : input->inputs[0]->outputs) {
+        if (input_max_name[0] == max_node->Name()) {
+          fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          IR_NODE_LINK_TO(max_node, fusion_op);
           found_subgraph_count++;
         }
       }
     }
 
     if (with_branch) {
-      if (branch->inputs[0]->IsOp()) {
-        for (auto next_op : branch->inputs[0]->outputs) {
-          auto* var_desc = next_op->Var();
-          auto name = var_desc->Name();
-          if (name.find("_max") != std::string::npos) {
-            fusion_op_desc->SetInput("branch_max", {next_op->Name()});
-            IR_NODE_LINK_TO(next_op, fusion_op);
+      if (branch->inputs[0]->Op()->HasOutput("out_max")) {
+        auto branch_max_name = branch->inputs[0]->Op()->Output("out_max");
+        for (auto max_node : branch->inputs[0]->outputs) {
+          if (branch_max_name[0] == max_node->Name()) {
+            fusion_op_desc->SetInput("branch_max", {max_node->Name()});
+            IR_NODE_LINK_TO(max_node, fusion_op);
             found_subgraph_count++;
           }
         }
