@@ -28,21 +28,14 @@ def as_tensors(xs):
 
 
 class Jacobian:
-    r"""Computes the Jacobian matrix of a given function.
-
-    If the function has multiple inputs and multiple outputs, during internal
-    implementation, all input tensors are concatenated after being flatten,
-    the batch dimension is retained, and the output is subject to the same
-    processing rules.
+    r"""Computes the Jacobian matrix of given xs and ys.
 
     Once the Jacobian ``J`` is constructed, you can use a multidimensional index
     to retrieve the submatrix of ``J``, as same as slicing a Tensor. The
     submatrix is lazily evaluated along row axis, and will be cached once
     evaluated.
 
-    For examples, supposing ``is_batched=True``, and ys is a single Tensor with shape of
-    ``[B, D]``, xs is a single Tensor with shape of ``[B, C]``, and result jacobian
-    matrix is with shape of ``[B, D, C]``, then you can retrieve the submatrix by
+    you can retrieve the submatrix by
     following methods:
 
         * J[:], retrieving the full matrix.
@@ -57,13 +50,10 @@ class Jacobian:
 
         Eclipsis index is not supported currently.
 
-    Warning:
-        This API is in beta, the signatures could be changed in future version.
-
     Args:
 
-        ys (Tensor|Sequence[Tensor]): The output derived from xs .
-        xs (Tensor|Sequence[Tensor]): The input to the function ``func`` .
+        ys (Tensor|Tuple[Tensor, ...]): The output derived from xs .
+        xs (Tensor|Tuple[Tensor, ...]): The input tensor(s) .
         is_batched (bool): If true, the first axis is batch axis. Defaults to
             False.
 
@@ -71,36 +61,6 @@ class Jacobian:
 
         Jacobian (Object): A python object retains the Jacobian matrix.
 
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            def func(x, y):
-                return paddle.matmul(x, y)
-
-            x = paddle.to_tensor([[1., 2.], [3., 4.]], stop_gradient=False)
-            y = func(x, x)
-            J = paddle.autograd.jacobian(y, x)
-
-            print(J.shape)
-            # [4, 4]
-
-            print(J[:])
-            # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[2., 3., 2., 0.],
-            #         [2., 5., 0., 2.],
-            #         [3., 0., 5., 3.],
-            #         [0., 3., 2., 8.]])
-
-            print(J[0, :])
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [2., 3., 2., 0.])
-
-            print(J[:, 0])
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [2., 2., 3., 0.])
     """
 
     def __init__(self, ys, xs, is_batched=False):
