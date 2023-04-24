@@ -1545,6 +1545,38 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
+def install_cpp_dist(paddle_install_dir, headers, libs):
+    if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
+        return
+    os.makedirs(paddle_install_dir, exist_ok=True)
+    # install C++ header files
+    for header in headers:
+        install_dir = get_header_install_dir(header)
+        install_dir = os.path.join(
+            paddle_install_dir, 'include', os.path.dirname(install_dir)
+        )
+        os.makedirs(install_dir, exist_ok=True)
+        shutil.copy(header, install_dir)
+
+    # install C++ shared libraries
+    lib_install_dir = os.path.join(paddle_install_dir, 'lib')
+    os.makedirs(lib_install_dir, exist_ok=True)
+    # install libpaddle.ext
+    paddle_libs = glob.glob(
+        paddle_binary_dir
+        + '/paddle/pybind/'
+        + env_dict.get("FLUID_CORE_NAME")
+        + '.*'
+    )
+    for lib in paddle_libs:
+        shutil.copy(lib, lib_install_dir)
+    # install dependent libraries
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+    for lib in libs:
+        lib_path = os.path.join(libs_path, lib)
+        shutil.copy(lib_path, lib_install_dir)
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
@@ -1616,6 +1648,14 @@ def main():
         )
         if os.system(command) != 0:
             raise Exception("strip *.so failed, command: %s" % command)
+
+    # install cpp distribution
+    if env_dict.get("WITH_CPP_DIST") == 'ON':
+        paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
+        print("paddle_install_dir:", paddle_install_dir)
+        install_cpp_dist(
+            paddle_install_dir, headers, package_data['paddle.libs']
+        )
 
     setup(
         name=package_name,
