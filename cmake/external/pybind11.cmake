@@ -25,7 +25,7 @@ set(PYBIND_PATCH_COMMAND "")
 if(NOT WIN32)
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
        native_dst)
-  set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
+  set(PYBIND_PATCH_COMMAND patch -Nd ${PYBIND_INCLUDE_DIR}/pybind11 <
                            ${native_dst})
 endif()
 
