@@ -2441,13 +2441,12 @@ class TestSundryAPI(unittest.TestCase):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         x_1 = paddle.arange(24, dtype="float32") - 12
         x_1.stop_gradient = False
-        # using frobenius_norm, depends on reduce inferMeta support 0d output
-        # out_1 = paddle.linalg.norm(x_1)
-        # out_1.retain_grads()
-        # out_1.backward()
+        out_1 = paddle.linalg.norm(x_1)
+        out_1.retain_grads()
+        out_1.backward()
 
-        # self.assertEqual(out_1.shape, [])
-        # self.assertTrue(x_1.grad.shape, [24])
+        self.assertEqual(out_1.shape, [])
+        self.assertTrue(x_1.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = None,
         # using p_nrom, as_vector = True
@@ -2483,30 +2482,30 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x_2_fro.grad.shape, [24])
 
         # 2D input, p = 1, axis = [0, 1]
-        # using p_matrix_norm ,depends on abs, pow, sum
+        # using p_matrix_norm ,depends on paddle.sum
         # x_3 = x_2.reshape([4, 6])
         # x_3.stop_gradient = False
         # out_3 = paddle.linalg.norm(x_3, p = 1, axis=[0,1])
         # out_3.retain_grads()
         # out_3.backward()
-
         # self.assertEqual(out_3.shape, [])
         # self.assertEqual(x_3.grad.shape, [4, 6])
 
         # 2D input, p = 1, axis = None
         # using p_matrix_norm, depends on paddle.sum
         # x_4 = x_2.reshape([4, 6])
+        # x_4.stop_gradient = False
         # out_4 = paddle.linalg.norm(x_4)
         # out_4.retain_grads()
         # out_4.backward()
-
         # self.assertEqual(out_4.shape, [])
         # self.assertEqual(x_4.grad.shape, [4, 6])
 
-        # 2D input, p = inf, axis = None
-        # using p_matrix_norm, depends on paddle.max, paddle.min
-        # x_5 = x_2.reshape([4, 6])
-        # out_5 = paddle.linalg.norm(x_5)
+        # 2D input, p = inf, axis = [0, 1]
+        # using p_matrix_norm, depends on paddle.sum
+        # x_5 = paddle.arange(24, dtype="float32").reshape([4, 6])
+        # x_5.stop_gradient = False
+        # out_5 = paddle.linalg.norm(x_5, p=2, axis = [0, 1])
         # out_5.retain_grads()
         # out_5.backward()
 
@@ -2514,14 +2513,15 @@ class TestSundryAPI(unittest.TestCase):
         # self.assertEqual(x_5.grad.shape, [4, 6])
 
         # 2D input, p = -inf, axis = [0, 1]
-        # using inf_norm, depends on paddle.max, paddle.min, paddle.abs
-        # x_6 = x_2.reshape([4, 6])
-        # out_6 = paddle.linalg.norm(x_6, p = -float("inf"), axis = [0, 1])
-        # out_6.retain_grads()
-        # out_6.backward()
+        # using inf_norm
+        x_6 = paddle.arange(24, dtype="float32").reshape([4, 6])
+        x_6.stop_gradient = False
+        out_6 = paddle.linalg.norm(x_6, p=-float("inf"), axis=[0, 1])
+        out_6.retain_grads()
+        out_6.backward()
 
-        # self.assertEqual(out_6.shape, [])
-        # self.assertEqual(x_6.grad.shape, [4, 6])
+        self.assertEqual(out_6.shape, [])
+        self.assertEqual(x_6.grad.shape, [4, 6])
 
     def test_cov(self):
         xt = paddle.randn((3, 4))
@@ -2572,45 +2572,51 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2, 2])
         self.assertEqual(y.grad.shape, [2, 2])
 
-    def test_cond(self):
-        pass
-        # def assert_shape(out):
-        #     self.assertEqual(out.shape, [])
+    def test_linalg_cond(self):
+        def assert_shape(out):
+            self.assertEqual(out.shape, [])
 
-        # x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
-        # x.stop_gradient = False
-        # p = 2 : use paddle.sum, paddle.max, paddle.min
-        # out = paddle.linalg.cond(x)
+        # x1 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x1.stop_gradient = False
+        # p = 2 : use paddle.sum
+        # out = paddle.linalg.cond(x1)
         # assert_shape(out)
 
         # p = fro : use paddle.sum
-        # out_fro = paddle.linalg.cond(x, p='fro')
+        # x2 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x2.stop_gradient = False
+        # out_fro = paddle.linalg.cond(x2, p='fro')
         # assert_shape(out_fro)
 
-        # p = nuc : use paddle.sum, paddle.max, paddle.min
-        # out_nuc = paddle.linalg.cond(x, p='nuc')
+        # p = nuc : use paddle.sum
+        # x3 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x3.stop_gradient = False
+        # out_nuc = paddle.linalg.cond(x3, p='nuc')
         # assert_shape(out_nuc)
 
-        # p in (-1, 1) : use paddle.sum, paddle.max, paddle.min
-        # out_1 = paddle.linalg.cond(x, p=1)
+        # p in (-1, 1) : use paddle.sum
+        # x4 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x4.stop_gradient = False
+        # out_1 = paddle.linalg.cond(x4, p=1)
         # assert_shape(out_1)
-        # out_minus_1 = paddle.linalg.cond(x, p=-1)
+        # x5 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x5.stop_gradient = False
+        # out_minus_1 = paddle.linalg.cond(x5, p=-1)
         # assert_shape(out_minus_1)
 
-        # p in (-2, 2) :use paddle.max, paddle.min
-        # out_2 = paddle.linalg.cond(x, p=2)
+        # p in (-2, 2)  depends on paddle.sum
+        # x6 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x6.stop_gradient = False
+        # out_2 = paddle.linalg.cond(x6, p=2)
         # assert_shape(out_2)
-        # out_minus_2 = paddle.linalg.cond(x, p=-2)
-        # assert_shape(out_minus_2)
 
-        # p in (-inf, inf):use paddle.sum, paddle.max, paddle.min
-        # out_inf = paddle.linalg.cond(x, p=float("inf"))
+        # p in (-inf, inf):use paddle.sum
+        # x8 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x8.stop_gradient = False
+        # out_inf = paddle.linalg.cond(x8, p=float("inf"))
         # assert_shape(out_inf)
-        # out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
-        # assert_shape(out_minus_inf)
-        # out_minus_inf.backward()
-        # self.assertTrue(x.grad.shape, [3, 3])
 
+        # depends on paddle.sum
         # a = paddle.randn([2, 4, 4])
         # a.stop_gradient = False
         # a_cond_fro = paddle.linalg.cond(a, p='fro')
@@ -4622,13 +4628,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         x_1 = paddle.arange(24, dtype="float32") - 12
         x_1.stop_gradient = False
-        # using frobenius_norm, depends on reduce inferMeta support 0d output
-        # out_1 = paddle.linalg.norm(x_1)
-        # out_1.retain_grads()
-        # out_1.backward()
+        out_1 = paddle.linalg.norm(x_1)
+        paddle.static.append_backward(out_1)
 
-        # self.assertEqual(out_1.shape, [])
-        # self.assertTrue(x_1.grad.shape, [24])
+        prog = paddle.static.default_main_program()
+
+        res = self.exe.run(prog, fetch_list=[out_1, x_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = 1 ,axis = None,
         # using p_nrom, as_vector = True
@@ -4667,45 +4674,48 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (24,))
 
         # 2D input, p = 1, axis = [0, 1]
-        # using p_matrix_norm ,depends on abs, pow, sum
+        # using p_matrix_norm ,depends on  paddle.sum
         # x_3 = x_2.reshape([4, 6])
         # x_3.stop_gradient = False
         # out_3 = paddle.linalg.norm(x_3, p = 1, axis=[0,1])
-        # out_3.retain_grads()
-        # out_3.backward()
+        # paddle.static.append_backward(out_3.sum())
 
-        # self.assertEqual(out_3.shape, [])
-        # self.assertEqual(x_3.grad.shape, [4, 6])
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_3, x_3.grad_name])
+        # self.assertEqual(res[0].shape, ())
+        # self.assertEqual(res[1].shape, (4, 6))
 
         # 2D input, p = 1, axis = None
         # using p_matrix_norm, depends on paddle.sum
         # x_4 = x_2.reshape([4, 6])
         # out_4 = paddle.linalg.norm(x_4)
-        # out_4.retain_grads()
-        # out_4.backward()
+        # paddle.static.append_backward(out_4.sum())
 
-        # self.assertEqual(out_4.shape, [])
-        # self.assertEqual(x_4.grad.shape, [4, 6])
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_4, x_4.grad_name])
+
+        # self.assertEqual(res[0].shape, ())
+        # self.assertEqual(res[1].shape, (4, 6))
 
         # 2D input, p = inf, axis = None
-        # using p_matrix_norm, depends on paddle.max, paddle.min
-        # x_5 = x_2.reshape([4, 6])
-        # out_5 = paddle.linalg.norm(x_5)
-        # out_5.retain_grads()
-        # out_5.backward()
+        x_5 = x_2.reshape([4, 6])
+        out_5 = paddle.linalg.norm(x_5)
+        paddle.static.append_backward(out_5.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_5, x_5.grad_name])
 
-        # self.assertEqual(out_5.shape, [])
-        # self.assertEqual(x_5.grad.shape, [4, 6])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (4, 6))
 
         # 2D input, p = -inf, axis = [0, 1]
-        # using inf_norm, depends on paddle.max, paddle.min, paddle.abs
-        # x_6 = x_2.reshape([4, 6])
-        # out_6 = paddle.linalg.norm(x_6, p = -float("inf"), axis = [0, 1])
-        # out_6.retain_grads()
-        # out_6.backward()
+        x_6 = x_2.reshape([4, 6])
+        out_6 = paddle.linalg.norm(x_6, p=-float("inf"), axis=[0, 1])
+        paddle.static.append_backward(out_6.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out_6, x_6.grad_name])
 
-        # self.assertEqual(out_6.shape, [])
-        # self.assertEqual(x_6.grad.shape, [4, 6])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (4, 6))
 
     @prog_scope()
     def test_cov(self):
@@ -4752,9 +4762,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
 
     @prog_scope()
-    def test_cond(self):
+    def test_linalg_cond(self):
         pass
-        # use paddle.sum, paddle.max, paddle.min
+        # use paddle.sum
         # x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
         # x.stop_gradient = False
         # out = paddle.linalg.cond(x)
