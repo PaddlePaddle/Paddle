@@ -29,7 +29,6 @@ from .fp16_lists import AutoMixedPrecisionLists, check_amp_dtype
 from .fp16_utils import (
     cast_model_to_fp16,
     cast_parameters_to_fp16,
-    rewrite_program,
     update_role_var_grad,
 )
 from .function_overload import FunctionType, overload
@@ -67,6 +66,7 @@ class OptimizerWithMixedPrecision:
                            the loss scaling.
         use_amp_guard(bool): Whether to use `fp16_guard` when constructing the program.
                            Default None, which means that its value is equal to `use_pure_fp16`.
+        use_promote(bool): Whether to promotes to fp32 when op has any float32 inputs. Default is False.
     """
 
     def __init__(
@@ -82,6 +82,7 @@ class OptimizerWithMixedPrecision:
         incr_ratio,
         decr_ratio,
         use_amp_guard=None,
+        use_promote=False,
     ):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
@@ -116,6 +117,7 @@ class OptimizerWithMixedPrecision:
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+        self.use_promote = use_promote
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -231,10 +233,18 @@ class OptimizerWithMixedPrecision:
                     self._amp_lists,
                     self._use_fp16_guard,
                     self._amp_vartype,
+                    level='O2',
+                    use_promote=self.use_promote,
                 )
             else:
-                rewrite_program(
-                    self._train_program, self._amp_lists, self._amp_vartype
+                # use_fp16_guard is not support amp-o1.
+                cast_model_to_fp16(
+                    self._train_program,
+                    self._amp_lists,
+                    use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
+                    level='O1',
+                    use_promote=self.use_promote,
                 )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
@@ -362,10 +372,18 @@ class OptimizerWithMixedPrecision:
                     self._amp_lists,
                     self._use_fp16_guard,
                     self._amp_vartype,
+                    level='O2',
+                    use_promote=self.use_promote,
                 )
             elif use_fp16_test:
-                rewrite_program(
-                    test_program, self._amp_lists, self._amp_vartype
+                # use_fp16_guard is not support amp-o1.
+                cast_model_to_fp16(
+                    test_program,
+                    self._amp_lists,
+                    use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
+                    level='O1',
+                    use_promote=self.use_promote,
                 )
 
     def apply_gradients(self, params_grads):
@@ -624,6 +642,7 @@ def decorate(
     use_pure_fp16=False,
     use_fp16_guard=None,
     use_bf16=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -736,6 +755,7 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_fp16_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer
@@ -754,6 +774,7 @@ def decorate(
     decr_ratio=0.8,
     use_dynamic_loss_scaling=True,
     use_amp_guard=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -781,6 +802,7 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_amp_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer
