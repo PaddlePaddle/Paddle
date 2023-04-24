@@ -82,7 +82,7 @@ function make_centos_dockerfile(){
   sed -i "s#<setcuda>##g" ${dockerfile_name}
   sed -i "s#WITH_GPU:-ON#WITH_GPU:-OFF#g" ${dockerfile_name}
   sed -i "s#RUN apt-key del 7fa2af80##g" ${dockerfile_name}
-  sed -i "s#RUN rm /etc/apt/sources.list.d/*##g" ${dockerfile_name}
+  sed -i 's#RUN rm /etc/apt/sources.list.d/\*##g' ${dockerfile_name}
   sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub##g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
