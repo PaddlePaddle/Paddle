@@ -291,8 +291,6 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     ExternalProject_Add(
       ${TARGET_NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-      GIT_REPOSITORY ""
-      GIT_TAG ${PROTOBUF_TAG}
       PREFIX ${PROTOBUF_PREFIX_DIR}
       SOURCE_DIR ${SOURCE_DIR}
       UPDATE_COMMAND ""
