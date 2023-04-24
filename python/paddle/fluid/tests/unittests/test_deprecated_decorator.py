@@ -111,7 +111,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
 
-        x = paddle.to_tensor(5.0, stop_gradient=False)
+        x = paddle.to_tensor([5.0], stop_gradient=False)
         y = paddle.pow(x, 4.0)
         y.backward()
 

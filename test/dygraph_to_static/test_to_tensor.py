@@ -84,6 +84,12 @@ def case6(x):
     return a
 
 
+def case7(x):
+    a = paddle.to_tensor(10.0)
+
+    return a
+
+
 class TestToTensorReturnVal(unittest.TestCase):
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
@@ -127,6 +133,12 @@ class TestToTensorReturnVal(unittest.TestCase):
 
         a = paddle.jit.to_static(case6)(x)
         b = case6(x)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.stop_gradient == b.stop_gradient)
+        self.assertTrue(a.place._equals(b.place))
+
+        a = paddle.jit.to_static(case7)(x)
+        b = case7(x)
         self.assertTrue(a.dtype == b.dtype)
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
