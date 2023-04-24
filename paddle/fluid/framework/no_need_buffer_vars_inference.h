@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 namespace framework {
 
@@ -91,7 +91,7 @@ class NoNeedBufferVarsInference {
         NoNeedBufferVarsInference;                                    \
                                                                       \
     const std::unordered_set<std::string> &operator()(                \
-        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx) \
+        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx UNUSED) \
         const final {                                                 \
       static std::unordered_set<std::string> __ret__{__VA_ARGS__};    \
       return __ret__;                                                 \

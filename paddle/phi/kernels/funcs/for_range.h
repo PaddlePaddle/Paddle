@@ -29,7 +29,7 @@ struct ForRange {
 
 template <>
 struct ForRange<phi::CPUContext> {
-  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
+  ForRange(const phi::CPUContext& dev_ctx UNUSED, size_t limit) : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {

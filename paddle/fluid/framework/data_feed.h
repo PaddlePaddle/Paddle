@@ -401,22 +401,22 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len,
-                            const char* str,
-                            std::vector<Record>* instances) {
+  virtual int ParseInstance(int len  UNUSED,
+                            const char* str  UNUSED,
+                            std::vector<Record>* instances  UNUSED)  {
     return 0;
   }
   virtual bool ParseOneInstance(
-      const std::string& line,
+      const std::string& line  UNUSED,
       std::function<void(std::vector<SlotRecord>&, int)>
-          GetInsFunc) {  // NOLINT
+          GetInsFunc  UNUSED) {  // NOLINT
     return true;
   }
   virtual bool ParseFileInstance(
-      std::function<int(char* buf, int len)> ReadBuffFunc,
+      std::function<int(char* buf, int len)> ReadBuffFunc  UNUSED,
       std::function<void(std::vector<SlotRecord>&, int, int)>
-          PullRecordsFunc,  // NOLINT
-      int& lines) {         // NOLINT
+          PullRecordsFunc  UNUSED,  // NOLINT
+      int& lines  UNUSED) {         // NOLINT
     return false;
   }
 };
@@ -1266,7 +1266,7 @@ class DataFeed {
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
 #endif
 
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+  virtual void DumpWalkPath(std::string dump_path  UNUSED, size_t dump_rate  UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }

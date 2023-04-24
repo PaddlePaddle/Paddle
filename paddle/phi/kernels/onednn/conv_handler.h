@@ -50,7 +50,7 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
                      bool is_BFLOAT16,
                      const std::string& fuse_activation,

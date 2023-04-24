@@ -25,8 +25,8 @@ namespace phi {
 template <typename T, typename Context>
 void FlattenInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        int start_axis,
-                        int stop_axis,
+                        int start_axis UNUSED,
+                        int stop_axis UNUSED,
                         DenseTensor* out) {
   dev_ctx.Alloc(out, x.dtype());
   auto out_dims = out->dims();
@@ -41,9 +41,9 @@ template <typename T, typename Context>
 void FlattenKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int start_axis,
-                   int stop_axis,
-                   DenseTensor* out,
-                   DenseTensor* xshape) {
+                   int stop_axis ,
+                   DenseTensor* out ,
+                   DenseTensor* xshape UNUSED) {
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }
 

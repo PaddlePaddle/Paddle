@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context, int Rank>
 void MeshgridBackward(const Context& ctx,
-                      const std::vector<const DenseTensor*>& ins,
+                      const std::vector<const DenseTensor*>& ins  UNUSED,
                       const std::vector<const DenseTensor*>& out_grad,
                       std::vector<DenseTensor*> outs) {
   int n = out_grad.size();
