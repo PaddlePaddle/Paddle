@@ -991,11 +991,11 @@ def _run_dygraph(instance, input, program_holder):
         attrs.extend(
             (
                 'param_grad_names',
-                instance.grad_var_names.get('param', []),
+                program_holder.grad_var_names.get('param', []),
                 'out_grad_names',
-                instance.grad_var_names.get('out', []),
+                program_holder.grad_var_names.get('out', []),
                 'x_grad_names',
-                instance.grad_var_names.get('x', []),
+                program_holder.grad_var_names.get('x', []),
             )
         )
 
