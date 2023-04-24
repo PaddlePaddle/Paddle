@@ -143,6 +143,26 @@ class ProcessGroupCustom : public ProcessGroupWithStream {
       const BroadcastOptions& opts,
       bool sync_op) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
       std::vector<Place> places,

@@ -246,6 +246,26 @@ class TestVarBase(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), numpy_array)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
+                # test dtype bfloat16
+                x = paddle.to_tensor(-1e6, dtype=paddle.bfloat16)
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+
+                x = paddle.to_tensor([-1e6, -1e6, -1e6], dtype='bfloat16')
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x[0] == -999424.0)
+                self.assertTrue(x[1] == -999424.0)
+                self.assertTrue(x[2] == -999424.0)
+
+                x = paddle.to_tensor(
+                    -1e6, dtype=paddle.bfloat16, stop_gradient=False
+                )
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+                y = x * x
+                y.backward()
+                self.assertTrue(x.grad == -999424.0 * 2)
+
                 with self.assertRaises(ValueError):
                     paddle.randn([3, 2, 2]).item()
                 with self.assertRaises(ValueError):
@@ -604,8 +624,7 @@ class TestVarBase(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 1)
-        self.assertEqual(nw.shape[0], 1)
+        self.assertEqual(len(nw.shape), 0)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), tuple(nw.shape))
@@ -705,10 +724,10 @@ class TestVarBase(unittest.TestCase):
 
         var = paddle.to_tensor(tensor_array)
 
-        one = paddle.ones(shape=[1], dtype="int32")
-        two = paddle.full(shape=[1], fill_value=2, dtype="int32")
-        negative_one = paddle.full(shape=[1], fill_value=-1, dtype="int32")
-        four = paddle.full(shape=[1], fill_value=4, dtype="int32")
+        one = paddle.ones(shape=[], dtype="int32")
+        two = paddle.full(shape=[], fill_value=2, dtype="int32")
+        negative_one = paddle.full(shape=[], fill_value=-1, dtype="int32")
+        four = paddle.full(shape=[], fill_value=4, dtype="int32")
 
         var = fluid.dygraph.to_variable(tensor_array)
         var1 = var[0, one, one]

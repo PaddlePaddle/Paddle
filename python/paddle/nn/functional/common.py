@@ -1150,7 +1150,7 @@ def dropout(
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1191,7 +1191,7 @@ def dropout(
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
         dtype = x.dtype
         keep_prob = 1 - p
@@ -1407,7 +1407,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:

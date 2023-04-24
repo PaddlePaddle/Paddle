@@ -29,6 +29,7 @@ def _build_optimizer(
     amp_level="O1",
     amp_lists=None,
     use_grad_clip=False,
+    use_promote=False,
 ):
     if use_grad_clip:
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
@@ -45,7 +46,11 @@ def _build_optimizer(
     )
     if use_amp:
         optimizer = paddle.static.amp.decorate(
-            optimizer, amp_lists, level=amp_level, dtype=amp_dtype
+            optimizer,
+            amp_lists,
+            level=amp_level,
+            dtype=amp_dtype,
+            use_promote=use_promote,
         )
     return optimizer
 
@@ -67,7 +72,9 @@ class SimpleAddNet(nn.Layer):
         return x + self.weight
 
 
-def build_add_model(use_amp, amp_dtype="float16", amp_level="O1"):
+def build_add_model(
+    use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
+):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
@@ -92,7 +99,11 @@ def build_add_model(use_amp, amp_dtype="float16", amp_level="O1"):
             else:
                 amp_lists = None
             optimizer = _build_optimizer(
-                use_amp, amp_dtype, amp_level, amp_lists
+                use_amp,
+                amp_dtype,
+                amp_level,
+                amp_lists,
+                use_promote=use_promote,
             )
             optimizer.minimize(loss)
     feed_vars = [x]
@@ -104,30 +115,37 @@ class SimpleConvNet(nn.Layer):
     def __init__(self):
         super().__init__()
         self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-        self.linear = nn.Linear(in_features=6, out_features=10)
+        self.linear = nn.Linear(in_features=96, out_features=4)
 
     def forward(self, x):
         out = self.conv(x)
         out = nn.functional.relu(out)
+        out = out.flatten(start_axis=1, stop_axis=3)
         out = self.linear(out)
         out = nn.functional.softmax(out)
         return out
 
 
-def build_conv_model(use_amp, amp_dtype="float16", amp_level="O1"):
+def build_conv_model(
+    use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
+):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
         with paddle.static.program_guard(main_program, startup_program):
             model = SimpleConvNet()
             x = paddle.static.data(
-                name='input', shape=[None, 1, 28, 28], dtype='float32'
+                name='input', shape=[None, 1, 6, 6], dtype='float32'
             )
             out = model(x)
             loss = paddle.mean(out)
-            optimizer = _build_optimizer(use_amp, amp_dtype, amp_level)
+            optimizer = _build_optimizer(
+                use_amp, amp_dtype, amp_level, use_promote=use_promote
+            )
             optimizer.minimize(loss)
-    return main_program, startup_program
+    feed_vars = [x]
+    fetch_vars = [loss]
+    return main_program, startup_program, optimizer, feed_vars, fetch_vars
 
 
 class SimpleEmbeddingNet(nn.Layer):
@@ -149,7 +167,9 @@ class SimpleEmbeddingNet(nn.Layer):
         return out
 
 
-def build_embedding_model(use_amp, amp_dtype="float16", amp_level="O1"):
+def build_embedding_model(
+    use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
+):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
@@ -159,7 +179,12 @@ def build_embedding_model(use_amp, amp_dtype="float16", amp_level="O1"):
             out = model(x)
             loss = paddle.mean(out)
             optimizer = _build_optimizer(
-                use_amp, amp_dtype, amp_level, None, True
+                use_amp,
+                amp_dtype,
+                amp_level,
+                None,
+                True,
+                use_promote=use_promote,
             )
             optimizer.minimize(loss)
     return main_program, startup_program
@@ -211,3 +236,48 @@ class AmpTestBase(unittest.TestCase):
     def setUp(self):
         self.amp_dtype = None
         self.amp_level = None
+
+    def _check_op_calls(
+        self, op_stats_dict, expected_bf16_calls={}, expected_fp16_calls={}
+    ):
+        for op_type, value in expected_bf16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].bf16_calls,
+                value,
+                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+            )
+        for op_type, value in expected_fp16_calls.items():
+            self.assertEqual(
+                op_stats_dict[op_type].fp16_calls,
+                value,
+                f"The number of fp16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].fp16_calls}.",
+            )
+
+    def run_program(
+        self,
+        main_program,
+        startup_program,
+        optimizer,
+        feed_vars,
+        fetch_vars,
+        place,
+        exe,
+        x_np,
+        max_iters,
+        level,
+    ):
+        losses = []
+        scope = paddle.static.Scope()
+        with paddle.static.scope_guard(scope):
+            exe.run(startup_program)
+            if level == 'O2':
+                optimizer.amp_init(place)
+            for iter_id in range(max_iters):
+                results = exe.run(
+                    program=main_program,
+                    feed={feed_vars[0].name: x_np},
+                    fetch_list=fetch_vars,
+                )
+                print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
+                losses.append(results[0])
+        return losses

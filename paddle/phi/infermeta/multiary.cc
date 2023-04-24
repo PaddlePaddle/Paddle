@@ -479,7 +479,7 @@ void AucInferMeta(const MetaTensor& input,
       0,
       phi::errors::InvalidArgument("slide_steps must be natural number"));
 
-  auc->set_dims({1});
+  auc->set_dims(phi::make_ddim({}));
   auc->set_dtype(DataType::INT64);
 
   if (slide_steps) {
@@ -2345,7 +2345,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
     last_dim = phi::make_ddim({static_cast<int>(last_dim[0]), 1});
-    out_dim = is_vector ? phi::make_ddim({1}) : phi::make_ddim({first_dim[0]});
+    out_dim = is_vector ? phi::make_ddim({}) : phi::make_ddim({first_dim[0]});
   } else {
     out_dim = is_vector ? phi::make_ddim({last_dim[1]})
                         : phi::make_ddim({first_dim[0], last_dim[1]});

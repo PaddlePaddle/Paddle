@@ -218,6 +218,7 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 
 void SetPythonStack() {
   if (FLAGS_check_nan_inf) {
+    VLOG(4) << "this is SetPythonStack";
     pybind11::gil_scoped_acquire gil;
     PyObject* mod = PyImport_ImportModule("traceback");
     PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
