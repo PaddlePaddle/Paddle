@@ -42,9 +42,6 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
-  } else if (platform::is_npu_place(tensor->place())) {
-    // TODO(kuizhiqing)
-    VLOG(4) << "divnrank for npu not support yet";
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;

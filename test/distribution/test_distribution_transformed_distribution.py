@@ -41,7 +41,7 @@ class TestIndependent(unittest.TestCase):
         return np.sum(value, tuple(range(-n, 0))) if n > 0 else value
 
     def test_log_prob(self):
-        value = paddle.to_tensor(0.5)
+        value = paddle.to_tensor([0.5])
         np.testing.assert_allclose(
             self.simple_log_prob(value, self.base, self.transforms),
             self._t.log_prob(value),
