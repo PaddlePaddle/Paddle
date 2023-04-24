@@ -135,7 +135,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   } else {
     int* labels_int_ptr_l3 = nullptr;
     if (labels.dtype() == DataType::INT32) {
-      labels_int_ptr_l3 = const_cast<int32_t*> labels.data<int32_t>();
+      labels_int_ptr_l3 = const_cast<int32_t*>(labels.data<int32_t>());
     } else if (labels.dtype() == DataType::INT64) {
       labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
       PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);

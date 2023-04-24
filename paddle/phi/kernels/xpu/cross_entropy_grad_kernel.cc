@@ -56,7 +56,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
     } else {
       int* labels_int_ptr_l3 = nullptr;
       if (labels.dtype() == DataType::INT32) {
-        labels_int_ptr_l3 = const_cast<int*> labels.data<int32_t>();
+        labels_int_ptr_l3 = const_cast<int*>(labels.data<int32_t>());
       } else if (labels.dtype() == DataType::INT64) {
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
@@ -124,7 +124,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
     } else {
       int* labels_int_ptr_l3 = nullptr;
       if (labels.dtype() == DataType::INT32) {
-        labels_int_ptr_l3 = const_cast<int*> labels.data<int32_t>();
+        labels_int_ptr_l3 = const_cast<int*>(labels.data<int32_t>());
       } else if (labels.dtype() == DataType::INT64) {
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
