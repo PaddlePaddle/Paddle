@@ -982,6 +982,45 @@ class TestSetValueValueShape5(TestSetValueApi):
         self.data[:, 0] = self.value
 
 
+# This is to test case which dims of indexed Tensor is
+# less than value Tensor on CPU / GPU.
+class TestSetValueValueShape6(TestSetValueApi):
+    def set_value(self):
+        self.value = np.ones((1, 4)) * 5
+
+    def set_shape(self):
+        self.shape = [4, 4]
+
+    def _call_setitem(self, x):
+        x[:, 0] = self.value  # x is Paddle.Tensor
+
+    def _get_answer(self):
+        self.data[:, 0] = self.value
+
+    def test_api(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+
+            static_out = self._run_static()
+            dynamic_out = self._run_dynamic()
+            self._get_answer()
+
+            error_msg = (
+                "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+            )
+            self.assertTrue(
+                (self.data == static_out).all(),
+                msg=error_msg.format("static", self.data, static_out),
+            )
+            self.assertTrue(
+                (self.data == dynamic_out).all(),
+                msg=error_msg.format("dynamic", self.data, dynamic_out),
+            )
+
+
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
@@ -1388,7 +1427,7 @@ class TestGradientTruncated(unittest.TestCase):
         paddle.enable_static()
 
         to_string = lambda x, i: x + '_' + str(i)
-        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
+        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape, 1)
 
         def op1(x):
             value = paddle.tensor.fill_constant([1], "float32", 1)
@@ -1551,7 +1590,7 @@ class TestSetValueInplace(unittest.TestCase):
             a.stop_gradient = False
             b = a[:]
             c = b
-            b[paddle.to_tensor(0)] = 1.0
+            b[paddle.zeros([], dtype='int32')] = 1.0
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())

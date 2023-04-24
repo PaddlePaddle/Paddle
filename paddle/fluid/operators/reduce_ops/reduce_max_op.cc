@@ -54,10 +54,9 @@ class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(
-    reduce_max,
-    ReduceMaxInferShapeFunctor,
-    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_max,
+                            ReduceMaxInferShapeFunctor,
+                            PD_INFER_META(phi::OriginReduceInferMetaBase));
 
 REGISTER_OPERATOR(
     reduce_max,

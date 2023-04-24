@@ -21,29 +21,6 @@
   optional : master_param
   inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
 
-- op : adam_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
-  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
-  infer_meta :
-    func : AdamInferMeta
-  kernel :
-    func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
-           adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
-    data_type : param
-  optional : master_param, skip_update
-  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
-
-- op : adamw_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
-  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
-  infer_meta :
-    func : AdamwInferMeta
-  kernel :
-    func : adamw
-    data_type : param
-  optional : master_param, skip_update
-  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
-
 - op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -590,14 +567,6 @@
     data_type : dtype
     backend : place
 
-- op : generate_proposals
-  args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
-  output : Tensor(rpn_rois), Tensor(rpn_roi_probs), Tensor(rpn_rois_num)
-  infer_meta :
-    func : GenerateProposalsV2InferMeta
-  kernel :
-    func : generate_proposals
-
 - op : greater_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -745,15 +714,6 @@
     func : lstsq
     data_type : x
 
-- op : lu
-  args : (Tensor x, bool pivot)
-  output : Tensor(out), Tensor(pivots), Tensor(infos)
-  infer_meta :
-    func : LUInferMeta
-  kernel :
-    func : lu
-  backward : lu_grad
-
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -764,11 +724,11 @@
   backward : matmul_grad
 
 - op : matrix_rank
-  args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
+  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankInferMeta
-    param : [x, hermitian, use_default_tol]
+    param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
 
@@ -784,7 +744,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : OriginReduceInferMeta
   kernel :
     func : max
   backward : max_grad
@@ -820,30 +780,10 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : OriginReduceInferMeta
   kernel :
     func : mean
   backward : mean_grad
-
-- op : mean_all
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : MeanAllInferMeta
-  kernel :
-    func : mean_all
-  backward : mean_all_grad
-
-- op : merged_adam_
-  args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1, Scalar beta2, Scalar epsilon, bool multi_precision, bool use_global_beta_pow)
-  output : Tensor[](param_out){param.size()}, Tensor[](moment1_out){param.size()}, Tensor[](moment2_out){param.size()}, Tensor[](beta1_pow_out){param.size()}, Tensor[](beta2_pow_out){param.size()}, Tensor[](master_param_out){param.size()}
-  infer_meta :
-    func : MergedAdamInferMeta
-  optional: master_param
-  kernel :
-    func : merged_adam
-    data_type : param
-  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
 
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
@@ -969,7 +909,7 @@
   backward : pool3d_grad
 
 - op : prior_box
-  args : (Tensor input, Tensor image, float[] min_sizes, float[] aspect_ratios, float[] variances, float[] max_sizes = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
   output : Tensor(out), Tensor(var)
   infer_meta :
     func : PriorBoxInferMeta
@@ -1311,17 +1251,6 @@
     param: [shape, dtype, min, max, seed]
     data_type : dtype
     backend : place
-
-- op : uniform_inplace
-  args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
-  output: Tensor(out)
-  infer_meta:
-    func: UniformRandomInplaceInferMeta
-  kernel:
-    func: uniform_inplace
-    data_type: x
-  inplace: (x -> out)
-  backward: uniform_inplace_grad
 
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique

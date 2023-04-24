@@ -32,8 +32,10 @@ from . import dist_pnorm
 from . import dist_slice
 from . import dist_fused_feedforward
 from . import dist_fused_attention
+from . import dist_fused_dropout_add
 from . import dist_reduce_sum_p
 from . import dist_shape
 from . import dist_assign
 from . import dist_scale
 from . import dist_dropout
+from . import dist_flash_attn
