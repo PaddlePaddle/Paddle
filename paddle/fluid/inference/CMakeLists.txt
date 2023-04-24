@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-if(WITH_TESTING)
-  include(tests/test.cmake) # some generic cmake function for inference
-endif()
-
 cc_library(
   paddle_inference_io
   SRCS io.cc
@@ -91,15 +87,12 @@ endif()
 # C inference API
 add_subdirectory(capi_exp)
 
-if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
-  add_subdirectory(tests/api)
-endif()
-
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../platform/init_phi.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc

@@ -76,19 +76,19 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
     """
 
     def check_tensors(in_out_list, name):
-        assert in_out_list is not None, "{} should not be None".format(name)
+        assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} connot be empty".format(name)
+            assert len(in_out_list) > 0, f"{name} connot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, (paddle.Tensor, core.eager.Tensor)
-                ), "Elements of {} must be paddle.Tensor".format(name)
+                ), f"Elements of {name} must be paddle.Tensor"
             return in_out_list
         else:
             assert isinstance(
                 in_out_list, (paddle.Tensor, core.eager.Tensor)
-            ), "{} must be Tensor or list of Tensor".format(name)
+            ), f"{name} must be Tensor or list of Tensor"
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")

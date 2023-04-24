@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/fused_linear_param_grad_add_kernel.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
@@ -23,6 +27,7 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
+namespace fusion {
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
@@ -39,7 +44,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
                                  DenseTensor *dbias_out) {
   constexpr bool kIsMultiPrecision = !std::is_same<T, MT>::value;
 
-  const bool fuse_bias_grad = kIsMultiPrecision && dweight_out;
+  const bool fuse_bias_grad = false;  // kIsMultiPrecision && dweight_out;
   if (dweight_out) {
     phi::funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
         ctx,
@@ -201,12 +206,13 @@ void FusedLinearParamGradAdd(const Context &ctx,
 }
 #endif
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_linear_param_grad_add,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedLinearParamGradAdd,
+                   phi::fusion::FusedLinearParamGradAdd,
                    float,
                    double,
                    phi::dtype::float16,

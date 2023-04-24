@@ -109,18 +109,14 @@ class RecomputeFunction(PyLayer):
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError(
-                "unsupported amp level: {}".format(tracer._amp_level)
-            )
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError(
-                "unsupported amp dtype: {}".format(tracer._amp_dtype)
-            )
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -226,13 +222,19 @@ def _recompute_without_reentrant(
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
-        if 'gpu:' not in cur_device:
+        if 'gpu:' in cur_device:
+            fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        elif (
+            cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
+        ):
+            fw_cuda_rng_state = paddle.get_rng_state(cur_device)
+        else:
             raise RuntimeError(
                 "Recompute with RNG perserve is not support current device: {}.".format(
                     cur_device
                 )
             )
-        fw_cuda_rng_state = paddle.get_cuda_rng_state()
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )
@@ -499,6 +501,6 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
             _run_func(begin, end, functions),
             *args,
             preserve_rng_state=preserve_rng_state,
-            **kwargs
+            **kwargs,
         )
     return _run_func(end + 1, len(functions) - 1, functions)(args)

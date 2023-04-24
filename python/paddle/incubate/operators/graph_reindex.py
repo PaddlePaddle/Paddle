@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -117,14 +117,12 @@ def graph_reindex(
             )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            flag_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -160,6 +158,5 @@ def graph_reindex(
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": flag_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes

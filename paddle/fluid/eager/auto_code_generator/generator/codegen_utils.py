@@ -292,7 +292,9 @@ def ParseYamlArgs(string):
     # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
     attrs_list = []
 
-    args = [x.strip() for x in string.strip().split(",")]
+    patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+    args = re.split(patten, string.strip())
+    args = [x.strip() for x in args]
     atype = r'((const )?\S+) '
     aname = r'(.*)'
     pattern = f'{atype}{aname}'
@@ -579,7 +581,7 @@ class FunctionGeneratorBase:
                 if len(forward_returns_list) == 1:
                     return_name = "out"
                 else:
-                    return_name = "out_{}".format(i + 1)
+                    return_name = f"out_{i + 1}"
             else:
                 return_name = forward_return[0]
             return_type = forward_return[1]

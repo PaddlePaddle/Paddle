@@ -78,7 +78,7 @@ TEST(array_ref, array_ref) {
   CHECK_EQ(drop.size(), size_t(1));
   CHECK_EQ(drop[0], 3);
 
-  paddle::array_ref<int> nums = {1, 2, 3, 4, 5, 6, 7, 8};
+  static paddle::array_ref<int> nums = {1, 2, 3, 4, 5, 6, 7, 8};
   auto front = nums.take_front(3);
   CHECK_EQ(front.size(), size_t(3));
   for (size_t i = 0; i < 3; ++i) {

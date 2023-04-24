@@ -91,6 +91,9 @@ REGISTER_OPERATOR(
     ops::SimilarityFocusOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(similarity_focus,
-                       ops::SimilarityFocusKernel<float>,
-                       ops::SimilarityFocusKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(similarity_focus,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SimilarityFocusKernel,
+                          float,
+                          double) {}

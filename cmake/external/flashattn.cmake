@@ -22,9 +22,6 @@ set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
 set(FLASHATTN_REPOSITORY ${GIT_URL}/JamesLim-sy/flash-attention.git)
 set(FLASHATTN_TAG opitmization_for_alphafold2)
 
-#set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
-#set(FLASHATTN_TAG f0edf243a813a65d05c75fcb331b2a95faf96bbc)
-
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"
     CACHE PATH "flash-attn Directory" FORCE)
