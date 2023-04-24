@@ -157,14 +157,14 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate()
         .AsDispensable();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
+    AddOutput("SoftmaxLse", "Result of the flash attention.")
+        .AsIntermediate()
+        .AsDispensable();
     AddOutput("FMHAOut", "Result in fmha.").AsIntermediate();
     AddOutput("GateOut", "Result of the gating module.")
         .AsIntermediate()
         .AsDispensable();
     AddOutput("Out", "Result after attention.");
-    AddOutput("SoftmaxLse", "Result of the gating module.")
-        .AsIntermediate()
-        .AsDispensable();
     AddAttr<bool>("has_gating",
                   "if true, the attention op uses gate architecure, "
                   "[default true].")

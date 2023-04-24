@@ -428,17 +428,33 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     }
 
     // 2. FMHA
-    auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeForward(nonbatched_bias,
-                                src_mask,
-                                q_transpose_out,
-                                k_transpose_out,
-                                v_transpose_out,
-                                qkv_transpose_out,
-                                softmax_out,
-                                fmha_out,
-                                gate_out,
-                                &config);
+    if (config.CanUseFlashAttn()) {
+      auto *softmax_lse = ctx.Output<phi::DenseTensor>("SoftmaxLse");
+      auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  q_transpose_out,
+                                  k_transpose_out,
+                                  v_transpose_out,
+                                  qkv_transpose_out,
+                                  softmax_out,
+                                  softmax_lse,
+                                  fmha_out,
+                                  gate_out,
+                                  &config);
+    } else {
+      auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  q_transpose_out,
+                                  k_transpose_out,
+                                  v_transpose_out,
+                                  qkv_transpose_out,
+                                  softmax_out,
+                                  fmha_out,
+                                  gate_out,
+                                  &config);
+    }
 
     // 3. Gating Linear
     if (has_gating) {
