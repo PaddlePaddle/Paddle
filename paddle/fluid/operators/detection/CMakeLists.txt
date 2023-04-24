@@ -36,12 +36,10 @@ if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
   detection_library(prior_box_op SRCS prior_box_op.cc)
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op.cu)
   detection_library(prior_box_op SRCS prior_box_op.cc)
-  # detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
@@ -74,17 +72,12 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
                     generate_proposals_op.cu DEPS ${TMPDEPS})
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    DEPS ${TMPDEPS})
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
                     collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
-  if(NOT WITH_XPU)
-    detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
-  endif()
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc)
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)

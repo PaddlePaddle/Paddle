@@ -114,7 +114,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0])
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-                self.assertEqual(x.shape, [1])
+                self.assertEqual(x.shape, [])
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
@@ -407,7 +407,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_detach(self):
         with fluid.dygraph.guard():
-            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            x = paddle.to_tensor([1.0], dtype="float64", stop_gradient=False)
             detach_x = x.detach()
             self.assertTrue(detach_x.stop_gradient, True)
 
@@ -624,8 +624,7 @@ class TestVarBase(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 1)
-        self.assertEqual(nw.shape[0], 1)
+        self.assertEqual(len(nw.shape), 0)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), tuple(nw.shape))
@@ -725,10 +724,10 @@ class TestVarBase(unittest.TestCase):
 
         var = paddle.to_tensor(tensor_array)
 
-        one = paddle.ones(shape=[1], dtype="int32")
-        two = paddle.full(shape=[1], fill_value=2, dtype="int32")
-        negative_one = paddle.full(shape=[1], fill_value=-1, dtype="int32")
-        four = paddle.full(shape=[1], fill_value=4, dtype="int32")
+        one = paddle.ones(shape=[], dtype="int32")
+        two = paddle.full(shape=[], fill_value=2, dtype="int32")
+        negative_one = paddle.full(shape=[], fill_value=-1, dtype="int32")
+        four = paddle.full(shape=[], fill_value=4, dtype="int32")
 
         var = fluid.dygraph.to_variable(tensor_array)
         var1 = var[0, one, one]
