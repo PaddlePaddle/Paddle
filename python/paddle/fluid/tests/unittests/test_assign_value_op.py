@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import framework
+from paddle.fluid import core, framework
 
 
 def assign_value_wrapper(
@@ -70,6 +70,13 @@ class TestAssignValueOp4(TestAssignValueOp):
             np.bool_
         )
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
+
+
+class TestAssignValueOpFp16(TestAssignValueOp):
+    def init_data(self):
+        self.dtype = np.float16
+        self.value = np.random.random(size=(2, 5)).astype(self.dtype)
+        self.attrs["fp16_values"] = [float(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
@@ -126,6 +133,14 @@ class TestAssignApi4(TestAssignApi):
 
     def init_dtype(self):
         self.dtype = "bool"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestAssignApiFp16(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':
