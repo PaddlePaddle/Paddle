@@ -35,12 +35,6 @@ def {
   }
 }
 extra {
-  inputs {
-    name: "FilterDW"
-  }
-  inputs {
-    name: "BiasDW"
-  }
   attrs {
     name: "Input_scale"
     type: FLOAT
@@ -81,8 +75,4 @@ extra {
     name: "exhaustive_search"
     type: BOOLEAN
   }
-  attrs {
-    name: "depthwise_type"
-    type: STRING
-  } 
 }
