@@ -1457,62 +1457,6 @@ def create_name_str(name_ids):
     return "(%s, )" % ','.join(names_str)
 
 
-def _param_grad_names(program_desc, params):
-    """
-    Parse PARAM@GARD name from original train and infer program.
-    """
-    names = []
-    # NOTE: `names` and `params` must be in the same order so that
-    # the param grad name can be set correctly in the run_program.
-    for param in params:
-        candidate = []
-        for var in program_desc.block(0).all_vars():
-            var_name = var.name()
-            if param.name not in var_name:
-                continue
-            suf_count = var_name.count(GRAD_SUFFIX)
-            if suf_count > 0:
-                suffix = param.name + GRAD_SUFFIX * suf_count
-                pre_count = var_name.count(GRAD_PREFIX)
-                if GRAD_PREFIX * pre_count + suffix == var_name:
-                    candidate.append(var_name)
-        if candidate:
-            if any(
-                [True if GRAD_PREFIX in name else False for name in candidate]
-            ):
-                names.append(
-                    max(candidate, key=lambda name: name.count(GRAD_PREFIX))
-                )
-            else:
-                names.append(
-                    max(candidate, key=lambda name: name.count(GRAD_SUFFIX))
-                )
-        else:
-            names.append(param.name + GRAD_SUFFIX)
-    return names
-
-
-def _out_grad_names(program_desc, fwd_end_op_index, out_size):
-    """
-    Parse Out@GARD name from original train and infer program.
-    """
-    names = []
-    for i in range(
-        fwd_end_op_index,
-        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
-    ):
-        op = program_desc.block(0).op(i)
-        # If prim forward op, fill_any_like will be decomposite as fill_constant.
-        if core._is_fwd_prim_enabled():
-            target = ('fill_any_like', 'fill_constant')
-        else:
-            target = 'fill_any_like'
-        if op.type() in target:
-            var_name = op.output('Out')[0]
-            names.append(var_name)
-    return names
-
-
 def prim_or_cinn_is_enabled(build_strategy, backend):
     if backend == 'CINN':
         return True

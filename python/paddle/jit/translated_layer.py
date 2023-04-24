@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import OpProtoHolder, _non_static_mode
 from paddle.jit.dy2static.partial_program import (
@@ -27,8 +28,6 @@ from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
 )
 from paddle.nn.layer import layers
-
-from .dy2static.utils import _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -349,6 +348,7 @@ class _ProgramHolder:
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc
         )
+        self._grad_var_names = {}
 
     # forward:
     @switch_to_static_graph
@@ -418,6 +418,10 @@ class _ProgramHolder:
     @property
     def scope(self):
         return self._inner_scope
+
+    @property
+    def grad_var_names(self):
+        return self._grad_var_names
 
     def _preprocess(self, program_desc):
         # rename persistable variables of 'program_desc'
@@ -599,7 +603,37 @@ class _ProgramHolder:
             targets.append(program.global_block().var(out.name()))
 
         # 3. append backward
-        backward.gradients(targets=targets, inputs=[])
+        check_type(
+            targets,
+            'targets',
+            (framework.Variable, list, tuple),
+            'paddle.static.gradients',
+        )
+        grad_info_map = backward._calc_and_ret_grad_infp_map(
+            targets=targets, inputs=[]
+        )
+        x_vars = [
+            program.block(0).var(desc.name()) for desc in self._input_descs
+        ]
+        param_vars = [
+            program.block(0).var(name) for name in self._persistable_names
+        ]
+        out_vars = [
+            program.block(0).var(desc.name()) for desc in self._output_descs
+        ]
+
+        fn = (
+            lambda grad_var: grad_var.name
+            if isinstance(grad_var, framework.Variable)
+            else framework.EMPTY_VAR_NAME
+        )
+        x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
+        self._grad_var_names['x'] = list(map(fn, x_grad_vars))
+        param_grad_vars = backward._get_grad_vars(grad_info_map, param_vars)
+        self._grad_var_names['param'] = list(map(fn, param_grad_vars))
+        out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
+        self._grad_var_names['out'] = list(map(fn, out_grad_vars))
+
         return program.desc
 
 
@@ -964,9 +998,11 @@ def _run_dygraph(instance, input, program_holder):
         attrs.extend(
             (
                 'param_grad_names',
-                _param_grad_names(trace_program, persistable_vars),
+                instance.grad_var_names.get('param', []),
                 'out_grad_names',
-                _out_grad_names(trace_program, end_op_index, len(output_vars)),
+                instance.grad_var_names.get('out', []),
+                'x_grad_names',
+                instance.grad_var_names.get('x', []),
             )
         )
 
