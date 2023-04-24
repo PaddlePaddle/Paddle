@@ -231,15 +231,15 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("QueryWeight"),
                      "Input",
                      "QueryWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
       OP_INOUT_CHECK(ctx->HasInput("KeyWeight"),
                      "Input",
                      "KeyWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
       OP_INOUT_CHECK(ctx->HasInput("ValueWeight"),
                      "Input",
                      "ValueWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
 
       for (auto& name : {"QueryWeight", "KeyWeight", "ValueWeight"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
@@ -266,6 +266,27 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("OutLinearWeight"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                       ctx->GetInputDim("OutLinearBias"));
+  }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input = ctx.Input<phi::DenseTensor>("Query");
+    auto input_data_type = framework::TransToProtoVarType(input->dtype());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (var_name == "SoftmaxLse") {
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
+    }
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
