@@ -371,7 +371,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *v_transpose_out = ctx.Output<phi::DenseTensor>("ValueTransposeOut");
     auto *qkv_transpose_out = ctx.Output<phi::DenseTensor>("QKVTransposeOut");
 
-    auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
     auto *fmha_out = ctx.Output<phi::DenseTensor>("FMHAOut");
     auto *gate_out = ctx.Output<phi::DenseTensor>("GateOut");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
@@ -382,7 +381,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
     AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
       AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
@@ -430,6 +428,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     // 2. FMHA
     if (config.CanUseFlashAttn()) {
       auto *softmax_lse = ctx.Output<phi::DenseTensor>("SoftmaxLse");
+
       auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeForward(nonbatched_bias,
                                   src_mask,
@@ -437,12 +436,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
                                   k_transpose_out,
                                   v_transpose_out,
                                   qkv_transpose_out,
-                                  softmax_out,
                                   softmax_lse,
                                   fmha_out,
                                   gate_out,
                                   &config);
     } else {
+      auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
+      AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+
       auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeForward(nonbatched_bias,
                                   src_mask,
