@@ -52,7 +52,6 @@ OpSupportedInfos(const std::string& place,
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
       {"NPU", &platform::is_npu_place},
-      {"MLU", &platform::is_mlu_place},
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
@@ -150,15 +149,6 @@ AmpOperators::AmpOperators()
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
 // NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  auto unsupported_ops_npu_fp16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_npu_fp16.begin(),
-                                unsupported_ops_npu_fp16.end());
-  auto unsupported_ops_npu_bf16 = std::get<2>(
-      OpSupportedInfos("NPU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_npu_bf16.begin(),
-                                unsupported_ops_npu_bf16.end());
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
@@ -168,15 +158,6 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
-#elif defined(PADDLE_WITH_MLU)
-  auto unsupported_ops_mlu_fp16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
-                                unsupported_ops_mlu_fp16.end());
-  auto unsupported_ops_mlu_bf16 = std::get<2>(
-      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
-  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
-                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "
@@ -263,7 +244,6 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_custom_place(place) ||
       paddle::platform::is_npu_place(place) ||
       paddle::platform::is_npu_pinned_place(place)) {

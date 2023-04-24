@@ -1,4 +1,7 @@
 add_subdirectory(phi)
 add_subdirectory(jit)
 add_subdirectory(new_executor)
+add_subdirectory(prim)
 add_subdirectory(imperative)
+add_subdirectory(ir)
+add_subdirectory(inference)

@@ -376,15 +376,13 @@ class CompileTimeStrategy:
             for slice in slices:
                 if self.is_geo_mode():
                     if is_send:
-                        names.append("{}.delta".format(slice.name))
+                        names.append(f"{slice.name}.delta")
                     else:
                         names.append(slice.name)
                 elif (
                     is_grad and self.is_sync_mode() and self.get_trainers() > 1
                 ):
-                    names.append(
-                        "{}.trainer_{}".format(slice.name, self.get_role_id())
-                    )
+                    names.append(f"{slice.name}.trainer_{self.get_role_id()}")
                 else:
                     names.append(slice.name)
 
@@ -654,7 +652,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+                var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 sparse_ctx = core.CommContext(
                     grad_name,
@@ -707,7 +705,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel += reduce(lambda x, y: x * y, var.shape)
+                var_numel += reduce(lambda x, y: x * y, var.shape, 1)
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
@@ -736,7 +734,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     origin_varname
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
                 grad_name = origin_varname
                 aggregate = True
                 dense_ctx = core.CommContext(
@@ -793,7 +791,7 @@ class CompileTimeStrategy:
             splited_varname = []
 
             for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
+                splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
                 True if param_name in distibuted_varnames else False
@@ -1060,7 +1058,7 @@ class CompileTimeStrategy:
         blocks = []
         for var in var_list:
             if not uniform:
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
 
                 split_count = 1
 
@@ -1079,7 +1077,7 @@ class CompileTimeStrategy:
 
                 if len(var.shape) >= 2:
                     # align by dim1(width)
-                    dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                    dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
                     remains = block_size % dim1
                     if remains != 0:
                         block_size += dim1 - remains
@@ -1104,7 +1102,7 @@ class CompileTimeStrategy:
                 for i in range(remainder):
                     dim0s[i] = dim0s[i] + 1
 
-                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 for block_id in range(len(dim0s)):
                     numel = dim0s[block_id] * dim1
@@ -1327,7 +1325,7 @@ class CompileTimeStrategy:
                 del self.merged_sparse_pairs[index]
                 return
 
-        print("Not find {} in self.merge_pairs".format(var_name))
+        print(f"Not find {var_name} in self.merge_pairs")
 
 
 def _is_opt_role_op(op):

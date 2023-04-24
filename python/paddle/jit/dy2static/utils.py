@@ -35,6 +35,7 @@ from paddle import fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -85,6 +86,16 @@ WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
+
+GRAD_PREFIX = 'grad/'
+GRAD_SUFFIX = '@GRAD'
+
+NO_SHAPE_VAR_TYPE = [
+    core.VarDesc.VarType.READER,
+    core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
+]
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -392,7 +403,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
 
     if method_name == "__init__" or eval(
-        "issubclass({}, paddle.nn.Layer)".format(class_src)
+        f"issubclass({class_src}, paddle.nn.Layer)"
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -437,7 +448,7 @@ def create_api_shape_node(tensor_shape_node):
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
     return gast.parse(
-        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+        f'{name} = paddle.full({str(shape)}, "{str(value)}", {dtype})'
     )
 
 
@@ -516,7 +527,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:
@@ -1454,16 +1465,29 @@ def _param_grad_names(program_desc, params):
     # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
     for param in params:
-        candidate = [
-            var.name()
-            for var in program_desc.block(0).all_vars()
-            if var.name().endswith(param.name + '@GRAD')
-        ]
-        if candidate:
-            names.append(max(candidate, key=lambda name: name.count('grad/')))
-        else:
-            names.append(param.name + '@GRAD')
+        candidate = []
+        for var in program_desc.block(0).all_vars():
+            var_name = var.name()
+            if param.name not in var_name:
+                continue
+            suf_count = var_name.count(GRAD_SUFFIX)
+            if suf_count > 0:
+                suffix = param.name + GRAD_SUFFIX * suf_count
+                pre_count = var_name.count(GRAD_PREFIX)
+                if GRAD_PREFIX * pre_count + suffix == var_name:
+                    candidate.append(var_name)
 
+        if candidate:
+            names.append(
+                max(
+                    candidate,
+                    key=lambda name: name.count(GRAD_PREFIX)
+                    if GRAD_PREFIX in name
+                    else name.count(GRAD_SUFFIX),
+                )
+            )
+        else:
+            names.append(param.name + GRAD_SUFFIX)
     return names
 
 
@@ -1477,13 +1501,21 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
         min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
-        if op.type() == 'fill_any_like':
+        # If prim forward op, fill_any_like will be decomposite as fill_constant.
+        if core._is_fwd_prim_enabled():
+            target = ('fill_any_like', 'fill_constant')
+        else:
+            target = 'fill_any_like'
+        if op.type() in target:
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names
 
 
-def prim_or_cinn_is_enabled(build_strategy):
+def prim_or_cinn_is_enabled(build_strategy, backend):
+    if backend == 'CINN':
+        return True
+
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
@@ -1519,3 +1551,18 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def backend_guard(backend):
+    core.check_and_set_prim_all_enabled()
+    orign_fwd = core._is_fwd_prim_enabled()
+    orign_bwd = core._is_bwd_prim_enabled()
+
+    if backend == 'CINN':
+        core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        core._set_prim_forward_enabled(orign_fwd)
+        core._set_prim_backward_enabled(orign_bwd)
