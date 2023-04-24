@@ -401,7 +401,8 @@ class Layer:
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
-        self._casted_by_pure_fp16 = False
+        # only used in AMP Training
+        self._cast_to_low_precison = True
 
         self._state_dict_hooks = collections.OrderedDict()
         # Records orignal functions after @to_static to support to rollback

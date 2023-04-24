@@ -17,7 +17,7 @@ import sys
 import atexit
 
 # The legacy core need to be removed before "import core",
-# in case of users installing paddlepadde without -U option
+# in case of users installing paddlepaddle without -U option
 core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
@@ -59,8 +59,6 @@ from . import optimizer
 from . import backward
 from .backward import gradients
 from . import regularizer
-from . import average
-from . import metrics
 from . import incubate
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -219,7 +217,7 @@ monkey_patch_varbase()
 atexit.register(core.clear_executor_cache)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
-# NOTE(wangran16): clean up DeviceManger in advance manually.
+# NOTE(wangran16): clean up DeviceManager in advance manually.
 # Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)
