@@ -2376,7 +2376,7 @@ def _find_op_path_(
     return op_path
 
 
-def _calc_and_ret_grad_infp_map(
+def _calc_and_ret_grad_info_map(
     targets, inputs, target_gradients=None, no_grad_set=None
 ):
     '''
@@ -2534,7 +2534,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None
     """
 
-    grad_info_map = _calc_and_ret_grad_infp_map(
+    grad_info_map = _calc_and_ret_grad_info_map(
         targets,
         inputs,
         target_gradients=target_gradients,

@@ -27,7 +27,11 @@ from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    construct_grad_names,
+)
 
 __all__ = []
 
@@ -639,7 +643,7 @@ class PartialProgramLayer:
                     (framework.Variable, list, tuple),
                     'paddle.static.gradients',
                 )
-                grad_info_map = backward._calc_and_ret_grad_infp_map(
+                grad_info_map = backward._calc_and_ret_grad_info_map(
                     targets=targets, inputs=[]
                 )
 
@@ -657,19 +661,9 @@ class PartialProgramLayer:
                     if isinstance(var, framework.Variable)
                 ]
 
-                fn = (
-                    lambda grad_var: grad_var.name
-                    if isinstance(grad_var, framework.Variable)
-                    else framework.EMPTY_VAR_NAME
+                self._grad_var_names = construct_grad_names(
+                    grad_info_map, x_vars, param_vars, out_vars
                 )
-                x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
-                self._grad_var_names['x'] = list(map(fn, x_grad_vars))
-                param_grad_vars = backward._get_grad_vars(
-                    grad_info_map, param_vars
-                )
-                self._grad_var_names['param'] = list(map(fn, param_grad_vars))
-                out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
-                self._grad_var_names['out'] = list(map(fn, out_grad_vars))
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(

@@ -27,6 +27,7 @@ from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
 )
+from paddle.jit.dy2static.utils import construct_grad_names
 from paddle.nn.layer import layers
 
 __all__ = []
@@ -609,7 +610,7 @@ class _ProgramHolder:
             (framework.Variable, list, tuple),
             'paddle.static.gradients',
         )
-        grad_info_map = backward._calc_and_ret_grad_infp_map(
+        grad_info_map = backward._calc_and_ret_grad_info_map(
             targets=targets, inputs=[]
         )
         x_vars = [
@@ -622,17 +623,9 @@ class _ProgramHolder:
             program.block(0).var(desc.name()) for desc in self._output_descs
         ]
 
-        fn = (
-            lambda grad_var: grad_var.name
-            if isinstance(grad_var, framework.Variable)
-            else framework.EMPTY_VAR_NAME
+        self._grad_var_names = construct_grad_names(
+            grad_info_map, x_vars, param_vars, out_vars
         )
-        x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
-        self._grad_var_names['x'] = list(map(fn, x_grad_vars))
-        param_grad_vars = backward._get_grad_vars(grad_info_map, param_vars)
-        self._grad_var_names['param'] = list(map(fn, param_grad_vars))
-        out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
-        self._grad_var_names['out'] = list(map(fn, out_grad_vars))
 
         return program.desc
 

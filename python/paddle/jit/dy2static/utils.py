@@ -32,7 +32,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid  # noqa: F401
-from paddle.fluid import core, unique_name
+from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
@@ -1511,3 +1511,19 @@ def backend_guard(backend):
     finally:
         core._set_prim_forward_enabled(orign_fwd)
         core._set_prim_backward_enabled(orign_bwd)
+
+
+def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
+    grad_var_names = {}
+    fn = (
+        lambda grad_var: grad_var.name
+        if isinstance(grad_var, framework.Variable)
+        else framework.EMPTY_VAR_NAME
+    )
+    x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
+    grad_var_names['x'] = list(map(fn, x_grad_vars))
+    param_grad_vars = backward._get_grad_vars(grad_info_map, param_vars)
+    grad_var_names['param'] = list(map(fn, param_grad_vars))
+    out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
+    grad_var_names['out'] = list(map(fn, out_grad_vars))
+    return grad_var_names
