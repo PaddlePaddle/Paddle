@@ -169,7 +169,7 @@ void FusedMultiTransformerXpuKernel(
   auto cache_kv_dims = cache_kv.get_ptr()->at(0)->dims();
   auto cache_kv_gather_dims = cache_kv_dims;
   phi::DenseTensor cache_kv_gather_tensor;
-  if (time_step_value > 0 && gather_index_t) {
+  if (gather_index_t) {
     MetaTensor cache_kv_gather_meta(&cache_kv_gather_tensor);
     phi::GatherInferMeta(*cache_kv.get_ptr()->at(0),
                          *gather_index_t,
@@ -232,53 +232,52 @@ void FusedMultiTransformerXpuKernel(
     // cache kv in
     auto cache_kv_data = reinterpret_cast<XPUTypeT*>(
         const_cast<T*>(cache_kv.get_ptr()->at(i)->data<T>()));
-    if (time_step_value > 0) {
-      if (gather_index_t) {
-        const auto& index_type = gather_index_t->dtype();
-        if (index_type == DataType::INT32) {
-          r = xpu::gather<XPUTypeT, int32_t>(
-              ctx.x_context(),
-              cache_kv_data,
-              gather_index_t->data<int32_t>(),
-              reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-              phi::vectorize<int32_t>(cache_kv_dims),
-              gather_index_t->dims().size() == 0 ? 1
-                                                 : gather_index_t->dims()[0],
-              1);
-        } else {
-          r = xpu::gather<XPUTypeT, int64_t>(
-              ctx.x_context(),
-              cache_kv_data,
-              gather_index_t->data<int64_t>(),
-              reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-              phi::vectorize<int64_t>(cache_kv_dims),
-              gather_index_t->dims().size() == 0 ? 1
-                                                 : gather_index_t->dims()[0],
-              1);
-        }
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather");
-        cache_kv_out[i]->ResizeAndAllocate(cache_kv_gather_dims);
-        r = xpu::copy<XPUTypeT>(
+    if (gather_index_t) {
+      const auto& index_type = gather_index_t->dtype();
+      if (index_type == DataType::INT32) {
+        r = xpu::gather<XPUTypeT, int32_t>(
             ctx.x_context(),
+            cache_kv_data,
+            gather_index_t->data<int32_t>(),
             reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-            reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
-            cache_kv_out[i]->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::copy");
+            phi::vectorize<int32_t>(cache_kv_dims),
+            gather_index_t->dims().size() == 0 ? 1 : gather_index_t->dims()[0],
+            gather_axis);
+      } else {
+        r = xpu::gather<XPUTypeT, int64_t>(
+            ctx.x_context(),
+            cache_kv_data,
+            gather_index_t->data<int64_t>(),
+            reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
+            phi::vectorize<int32_t>(cache_kv_dims),
+            gather_index_t->dims().size() == 0 ? 1 : gather_index_t->dims()[0],
+            gather_axis);
       }
-      xft_cache_kv.emplace_back(cache_kv_data,
-                                std::array<int64_t, 5>{cache_kv_dims[0],
-                                                       cache_kv_dims[1],
-                                                       cache_kv_dims[2],
-                                                       cache_kv_dims[3],
-                                                       cache_kv_dims[4]});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather");
+      cache_kv_out[i]->ResizeAndAllocate(cache_kv_gather_dims);
+      r = xpu::copy<XPUTypeT>(
+          ctx.x_context(),
+          reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
+          reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
+          cache_kv_out[i]->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::copy");
     }
+    cache_kv_data = reinterpret_cast<XPUTypeT*>(
+        const_cast<T*>(cache_kv.get_ptr()->at(i)->data<T>()));
+    xft_cache_kv.emplace_back(cache_kv_data,
+                              std::array<int64_t, 5>{cache_kv_gather_dims[0],
+                                                     cache_kv_gather_dims[1],
+                                                     cache_kv_gather_dims[2],
+                                                     cache_kv_gather_dims[3],
+                                                     cache_kv_gather_dims[4]});
     // cache kv out direct use cache_kv_data
-    xft_cache_kv_out.emplace_back(cache_kv_data,
-                                  std::array<int64_t, 5>{cache_kv_dims[0],
-                                                         cache_kv_dims[1],
-                                                         cache_kv_dims[2],
-                                                         cache_kv_dims[3],
-                                                         cache_kv_dims[4]});
+    xft_cache_kv_out.emplace_back(
+        cache_kv_data,
+        std::array<int64_t, 5>{cache_kv_gather_dims[0],
+                               cache_kv_gather_dims[1],
+                               cache_kv_gather_dims[2],
+                               cache_kv_gather_dims[3],
+                               cache_kv_gather_dims[4]});
   }
   xft::NlpParam param;
   param.num_layer = layers;

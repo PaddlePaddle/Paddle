@@ -346,7 +346,6 @@ void FusedMultiTransformerXPUPass::RemoveAssignGather(ir::Graph* graph) const {
     std::unordered_set<const Node*> delete_nodes{assign, assign_in, gather};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
-    // AddStatis(found_subgraph_count);
   };
 
   gpd(graph, handler);
