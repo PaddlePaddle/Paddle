@@ -2380,11 +2380,19 @@ def _find_op_path_(
     return op_path
 
 
+<<<<<<< HEAD
 def calc_gradient_helper(
     targets, inputs, target_gradients=None, no_grad_set=None
 ):
     '''
     Calculate gradient and return grad_info_map
+=======
+def _calc_and_ret_grad_infp_map(
+    targets, inputs, target_gradients=None, no_grad_set=None
+):
+    '''
+    For Dy2St
+>>>>>>> Get grad names for backward API
     '''
     targets = _as_list(targets)
     inputs = _as_list(inputs)
@@ -2499,8 +2507,13 @@ def calc_gradient_helper(
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
     return grad_info_map
+<<<<<<< HEAD
 
 
+=======
+
+
+>>>>>>> Get grad names for backward API
 def _get_grad_vars(grad_info_map, inputs):
     inputs = _as_list(inputs)
     grad_vars = []
@@ -2538,10 +2551,14 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None
     """
 
+<<<<<<< HEAD
     # NOTE: If you want to modify the logic of calc_gradient, please modify
     # it inside the calc_gradient_helper and _get_grad_vars functions
     # to ensure the correctness of dy2st mode.
     grad_info_map = calc_gradient_helper(
+=======
+    grad_info_map = _calc_and_ret_grad_infp_map(
+>>>>>>> Get grad names for backward API
         targets,
         inputs,
         target_gradients=target_gradients,
