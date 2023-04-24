@@ -208,7 +208,7 @@ class PartialProgramLayer:
         self._scope_cache = {}
         self._hooker = None
         self._backend = kwargs.get('backend', None)
-        self._grad_var_names = []
+        self._grad_var_names = {}
 
     def __call__(self, inputs):
         """
@@ -654,19 +654,41 @@ class PartialProgramLayer:
         if targets:
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             with backend_guard(self._backend):
-                inputs = [
+                grad_info_map = backward._calc_and_ret_grad_infp_map(
+                    targets=targets, inputs=[]
+                )
+
+                x_vars = [
                     program.block(0).var(var.name)
                     for var in self._inputs
                     if isinstance(var, framework.Variable)
-                ] + [program.block(0).var(var.name) for var in self._params]
-                grad_vars = backward.gradients(targets=targets, inputs=inputs)
-                self._grad_var_names = []
-                for i in range(len(grad_vars)):
-                    var = grad_vars[i]
-                    if isinstance(var, framework.Variable):
-                        self._grad_var_names.append(var.name)
-                    else:
-                        self._grad_var_names.append(inputs[i].name + "@GRAD")
+                ]
+                param_vars = [
+                    program.block(0).var(param.name) for param in self._params
+                ]
+                out_vars = [
+                    program.block(0).var(var.name)
+                    for var in self._outputs
+                    if isinstance(var, framework.Variable)
+                ]
+
+                fn = (
+                    lambda var, grad_var: grad_var.name
+                    if isinstance(grad_var, framework.Variable)
+                    else var.name + '@GRAD'
+                )
+                x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
+                self._grad_var_names['x'] = list(map(fn, x_vars, x_grad_vars))
+                param_grad_vars = backward._get_grad_vars(
+                    grad_info_map, param_vars
+                )
+                self._grad_var_names['param'] = list(
+                    map(fn, param_vars, param_grad_vars)
+                )
+                out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
+                self._grad_var_names['out'] = list(
+                    map(fn, out_vars, out_grad_vars)
+                )
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
@@ -746,14 +768,17 @@ class PartialProgramLayer:
                 (
                     'param_grad_names',
                     # self._param_grad_names,
-                    self._grad_var_names[
-                        inputs_size : inputs_size + params_size
-                    ],
+                    # self._grad_var_names[
+                    #     inputs_size : inputs_size + params_size
+                    # ],
+                    self._grad_var_names.get('param', []),
                     'out_grad_names',
-                    self._out_grad_names,
+                    # self._out_grad_names,
+                    self._grad_var_names.get('out', []),
                     'x_grad_names',
                     # self._x_grad_names,
-                    self._grad_var_names[0:inputs_size],
+                    # self._grad_var_names[0:inputs_size],
+                    self._grad_var_names.get('x', []),
                 )
             )
         if self._cuda_graph_capture_mode:
