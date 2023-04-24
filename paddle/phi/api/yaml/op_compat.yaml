@@ -346,6 +346,12 @@
   outputs :
     out : Out
 
+- op : class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
+
 - op : clip
   backward : clip_grad, clip_double_grad
   inputs :
