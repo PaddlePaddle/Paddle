@@ -553,7 +553,7 @@ class TestBF16(unittest.TestCase):
             B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
             B = B.cuda()
             C = paddle.einsum('i,i->', A, B)
-            D = paddle.to_tensor(8.0).astype(paddle.bfloat16)
+            D = paddle.to_tensor([8.0]).astype(paddle.bfloat16)
             self.assertEqual(C.item(), D.item())
 
 
