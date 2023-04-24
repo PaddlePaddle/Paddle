@@ -41,7 +41,11 @@ FusedMultiTransformerFillConstantPattern::
     : PatternBase(pattern, name_scope, name_scope) {
   auto* fill_constant = pattern->NewNode(fill_constant_repr())
                             ->assert_is_op("fill_constant")
-                            ->assert_has_n_inputs(5);
+                            ->assert_has_n_inputs(5)
+                            ->assert_more([](Node* node) {
+                              return node->Op()->GetAttrIfExists<std::string>(
+                                         "friendly_device_type") != "xpu";
+                            });
   auto* fill_constant_out = pattern->NewNode(fill_constant_out_repr())
                                 ->assert_is_op_output("fill_constant", "Out");
   auto* fused_multi_transformer =
@@ -72,7 +76,6 @@ FusedMultiTransformerGatherPattern::FusedMultiTransformerGatherPattern(
   auto* gather = pattern->NewNode(gather_repr())
                      ->assert_is_op("gather")
                      ->assert_more([](Node* node) {
-                       auto pre_op_nodes = node->inputs[0]->inputs;
                        return node->Op()->GetAttrIfExists<int>("axis") == 1;
                      });
   auto* gather_out =
@@ -127,6 +130,7 @@ void FusedMultiTransformerCacheKVLayoutTransPass::FillConstantReshapePass(
 
     fused_multi_transformer->Op()->SetAttr("friendly_device_type",
                                            std::string("xpu"));
+    fill_constant->Op()->SetAttr("friendly_device_type", std::string("xpu"));
     found_subgraph_count++;
   };
 
