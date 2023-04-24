@@ -24,8 +24,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "test/cpp/prim/init_env_utils.h"
 #include "test/cpp/eager/test_utils.h"
+#include "test/cpp/prim/init_env_utils.h"
 
 DECLARE_string(tensor_operants_mode);
 
