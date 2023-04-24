@@ -258,6 +258,11 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
+  endif()
+
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   target_link_libraries(eager_legacy_op_function_generator

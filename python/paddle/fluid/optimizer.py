@@ -4982,8 +4982,8 @@ class PipelineOptimizer:
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
-        elif (op.type == "cast" or op.type == "scale") and self._is_backward_op(
-            op
+        elif (op.type == "cast" or op.type == "scale") and (
+            self._is_backward_op(op) or self._is_forward_op(op)
         ):
             prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
             op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
@@ -5968,7 +5968,7 @@ class PipelineOptimizer:
         }
         assert -1 not in var.shape
         return (
-            reduce(lambda x, y: x * y, var.shape)
+            reduce(lambda x, y: x * y, var.shape, 1)
             * dtype_to_size[var.dtype]
             / 1024.0
             / 1024.0

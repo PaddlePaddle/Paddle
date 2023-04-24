@@ -59,8 +59,6 @@ from . import optimizer
 from . import backward
 from .backward import gradients
 from . import regularizer
-from . import average
-from . import metrics
 from . import incubate
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder

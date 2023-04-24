@@ -541,8 +541,8 @@ class TestSliceAPI(unittest.TestCase):
     def test_1(self):
         with paddle_static_guard():
             input = np.random.random([3, 4, 5, 6]).astype("float64")
-            minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
-            minus_3 = paddle.tensor.fill_constant([1], "int64", -3)
+            minus_1 = paddle.tensor.fill_constant([], "int32", -1)
+            minus_3 = paddle.tensor.fill_constant([], "int64", -3)
             starts = paddle.static.data(
                 name='starts', shape=[1, 3], dtype="float32"
             )
