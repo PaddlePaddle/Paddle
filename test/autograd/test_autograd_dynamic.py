@@ -700,6 +700,38 @@ class TestHessianBatchFirst(unittest.TestCase):
             x = paddle.ones((3, 3))
             paddle.autograd.hessian(func(x), x, batch_axis=0)
 
+    def func_batch_axis_except_0(self):
+        def func(x):
+            return x * x
+
+        with self.assertRaises(ValueError):
+            x = paddle.ones([3])
+            paddle.autograd.hessian(func(x), x, batch_axis=2)
+
+    def func_ndim_bigger_than_2(self):
+        def func(x):
+            return (x * x).sum()
+
+        with self.assertRaises(ValueError):
+            x = paddle.ones([3, 3, 3, 3])
+            paddle.autograd.hessian(func(x), x, batch_axis=0)
+
+    def func_batch_axis_str(self):
+        def func(x):
+            return (x * x).sum()
+
+        with self.assertRaises(ValueError):
+            x = paddle.ones([3, 3, 3, 3])
+            paddle.autograd.hessian(func(x), x, batch_axis="0")
+
+    def func_ellipsis_index(self):
+        def func(x):
+            return (x * x).sum()
+
+        with self.assertRaises(IndexError):
+            x = paddle.ones([2, 3])
+            H = paddle.autograd.hessian(func(x), x, batch_axis=0)[..., 1]
+
     def test_all_cases(self):
         self.setUpClass()
         self.func_single_input_attribute_operator()
@@ -707,6 +739,10 @@ class TestHessianBatchFirst(unittest.TestCase):
         self.func_allow_unused()
         self.func_stop_gradient()
         self.func_out_not_single()
+        self.func_batch_axis_except_0()
+        self.func_ndim_bigger_than_2()
+        self.func_batch_axis_str()
+        self.func_ellipsis_index()
 
 
 if __name__ == "__main__":
