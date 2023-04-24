@@ -2321,12 +2321,14 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [])
         self.assertEqual(x1.grad.shape, [])
 
-        x2 = paddle.full([], 0, dtype='int32')
-        out2 = paddle.squeeze(x1, axis=x2)
+        x2 = paddle.full([1, 1], 1, dtype='int32')
+        x2.stop_gradient = False
+        x2.retain_grads()
+        out2 = paddle.squeeze(x2, axis=[0, 1])
         out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [])
-        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [1, 1])
 
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
@@ -4177,10 +4179,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         out1 = paddle.squeeze(x1, axis=0)
         paddle.static.append_backward(out1.sum())
 
-        x2 = paddle.full([], 3)
-        x3 = paddle.full([], 0, dtype='int32')
+        x2 = paddle.full([1, 1], 1, dtype='int32')
         x2.stop_gradient = False
-        out2 = paddle.squeeze(x2, axis=x3)
+        out2 = paddle.squeeze(x2, axis=[0, 1])
         paddle.static.append_backward(out2.sum())
 
         prog = paddle.static.default_main_program()
@@ -4196,7 +4197,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3].shape, (1, 1))
 
     @prog_scope()
     def test_unsqueeze(self):
