@@ -265,7 +265,7 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor UNUSEDx,
+      phi::DenseTensor* out_tensor UNUSED,
       const phi::DenseTensor& in_tensor UNUSED,
       const AllreduceOptions& opts UNUSED,
       bool sync_op UNUSED,
