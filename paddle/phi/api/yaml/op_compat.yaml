@@ -1381,9 +1381,11 @@
 
 - op : lstsq
   input :
-    {x: X, y: Y, rcond:rcond, driver:driver}
+    {x : X, y : Y}
+  attrs:
+    {rcond : rcond, driver : driver}
   output :
-    {solution:Solution, residuals:Residuals, rank:Rank, singular_values:SingularValues}
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
 
 - op : lu_unpack
   backward : lu_unpack_grad
