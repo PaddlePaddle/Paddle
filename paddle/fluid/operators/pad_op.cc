@@ -180,6 +180,7 @@ REGISTER_OPERATOR(pad,
                   ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>,
+                  ops::PadCompositeGradOpMaker,
                   PadInferShapeFunctor);
 REGISTER_OPERATOR(pad_grad,
                   ops::PadOpGrad,
