@@ -44,11 +44,11 @@ echo "  nvcc \"\$@\"" >> $1
 echo "  exit 0" >> $1
 echo "fi" >> $1
 echo -e >> $1
-echo "# check nvcc version, if nvcc >= 11.7, just run nvcc itself" >> $1
+echo "# check nvcc version, if nvcc >= 11.8, just run nvcc itself" >> $1
 echo "CUDA_VERSION=\$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')" >> $1
 echo "CUDA_VERSION_MAJOR=\${CUDA_VERSION%.*}" >> $1
 echo "CUDA_VERSION_MINOR=\${CUDA_VERSION#*.}" >> $1
-echo "if (( CUDA_VERSION_MAJOR > 11 || (CUDA_VERSION_MAJOR == 11 && CUDA_VERSION_MINOR >= 7) )); then" >> $1
+echo "if (( CUDA_VERSION_MAJOR > 11 || (CUDA_VERSION_MAJOR == 11 && CUDA_VERSION_MINOR >= 8) )); then" >> $1
 echo "  nvcc \"\$@\"" >> $1
 echo "  exit" >> $1
 echo "fi" >> $1
