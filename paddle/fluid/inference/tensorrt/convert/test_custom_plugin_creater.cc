@@ -196,7 +196,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, true), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;
