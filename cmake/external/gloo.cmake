@@ -55,8 +55,8 @@ if(CMAKE_COMPILER_IS_GNUCC)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
          types_header)
     set(GLOO_PATCH_COMMAND
-        patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch
-        -d ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
+        patch -Nd ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} &&
+        patch -Nd ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
   endif()
 endif()
 include_directories(${GLOO_INCLUDE_DIR})

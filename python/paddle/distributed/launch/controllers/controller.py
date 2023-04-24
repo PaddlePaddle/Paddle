@@ -65,6 +65,7 @@ class ControllerBase:
         if len(self.pod.containers) > 0:
             self.ctx.logger.debug(self.pod.containers[0])
 
+        self.save_pod_env()
         self.ctx.status.run()
         self.pod.deploy()
 
@@ -254,6 +255,39 @@ class Controller(ControllerBase):
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:
+                if fd.tell() == 0:
+                    fd.write(str(os.environ))
+                    fd.write("\n")
                 fd.write(str(info))
+                fd.write("\n")
         except Exception as e:
             self.ctx.logger.error(f"save log failed because {e}")
+
+    def save_pod_env(self):
+        assert (
+            len(self.pod.containers) + len(self.pod.init_containers) > 0
+        ), "No container in the pod"
+
+        if not self.ctx.args.log_dir:
+            return
+
+        for c in self.pod.init_containers:
+            self._save_container_env(c, is_init=True)
+
+        for c in self.pod.containers:
+            self._save_container_env(c)
+
+    def _save_container_env(self, container, is_init=False):
+        f = os.path.join(
+            self.ctx.args.log_dir,
+            f'envlog.init.{container.rank}'
+            if is_init
+            else f'envlog.{container.rank}',
+        )
+        try:
+            os.makedirs(os.path.dirname(f), exist_ok=True)
+            with open(f, 'w') as fd:
+                for k, v in sorted(container.env.items()):
+                    fd.write(str(f"{k}={v}\n"))
+        except Exception as e:
+            self.ctx.logger.error(f"save pod env log failed because {e}")
