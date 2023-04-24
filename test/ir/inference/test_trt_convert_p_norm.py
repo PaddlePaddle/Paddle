@@ -39,41 +39,45 @@ class TrtConvertCeluTest(TrtLayerAutoScanTest):
             # TODO(liuyuanle): support asvector = True
             for asvector in [False]:
                 for keepdim in [False, True]:
-                    self.dims = dims
+                    for porder in [0, 1, 2, 3]:
+                        for axis in [-1]:
+                            self.dims = dims
 
-                    dics = [
-                        {
-                            "asvector": asvector,
-                            "keepdim": keepdim,
-                            "axis": -1,
-                            "porder": 3,
-                        }
-                    ]
+                            dics = [
+                                {
+                                    "asvector": asvector,
+                                    "keepdim": keepdim,
+                                    "axis": axis,
+                                    "porder": porder,
+                                }
+                            ]
 
-                    ops_config = [
-                        {
-                            "op_type": "p_norm",
-                            "op_inputs": {
-                                "X": ["input_data"],
-                            },
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[0],
-                        }
-                    ]
-                    ops = self.generate_op_config(ops_config)
+                            ops_config = [
+                                {
+                                    "op_type": "p_norm",
+                                    "op_inputs": {
+                                        "X": ["input_data"],
+                                    },
+                                    "op_outputs": {"Out": ["output_data"]},
+                                    "op_attrs": dics[0],
+                                }
+                            ]
+                            ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1, dims, dics)
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs={
+                                    "input_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input1, dims, dics
+                                        )
+                                    )
+                                },
+                                outputs=["output_data"],
                             )
-                        },
-                        outputs=["output_data"],
-                    )
 
-                    yield program_config
+                            yield program_config
 
     def sample_predictor_configs(
         self, program_config
