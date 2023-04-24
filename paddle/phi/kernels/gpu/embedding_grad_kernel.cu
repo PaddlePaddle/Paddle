@@ -75,17 +75,14 @@ __global__ void EmbeddingGrad(T* table,
 }
 
 template <typename T, typename IdT>
-__global__ void EmbeddingGradDeterministic(T* table,
-                                           const T* output,
-                                           const IdT* ids,
-                                           const int64_t K,
-                                           const int64_t D) {
+__global__ void EmbeddingGradDeterministic(
+    T* table, const T* output, const IdT* ids, const IdT K, const IdT D) {
   using MT = typename dtype::MPTypeTrait<T>::Type;
   extern __shared__ char buf[];
   MT* smem = reinterpret_cast<MT*>(buf);
   MT* my_s = smem + WARP_SIZE * threadIdx.y;
-  int64_t* indices_batch =
-      reinterpret_cast<int64_t*>(buf + sizeof(MT) * WARP_SIZE * BLOCKDIMY);
+  IdT* indices_batch =
+      reinterpret_cast<IdT*>(buf + sizeof(MT) * WARP_SIZE * BLOCKDIMY);
 
   const int stride = static_cast<int>(D);
 
@@ -99,10 +96,10 @@ __global__ void EmbeddingGradDeterministic(T* table,
        batch_start += WARP_SIZE * BLOCKDIMY) {
     int tid = threadIdx.x + threadIdx.y * WARP_SIZE;
     if (batch_start + tid < K)
-      indices_batch[tid] = static_cast<int64_t>(ids[batch_start + tid]);
+      indices_batch[tid] = static_cast<IdT>(ids[batch_start + tid]);
 
     int batch_end =
-        min(static_cast<int64_t>(batch_start + WARP_SIZE * BLOCKDIMY), K);
+        min(static_cast<IdT>(batch_start + WARP_SIZE * BLOCKDIMY), K);
 
     // Loop over the batch of <= 1024 loaded indices in chunks of BLOCKDIMY
     for (int chunk_start = batch_start; chunk_start < batch_end;
@@ -114,8 +111,8 @@ __global__ void EmbeddingGradDeterministic(T* table,
 
       int n_this_chunk = min(batch_end - chunk_start, BLOCKDIMY);
 
-      int64_t src_row = static_cast<int64_t>(chunk_start + threadIdx.y);
-      int64_t dst_row = indices_batch[src_row - batch_start];
+      IdT src_row = static_cast<IdT>(chunk_start + threadIdx.y);
+      IdT dst_row = indices_batch[src_row - batch_start];
       if (src_row < K && feature < stride)
         my_s[threadIdx.x] = static_cast<MT>(output[src_row * D + feature]);
 
