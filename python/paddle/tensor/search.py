@@ -573,8 +573,8 @@ def mode(x, axis=-1, keepdim=False, name=None):
            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
            #   [[2., 3.],
            #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-           #   [[1, 1],
-           #    [1, 0]]))
+           #   [[2, 2],
+           #    [2, 1]]))
 
     """
     if in_dygraph_mode():

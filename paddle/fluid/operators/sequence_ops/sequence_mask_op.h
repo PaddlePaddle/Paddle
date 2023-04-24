@@ -69,7 +69,7 @@ struct SequenceMaskFunctor {
   int maxlen_;
 };
 
-template <typename DeviceContext, typename Tx>
+template <typename Tx, typename DeviceContext>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

@@ -49,7 +49,6 @@ register_unity_group(
   cos_sim_op.cc
   crf_decoding_op.cc
   crop_op.cc
-  ascend_trigger_op.cc
   conj_op.cc
   imag_op.cc
   kldiv_loss_op.cc
