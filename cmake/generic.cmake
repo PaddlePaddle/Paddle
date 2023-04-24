@@ -444,25 +444,10 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      glog
-      phi)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      glog
-      phi)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main gtest glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main gtest
+                     glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})

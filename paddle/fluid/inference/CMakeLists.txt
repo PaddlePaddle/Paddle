@@ -57,7 +57,7 @@ set(KERNEL_LIST
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
+  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
   # message("${fluid_modules}")
@@ -96,7 +96,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
+set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
                           ${utils_modules})
 
 if(WITH_CRYPTO)
@@ -117,11 +117,6 @@ if(WITH_ONNXRUNTIME)
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
 endif()
 
-#export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
-if(UNIX)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} $<TARGET_OBJECTS:phi>)
-endif()
-
 # Create shared inference library
 cc_library(
   paddle_inference_shared SHARED
@@ -138,7 +133,10 @@ endif()
 
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
-if(NOT APPLE AND NOT WIN32)
+if(NOT APPLE
+   AND NOT WIN32
+   AND NOT WITH_TESTING
+   AND NOT WITH_INFERENCE_API_TEST)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS
       "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
