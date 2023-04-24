@@ -14,6 +14,7 @@
 
 import itertools
 import os
+import sys
 import time
 import warnings
 from collections import OrderedDict, namedtuple
@@ -919,10 +920,15 @@ def _get_modified_flags():
 
 def _print_modified_flags(modified_flags):
     if len(modified_flags) > 0:
-        print("============== Modified FLAGS detected ==============")
+        sys.stderr.write(
+            "======================= Modified FLAGS detected =======================\n"
+        )
         for flag in modified_flags:
-            print(flag)
-        print("=====================================================")
+            sys.stderr.write(str(flag))
+            sys.stderr.write("\n")
+        sys.stderr.write(
+            "=======================================================================\n"
+        )
 
 
 def init_parallel_env():
