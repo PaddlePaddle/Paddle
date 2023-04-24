@@ -189,6 +189,7 @@ class TestEmbeddingBase(unittest.TestCase):
                                     deterministic_level,
                                     rank,
                                     allow_duplicate_id,
+                                    allow_pure_random,
                                 )
 
 
