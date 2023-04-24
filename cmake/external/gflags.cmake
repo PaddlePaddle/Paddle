@@ -65,8 +65,6 @@ else()
   ExternalProject_Add(
     extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ""
-    GIT_TAG ${GFLAGS_TAG}
     PREFIX ${GFLAGS_PREFIX_DIR}
     SOURCE_DIR ${SOURCE_DIR}
     UPDATE_COMMAND ""
