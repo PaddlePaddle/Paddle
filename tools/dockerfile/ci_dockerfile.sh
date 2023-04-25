@@ -90,6 +90,11 @@ function make_centos_dockerfile(){
      tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libsndfile1 zstd pigz libcurl4-openssl-dev gettext zstd ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro \&\& pip3.9 install PyGithub wheel \&\& pip3.10 install PyGithub distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+    tar -xvf git-2.17.1.tar.gz \&\& \
+    cd git-2.17.1 \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
+    make -j8 \&\& make install " ${dockerfile_name}
   sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
 }
 
