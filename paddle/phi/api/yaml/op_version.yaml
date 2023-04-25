@@ -117,6 +117,14 @@
           comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
           default : std::vector<int64_t>{}
 
+- op : generate_proposals
+  version :
+    - checkpoint : Registe generate_proposals_v2 for adding the attribute of pixel_offset
+      action :
+        - add_attr : pixel_offset
+          comment : If true, im_shape pixel offset is 1.
+          default : "true"
+
 - op : greater_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
