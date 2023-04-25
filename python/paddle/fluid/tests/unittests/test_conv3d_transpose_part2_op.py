@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from test_conv3d_transpose_op import TestConv3DTransposeOp
+from test_conv3d_transpose_op import (
+    TestConv3DTransposeOp,
+    create_test_cudnn_bf16_class,
+    create_test_cudnn_fp16_class,
+)
 
 import paddle
 from paddle import fluid
@@ -82,6 +86,22 @@ class TestWithDilation_NHWC(TestConv3DTransposeOp):
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
+
+
+# ----------------Conv3DTransposeCUDNN fp16----------------
+create_test_cudnn_fp16_class(TestWithSymmetricPad_NHWC)
+create_test_cudnn_fp16_class(TestWithAsymmetricPad_NHWC)
+create_test_cudnn_fp16_class(TestWithGroups_NHWC)
+create_test_cudnn_fp16_class(TestWithStride_NHWC)
+create_test_cudnn_fp16_class(TestWithDilation_NHWC)
+
+
+# ----------------Conv3DTransposeCUDNN bf16----------------
+create_test_cudnn_bf16_class(TestWithSymmetricPad_NHWC)
+create_test_cudnn_bf16_class(TestWithAsymmetricPad_NHWC)
+create_test_cudnn_bf16_class(TestWithGroups_NHWC)
+create_test_cudnn_bf16_class(TestWithStride_NHWC)
+create_test_cudnn_bf16_class(TestWithDilation_NHWC)
 
 
 class TestConv3DTransposeAPI(unittest.TestCase):
