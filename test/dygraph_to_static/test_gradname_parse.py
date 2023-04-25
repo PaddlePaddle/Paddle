@@ -67,13 +67,12 @@ class TestGradNameParse(unittest.TestCase):
         opt.minimize(loss)
 
 
-def tanh_high_order_grad(x):
-    y = paddle.tanh(x)
-    return paddle.grad(y, x, create_graph=True)[0]
-
-
 class TestXGradNameParse(unittest.TestCase):
     def test_x_grad_name_parse(self):
+        def tanh_high_order_grad(x):
+            y = paddle.tanh(x)
+            return paddle.grad(y, x, create_graph=True)[0]
+
         x1 = paddle.ones((1,))
         x1.stop_gradient = False
         y1 = tanh_high_order_grad(x1)
@@ -85,6 +84,23 @@ class TestXGradNameParse(unittest.TestCase):
         g2 = paddle.grad(y2, x2)
 
         np.testing.assert_equal(g1[0].numpy(), g2[0].numpy())
+
+
+class TestGradNone(unittest.TestCase):
+    def test_grad_none(self):
+        @paddle.jit.to_static
+        def matmul_high_order_grad(x, y):
+            z = paddle.matmul(x, y)
+            g = paddle.grad(z, [x, y], create_graph=False)
+            return g[0]
+
+        x = paddle.ones([1])
+        x.stop_gradient = False
+        y = paddle.ones([1])
+        y.stop_gradient = False
+        g = matmul_high_order_grad(x, y)
+        o = paddle.grad(g, x)
+        np.testing.assert_equal(y.grad, None)
 
 
 if __name__ == "__main__":
