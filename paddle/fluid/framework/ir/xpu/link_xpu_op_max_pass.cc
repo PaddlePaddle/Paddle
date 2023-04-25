@@ -157,7 +157,8 @@ void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(branch);
 
     auto* fusion_op_desc = fusion_op->Op();
-    if (input->inputs[0]->Op()->HasOutput("out_max")) {
+    if (input->inputs.size() > 0 && input->inputs[0]->IsOp() &&
+        input->inputs[0]->Op()->HasOutput("out_max")) {
       auto input_max_name = input->inputs[0]->Op()->Output("out_max");
       for (auto max_node : input->inputs[0]->outputs) {
         if (input_max_name[0] == max_node->Name()) {
@@ -169,7 +170,8 @@ void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
     }
 
     if (with_branch) {
-      if (branch->inputs[0]->Op()->HasOutput("out_max")) {
+      if (branch->inputs.size() > 0 && branch->inputs[0]->IsOp() &&
+          branch->inputs[0]->Op()->HasOutput("out_max")) {
         auto branch_max_name = branch->inputs[0]->Op()->Output("out_max");
         for (auto max_node : branch->inputs[0]->outputs) {
           if (branch_max_name[0] == max_node->Name()) {

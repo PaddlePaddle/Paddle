@@ -352,6 +352,11 @@ void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                      "",
                  }) {
               if (with_branch_x && with_branch_y) continue;
+              if (with_conv_bias && !with_bn &&
+                  (with_branch_x || with_branch_y)) {
+                std::string act_name = act_type;
+                if (act_name.empty()) continue;
+              }
               found_subgraph_count += ApplyImpl(graph,
                                                 conv_type,
                                                 act_type,
