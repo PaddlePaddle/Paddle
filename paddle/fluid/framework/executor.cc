@@ -29,6 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/offload_vars_pool.h"
+#endif
 
 DECLARE_bool(benchmark);
 DECLARE_bool(use_mkldnn);
@@ -69,7 +72,12 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place,
+                   bool offload,
+                   int offload_vars_pool_idx)
+    : place_(place),
+      offload_(offload),
+      offload_vars_pool_idx_(offload_vars_pool_idx) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
@@ -536,13 +544,31 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 
   for (int64_t i = start_op_index; i < end_op_index; ++i) {
     auto& op = ctx->ops_[i];
+    if (offload_ && framework::OffloadVarsPoolVector::Instance()
+                        .Get(offload_vars_pool_idx_)
+                        .IsOffloadLayer(i)) {
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(offload_vars_pool_idx_)
+          .FillPool();
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(offload_vars_pool_idx_)
+          .WaitCopyCompleted(i);
+    }
     op->Run(*local_scope, place_);
+    if (offload_)
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(offload_vars_pool_idx_)
+          .RecordEvent(i);
     if (gc) {
       platform::RecordEvent record(
           "CheckGC", platform::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }
+  if (offload_)
+    framework::OffloadVarsPoolVector::Instance()
+        .Get(offload_vars_pool_idx_)
+        .Reset();
 
   auto callback = [scope, local_scope, keep_kids]() {
     if (local_scope != scope) {

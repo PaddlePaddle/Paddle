@@ -60,7 +60,9 @@ class Executor {
   explicit Executor(const platform::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const platform::Place& place,
+                    bool offload = false,
+                    int offload_vars_pool_idx = 1);
 
   ~Executor();
   /*
@@ -158,6 +160,8 @@ class Executor {
 
  private:
   const platform::Place place_;
+  bool offload_{false};
+  int offload_vars_pool_idx_;
 };
 
 }  // namespace framework

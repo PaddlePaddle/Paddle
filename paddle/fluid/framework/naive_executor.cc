@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/offload_vars_pool.h"
+#endif
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -57,7 +60,18 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  for (auto &op : ops_) {
+  for (size_t i = 0; i < ops_.size(); i++) {
+    auto &op = ops_[i];
+    if (offload_ && framework::OffloadVarsPoolVector::Instance()
+                        .Get(kRootBlockIndex)
+                        .IsOffloadLayer(i)) {
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(kRootBlockIndex)
+          .FillPool();
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(kRootBlockIndex)
+          .WaitCopyCompleted(i);
+    }
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
@@ -72,9 +86,11 @@ void NaiveExecutor::Run() {
         it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
       }
     }
-
     op->Run(*scope_, place_);
-
+    if (offload_)
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(kRootBlockIndex)
+          .RecordEvent(i);
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {
@@ -84,7 +100,6 @@ void NaiveExecutor::Run() {
         }
       }
     }
-
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
@@ -92,6 +107,8 @@ void NaiveExecutor::Run() {
       func(op.get());
     }
   }
+  if (offload_)
+    framework::OffloadVarsPoolVector::Instance().Get(kRootBlockIndex).Reset();
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePop();
 #endif

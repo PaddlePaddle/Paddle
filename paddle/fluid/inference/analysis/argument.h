@@ -379,6 +379,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(enable_custom_device_mixed,
                       EnableCustomDeviceMixed,
                       bool);
+  // memory limit filed
+  DECL_ARGUMENT_FIELD(enable_offload, EnableOffLoad, bool);
+  DECL_ARGUMENT_FIELD(custom_offload_layers,
+                      CustomOffloadLayers,
+                      std::vector<int>);
+  DECL_ARGUMENT_FIELD(is_multi_layer_fused, IsMultiLayerFused, bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

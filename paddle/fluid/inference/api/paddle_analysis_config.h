@@ -1026,6 +1026,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
 
+  void EnableOffload(bool multi_layer_fused_transformer = true,
+                     std::vector<int> custom_offload_layers = {});
+
   ///
   /// \brief Enable use cinn compiler optimization.
   ///
@@ -1248,6 +1251,11 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  // offload fused_multi_transformer op params
+  bool enable_offload_{false};
+  bool multi_layer_fused_transformer_{true};
+  std::vector<int> custom_offload_layers_{};
 };
 
 }  // namespace paddle

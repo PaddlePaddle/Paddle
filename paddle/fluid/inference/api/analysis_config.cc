@@ -545,6 +545,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
 
+  // limit memory
+  CP_MEMBER(enable_offload_);
+  CP_MEMBER(custom_offload_layers_);
+  CP_MEMBER(multi_layer_fused_transformer_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -1022,6 +1027,14 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
+}
+
+void AnalysisConfig::EnableOffload(bool multi_layer_fused_transformer,
+                                   std::vector<int> custom_offload_layers) {
+  enable_offload_ = true;
+  custom_offload_layers_ = custom_offload_layers;
+  multi_layer_fused_transformer_ = multi_layer_fused_transformer;
+  Update();
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
