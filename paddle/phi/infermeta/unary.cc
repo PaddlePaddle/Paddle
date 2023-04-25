@@ -1839,7 +1839,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({1}));
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -4220,7 +4220,7 @@ void TileInferMeta(const MetaTensor& x,
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
   if (repeat_times_data.size() == 0) {
-    repeat_times_data = std::vector<int64_t>(x_dims.size(), -1);
+    repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
   PADDLE_ENFORCE_LE(
@@ -4253,10 +4253,10 @@ void TileInferMeta(const MetaTensor& x,
   auto x_dim_vec = phi::vectorize<int>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
-    repeat_times_data.insert(repeat_times_data.begin(), diff, -1);
+    repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
   } else {
     auto diff = repeat_times_data.size() - x_dim_vec.size();
-    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+    x_dim_vec.insert(x_dim_vec.begin(), diff, 1);
   }
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
@@ -4402,7 +4402,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));

@@ -1252,7 +1252,9 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.enable_static()
 
             to_string = lambda x, i: x + '_' + str(i)
-            numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
+            numel = lambda input_shape: reduce(
+                lambda x, y: x * y, input_shape, 1
+            )
 
             def op1(x):
                 value = paddle.tensor.fill_constant([1], "float32", 1)

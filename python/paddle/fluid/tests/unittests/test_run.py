@@ -52,7 +52,9 @@ def get_files(pth, prefix):
     return [
         f
         for f in listdir(pth)
-        if isfile(join(pth, f)) and not f.endswith('gpu.log')
+        if isfile(join(pth, f))
+        and not f.endswith('gpu.log')
+        and not f.startswith('envlog')
     ]
 
 

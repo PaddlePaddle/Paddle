@@ -291,31 +291,26 @@ void FusedMultiTransformerXpuInferMeta(
     std::vector<MetaTensor*> cache_kv_out) {
   auto x_dim = x.dims();
   auto y_dim = qkvw[0]->dims();
-  PADDLE_ENFORCE_EQ(
-      x_dim.size(),
-      3,
-      phi::errors::InvalidArgument("The dimensions of x must be 3"
-                                   "(batch_size, seq_len, dim_embed),"
-                                   "but received dimensions of"
-                                   "Input is [%d]",
-                                   x_dim.size()));
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of x must be 3(batch_size, seq_len, "
+                        "dim_embed), but received dimensions of Input is [%d]",
+                        x_dim.size()));
   PADDLE_ENFORCE_EQ(
       y_dim.size(),
       4,
-      phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                   "(3, num_head, dim_head, dim_embed),"
-                                   "but received dimensions of"
-                                   "Input is [%d]",
-                                   y_dim.size()));
+      phi::errors::InvalidArgument(
+          "The dimensions of qkv_weight must be 4(3, num_head, dim_head, "
+          "dim_embed), but received dimensions of qkv_weight is [%d]",
+          y_dim.size()));
   PADDLE_ENFORCE_EQ(
       x_dim[2],
       trans_qkvw ? y_dim[3] : y_dim[0],
       phi::errors::InvalidArgument(
-          "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
-          "true) or y_dim[0](trans_qkvw is false)"
-          "must be equal. But received: the shape "
-          "of input x = [%s], and the shape of "
-          "input qkv_weight = [%s]",
+          "The dimension of x_dim[2] and y_dim[3](trans_qkvw is  true) or "
+          "y_dim[0](trans_qkvw is false) must be equal, but received: the "
+          "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
           x_dim,
           y_dim));
   if (cache_kv.size() > 0) {
@@ -330,27 +325,27 @@ void FusedMultiTransformerXpuInferMeta(
                       phi::errors::InvalidArgument(
                           "The first dim of CacheKV must be 2, but got %d",
                           c_dim[0]));  // 2
-    PADDLE_ENFORCE_EQ(c_dim[1],
-                      x_dim[0],
-                      phi::errors::InvalidArgument(
-                          "The second dim of CacheKV must be equal with "
-                          "batch size %d, but got %d",
-                          x_dim[0],
-                          c_dim[1]));  // batch_size
-    PADDLE_ENFORCE_EQ(c_dim[2],
-                      trans_qkvw ? y_dim[1] : y_dim[2],
-                      phi::errors::InvalidArgument(
-                          "The third dim of CacheKV must be equal with num "
-                          "head %d, but got %d",
-                          trans_qkvw ? y_dim[1] : y_dim[2],
-                          c_dim[2]));  // num_head
-    PADDLE_ENFORCE_EQ(c_dim[4],
-                      trans_qkvw ? y_dim[2] : y_dim[3],
-                      phi::errors::InvalidArgument(
-                          "The fifth dim of CacheKV must be equal with head "
-                          "size %d, but got %d",
-                          trans_qkvw ? y_dim[2] : y_dim[3],
-                          c_dim[4]));  // head_size
+    PADDLE_ENFORCE_EQ(
+        c_dim[2],
+        x_dim[0],
+        phi::errors::InvalidArgument("The third dim of CacheKV must be equal "
+                                     "with batch size %d, but got %d",
+                                     x_dim[0],
+                                     c_dim[2]));  // batch_size
+    PADDLE_ENFORCE_EQ(
+        c_dim[3],
+        trans_qkvw ? y_dim[1] : y_dim[2],
+        phi::errors::InvalidArgument("The fourth dim of CacheKV must be equal "
+                                     "with num head %d, but got %d",
+                                     trans_qkvw ? y_dim[1] : y_dim[2],
+                                     c_dim[3]));  // num_head
+    PADDLE_ENFORCE_EQ(
+        c_dim[4],
+        trans_qkvw ? y_dim[2] : y_dim[3],
+        phi::errors::InvalidArgument("The fifth dim of CacheKV must be equal "
+                                     "with head size %d, but got %d",
+                                     trans_qkvw ? y_dim[2] : y_dim[3],
+                                     c_dim[4]));  // head_size
   }
 
   out->set_dims(x_dim);

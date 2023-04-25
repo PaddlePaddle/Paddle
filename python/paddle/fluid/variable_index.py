@@ -117,7 +117,7 @@ class SliceInfo:
         return s
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def get_offset_stride(self, tensor_shape):
         for index in self.indexes:
@@ -185,7 +185,8 @@ class SliceInfo:
 
         for i in range(len(gather_tensor_shape)):
             if not (
-                value_dims_bd[i] == gather_tensor_shape[i]
+                len(value_dims_bd) == 0
+                or value_dims_bd[i] == gather_tensor_shape[i]
                 or value_dims_bd[i] == 1
             ):
                 raise ValueError(
