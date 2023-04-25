@@ -116,6 +116,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T, typename DeviceContext>
 class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -155,7 +156,8 @@ class FetchV2Kernel {
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place());
+                         platform::is_cuda_pinned_place(src_item.place()) ||
+                         platform::is_custom_place(src_item.place());
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
@@ -228,28 +230,19 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2,
-                               float,
-                               ops::FetchV2Kernel,
-                               double,
-                               ops::FetchV2Kernel,
-                               int8_t,
-                               ops::FetchV2Kernel,
-                               uint8_t,
-                               ops::FetchV2Kernel,
-                               int,
-                               ops::FetchV2Kernel,
-                               int64_t,
-                               ops::FetchV2Kernel,
-                               bool,
-                               ops::FetchV2Kernel,
-                               paddle::platform::bfloat16,
-                               ops::FetchV2Kernel,
-                               paddle::platform::complex<float>,
-                               ops::FetchV2Kernel,
-                               paddle::platform::complex<double>,
-                               ops::FetchV2Kernel,
-                               plat::float16,
-                               ops::FetchV2Kernel,
-                               int16_t,
-                               ops::FetchV2Kernel);
+PD_REGISTER_STRUCT_KERNEL(fetch_v2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FetchV2Kernel,
+                          float,
+                          double,
+                          int,
+                          int8_t,
+                          int16_t,
+                          int64_t,
+                          uint8_t,
+                          bool,
+                          plat::float16,
+                          plat::bfloat16,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

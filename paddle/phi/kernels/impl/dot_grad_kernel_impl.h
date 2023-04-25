@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -44,7 +46,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
                   DenseTensor* tensor_dy) {
     VLOG(1) << "enable route";
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_dout->dims().size()) {
+    if (1 >= tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
 
       if (tensor_dx) {
@@ -142,7 +144,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_dout->dims().size()) {
+    if (1 >= tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
       if (tensor_dx) {
         auto y = EigenVector<T>::Flatten(*tensor_y);
@@ -234,7 +236,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
     const DenseTensor* tensor_ddx = tensor_ddx_opt->get_ptr();
     const DenseTensor* tensor_ddy = tensor_ddy_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_dout->dims().size()) {
+    if (1 >= tensor_dout->dims().size()) {
       DenseTensor tensor_dout_help;
       auto& dev = *ctx.eigen_device();
       if (tensor_dx || tensor_dy) {
@@ -429,7 +431,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
     const DenseTensor* tensor_ddx = tensor_ddx_opt->get_ptr();
     const DenseTensor* tensor_ddy = tensor_ddy_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_dout->dims().size()) {
+    if (1 >= tensor_dout->dims().size()) {
       auto& dev = *ctx.eigen_device();
       auto x = EigenVector<T>::Flatten(*tensor_x);
       auto y = EigenVector<T>::Flatten(*tensor_y);
@@ -619,7 +621,7 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == in_tensor_dout->dims().size()) {
+    if (1 >= in_tensor_dout->dims().size()) {
       auto& dev = *ctx.eigen_device();
       DenseTensor in_tensor_x_help = Conj<T, DeviceContext>(ctx, *in_tensor_x);
       DenseTensor in_tensor_y_help = Conj<T, DeviceContext>(ctx, *in_tensor_y);
@@ -1013,7 +1015,7 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == in_tensor_dout->dims().size()) {
+    if (1 >= in_tensor_dout->dims().size()) {
       auto& dev = *ctx.eigen_device();
       bool d_dout_flag = false;
       bool d_ddx_flag = false;

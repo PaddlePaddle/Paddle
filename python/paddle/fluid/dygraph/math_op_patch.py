@@ -16,9 +16,9 @@ from .. import core
 from ..framework import (
     Variable,
     convert_np_dtype_to_dtype_,
-    _varbase_creator,
     in_dygraph_mode,
 )
+from ..framework import _create_tensor as framework_create_tensor
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
@@ -62,11 +62,10 @@ _complex_dtypes = [
     core.VarDesc.VarType.COMPLEX128,
 ]
 
-_already_patch_varbase = False
 _already_patch_eager_tensor = False
 
 
-def monkey_patch_math_varbase():
+def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
@@ -79,7 +78,7 @@ def monkey_patch_math_varbase():
                 shape, value, dtype, framework._current_expected_place()
             )
         else:
-            out = _varbase_creator(dtype=dtype)
+            out = framework_create_tensor(dtype=dtype)
             out = _legacy_C_ops.fill_constant(
                 out,
                 'dtype',
@@ -140,21 +139,21 @@ def monkey_patch_math_varbase():
         ), "only one element variable can be converted to float."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return float(var.numpy().flatten()[0])
+        return float(np.array(var).flatten()[0])
 
     def _long_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(np.array(var).flatten()[0])
 
     def _int_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(np.array(var).flatten()[0])
 
     def _len_(var):
         assert var.ndim > 0, "len() of a 0D tensor is wrong"
@@ -172,7 +171,7 @@ def monkey_patch_math_varbase():
         ), "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(var.numpy().flatten()[0])
+        return int(np.array(var).flatten()[0])
 
     @property
     def _ndim_(var):
@@ -180,7 +179,7 @@ def monkey_patch_math_varbase():
 
     @property
     def _size_(var):
-        return np.prod(var.shape)
+        return int(np.prod(var.shape))
 
     @property
     def _T_(var):
@@ -249,12 +248,9 @@ def monkey_patch_math_varbase():
                 # do nothing
                 pass
 
-            # 2. create varbase for scalar
+            # 2. create Tensor for scalar
             lhs_dtype = self.dtype
-            if framework.global_var._in_eager_mode_:
-                other_var_should_be = core.eager.Tensor
-            else:
-                other_var_should_be = core.VarBase
+            other_var_should_be = core.eager.Tensor
             if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
@@ -347,7 +343,7 @@ def monkey_patch_math_varbase():
         __impl__.__name__ = method_name
         return __impl__
 
-    varbase_methods = [
+    tensor_methods = [
         ('__neg__', _neg_),
         ('__float__', _float_),
         ('__long__', _long_),
@@ -483,17 +479,11 @@ def monkey_patch_math_varbase():
         '__ne__',
     ]
 
-    global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework.global_var._in_eager_mode_:
-        local_already_patch = _already_patch_eager_tensor
-        _already_patch_eager_tensor = True
-        local_tensor = core.eager.Tensor
-    else:
-        local_already_patch = _already_patch_varbase
-        _already_patch_varbase = True
-        local_tensor = core.VarBase
+    local_already_patch = _already_patch_eager_tensor
+    _already_patch_eager_tensor = True
+    local_tensor = core.eager.Tensor
 
     if not local_already_patch:
         if framework.global_var._in_eager_mode_:
@@ -508,7 +498,7 @@ def monkey_patch_math_varbase():
                 setattr(local_tensor, method_name, method_impl)
 
         else:
-            for method in varbase_methods:
+            for method in tensor_methods:
                 method_name = method[0]
                 method_impl = method[1]
                 setattr(local_tensor, method_name, method_impl)

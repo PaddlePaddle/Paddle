@@ -73,7 +73,7 @@ class TestCumulativeTrapezoidWithOutDxX(TestCumulativeTrapezoidAPI):
 class TestCumulativeTrapezoidBroadcast(TestCumulativeTrapezoidAPI):
     def set_args(self):
         self.y = np.random.random((3, 3, 4)).astype('float32')
-        self.x = np.random.random((3)).astype('float32')
+        self.x = np.random.random(3).astype('float32')
         self.dx = None
         self.axis = 1
 

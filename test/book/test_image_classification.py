@@ -175,7 +175,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
+                        'PassID {:1}, BatchID {:04}, Test Loss {:2.2}, Acc {:2.2}'.format(
                             pass_id,
                             batch_id + 1,
                             float(avg_loss_value),

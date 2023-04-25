@@ -45,5 +45,22 @@ class TestFleetMetaOptimizerPrecision(TestDistBase):
             )
 
 
+class TestFleetMetaOptimizerPrecisionWithSync(TestFleetMetaOptimizerPrecision):
+    def need_envs(self):
+        return {'FLAGS_sync_before_allreduce': '1'}
+
+    def test_dist_train(self):
+        from paddle import fluid
+
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "dist_fleet_raw_program_optimizer.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name + 'with_sync',
+                need_envs=self.need_envs(),
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

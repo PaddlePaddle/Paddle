@@ -30,7 +30,7 @@ from test_conv2d_op import (
 )
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op_test import get_numeric_gradient
+from paddle.fluid.tests.unittests.eager_op_test import get_numeric_gradient
 from paddle.fluid.tests.unittests.testsuite import create_op
 
 # ----------------TestDepthwiseConv -----
@@ -416,17 +416,17 @@ def create_test_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "FP16OP")
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestDepthwiseConvFP16.__name__ = cls_name
     globals()[cls_name] = TestDepthwiseConvFP16
 
@@ -464,7 +464,7 @@ def create_test_bf16_class(parent, atol=1e-2):
                 place,
                 ['Input'],
                 'Output',
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -475,11 +475,11 @@ def create_test_bf16_class(parent, atol=1e-2):
                 place,
                 ['Filter'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16OP")
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
     TestDepthwiseConvBF16.__name__ = cls_name
     globals()[cls_name] = TestDepthwiseConvBF16
 
@@ -503,14 +503,14 @@ def create_test_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_data_format(self):
@@ -520,7 +520,7 @@ def create_test_channel_last_fp16_class(parent, grad_check=True):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLastFP16")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLastFP16")
     TestChannelLastFP16.__name__ = cls_name
     globals()[cls_name] = TestChannelLastFP16
 

@@ -51,7 +51,7 @@ class TestCustomKernelLoad(unittest.TestCase):
                 if os.path.exists(lib_dir):
                     paddle_lib_path = lib_dir
         self.default_path = os.path.sep.join(
-            [paddle_lib_path, '..', '..', 'paddle-plugins']
+            [paddle_lib_path, '..', '..', 'paddle_custom_device']
         )
         # copy so to default path
         cmd = 'mkdir -p {} && cp ./*.so {}'.format(
@@ -81,12 +81,12 @@ class TestCustomKernelLoad(unittest.TestCase):
         )
 
     def tearDown(self):
-        cmd = 'rm -rf {}'.format(self.default_path)
+        cmd = f'rm -rf {self.default_path}'
         os.system(cmd)
 
 
 if __name__ == '__main__':
     if os.name == 'nt' or sys.platform.startswith('darwin'):
         # only support Linux now
-        exit()
+        sys.exit()
     unittest.main()

@@ -21,7 +21,7 @@ class NearestInterpolateOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid nearest_interp op";
+    VLOG(3) << "convert a nearest_interp op to tensorrt op";
 
     framework::OpDesc op_desc(op, nullptr);
 

@@ -96,8 +96,6 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
                                    ddout.size());
                              }));
 
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
-
   return {ddout};
 }
 
@@ -136,8 +134,6 @@ std::vector<paddle::Tensor> relu_xpu_double_backward(
 
   ddout = paddle::multiply(ddx, paddle::where(condition, ones, zeros));
 
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
-
   return {ddout};
 }
 
@@ -165,7 +161,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> ReluDoubleBackward(const paddle::Tensor& out,
                                                const paddle::Tensor& ddx) {
-  if (out.place() == paddle::PlaceType::kCPU) {
+  if (out.is_cpu()) {
     return relu_cpu_double_backward(out, ddx);
   } else if (out.place().GetType() == phi::AllocationType::XPU) {
     return relu_xpu_double_backward(out, ddx);

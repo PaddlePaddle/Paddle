@@ -162,7 +162,9 @@ class Allocator : public phi::Allocator {
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
-  virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
+  virtual uint64_t ReleaseImpl(const platform::Place& place UNUSED) {
+    return 0;
+  }
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {

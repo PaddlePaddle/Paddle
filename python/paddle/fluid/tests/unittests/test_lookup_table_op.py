@@ -21,12 +21,12 @@ from eager_op_test import (
     paddle_static_guard,
     skip_check_grad_ci,
 )
+from op import Operator
 
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 class TestLookupTableOp(OpTest):

@@ -14,7 +14,12 @@
 
 #pragma once
 
+#if defined(__APPLE__)
+#include <mach/error.h>
+#else
 #include <error.h>
+#endif
+
 #include <string>
 
 #include "paddle/fluid/distributed/collective/types.h"

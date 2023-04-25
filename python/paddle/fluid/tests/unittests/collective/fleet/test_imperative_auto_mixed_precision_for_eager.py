@@ -88,8 +88,8 @@ class TestAutoCast(unittest.TestCase):
     def custom_op_list(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()
-            base_white_list = paddle.amp.WHITE_LIST
-            base_black_list = paddle.amp.BLACK_LIST
+            base_white_list = paddle.amp.white_list()["float16"]["O1"]
+            base_black_list = paddle.amp.black_list()["float16"]["O1"]
             with paddle.amp.amp_guard(
                 custom_white_list=["log"], custom_black_list=["conv2d"]
             ):
@@ -104,8 +104,8 @@ class TestAutoCast(unittest.TestCase):
                     == (set(base_black_list) - {"log"}) | {"conv2d"}
                 )
 
-            base_white_list = paddle.amp.PURE_FP16_WHITE_LIST
-            base_black_list = paddle.amp.PURE_FP16_BLACK_LIST
+            base_white_list = paddle.amp.white_list()["float16"]["O2"]
+            base_black_list = paddle.amp.black_list()["float16"]["O2"]
             with paddle.amp.amp_guard(
                 custom_white_list=["log"],
                 custom_black_list=["conv2d"],

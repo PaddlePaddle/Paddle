@@ -115,7 +115,7 @@ class TestLodAppendOpByAttr(OpTest):
         lod = [[3, 2, 5]]
         # target_offset_lod and target_lod are the same lod info represented
         # in offset-based format and length-based format, respectively.
-        target_offset_lod = [i for i in range(11)]
+        target_offset_lod = list(range(11))
         self.inputs = {'X': (x, lod)}
         out_lod = [[3, 2, 5], [1] * 10]
         # The `target_lod` attribute is still based on offset
