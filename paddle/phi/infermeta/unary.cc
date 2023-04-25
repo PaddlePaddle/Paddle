@@ -3237,6 +3237,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
   ReshapeInferMeta(x, shape, out, config);
+  out->set_layout(static_cast<DataLayout>(x.layout()));
 }
 
 void ReverseInferMeta(const MetaTensor& x,
