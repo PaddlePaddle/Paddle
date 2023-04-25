@@ -951,10 +951,6 @@ class FlashAttnWithGating {
                       phi::DenseTensor* fmha_out,
                       phi::DenseTensor* gate_out,
                       GateAttentionConfig<T>* config) {
-    T* q_ptr = nullptr;
-    T* k_ptr = nullptr;
-    T* v_ptr = nullptr;
-
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
 
@@ -992,9 +988,9 @@ class FlashAttnWithGating {
 
     // q_size == k_size
     int64_t q_size = config->GetQuerySize();
-    q_ptr = qkv_transpose_out->data<T>();
-    k_ptr = q_ptr + q_size;
-    v_ptr = k_ptr + q_size;
+    T* q_ptr = qkv_transpose_out->data<T>();
+    T* k_ptr = q_ptr + q_size;
+    T* v_ptr = k_ptr + q_size;
 
     // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
     phi::DenseTensor cu_seq_q, cu_seq_k;
@@ -1156,18 +1152,15 @@ class FlashAttnWithGating {
     }
   }
 
-  void ComputeBackward(const phi::DenseTensor* q_transpose_out,
-                       const phi::DenseTensor* k_transpose_out,
-                       const phi::DenseTensor* v_transpose_out,
-                       const phi::DenseTensor* qkv_transpose_out,
+  void ComputeBackward(const phi::DenseTensor* qkv_transpose_out,
+                       const phi::DenseTensor* src_mask,
+                       const phi::DenseTensor* nonbatched_bias,
+                       const phi::DenseTensor* softmax_lse,
+                       const phi::DenseTensor* fmha_out,
                        const phi::DenseTensor* fmha_out_grad,
                        phi::DenseTensor* src_mask_grad,
                        phi::DenseTensor* nonbatched_bias_grad,
-                       GateAttentionGradConfig<T>* config,
-                       const phi::DenseTensor* fmha_out = nullptr,
-                       const phi::DenseTensor* softmax_lse = nullptr,
-                       const phi::DenseTensor* nonbatched_bias = nullptr,
-                       const phi::DenseTensor* src_mask = nullptr) {
+                       GateAttentionGradConfig<T>* config) {
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
 
@@ -1272,6 +1265,12 @@ class FlashAttnWithGating {
     uint64_t seed = seed_offset_pair.first;
     uint64_t offset = seed_offset_pair.second;
 
+    LOG(INFO) << "fmha_out: " << TensorDebugString(fmha_out);
+    LOG(INFO) << "fmha_out_grad: " << TensorDebugString(fmha_out_grad);
+    LOG(INFO) << "softmax_lse: " << TensorDebugString(softmax_lse);
+    LOG(INFO) << "softmax_d: " << TensorDebugString(&softmax_d);
+    LOG(INFO) << "bias_d: " << TensorDebugString(&bias_d);
+
     // 7. flas_attn part one, get temp worksapce size.
     uint64_t workspace_size;
     float p_dropout = 0.f;
@@ -1304,7 +1303,7 @@ class FlashAttnWithGating {
         num_splits,
         softmax_lse->data(),
         softmax_d.data(),
-        bias_d.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
         nullptr,
         &workspace_size,
         stream,
@@ -1317,7 +1316,8 @@ class FlashAttnWithGating {
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
+    LOG(INFO) << WaitWithDebugInfo(dev_ctx_)
+              << "Get workspace_size=" << workspace_size;
 
     phi::DenseTensor workspace = CreateWorkspace(workspace_size);
     succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
@@ -1346,8 +1346,8 @@ class FlashAttnWithGating {
         num_splits,
         softmax_lse->data(),
         softmax_d.data(),
-        bias_d.data(),
-        workspace.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
+        (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
         &workspace_size,
         stream,
         seed,

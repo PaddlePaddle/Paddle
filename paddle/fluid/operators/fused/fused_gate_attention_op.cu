@@ -557,18 +557,15 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       const auto *softmax_lse = ctx.Input<phi::DenseTensor>("SoftmaxLse");
 
       auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
-      fmha_compute.ComputeBackward(q_transpose_out,
-                                   k_transpose_out,
-                                   v_transpose_out,
-                                   qkv_transpose_out,
+      fmha_compute.ComputeBackward(qkv_transpose_out,
+                                   src_mask,
+                                   non_batched_bias,
+                                   softmax_lse,
+                                   fmha_out,
                                    &fmha_out_grad,
                                    nullptr,
                                    nonbatched_bias_grad,
-                                   &config,
-                                   fmha_out,
-                                   softmax_lse,
-                                   non_batched_bias,
-                                   src_mask);
+                                   &config);
     } else {
       const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
 

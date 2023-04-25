@@ -61,12 +61,14 @@ class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {
     GateOut_.clear();
     GateWeight_.clear();
     NonbatchedBias_.clear();
+    SrcMask_.clear();
     OutLinearBias_.clear();
     OutLinearWeight_.clear();
     QKVTransposeOut_.clear();
     QKVWeight_.clear();
     Query_.clear();
     SoftmaxOut_.clear();
+    SoftmaxLse_.clear();
     Key_.clear();
     QueryWeight_.clear();
     KeyWeight_.clear();
@@ -103,6 +105,9 @@ class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {
   void SetTensorWrapperNonbatchedBias(const paddle::Tensor& NonbatchedBias) {
     NonbatchedBias_ = egr::TensorWrapper(NonbatchedBias, false);
   }
+  void SetTensorWrapperSrcMask(const paddle::Tensor& SrcMask) {
+    SrcMask_ = egr::TensorWrapper(SrcMask, false);
+  }
   void SetTensorWrapperOutLinearBias(const paddle::Tensor& OutLinearBias) {
     OutLinearBias_ = egr::TensorWrapper(OutLinearBias, false);
   }
@@ -120,6 +125,9 @@ class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {
   }
   void SetTensorWrapperSoftmaxOut(const paddle::Tensor& SoftmaxOut) {
     SoftmaxOut_ = egr::TensorWrapper(SoftmaxOut, false);
+  }
+  void SetTensorWrapperSoftmaxLse(const paddle::Tensor& SoftmaxLse) {
+    SoftmaxLse_ = egr::TensorWrapper(SoftmaxLse, false);
   }
   void SetTensorWrapperKey(const paddle::Tensor& Key) {
     Key_ = egr::TensorWrapper(Key, false);
@@ -160,12 +168,14 @@ class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {
   egr::TensorWrapper GateOut_;
   egr::TensorWrapper GateWeight_;
   egr::TensorWrapper NonbatchedBias_;
+  egr::TensorWrapper SrcMask_;
   egr::TensorWrapper OutLinearBias_;
   egr::TensorWrapper OutLinearWeight_;
   egr::TensorWrapper QKVTransposeOut_;
   egr::TensorWrapper QKVWeight_;
   egr::TensorWrapper Query_;
   egr::TensorWrapper SoftmaxOut_;
+  egr::TensorWrapper SoftmaxLse_;
 
   egr::TensorWrapper Key_;
   egr::TensorWrapper QueryWeight_;
