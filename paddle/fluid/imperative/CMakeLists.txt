@@ -76,7 +76,8 @@ cc_library(
        garbage_collector
        var_helper
        layout_autotune
-       ops_extra_info)
+       ops_extra_info
+       api_gen_utils)
 cc_library(
   basic_engine
   SRCS basic_engine.cc

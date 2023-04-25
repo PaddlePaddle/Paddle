@@ -298,11 +298,14 @@ using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
 using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
 
 struct KernelResult {
-  KernelResult(const Kernel& kernel, bool fallback_cpu)
-      : kernel(kernel), has_fallback_cpu(fallback_cpu) {}
+  KernelResult(const Kernel& kernel, bool fallback_cpu, bool is_stride_kernel)
+      : kernel(kernel),
+        has_fallback_cpu(fallback_cpu),
+        is_stride_kernel(is_stride_kernel) {}
 
   const Kernel& kernel;
   bool has_fallback_cpu = false;
+  bool is_stride_kernel = false;
 };
 
 /**
