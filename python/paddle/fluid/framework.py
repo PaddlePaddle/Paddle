@@ -112,8 +112,6 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
-_already_patch_eager_tensor = False
-_already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
@@ -180,35 +178,6 @@ extra_op_attrs = {
 # In some performance issue, we find that python if statement cause server performance problem
 # and we need our new dygraph mode becomes as fast as it could be. That's why we make these flags
 # to make sure in most case, we find new dygraph mode first with only one if statement.
-
-
-def _update_monkey_methods():
-    """
-    Update monkey methods of Tensor or eager.Tensor while
-    switching eager mode and legacy mode.
-    """
-    from paddle import _C_ops, _legacy_C_ops
-    from .dygraph.varbase_patch_methods import monkey_patch_varbase
-    from .dygraph import monkey_patch_math_varbase
-
-    global _already_patch_eager_tensor
-    global _already_patch_varbase
-
-    if not _already_patch_eager_tensor:
-        monkey_patch_varbase()
-        monkey_patch_math_varbase()
-
-        _already_patch_eager_tensor = True
-
-    # switch Paddle.Tensor bind type
-    _switch_tensor_bind_type()
-
-
-def _switch_tensor_bind_type():
-    import paddle
-
-    paddle.Tensor = core.eager.Tensor
-    paddle.Tensor.__qualname__ = 'Tensor'
 
 
 def _in_eager_without_dygraph_check():
@@ -1148,7 +1117,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-def _varbase_creator(
+def _create_tensor(
     type=core.VarDesc.VarType.LOD_TENSOR,
     name=None,
     shape=None,
@@ -3836,7 +3805,7 @@ class Block:
 
     def create_var(self, *args, **kwargs):
         if _non_static_mode():
-            var = _varbase_creator(*args, **kwargs)
+            var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
@@ -5334,6 +5303,8 @@ class Program:
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
+
+        self._pass_applied = None
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None

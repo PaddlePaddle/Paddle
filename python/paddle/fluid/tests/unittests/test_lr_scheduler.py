@@ -208,7 +208,7 @@ class TestReduceOnPlateauDecay:
         self.assertEqual(
             scheduler.cooldown_counter, scheduler1.cooldown_counter
         )
-        self.assertEqual(scheduler.best.numpy()[0], scheduler1.best)
+        self.assertEqual(scheduler.best, scheduler1.best)
         self.assertEqual(scheduler.num_bad_epochs, scheduler1.num_bad_epochs)
         self.assertEqual(scheduler.last_epoch, scheduler1.last_epoch)
         self.assertEqual(scheduler.last_lr, scheduler1.last_lr)

@@ -199,7 +199,8 @@ class Tracer {
     use_layout_autotune_ = false;
     return false;
   }
-
+  void SetPythonStack(std::string stack_str) { python_stack_ = stack_str; }
+  std::string GetPythonStack() { return python_stack_; }
   phi::KernelSignature GetExpectedKernelSignature(
       const std::string& type,
       const NameTensorMap& ins,
@@ -215,6 +216,7 @@ class Tracer {
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
+  static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
   static thread_local bool has_grad_;

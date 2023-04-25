@@ -44,7 +44,7 @@ namespace cutlass_internal {
 # This is a cutlass kernel, will be many these like kernels
 
 dict_for_declare_part = {
-    "conv_kind_name": "FpropWithBroadcast",
+    "conv_kind_name": "DefaultConv2dFpropWithBroadcast",
     "epi_part": "cutlass::epilogue::thread::LinearCombinationResidualBlock< ${element_c}, ${element_accum}, ${element_epilogue}, ${element_residul}, ${epilogue_vector_length}, ${act1}, ${binary}, ${act2}>",
 }
 
@@ -129,12 +129,12 @@ def generate_sm75_1688():
     ]
 
     math_instructions = [
-        (
-            "16,8,8",
-            "cutlass::half_t",
-            "cutlass::half_t",
-            "cutlass::half_t",
-        ),
+        # (
+        #     "16,8,8",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        #     "cutlass::half_t",
+        # ),
         (
             "16,8,8",
             "cutlass::half_t",
@@ -148,6 +148,7 @@ def generate_sm75_1688():
     kernel_dict["align_a"] = "8"
     kernel_dict["align_b"] = "8"
     kernel_dict["epilogue_vector_length"] = "8"
+    kernel_dict["split_k_slices"] = "1"
 
     sm75_code = ""
     for epi_res_block in SupportedEpilogue:
