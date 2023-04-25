@@ -115,11 +115,11 @@ static std::vector<DST_T> unsafe_vector_cast(const std::vector<SRC_T>& src) {
 }
 
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
-static std::vector<int> get_unsqueeze_dims(const Tensor& origin,
-                                           const std::vector<int64_t>& axis) {
+static std::vector<int64_t> get_unsqueeze_dims(
+    const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
   auto total_shape_size = origin_dims.size() + axis.size();
-  std::vector<int> result;
+  std::vector<int64_t> result;
   int j = 0, k = 0;
   for (size_t i = 0; i < total_shape_size; ++i) {
     if (axis[j] == int64_t(i)) {
