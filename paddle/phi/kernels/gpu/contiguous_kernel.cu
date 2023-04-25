@@ -26,9 +26,11 @@ __global__ void ContiguousFunc(
     const int rank,
     const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+#pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
+#pragma unroll
     for (int dim = rank - 1; dim >= 0; --dim) {
       input_offset += index_tmp % dims[dim] * input_stride[dim];
       index_tmp = index_tmp / dims[dim];
