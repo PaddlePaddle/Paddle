@@ -41,6 +41,7 @@ elif [ "$VERSION" == "12.0" ]; then
 libnccl-*
     exit 0
   fi
+  DEB="nccl-local-repo-ubuntu2004-2.16.5-cuda12.0_1.0-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else

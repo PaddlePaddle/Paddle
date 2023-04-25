@@ -75,8 +75,8 @@ def _get_dpmp_topology(origin_topology, sharding_group):
         sharding_axis = 0
         dp_sharding_topology = dp_sharding_topology[1:]
 
-    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology)
-    product_topology = reduce(lambda x, y: x * y, origin_topology)
+    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology, 1)
+    product_topology = reduce(lambda x, y: x * y, origin_topology, 1)
 
     if product_topology == product_dp_sharding:
         dpmp_topology = dp_sharding_topology
@@ -274,7 +274,7 @@ class ClipHelper:
             for param in params:
                 rank = sizes.index(min(sizes))
                 mapping[rank].append(param.name)
-                numel = reduce(lambda x, y: x * y, param.shape)
+                numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
                 ), "param [{}] should larger than 0, but it is [{}]".format(
