@@ -366,7 +366,7 @@ void FusedFeedForwardGradKernel(
     const DenseTensor& out_grad,
     const DenseTensor& x,
     const DenseTensor& linear1_weight,
-    const DenseTensor& linear1_bias,
+    const paddle::optional<DenseTensor>& linear1_bias,
     const DenseTensor& linear2_weight,
     const DenseTensor& dropout1_mask,
     const DenseTensor& dropout2_mask,
