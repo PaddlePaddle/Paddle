@@ -103,7 +103,7 @@ op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
-    register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu)
+    register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})
 endif()
 
 if (WITH_GPU OR WITH_ROCM)
