@@ -50,16 +50,13 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctInterface(
       std::pair<TypeId, void *> *&p_interface) {  // NOLINT
-    void *ptmp = malloc(sizeof(typename T::template Model<ConcreteOp>));
-    new (ptmp) typename T::template Model<ConcreteOp>();
-    std::pair<ir::TypeId, void *> pair_tmp =
-        std::make_pair(ir::TypeId::get<T>(), ptmp);
-    VLOG(4) << "New a interface: id[" << pair_tmp.first.storage()
-            << "], interface[" << pair_tmp.second << "].";
-    memcpy(reinterpret_cast<void *>(p_interface),
-           reinterpret_cast<void *>(&pair_tmp),
-           sizeof(std::pair<ir::TypeId, void *>));
-    p_interface += 1;
+    new (&(p_interface->first)) TypeId(ir::TypeId::get<T>());
+    p_interface->second =
+        malloc(sizeof(typename T::template Model<ConcreteOp>));
+    new (p_interface->second) typename T::template Model<ConcreteOp>();
+    VLOG(4) << "New a interface: id[" << p_interface->first.storage()
+            << "], interface[" << p_interface->second << "].";
+    ++p_interface;
   }
 
   /// Placement new trait.
@@ -67,7 +64,7 @@ class ConstructInterfacesOrTraits {
   static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
     new (p_trait) TypeId(ir::TypeId::get<T>());
     VLOG(4) << "New a trait: id[" << (*p_trait).storage() << "].";
-    p_trait += 1;
+    ++p_trait;
   }
 };
 
