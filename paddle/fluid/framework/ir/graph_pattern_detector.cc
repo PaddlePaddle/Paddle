@@ -4490,7 +4490,6 @@ PDNode *patterns::ConvBNAddAct::operator()(
   } else {
     x2 = pattern->NewNode(x2_repr())->assert_is_op_input("conv2d", "Input");
     conv2_w = pattern->NewNode(conv2_w_repr())
-                  ->assert_is_persistable_var()
                   ->assert_is_op_input("conv2d", "Filter");
     conv2_out = pattern->NewNode(conv2_out_repr())
                     ->assert_is_op_output("conv2d", "Output")
