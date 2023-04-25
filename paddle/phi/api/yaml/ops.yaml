@@ -7,7 +7,7 @@
 
 - op : abs
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
   kernel :
