@@ -26,14 +26,14 @@ KernelSignature SequencePoolGradOpArgumentMapping(
   const auto& use_pooltype_maxindex =
       paddle::any_cast<std::string>(ctx.Attr("pooltype"));
 
-  if (use_pooltype_maxindex == "SUN") {
+  if (use_pooltype_maxindex == "MAX") {
     return KernelSignature("sequence_pool_grad",
-                           {"X", "Out@GRAD"},
+                           {"X", "MaxIndex", "Out@GRAD"},
                            {"is_test", "pooltype", "pad_value"},
                            {"X@GRAD"});
   } else {
     return KernelSignature("sequence_pool_grad",
-                           {"X", "MaxIndex", "Out@GRAD"},
+                           {"X", "Out@GRAD"},
                            {"is_test", "pooltype", "pad_value"},
                            {"X@GRAD"});
   }
