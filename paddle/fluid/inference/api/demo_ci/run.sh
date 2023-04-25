@@ -25,6 +25,7 @@ WITH_ONNXRUNTIME=$7
 MSVC_STATIC_CRT=$8
 CUDA_LIB=$9/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
+phi_install_dir=${PADDLE_ROOT}/build/phi
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
 cd `dirname $0`
@@ -32,7 +33,8 @@ current_dir=`pwd`
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
+  export LIB_RARYPATH=${LIB_RARYPATH}:${phi_install_dir}
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}:${phi_install_dir}
 fi
 if [ $3 == ON ]; then
   use_gpu_list='true false'
