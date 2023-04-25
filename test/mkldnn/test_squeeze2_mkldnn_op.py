@@ -76,6 +76,20 @@ class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
         self.check_output_with_place(core.CPUPlace())
 
 
+class TestSqueeze2OneDNNOp_ZeroDim(TestSqueeze2OneDNNOp):
+    def init_test_case(self):
+        self.ori_shape = [1]
+        self.axes = ()
+        self.new_shape = ()
+
+
+class TestSqueezeOneDNNOp_ZeroDim(TestSqueezeOneDNNOp):
+    def init_test_case(self):
+        self.ori_shape = [1]
+        self.axes = ()
+        self.new_shape = ()
+
+
 class TestSqueeze2OneDNNOp1(TestSqueeze2OneDNNOp):
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
