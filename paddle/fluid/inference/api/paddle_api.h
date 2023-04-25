@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "crypto/cipher.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle_infer_declare.h"  // NOLINT
 #include "paddle_tensor.h"         // NOLINT
                                    /*! \namespace paddle
@@ -226,8 +227,8 @@ class PD_INFER_DECL PaddlePredictor {
   /// \param[out] output_data Pointer to the tensor list, which holds the output
   /// Tensor
   /// \return Whether the run is successful
-  virtual bool Run(const std::vector<paddle::Tensor>& inputs,
-                   std::vector<paddle::Tensor>* outputs) {
+  virtual bool Run(const std::vector<paddle::Tensor>& inputs UNUSED,
+                   std::vector<paddle::Tensor>* outputs UNUSED) {
     return false;
   }
 
@@ -272,7 +273,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// \param name The input tensor name.
   /// \return Return the corresponding input ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
-      const std::string& name) {
+      const std::string& name UNUSED) {
     return nullptr;
   }
 
@@ -282,7 +283,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// \param name The output tensor name.
   /// \return Return the corresponding output ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
-      const std::string& name) {
+      const std::string& name UNUSED) {
     return nullptr;
   }
   /// \brief Run the network with zero-copied inputs and outputs.
@@ -321,7 +322,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
+  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc UNUSED) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,

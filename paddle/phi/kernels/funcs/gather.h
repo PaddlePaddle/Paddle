@@ -34,7 +34,7 @@ namespace funcs {
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void CPUGather(const phi::CPUContext& ctx,
+void CPUGather(const phi::CPUContext& ctx UNUSED,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
@@ -95,7 +95,7 @@ void CPUGather(const phi::CPUContext& ctx,
 }
 
 template <typename T, typename IndexT = int>
-void CPUGatherNd(const phi::CPUContext& ctx,
+void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
