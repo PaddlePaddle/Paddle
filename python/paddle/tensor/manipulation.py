@@ -411,8 +411,6 @@ def slice(input, axes, starts, ends):
         helper.append_op(
             type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out}
         )
-        input.is_view_var = True
-        out.is_view_var = True
         return out
 
 
@@ -3990,8 +3988,6 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             attrs=attrs,
             outputs={'Out': out},
         )
-        x.is_view_var = True
-        out.is_view_var = True
 
         return out
 
