@@ -314,10 +314,10 @@ fused_gate_attention_dygraph_function(
         has_gating = PADDLE_GET_CONST(bool, attrs.at("has_gating"));
       }
 
-      // bool use_flash_attn = false;
-      // if (attrs.count("use_flash_attn")) {
-      //   use_flash_attn = PADDLE_GET_CONST(bool, attrs.at("use_flash_attn"));
-      // }
+      bool use_flash_attn = false;
+      if (attrs.count("use_flash_attn")) {
+        use_flash_attn = PADDLE_GET_CONST(bool, attrs.at("use_flash_attn"));
+      }
 
       // Set Attributes
       grad_node->SetAttrMap(std::move(attrs));
@@ -363,6 +363,12 @@ fused_gate_attention_dygraph_function(
       if (NonbatchedBias.initialized()) {
         grad_node->SetTensorWrapperNonbatchedBias(NonbatchedBias);
         grad_node->SetGradOutMeta(NonbatchedBias, 6);
+      }
+
+      if (use_flash_attn) {
+        grad_node->SetTensorWrapperSoftmaxLse(SoftmaxLse);
+        grad_node->SetTensorWrapperSrcMask(SrcMask);
+        grad_node->SetGradOutMeta(SrcMask, 7);
       }
 
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QueryTransposeOut, 0);

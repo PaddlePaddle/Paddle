@@ -314,7 +314,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
 
       if (use_flash_attn) {
-        op->SetInput("NonbatchedBias", this->Input("NonbatchedBias"));
         op->SetInput("SrcMask", this->Input("SrcMask"));
         op->SetInput("SoftmaxLse", this->Output("SoftmaxLse"));
       }
