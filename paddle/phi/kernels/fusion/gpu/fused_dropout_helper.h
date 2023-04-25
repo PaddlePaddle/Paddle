@@ -295,20 +295,21 @@ class FusedDropoutHelper {
                           const std::string& act_method) {
     if (act_method == "gelu") {
       phi::fusion::GeluGradFunctor<T> gelu_grad;
-      phi::fusion::
-          LaunchDropoutActBiasGrad<T, MaskType, phi::fusion::GeluGradFunctor<T>>(
-              gelu_grad,
-              dout,
-              mask,
-              src,
-              bias,
-              dropout_param_.dropout_prob,
-              dropout_param_.is_upscale_in_train,
-              rows_,
-              cols_,
-              d_src,
-              d_bias,
-              ctx);
+      phi::fusion::LaunchDropoutActBiasGrad<T,
+                                            MaskType,
+                                            phi::fusion::GeluGradFunctor<T>>(
+          gelu_grad,
+          dout,
+          mask,
+          src,
+          bias,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          rows_,
+          cols_,
+          d_src,
+          d_bias,
+          ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluGradFunctor<T> relu_grad;
       phi::fusion::

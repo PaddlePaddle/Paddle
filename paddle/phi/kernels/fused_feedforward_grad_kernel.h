@@ -30,7 +30,7 @@ void FusedFeedForwardGradKernel(
     const DenseTensor& dropout2_mask,
     const DenseTensor& linear1_out,
     const DenseTensor& dropout1_out,
-    const DenseTensor& dropout2_out,
+    const paddle::optional<DenseTensor>& dropout2_out,
     const paddle::optional<DenseTensor>& ln1_scale,
     const paddle::optional<DenseTensor>& ln1_bias,
     const paddle::optional<DenseTensor>& ln1_out,
