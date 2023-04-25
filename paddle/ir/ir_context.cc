@@ -48,10 +48,10 @@ class IrContextImpl {
     }
     registed_dialect_.clear();
 
-    for (auto &op_map : registed_operations_) {
+    for (auto &op_map : registed_op_infos_) {
       op_map.second->destroy();
     }
-    registed_operations_.clear();
+    registed_op_infos_.clear();
   }
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
@@ -99,18 +99,18 @@ class IrContextImpl {
     return nullptr;
   }
 
-  void RegisterOperation(ir::TypeId type_id, OpInfoImpl *opinfo) {
-    std::lock_guard<ir::SpinLock> guard(registed_operations_lock_);
+  void RegisterOpInfo(ir::TypeId type_id, OpInfoImpl *opinfo) {
+    std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(4) << "Register an operation of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id) << ", OpInfoImpl ptr=" << opinfo
             << "].";
-    registed_operations_.emplace(type_id, opinfo);
+    registed_op_infos_.emplace(type_id, opinfo);
   }
 
-  OpInfoImpl *GetOperation(ir::TypeId type_id) {
-    std::lock_guard<ir::SpinLock> guard(registed_operations_lock_);
-    auto iter = registed_operations_.find(type_id);
-    if (iter != registed_operations_.end()) {
+  OpInfoImpl *GetOpInfo(ir::TypeId type_id) {
+    std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
+    auto iter = registed_op_infos_.find(type_id);
+    if (iter != registed_op_infos_.end()) {
       VLOG(4) << "Fonund a cached operation of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", OpInfoImpl ptr=" << iter->second << "].";
@@ -164,8 +164,8 @@ class IrContextImpl {
   ir::SpinLock registed_dialect_lock_;
 
   // The Op registered in the context.
-  std::unordered_map<TypeId, OpInfoImpl *> registed_operations_;
-  ir::SpinLock registed_operations_lock_;
+  std::unordered_map<TypeId, OpInfoImpl *> registed_op_infos_;
+  ir::SpinLock registed_op_infos_lock_;
 
   ir::SpinLock destructor_lock_;
 };
@@ -249,12 +249,12 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
 }
 
 std::unordered_map<TypeId, OpInfoImpl *> &IrContext::registed_operation() {
-  return impl().registed_operations_;
+  return impl().registed_op_infos_;
 }
 
-void IrContext::RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo) {
-  if (impl().GetOperation(id) == nullptr) {
-    impl().RegisterOperation(id, opinfo);
+void IrContext::RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo) {
+  if (impl().GetOpInfo(id) == nullptr) {
+    impl().RegisterOpInfo(id, opinfo);
   }
 }
 

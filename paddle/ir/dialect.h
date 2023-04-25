@@ -99,23 +99,22 @@ class Dialect {
   /// \brief Register Operation methods.
   ///
   template <typename... Args>
-  void RegisterOperations() {
-    (void)std::initializer_list<int>{0, (RegisterOperation<Args>(), 0)...};
+  void RegisterOps() {
+    (void)std::initializer_list<int>{0, (RegisterOp<Args>(), 0)...};
   }
 
   template <typename ConcertOp>
-  void RegisterOperation() {
-    VLOG(4) << "Operation registered into Dialect. --->";
+  void RegisterOp() {
+    VLOG(4) << "Op registered into Dialect. --->";
     if (this->ir_context()->registed_operation().count(
             ir::TypeId::get<ConcertOp>()) == 0) {
       ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>();
-      this->ir_context()->RegisterOperation(ir::TypeId::get<ConcertOp>(),
-                                            op_info);
+      this->ir_context()->RegisterOpInfo(ir::TypeId::get<ConcertOp>(), op_info);
     }
     VLOG(4) << "----------------------------------";
   }
 
-  void RegisterOperation(ir::TypeId id, OpInfoImpl *op_info);
+  void RegisterOp(ir::TypeId id, OpInfoImpl *op_info);
 
  private:
   std::string name_;

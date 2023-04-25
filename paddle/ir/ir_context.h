@@ -106,7 +106,7 @@ class IrContext {
   ///
   std::unordered_map<TypeId, OpInfoImpl *> &registed_operation();
 
-  void RegisterOperation(ir::TypeId id, OpInfoImpl *opinfo);
+  void RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo);
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,

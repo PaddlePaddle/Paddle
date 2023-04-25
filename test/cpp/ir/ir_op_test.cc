@@ -94,7 +94,7 @@ class TestDialect : public ir::Dialect {
   static const char *name() { return "op_test"; }
 
  private:
-  void initialize() { RegisterOperations<Operation1, Operation2>(); }
+  void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
 
 ir::DictionaryAttribute CreateAttribute(std::string attribute_name,
