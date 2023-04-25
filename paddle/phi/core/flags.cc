@@ -233,6 +233,22 @@ PADDLE_DEFINE_EXPORTED_bool(
     "true, the algorithm is deterministic.");
 
 /**
+ * CUDA related FLAG
+ * Name: FLAGS_embedding_deterministic
+ * Since Version: 2.5
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether to use deterministic algorithm in embedding op.
+ *       If true, it will use deterministic CUDA kernel in embedding op.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    embedding_deterministic,
+    false,
+    "Whether allow using an deterministic algorithm for embedding "
+    "operator. The deterministic algorithm may be slower. If "
+    "true, the algorithm is deterministic.");
+
+/**
  * CUDNN related FLAG
  * Name: FLAGS_conv_workspace_size_limit
  * Since Version: 0.13.0
@@ -1152,6 +1168,16 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
+
+/**
+ * Custom Device NPU related FLAG
+ * Name: FLAGS_npu_storage_format
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable NPU Storage Format for Ascend910 performance improvement.
+ */
+PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**

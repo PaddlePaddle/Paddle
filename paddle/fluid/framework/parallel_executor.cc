@@ -672,7 +672,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(places.size() > 0 && !platform::is_npu_place(places[0]),
+  PADDLE_ENFORCE_EQ(places.size() > 0,
                     true,
                     platform::errors::Unavailable(
                         "NPU is not supported in ParallelExecutor."));

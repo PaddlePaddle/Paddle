@@ -50,11 +50,44 @@
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
+- op : adam_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      tensor_name : Beta1Tensor
+    beta2 :
+      data_type : float
+      tensor_name : Beta2Tensor
+    episilon :
+      data_type : float
+      tensor_name : EpisilonTensor
+  manual_signature : [adam_]
+
 - op : adamax_
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
+
+- op : adamw_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      tensor_name : Beta1Tensor
+    beta2 :
+      data_type : float
+      tensor_name : Beta2Tensor
+    episilon :
+      data_type : float
+      tensor_name : EpisilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -922,8 +955,6 @@
 
 - op : gather
   backward : gather_grad
-  extra :
-    attrs : [bool overwrite = true]
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -958,6 +989,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : generate_proposals(generate_proposals_v2)
+  inputs :
+    {scores : Scores, bbox_deltas : BboxDeltas, im_shape : ImShape, anchors : Anchors, variances : Variances}
+  outputs :
+    {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
+  attrs :
+    {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
 - op : grad_add
   extra :
@@ -1453,6 +1492,22 @@
     x : X
   outputs :
     out : Out
+
+- op : merged_adam_
+  inputs :
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+  scalar :
+    beta1 :
+      data_type : float
+      support_tensor : true
+    beta2 :
+      data_type : float
+      support_tensor : true
+    epsilon :
+      data_type : float
+      support_tensor : true
 
 - op : merged_momentum_
   inputs :
