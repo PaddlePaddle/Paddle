@@ -1157,15 +1157,6 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
 
-- op : tile
-  args : (Tensor x, IntArray repeat_times = {})
-  output : Tensor(out)
-  infer_meta :
-    func : TileInferMeta
-  kernel :
-    func : tile
-  backward : tile_grad
-
 - op : transpose
   args : (Tensor x, int[] perm)
   output : Tensor

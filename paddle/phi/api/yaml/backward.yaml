@@ -1907,6 +1907,25 @@
     func : thresholded_relu_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : tile_double_grad
+  forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray repeat_times)
+  output : Tensor(grad_out_grad)
+  invoke : tile(grad_x_grad, repeat_times)
+
+- backward_op : tile_grad
+  forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray repeat_times)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : tile_grad
+  no_need_buffer : x
+  composite : tile_grad(x, outgrad, repeat_times, x_grad)
+  backward : tile_double_grad
+
 - backward_op : topk_grad
   forward : topk (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
   args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k, int axis, bool largest, bool sorted)

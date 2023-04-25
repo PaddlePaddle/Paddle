@@ -1997,6 +1997,15 @@
     func : thresholded_relu
   backward : thresholded_relu_grad
 
+- op : tile
+  args : (Tensor x, IntArray repeat_times = {})
+  output : Tensor(out)
+  infer_meta :
+    func : TileInferMeta
+  kernel :
+    func : tile
+  backward : tile_grad
+
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)

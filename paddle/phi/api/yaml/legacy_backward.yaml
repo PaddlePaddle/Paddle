@@ -1014,25 +1014,6 @@
     data_type : out_grad
   optional : reserve_space
 
-- backward_op : tile_double_grad
-  forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray repeat_times)
-  output : Tensor(grad_out_grad)
-  invoke : tile(grad_x_grad, repeat_times)
-
-- backward_op : tile_grad
-  forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray repeat_times)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : tile_grad
-  no_need_buffer : x
-  composite : tile_grad(x, outgrad, repeat_times, x_grad)
-  backward : tile_double_grad
-
 - backward_op : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int[] perm)
