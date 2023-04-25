@@ -174,5 +174,75 @@ phi::KernelKey GetUniqueExpectedKernelType(
   }
 }
 
+phi::KernelKey GetInstanceNormExpectedKernelType(
+    const framework::ExecutionContext& ctx) {
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  // By default, the type of the scale, bias, mean,
+  // and var tensors should both be float. (For float or float16 input tensor)
+  // or double (For double input tensor).
+  auto in_param_type = framework::proto::VarType::FP32;
+  if (input_data_type == framework::proto::VarType::FP64) {
+    in_param_type = framework::proto::VarType::FP64;
+  }
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetInstanceNormGradExpectedKernelType(
+    const framework::ExecutionContext& ctx) {
+  const auto* var = ctx.InputVar(framework::GradVarName("Y"));
+  if (var == nullptr) {
+    PADDLE_THROW(
+        platform::errors::NotFound("cannot find gradient variable of Y"));
+  }
+  const phi::DenseTensor* t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  }
+  if (t == nullptr) {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("gradient variable of Y is empty"));
+  }
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
+}
+
+phi::KernelKey GetInstanceNormDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx) {
+  const auto* var = ctx.InputVar("DY");
+  if (var == nullptr) {
+    PADDLE_THROW(
+        platform::errors::NotFound("cannot find gradient variable of Y"));
+  }
+  const phi::DenseTensor* t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  }
+  if (t == nullptr) {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("gradient variable of Y is empty"));
+  }
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle

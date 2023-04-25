@@ -48,5 +48,14 @@ phi::KernelKey GetUniqueExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetInstanceNormExpectedKernelType(
+    const framework::ExecutionContext& ctx);
+
+phi::KernelKey GetInstanceNormGradExpectedKernelType(
+    const framework::ExecutionContext& ctx);
+
+phi::KernelKey GetInstanceNormDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx);
+
 }  // namespace operators
 }  // namespace paddle
