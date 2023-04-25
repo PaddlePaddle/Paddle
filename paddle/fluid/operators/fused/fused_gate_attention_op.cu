@@ -432,9 +432,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeForward(nonbatched_bias,
                                   src_mask,
-                                  q_transpose_out,
-                                  k_transpose_out,
-                                  v_transpose_out,
                                   qkv_transpose_out,
                                   softmax_lse,
                                   fmha_out,
@@ -474,8 +471,6 @@ template <typename T, typename DeviceContext>
 class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(INFO) << "In FusedGateAttentionGradKernel";
-
     // forward input
     const auto *query = ctx.Input<phi::DenseTensor>("Query");
     const auto *key = ctx.Input<phi::DenseTensor>("Key");
