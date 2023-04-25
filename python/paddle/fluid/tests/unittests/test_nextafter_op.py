@@ -27,8 +27,8 @@ def ref_nextafter(x, y):
 
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
-        self.x = np.random.rand(1, 2).astype('float32')
-        self.y = np.random.rand(1, 2).astype('float32')
+        self.x = np.random.rand(2, 3, 4, 5).astype('float32')
+        self.y = np.random.rand(2, 3, 4, 5).astype('float32')
         self.x1 = np.array([0, 0, 10]).astype("float32")
         self.y1 = np.array([np.inf, -np.inf, 10]).astype("float32")
         self.x2 = np.random.rand(100).astype("float32")
