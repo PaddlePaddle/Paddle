@@ -1,4 +1,4 @@
-set(CMAKE_PREFIX_PATH "${PADDLE_BINARY_DIR}/paddle_install_dir")
+list(APPEND CMAKE_PREFIX_PATH "${PADDLE_BINARY_DIR}/paddle_install_dir")
 find_package(Paddle REQUIRED)
 include_directories(${PADDLE_INCLUDE_DIRS})
 
