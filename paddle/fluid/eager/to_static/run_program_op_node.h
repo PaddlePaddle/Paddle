@@ -457,8 +457,8 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x,
-    const std::vector<paddle::Tensor> &params,
+    const std::vector<paddle::Tensor> &x UNUSED,
+    const std::vector<paddle::Tensor> &params UNUSED,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
@@ -610,8 +610,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                egr::kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
-             bool create_graph,
-             bool is_new_grad) override {
+             bool create_graph UNUSED,
+             bool is_new_grad UNUSED) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
