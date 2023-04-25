@@ -592,8 +592,8 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
           .get());
   // dev_ctx->PartialInitWithAllocator();
 
-  std::shared_ptr<phi::event::Event> compute_event;
-  std::shared_ptr<phi::event::Event> comm_event;
+  auto compute_event = std::make_shared<phi::event::Event>();
+  auto comm_event = std::make_shared<phi::event::Event>();
   compute_event->Init(place);
   comm_event->Init(place);
 

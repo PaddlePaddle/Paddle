@@ -88,6 +88,11 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   size_t size =
       align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
             min_chunk_size_);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (is_custom_device_) {
+    size = align(unaligned_size + extra_padding_size_, min_chunk_size_);
+  }
+#endif
   VLOG(10) << "alloc: " << unaligned_size
            << ", padding for desc: " << sizeof(MemoryBlock::Desc)
            << ", extra padding: " << extra_padding_size_
@@ -237,9 +242,11 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
       &cache_, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
   // Why add an offset on the device pointer?
   // Remove offsets for non-pointer managed devices, such as OPENCL, MPS, etc.
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (is_custom_device_) {
     return p;
   }
+#endif
   return static_cast<MemoryBlock*>(p)->Data();
 }
 

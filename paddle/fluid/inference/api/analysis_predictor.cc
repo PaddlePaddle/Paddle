@@ -420,7 +420,8 @@ void AnalysisPredictor::InitPlace() {
 #endif
   } else if (config_.use_custom_device()) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    place_ = paddle::platform::CustomPlace(config_.custom_device_type());
+    place_ = paddle::platform::CustomPlace(config_.custom_device_type(),
+                                           config_.custom_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use CustomDevice forward propagation, but Paddle was not "
@@ -561,6 +562,14 @@ void *AnalysisPredictor::GetExecStream() const {
       return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
           ->stream();
     }
+  }
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::CustomContext *>(pool.Get(place_))
+        ->stream();
   }
 #endif
   // TODO(inference): Support other backends.

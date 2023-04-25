@@ -148,11 +148,11 @@ class ProcessGroup:
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
-            elif genv.device_type in core.get_all_custom_device_types():
+            elif genv.device_type in core.get_all_custom_device_type():
                 place = core.CustomPlace(genv.device_type, genv.device_id)
-                core.CustomParallelContext().init(
-                    place, ring_id
-                ).init_with_ring_id(ring_id)
+                core.XCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
                 raise AssertionError('No CUDA device found')
 
@@ -169,8 +169,11 @@ class ProcessGroup:
                 )
             elif genv.device_type in core.get_all_custom_device_type():
                 paddle.set_device(
-                    '%s:%d' % paddle.distributed.ParallelEnv().device_type,
-                    (paddle.distributed.ParallelEnv().dev_id),
+                    '%s:%d'
+                    % (
+                        paddle.distributed.ParallelEnv().device_type,
+                        paddle.distributed.ParallelEnv().dev_id,
+                    ),
                 )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")
