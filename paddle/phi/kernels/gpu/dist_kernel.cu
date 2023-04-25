@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,46 +28,43 @@ namespace phi {
 
 #define FULL_MASK 0xffffffff
 
-template <typename Tx, typename Ty>
+template <typename Tx, typename Ty = Tx>
 struct ZeroOrderFunctor {
- public:
-  __device__ Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>((static_cast<Ty>(x) - static_cast<Ty>(y)) != Ty(0));
+  HOSTDEVICE explicit inline ZeroOrderFunctor() {}
+
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
+    return static_cast<Ty>(x != Tx(0.0));
+  }
+
+  HOSTDEVICE inline Ty operator()(const Tx x, const Tx y) const {
+    return static_cast<Ty>(x != y);
   }
 };
 
-template <typename Tx, typename Ty>
-struct OtherOrderFunctor {
-  explicit OtherOrderFunctor(const Ty& p_order) : p_order_(p_order) {}
-  __device__ Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>(
-        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order_));
+template <typename Tx, typename Ty = Tx>
+struct PowFunctor {
+  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
+      : p_order(_p_order) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
+    return static_cast<Ty>(pow(abs(static_cast<Ty>(x)), p_order));
   }
 
  private:
-  Ty p_order_;
+  Ty p_order;
 };
 
-template <typename Tx, typename Ty>
-struct PowFunctor {
-  explicit PowFunctor(const Ty& p_order) : p_order_(p_order) {}
-  HOSTDEVICE inline Tx operator()(const Tx x) const {
-    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order_));
-  }
-  Ty p_order_;
-};
-
-template <typename Tx, typename Ty, typename Functor>
+template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
-    const Tx* x, const Tx* y, Ty* out, int64_t N, Functor func) {
-  Ty sum_val = Ty(0);
+    const T* x, const T* y, T* out, int64_t N, Functor func) {
+  T sum_val = T(0.0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     sum_val += func(x[i], y[i]);
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<Ty>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = sum_val;
   }
@@ -132,24 +130,12 @@ void DistKernel(const Context& dev_ctx,
         funcs::details::GetReduceDim(axis_dims, xdim.size(), true);
 
     if (p == 0) {
-      MT* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
-      ReduceSumWithSubtract<T, MT>
+      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
+      ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
-      DenseTensor intermediate2(intermediate);
-      dev_ctx.template Alloc<MT>(&intermediate2);
-      phi::funcs::
-          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-              dev_ctx,
-              intermediate,
-              &intermediate2,
-              kps::IdentityFunctor<MT>(),
-              reduce_axis);
-
-      std::vector<const DenseTensor*> ins = {&intermediate2};
-      std::vector<DenseTensor*> outs = {out};
-      phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, kps::IdentityFunctor<MT, T>());
+              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
     } else if (p == INFINITY) {
       T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMaxWithSubtract<T>
@@ -168,22 +154,13 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      MT* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
+      auto t = Subtract<T, Context>(dev_ctx, x, y);
       MT p_order = static_cast<MT>(p);
-      ReduceSumWithSubtract<T, MT>
-          <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
-      DenseTensor intermediate2(intermediate);
-      dev_ctx.template Alloc<MT>(&intermediate2);
-      phi::funcs::
-          ReduceKernel<MT, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-              dev_ctx,
-              intermediate,
-              &intermediate2,
-              kps::IdentityFunctor<MT>(),
-              reduce_axis);
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, PowFunctor<T, MT>>(
+          dev_ctx, t, out, PowFunctor<T, MT>(p_order), reduce_axis);
 
-      std::vector<const DenseTensor*> ins = {&intermediate2};
+      const DenseTensor* tmp_norm = out;
+      std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
       MT p_order_ = static_cast<MT>(static_cast<MT>(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
