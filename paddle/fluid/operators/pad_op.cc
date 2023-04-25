@@ -146,7 +146,7 @@ class PadCompositeGradOpMaker
 
     std::vector<int> paddings =
         static_cast<std::vector<int>>(this->Attr<std::vector<int>>("paddings"));
-    int pad_value = static_cast<int>(this->Attr<int>("pad_value"));
+    float pad_value = static_cast<float>(this->Attr<int>("pad_value"));
     VLOG(6) << "Runing add_grad composite func";
 
     prim::pad_grad<prim::DescTensor>(x, out_grad, paddings, pad_value, dx_ptr);
