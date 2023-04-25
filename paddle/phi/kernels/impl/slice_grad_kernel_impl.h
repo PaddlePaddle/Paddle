@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include "gflags/gflags.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -23,7 +24,6 @@
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 DECLARE_string(throw_strided_error_op);
-
 namespace phi {
 
 template <typename T, typename Context, size_t D>
@@ -215,8 +215,8 @@ void SliceGradCompute(const Context& ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
-                      const std::vector<int64_t>& ends,
-                      const std::vector<int64_t>& infer_flags,
+                      const std::vector<int64_t>& ends UNUSED,
+                      const std::vector<int64_t>& infer_flags UNUSED,
                       const std::vector<int64_t>& decrease_axis,
                       DenseTensor* input_grad) {
   auto* d_out = &out_grad;

@@ -294,8 +294,8 @@ class PartialProgramLayer:
     def _create_amp_program(self, is_infer_mode=False):
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
         with program_guard(amp_program):
-            paddle.static.amp.fp16_utils.rewrite_program(
-                amp_program, self._amp_list
+            paddle.static.amp.fp16_utils.cast_model_to_fp16(
+                amp_program, self._amp_list, use_fp16_guard=False, level='O1'
             )
         if is_infer_mode:
             if self._hooker:

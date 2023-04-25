@@ -22,7 +22,7 @@
 
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/string/string_helper.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 namespace distributed {
 struct FsDataConverter {
@@ -43,7 +43,7 @@ class FsReadChannel {
   virtual ~FsReadChannel() {}
   FsReadChannel(FsReadChannel&&) = delete;
   FsReadChannel(const FsReadChannel&) = delete;
-  int open(std::shared_ptr<FILE> fp, const FsChannelConfig& config) {
+  int open(std::shared_ptr<FILE> fp, const FsChannelConfig& config UNUSED) {
     _file = fp;
     return 0;
   }
@@ -83,7 +83,7 @@ class FsWriteChannel {
   FsWriteChannel(FsWriteChannel&&) = delete;
   FsWriteChannel(const FsWriteChannel&) = delete;
 
-  int open(std::shared_ptr<FILE> fp, const FsChannelConfig& config) {
+  int open(std::shared_ptr<FILE> fp, const FsChannelConfig& config UNUSED) {
     _file = fp;
 
     // the buffer has set in fs.cc

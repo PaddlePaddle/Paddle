@@ -212,7 +212,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             adam_test.set_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.best_loss,
-                adam3._learning_rate.best_loss.numpy()[0],
+                adam3._learning_rate.best_loss,
                 "best_loss is different before and after set_dict",
             )
             self.assertEqual(
@@ -275,7 +275,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 t = lr()
 
                 np.testing.assert_allclose(
-                    t.numpy()[0].item(), right_result[i], rtol=1e-05
+                    t.numpy().item(), right_result[i], rtol=1e-05
                 )
 
             with self.assertRaises(TypeError):
@@ -342,7 +342,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 right_result = step_decay(
                     epoch, learning_rate, step_size, decay_rate
                 )
-                fluid_result = scheduler().numpy()[0]
+                fluid_result = scheduler().numpy().item()
                 scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,
@@ -371,7 +371,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(30):
                 right_result = lambda_decay(epoch, learning_rate, lr_lambda)
-                fluid_result = scheduler().numpy()[0]
+                fluid_result = scheduler().numpy().item()
                 scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,

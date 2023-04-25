@@ -219,17 +219,19 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
 
-            # 2) x is ND
             if api in [
                 paddle.sum,
                 paddle.mean,
                 paddle.nanmean,
                 paddle.nansum,
-                paddle.max,
             ]:
                 return
 
-            x = paddle.rand([3, 5])
+            # 2) x is ND, reduce to 0D
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, [3, 5]).astype('bool')
+            else:
+                x = paddle.rand([3, 5])
             x.stop_gradient = False
             out = api(x, None)
             out.retain_grads()
@@ -239,6 +241,21 @@ class TestReduceAPI(unittest.TestCase):
             if x.grad is not None:
                 self.assertEqual(out.grad.shape, [])
                 self.assertEqual(x.grad.shape, [3, 5])
+
+            # 3) x is 1D, axis=0, reduce to 0D
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, [5]).astype('bool')
+            else:
+                x = paddle.rand([5])
+            x.stop_gradient = False
+            out = api(x, 0)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.grad.shape, [5])
 
         paddle.enable_static()
 
@@ -284,16 +301,19 @@ class TestReduceAPI(unittest.TestCase):
                     np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
 
-                # 2) x is ND
                 if api in [
                     paddle.sum,
                     paddle.mean,
                     paddle.nanmean,
                     paddle.nansum,
-                    paddle.max,
                 ]:
                     return
 
+                # 2) x is ND, reduce to 0D
+                if api in [paddle.all, paddle.any]:
+                    x = paddle.randint(0, 2, [3, 5]).astype('bool')
+                else:
+                    x = paddle.rand([3, 5])
                 x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, None)
@@ -308,6 +328,25 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
                     self.assertEqual(res[2].shape, (3, 5))
+
+                # 3) x is 1D, axis=0, reduce to 0D
+                if api in [paddle.all, paddle.any]:
+                    x = paddle.randint(0, 2, [5]).astype('bool')
+                else:
+                    x = paddle.rand([5])
+                x.stop_gradient = False
+                out = api(x, 0)
+                paddle.static.append_backward(out)
+
+                fetch_list = [out]
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([out.grad_name, x.grad_name])
+
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                self.assertEqual(res[0].shape, ())
+                if len(res) > 1:
+                    self.assertEqual(res[1].shape, ())
+                    self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
 
@@ -2385,6 +2424,20 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(1.0))
 
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        out1.retain_grads()
+        out1.backward()
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1, 1)
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2, 2.5)
+
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -2422,6 +2475,16 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(a.grad.shape, [4])
         self.assertEqual(b.grad.shape, [4, 5])
         self.assertEqual(c.grad.shape, [5])
+
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(12))
+        self.assertEqual(x.grad.shape, [2, 2])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -4356,6 +4419,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out2.shape, (2, 3))
 
     @prog_scope()
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 2.5)
+
+    @prog_scope()
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -4398,6 +4474,20 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (4,))
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
+
+    @prog_scope()
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 2))
+        np.testing.assert_allclose(res[0], np.array(12))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

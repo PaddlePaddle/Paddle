@@ -146,9 +146,8 @@ bool IsGradOp(const std::string& op_name) {
 }
 
 bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
-         platform::is_custom_place(place);
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
+         platform::is_ipu_place(place) || platform::is_custom_place(place);
 }
 
 bool IsMemcpyD2H(const Instruction& instr) {

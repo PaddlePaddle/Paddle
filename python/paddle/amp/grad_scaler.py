@@ -108,7 +108,7 @@ class AmpScaler:
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace and CustomPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place
             )
             enable = False
