@@ -137,11 +137,6 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     } else if (platform::is_cpu_place(place)) {
       gc.reset(new framework::CPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
-    } else if (platform::is_npu_place(place)) {
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Paddle can't use NPU device since it's not compiled with NPU,"
-          "Please recompile or reinstall Paddle with NPU support."));
-
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
       gc.reset(new framework::IPUGarbageCollector(place, 0));
@@ -291,9 +286,6 @@ void Tracer::TraceOpImpl(const std::string& type,
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    } else if (platform::is_npu_place(place)) {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with NPU if use NPUPlace."));
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
