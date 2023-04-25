@@ -14,7 +14,7 @@
 #include "paddle/fluid/framework/ir/conv_elementwise_add2_act_fuse_pass.h"
 
 #include <string>
-
+#include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -138,8 +138,21 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> cudnn_act_set({"identity", "relu"});
 #endif
 
+  std::unordered_set<std::string> cutlass_act_set =
+      CutlassTeller::Instance()->CbaaAct(Get<int>("gpu_device_id"));
+  std::unordered_set<std::string> all_act_set = cudnn_act_set;
+
+  bool is_fp16_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision")) ==
+          phi::DataType::FLOAT16 ||
+      Get<bool>("enable_gpu_mixed");
+  bool cutlass_enable = Get<bool>("use_cutlass");
+  if (is_fp16_precision && cutlass_enable) {
+    all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
+  }
+
   patterns::ConvElementwiseadd2Act pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(x, cudnn_act_set);
+  pattern(x, all_act_set);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -166,9 +179,21 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    auto* scope = param_scope();
+    bool cutlass_can_fuse = CutlassTeller::Instance()->CbaaCanSupport(
+        conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
+    bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
+
+    if (!cutlass_can_fuse && !cudnn_can_fuse) {
+      return;
+    }
+
     auto new_op_proto = PrepareOpDesc(
         base_op_desc, bias_name, bias1_name, act_op_type, act_op_out);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
+    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+      new_op_desc.SetAttr("use_cutlass", true);
+    }
 
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);

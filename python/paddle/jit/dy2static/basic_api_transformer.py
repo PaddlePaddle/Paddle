@@ -152,9 +152,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def _surround_with_ld(self, node):
         node = (
-            gast.parse(
-                "_jst.Ld({})".format(utils.ast_to_source_code(node).strip())
-            )
+            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
             .body[0]
             .value
         )

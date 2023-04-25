@@ -24,11 +24,15 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
-from .framework import monkey_patch_math_varbase
+from .framework import monkey_patch_math_tensor
 
 monkey_patch_variable()
-monkey_patch_math_varbase()
+monkey_patch_math_tensor()
 
 from .framework import disable_signal_handler  # noqa: F401
 from .framework import get_flags  # noqa: F401
@@ -294,6 +298,7 @@ from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
+from .tensor.math import vander  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -333,9 +338,7 @@ from .framework import ParamAttr  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
-from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
-from .framework import MLUPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
@@ -363,9 +366,7 @@ from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
-from .device import is_compiled_with_npu  # noqa: F401
 from .device import is_compiled_with_ipu  # noqa: F401
-from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
@@ -513,7 +514,6 @@ __all__ = [  # noqa
     'histogram',
     'multiplex',
     'CUDAPlace',
-    'NPUPlace',
     'empty',
     'shape',
     'real',
@@ -687,4 +687,5 @@ __all__ = [  # noqa
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
+    'vander',
 ]

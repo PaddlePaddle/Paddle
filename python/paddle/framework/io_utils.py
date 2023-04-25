@@ -73,9 +73,7 @@ def _open_file_buffer(path_or_buffer, mode):
         elif 'r' in mode:
             return _buffer_reader(path_or_buffer)
         else:
-            raise ValueError(
-                "Expected 'r' or 'w' in mode but got {}".format(mode)
-            )
+            raise ValueError(f"Expected 'r' or 'w' in mode but got {mode}")
 
 
 def _is_memory_buffer(buffer):

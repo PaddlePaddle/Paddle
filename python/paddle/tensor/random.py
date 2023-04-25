@@ -785,7 +785,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {0}.".format(
+                "If high is None, low must be greater than 0, but received low = {}.".format(
                     low
                 )
             )
@@ -805,8 +805,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if low >= high:
             raise ValueError(
-                "randint's low must less then high, but received low = {0}, "
-                "high = {1}".format(low, high)
+                f"randint's low must less then high, but received low = {low}, "
+                f"high = {high}"
             )
 
         inputs = {}
@@ -951,7 +951,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {0}.".format(
+                "If high is None, low must be greater than 0, but received low = {}.".format(
                     low
                 )
             )
@@ -965,8 +965,8 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
     if low >= high:
         raise ValueError(
-            "randint_like's low must less then high, but received low = {0}, "
-            "high = {1}".format(low, high)
+            f"randint_like's low must less then high, but received low = {low}, "
+            f"high = {high}"
         )
 
     if in_dygraph_mode():
@@ -1154,7 +1154,9 @@ def exponential_(x, lam=1.0, name=None):
     if in_dygraph_mode():
         return _C_ops.exponential_(x, lam)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
+        check_variable_and_dtype(
+            x, "x", ["float16", "float32", "float64", "uint16"], "exponential"
+        )
 
         helper = LayerHelper("exponential", **locals())
         helper.append_op(

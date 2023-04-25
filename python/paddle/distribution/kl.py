@@ -15,6 +15,7 @@ import functools
 import warnings
 
 import paddle
+from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
@@ -56,7 +57,7 @@ def kl_divergence(p, q):
             q = paddle.distribution.Beta(alpha=0.3, beta=0.7)
 
             print(paddle.distribution.kl_divergence(p, q))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.21193528])
 
     """
@@ -141,6 +142,11 @@ class _Compare:
             if cls_x is not cls_y:
                 break
         return True
+
+
+@register_kl(Bernoulli, Bernoulli)
+def _kl_bernoulli_bernoulli(p, q):
+    return p.kl_divergence(q)
 
 
 @register_kl(Beta, Beta)

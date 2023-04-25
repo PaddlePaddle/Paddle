@@ -33,7 +33,7 @@ __all__ = []
 class BaseTransformer(gast.NodeTransformer):
     def visit(self, node):
         if not isinstance(node, gast.AST):
-            msg = ('Expected "gast.AST", but got "{}".').format(type(node))
+            msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
         origin_info = getattr(node, ORIGI_INFO, None)
 

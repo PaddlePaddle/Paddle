@@ -1484,9 +1484,9 @@ def get_communicate_var_info(
         #     raise ValueError(
         #         "Variable {} not support heter training. its shape is {}".
         #         format(name, shape))
-        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
+        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
+        input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
     # output
     # var -> reshape -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> Heter_SERVER_BLOCK_index@JOINT_VAR
@@ -1497,7 +1497,7 @@ def get_communicate_var_info(
     #    #     raise ValueError(
     #    #         "Variable {} not support heter training. its shape is {}".
     #    #         format(var_name, shape))
-    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
     #    output_var_reshape_dim.append(send_reshape_dim)
     #    output_var_reshape_name.append("{}.output_reshape@Heter".format(
     #        var_name))
@@ -1847,7 +1847,7 @@ def insert_reshape_op(
         new_var_shape = out.shape
 
     x_shape = block.create_var(
-        name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype
+        name=f"{var_name}.xshape@Heter", dtype=input_var.dtype
     )
     block._insert_op(
         index=index,

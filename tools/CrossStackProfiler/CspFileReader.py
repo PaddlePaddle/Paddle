@@ -116,7 +116,7 @@ class FileReader:
                 % (key, type)
             )
 
-        exec("self._%s = self._args[\"%s\"]" % (key, key))
+        exec(f"self._{key} = self._args[\"{key}\"]")
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp

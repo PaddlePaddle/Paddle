@@ -220,7 +220,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         elif pd_dtype == paddle.float16:
             return np.float16
         else:
-            raise ValueError("supported dtype {}".format(pd_dtype))
+            raise ValueError(f"supported dtype {pd_dtype}")
 
     def gen_random_grad_tensor(grad):
         np_dtype = pd_dtype_to_np_dtype(grad.dtype)

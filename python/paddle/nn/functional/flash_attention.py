@@ -24,6 +24,10 @@ def flash_attention(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
     name=None,
 ):
     r"""
@@ -54,8 +58,11 @@ def flash_attention(
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float61 or bfloat16.
         dropout(float): The dropout ratio.
-        causal(bool): Wether enable causal mode.
-        return_softmax(bool): Wether to return softmax.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        training(bool): Whether it is in the training phase.
+        rng_name(str): The name to select Generator.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -82,11 +89,14 @@ def flash_attention(
             query,
             key,
             value,
+            fixed_seed_offset,
             dropout,
             causal,
             return_softmax,
+            not training,
+            rng_name,
         )
-        return result_attention, result_softmax
+        return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn', **locals())
     dtype = helper.input_dtype(input_param_name='q')
@@ -98,6 +108,7 @@ def flash_attention(
         'q': query,
         'k': key,
         'v': value,
+        'fixed_seed_offset': fixed_seed_offset,
     }
     outputs = {
         'out': out,
@@ -113,9 +124,11 @@ def flash_attention(
             'dropout': dropout,
             'causal': causal,
             'return_softmax': return_softmax,
+            'is_test': not training,
+            'rng_name': rng_name,
         },
     )
-    return out, softmax
+    return out, softmax if return_softmax else None
 
 
 def flash_attn_unpadded(
@@ -130,6 +143,9 @@ def flash_attn_unpadded(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
     name=None,
 ):
     r"""
@@ -167,8 +183,11 @@ def flash_attn_unpadded(
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
         dropout(float): The dropout ratio.
-        causal(bool): Wether enable causal mode.
-        return_softmax(bool): Wether to return softmax.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        rng_name(str): The name to select Generator.
+        training(bool): Whether it is in the training phase.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -197,14 +216,17 @@ def flash_attn_unpadded(
             value,
             cu_seqlens_q,
             cu_seqlens_k,
+            fixed_seed_offset,
             max_seqlen_q,
             max_seqlen_k,
             scale,
             dropout,
             causal,
             return_softmax,
+            not training,
+            rng_name,
         )
-        return result_attention, result_softmax
+        return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn_unpadded', **locals())
     dtype = helper.input_dtype(input_param_name='q')
@@ -218,6 +240,7 @@ def flash_attn_unpadded(
         'v': value,
         'cu_seqlens_q': cu_seqlens_q,
         'cu_seqlens_k': cu_seqlens_k,
+        'fixed_seed_offset': fixed_seed_offset,
     }
     outputs = {
         'out': out,
@@ -236,6 +259,8 @@ def flash_attn_unpadded(
             'dropout': dropout,
             'causal': causal,
             'return_softmax': return_softmax,
+            'is_test': not training,
+            'rng_name': rng_name,
         },
     )
-    return out, softmax
+    return out, softmax if return_softmax else None
