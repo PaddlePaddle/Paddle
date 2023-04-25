@@ -1303,7 +1303,7 @@ class FlashAttnWithGating {
         num_splits,
         softmax_lse->data(),
         softmax_d.data(),
-        bias_d.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
         nullptr,
         &workspace_size,
         stream,
@@ -1316,7 +1316,8 @@ class FlashAttnWithGating {
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
+    LOG(INFO) << WaitWithDebugInfo(dev_ctx_)
+              << "Get workspace_size=" << workspace_size;
 
     phi::DenseTensor workspace = CreateWorkspace(workspace_size);
     succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
@@ -1345,8 +1346,8 @@ class FlashAttnWithGating {
         num_splits,
         softmax_lse->data(),
         softmax_d.data(),
-        bias_d.data(),
-        workspace.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
+        (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
         &workspace_size,
         stream,
         seed,
