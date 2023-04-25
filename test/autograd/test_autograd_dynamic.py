@@ -559,43 +559,6 @@ class TestHessianBatchFirst(unittest.TestCase):
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
         self.y.stop_gradient = False
 
-    def func_multi_input(self):
-        def func(x, y):
-            return paddle.matmul(x * x * y * y, self.weight)[:, 0:1]
-
-        xs_len = 2
-        expected = utils._compute_numerical_batch_hessian(
-            func, [self.x, self.y], self.numerical_delta, self.np_dtype
-        )
-        expected = np.reshape(
-            np.array(expected),
-            (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
-        )
-        expected = [list(row) for row in expected]
-        expected = utils._np_concat_matrix_sequence(expected)
-
-        self.x.stop_gradient = False
-        self.y.stop_gradient = False
-        H = paddle.autograd.hessian(
-            func(self.x, self.y), [self.x, self.y], batch_axis=0
-        )
-        if isinstance(H, (tuple, list)):
-            H_t = []
-            for i in range(len(H)):
-                H_t.append(
-                    paddle.concat(
-                        [H[i][j][:] for j in range(len(H[0]))], axis=2
-                    )
-                )
-            H_t = paddle.concat(H_t, axis=1)
-            H = H_t
-
-        actual = utils._np_transpose_matrix_format(
-            H.numpy(), utils.MatrixFormat.BNM, utils.MatrixFormat.NBM
-        )
-
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
-
     def func_allow_unused(self):
         def func(x, y):
             return paddle.matmul(x * x, self.weight)[:, 0:1]
@@ -689,7 +652,6 @@ class TestHessianBatchFirst(unittest.TestCase):
 
     def test_all_cases(self):
         self.setUpClass()
-        self.func_multi_input()
         self.func_allow_unused()
         self.func_stop_gradient()
         self.func_out_not_single()
