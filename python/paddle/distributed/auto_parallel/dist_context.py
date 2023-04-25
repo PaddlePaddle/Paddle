@@ -64,6 +64,7 @@ class DistributedContext:
         fetch_vars={},
         cluster=None,
         strategy=None,
+        json_config=None,
     ):
         # Data members related to original programs (unchanged)
         self._original_serial_main_program = serial_main_prog
@@ -129,6 +130,11 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
+        # record upstream and downstream of cur rank
+        self._up_down_streams = UpDownStream()
+
+        self._json_config = json_config
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -181,6 +187,10 @@ class DistributedContext:
     def process_meshes(self):
         return self._process_meshes
 
+    @process_meshes.setter
+    def process_meshes(self, val):
+        self._process_meshes = val
+
     @property
     def pass_context(self):
         return self._pass_context
@@ -210,6 +220,10 @@ class DistributedContext:
     @property
     def data_parallel(self):
         return self._data_parallel
+
+    @property
+    def up_down_streams(self):
+        return self._up_down_streams
 
     @data_parallel.setter
     def data_parallel(self, dp):
@@ -397,7 +411,7 @@ class DistributedContext:
         if dist:
             self._restore_dist_info(dist_mode)
 
-    def initialize(self, with_graph=True, with_cpp=False):
+    def initialize(self, with_graph=True, with_cpp=False, no_default=False):
         if not self._is_initialized:
             if not self._serial_main_program:
                 if self._original_serial_main_program:
@@ -418,7 +432,7 @@ class DistributedContext:
             if not self._serial_fetch_vars:
                 self._restore_serial_fetch_vars()
 
-            self._init_dist_attr_for_program()
+            self._init_dist_attr_for_program(no_default)
             # Backup the original distributed information for later restore
             self._original_dist_tensors_for_program = copy.deepcopy(
                 self._dist_tensors_for_program
@@ -974,9 +988,9 @@ class DistributedContext:
 
     def validate_dist_attr_for_program(self):
         if not self._is_initialized:
-            assert (
-                False
-            ), "Program must be initialized before validating its distributed attributes"
+            raise AssertionError(
+                "Program must be initialized before validating its distributed attributes"
+            )
         for block in self.serial_main_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
@@ -988,13 +1002,13 @@ class DistributedContext:
                 if (dist_tensor is not None) and (
                     not dist_tensor.validate_dist_attr()
                 ):
-                    assert (
-                        False
-                    ), "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name,
-                        dist_tensor.serial_tensor.desc.id(),
-                        dist_tensor.serial_tensor.desc.original_id(),
-                        dist_tensor.dist_attr,
+                    raise AssertionError(
+                        "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
+                            dist_tensor.serial_tensor.name,
+                            dist_tensor.serial_tensor.desc.id(),
+                            dist_tensor.serial_tensor.desc.original_id(),
+                            dist_tensor.dist_attr,
+                        )
                     )
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
@@ -1004,13 +1018,13 @@ class DistributedContext:
                     dist_op.serial_op.type
                 )
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
-                    assert (
-                        False
-                    ), "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
-                        dist_op.serial_op.type,
-                        dist_op.serial_op.desc.id(),
-                        dist_op.serial_op.desc.original_id(),
-                        dist_op.dist_attr,
+                    raise AssertionError(
+                        "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
+                            dist_op.serial_op.type,
+                            dist_op.serial_op.desc.id(),
+                            dist_op.serial_op.desc.original_id(),
+                            dist_op.dist_attr,
+                        )
                     )
         return True
 
@@ -1213,3 +1227,45 @@ class BlockState:
             self.nblock += 1
 
         assert self.nblock == len(program.blocks)
+
+
+class UpDownStream:
+    def __init__(self):
+        self._ups = {}
+        self._downs = {}
+
+    def add_up_stream(self, rank, up_stream):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            self._ups[rank] = [up_stream]
+        elif up_stream != -1:
+            ups = list(filter(lambda a: a != -1, ups))
+            ups.append(up_stream)
+            self._ups[rank] = ups
+
+    def add_down_stream(self, rank, down_stream):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            self._downs[rank] = [down_stream]
+        elif down_stream != -1:
+            downs = list(filter(lambda a: a != -1, downs))
+            downs.append(down_stream)
+            self._downs[rank] = downs
+
+    def add_pair_stream(self, up, down):
+        self.add_up_stream(up, -1)
+        self.add_up_stream(down, up)
+        self.add_down_stream(up, down)
+        self.add_down_stream(down, -1)
+
+    def ups(self, rank):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            return None
+        return list(set(ups))
+
+    def downs(self, rank):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            return None
+        return list(set(downs))

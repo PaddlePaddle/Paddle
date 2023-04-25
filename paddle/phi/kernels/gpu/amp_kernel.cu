@@ -357,7 +357,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+  kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }
 
 PD_REGISTER_KERNEL(update_loss_scaling,
@@ -369,4 +369,10 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  }
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::INT32);
 }

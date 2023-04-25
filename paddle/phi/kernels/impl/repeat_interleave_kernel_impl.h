@@ -140,9 +140,9 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
       phi::errors::InvalidArgument(
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
-          phi::DataTypeToString(index_type),
-          phi::DataTypeToString(phi::DataType::INT32),
-          phi::DataTypeToString(phi::DataType::INT64)));
+          DataTypeToString(index_type),
+          DataTypeToString(phi::DataType::INT32),
+          DataTypeToString(phi::DataType::INT64)));
   if (place == cpu_place) {
     auto x_copy = x;
     if (index_type == phi::DataType::INT32) {

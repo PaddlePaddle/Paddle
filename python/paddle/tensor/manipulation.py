@@ -18,15 +18,16 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..fluid.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -127,9 +128,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
-        sizes = paddle.to_tensor(
-            np.array(list(map(lambda x: int(x.shape[axis]), input)))
-        )
+        sizes = paddle.to_tensor(np.array([int(x.shape[axis]) for x in input]))
         return res, sizes
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
@@ -323,33 +322,29 @@ def slice(input, axes, starts, ends):
                 )
             )
 
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         tmp_tensor_type = core.eager.Tensor
 
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
         elif isinstance(starts, tmp_tensor_type):
-            tensor_t = starts.numpy()
-            starts = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = starts.numpy(False)
+            starts = list(tensor_t)
+            infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in ends
             ]
         elif isinstance(ends, tmp_tensor_type):
-            tensor_t = ends.numpy()
-            ends = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = ends.numpy(False)
+            ends = list(tensor_t)
+            infer_flags = [-1 for i in range(len(axes))]
 
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
@@ -366,13 +361,13 @@ def slice(input, axes, starts, ends):
 
         inputs = {'Input': input}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True
             inputs['StartsTensor'] = starts
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
             if paddle.utils._contain_var(starts):
@@ -392,7 +387,7 @@ def slice(input, axes, starts, ends):
         if isinstance(ends, Variable):
             ends.stop_gradient = True
             inputs['EndsTensor'] = ends
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
             if paddle.utils._contain_var(ends):
@@ -496,8 +491,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -966,7 +963,7 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(
         y.shape
-    ), "the y shape should be {}".format(predshape)
+    ), f"the y shape should be {predshape}"
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -1068,7 +1065,8 @@ def tolist(x):
             print(expectlist)   #[0, 1, 2, 3, 4]
 
     """
-    return x.numpy().tolist()
+    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    return x.numpy(False).tolist()
 
 
 def concat(x, axis=0, name=None):
@@ -1117,7 +1115,6 @@ def concat(x, axis=0, name=None):
     input = x
     if in_dygraph_mode():
         if isinstance(axis, Variable):
-            axis = axis.numpy()
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
@@ -1450,13 +1447,9 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis0 out of range, axis0 = {}".format(axes[0])
-        )
+        raise ValueError(f"Rotation axis0 out of range, axis0 = {axes[0]}")
     if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis1 out of range, axis1 = {}".format(axes[1])
-        )
+        raise ValueError(f"Rotation axis1 out of range, axis1 = {axes[1]}")
 
     k %= 4
     if k == 0:
@@ -1594,6 +1587,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'flatten',
         )
@@ -1710,6 +1704,21 @@ def roll(x, shifts, axis=None, name=None):
     if in_dygraph_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            [
+                'float16',
+                'float32',
+                'uint16',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'roll',
+        )
         helper = LayerHelper("roll", **locals())
         check_type(axis, 'axis', (list, tuple), 'roll')
 
@@ -1937,7 +1946,6 @@ def split(x, num_or_sections, axis=0, name=None):
     dim = axis
     if in_dygraph_mode():
         if isinstance(dim, Variable):
-            dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
@@ -1946,9 +1954,7 @@ def split(x, num_or_sections, axis=0, name=None):
             if paddle.utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].numpy()[
-                            0
-                        ]
+                        num_or_sections[index] = num_or_sections[index].item()
         elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
@@ -1965,6 +1971,7 @@ def split(x, num_or_sections, axis=0, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
@@ -2038,12 +2045,10 @@ def split(x, num_or_sections, axis=0, name=None):
                     len(num_or_sections) <= input_shape[dim]
                 ), 'len(num_or_sections) must not be more than input.shape[dim].'
             num = len(num_or_sections)
-            attrs['sections'] = list(
-                map(
-                    lambda ele: -1 if isinstance(ele, Variable) else ele,
-                    num_or_sections,
-                )
-            )
+            attrs['sections'] = [
+                -1 if isinstance(ele, Variable) else ele
+                for ele in num_or_sections
+            ]
             if paddle.utils._contain_var(num_or_sections):
                 inputs['SectionsTensorList'] = _get_SectionsTensorList(
                     num_or_sections
@@ -2196,6 +2201,7 @@ def squeeze(x, axis=None, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2472,7 +2478,10 @@ def unique(
         return tuple(outs)
     else:
         check_variable_and_dtype(
-            x, "input", ['float32', 'float64', 'int32', 'int64'], 'unique'
+            x,
+            "input",
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'unique',
         )
         check_type(return_index, 'return_index', bool, 'unique')
         check_type(return_inverse, 'return_inverse', bool, 'unique')
@@ -2578,10 +2587,10 @@ def unsqueeze(x, axis, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
@@ -2592,6 +2601,7 @@ def unsqueeze(x, axis, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2644,10 +2654,10 @@ def unsqueeze_(x, axis, name=None):
     if isinstance(axes, int):
         axes = [axes]
     elif isinstance(axes, Variable):
-        axes = axes.numpy().tolist()
+        axes = axes.tolist()
     elif isinstance(axes, (list, tuple)):
         axes = [
-            item.numpy().item(0) if isinstance(item, Variable) else item
+            item.item(0) if isinstance(item, Variable) else item
             for item in axes
         ]
     return _C_ops.unsqueeze_(input, axes)
@@ -2750,7 +2760,7 @@ def unbind(input, axis=0):
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Tensor): The input variable which is an N-D Tensor, data type being float16, float32, float64, int32 or int64.
+        input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32 or int64.
         axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
@@ -2799,7 +2809,15 @@ def unbind(input, axis=0):
         check_dtype(
             dtype,
             'unbind',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'unbind',
         )
         outs = [
@@ -2897,7 +2915,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         check_variable_and_dtype(
             x,
             'dtype',
-            ['float32', 'float64', 'float16', 'int32', 'int64'],
+            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
             'scatter',
         )
         check_type(overwrite, 'overwrite', bool, 'scatter')
@@ -3133,7 +3151,7 @@ def tile(x, repeat_times, name=None):
             assert (
                 repeat_times.ndim == 1
             ), "Only support ndim == 1 while repeat_times is a Tensor."
-            repeat_times = repeat_times.numpy().tolist()
+            repeat_times = repeat_times.tolist()
 
         return _C_ops.tile(x, repeat_times)
     else:
@@ -3142,19 +3160,19 @@ def tile(x, repeat_times, name=None):
         )
         if isinstance(repeat_times, Variable):
             assert (
-                len(repeat_times.shape) == 1
-            ), 'repeat_times must be an 1-D Tensor.'
+                repeat_times.numel() == 1
+            ), 'repeat_times must be a Tensor with one element.'
         else:
             for elem in repeat_times:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3398,23 +3416,31 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
+            assert shape.numel() == 1, 'shape must be a Tensor with one element'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in shape must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                    ), 'Elements in shape must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'expand',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'expand')
@@ -3633,9 +3659,7 @@ def reshape_(x, shape, name=None):
         tmp_tensor_type = core.eager.Tensor
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
+                item.item(0) if isinstance(item, tmp_tensor_type) else item
                 for item in shape
             ]
             if shape == x.shape:
@@ -3735,6 +3759,7 @@ def gather_nd(x, index, name=None):
             [
                 'bool',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int16',
@@ -3847,7 +3872,15 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'strided_slice',
         )
         check_type(axes, 'axes', (list, tuple), 'strided_slice')
@@ -3858,7 +3891,10 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         def check_list_elements_dtype(list_input, input_name):
             if isinstance(list_input, Variable):
                 check_dtype(
-                    list_input.dtype, input_name, ['int32'], 'strided_slice'
+                    list_input.dtype,
+                    input_name,
+                    ['int32', 'int64'],
+                    'strided_slice',
                 )
             else:
                 for i, var in enumerate(list_input):
@@ -3892,7 +3928,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
         inputs = {'Input': x}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True
@@ -4160,9 +4196,6 @@ def tensordot(x, y, axes=2, name=None):
             perm_y.append(i)
             shape_out.append(shape_y[i])
             not_contraction_size_y *= shape_y[i]
-
-    if not shape_out:
-        shape_out = [1]
 
     x = x.transpose(perm=perm_x).reshape(
         [not_contraction_size_x, contraction_size]
@@ -4526,7 +4559,15 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'take_along_axis',
         )
         check_variable_and_dtype(
@@ -4598,7 +4639,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'put_along_axis',
         )
         check_variable_and_dtype(
@@ -4680,7 +4729,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
     check_variable_and_dtype(
@@ -4692,7 +4741,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         value,
         'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
 
@@ -4746,5 +4795,4 @@ __METHODS = {
     'tolist': tolist,
 }
 for name, func in __METHODS.items():
-    setattr(core.VarBase, name, func)
     setattr(core.eager.Tensor, name, func)

@@ -103,9 +103,7 @@ class DistributedSaver:
         def _load_file(filename, dirname, suffix="pdparams"):
             file_list = []
             for file in os.listdir(dirname):
-                if check_filename(
-                    '{}(.*)_dist(.*).{}'.format(filename, suffix), file
-                ):
+                if check_filename(f'{filename}(.*)_dist(.*).{suffix}', file):
                     file_list.append(os.path.join(dirname, file))
             file_list.sort()
             return file_list
@@ -121,7 +119,7 @@ class DistributedSaver:
                         state_dict[name].append(np.array(value))
                     else:
                         state_dict[name] = [np.array(value)]
-            self._logger.info("Load param file: {}".format(file_list))
+            self._logger.info(f"Load param file: {file_list}")
             return state_dict
 
         filename = os.path.basename(path)
@@ -141,7 +139,7 @@ class DistributedSaver:
         # load path.pdattr
         dist_attr_file_list = _load_file(filename, dirname, "pdattr")
         self._logger.info(
-            "Load distributed attribute file: {}".format(dist_attr_file_list)
+            f"Load distributed attribute file: {dist_attr_file_list}"
         )
         dist_attr = {}
         for dist_attr_file in dist_attr_file_list:
@@ -170,8 +168,8 @@ class DistributedSaver:
         global_block = dist_main_prog.global_block()
 
         ops = global_block.ops
-        feed_vars_names = list(map(lambda x: x.name, feed_vars))
-        fetch_vars_names = list(map(lambda x: x.name, fetch_vars))
+        feed_vars_names = [x.name for x in feed_vars]
+        fetch_vars_names = [x.name for x in fetch_vars]
 
         last_idx = -1
         for idx, op in enumerate(ops):
@@ -194,26 +192,38 @@ class DistributedSaver:
             used_inputs += op.input_arg_names
             used_outputs += op.output_arg_names
 
-        for idx, var_name in enumerate(feed_vars_names):
-            if var_name not in used_inputs:
-                feed_vars_names.pop(idx)
-        for idx, var_name in enumerate(fetch_vars_names):
-            if var_name not in used_outputs:
-                fetch_vars_names.pop(idx)
+        # delete duplicated elements and keep order
+        feed_vars_names = list({}.fromkeys(feed_vars_names).keys())
+        used_inputs = list({}.fromkeys(used_inputs).keys())
+        fetch_vars_names = list({}.fromkeys(fetch_vars_names).keys())
+        used_outputs = list({}.fromkeys(used_outputs).keys())
+
+        dist_feed_vars_names = [
+            var_name for var_name in feed_vars_names if var_name in used_inputs
+        ]
+        dist_fetch_vars_names = [
+            var_name
+            for var_name in fetch_vars_names
+            if var_name in used_outputs
+        ]
 
         dist_feed_vars = list(
-            reversed([global_block.vars[name] for name in feed_vars_names])
+            reversed([global_block.vars[name] for name in dist_feed_vars_names])
         )
-        dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
+        dist_fetch_vars = [
+            global_block.vars[name] for name in dist_fetch_vars_names
+        ]
 
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
+        legacy_format = kwargs.get("legacy_format", False)
         paddle.static.save_inference_model(
             dist_path,
             dist_feed_vars,
             dist_fetch_vars,
             exe,
             program=dist_main_prog,
+            legacy_format=legacy_format,
         )
 
     def _save_rank_mapping(self, dirname):

@@ -135,7 +135,7 @@ void AllReduceOpHandle::AllReduceImpl(
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
-      // only enforce place0, we will enforce other palce numel == place0 numel
+      // only enforce place0, we will enforce other place numel == place0 numel
       PADDLE_ENFORCE_GT(
           numel,
           0,

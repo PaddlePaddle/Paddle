@@ -16,12 +16,11 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid import layers
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
@@ -29,8 +28,12 @@ from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
 
-random.seed(42)
-default_main_program().random_seed = 42
+seed = 42
+
+random.seed(seed)
+default_main_program().random_seed = seed
+np.random.seed(seed)
+paddle.seed(seed)
 
 
 class TestFusedMultiTransformerOp(OpTest):
@@ -798,7 +801,7 @@ class TestFusedMultiTransformerOp(OpTest):
 
     def GetFusedMultiTransformerOutStatic(self):
         paddle.enable_static()
-        x = paddle.fluid.data('x', self.query.shape, self.query.dtype)
+        x = paddle.static.data('x', self.query.shape, self.query.dtype)
         cache_kvs, cache_kv = None, None
         cache_kvs_feed = None
         time_step = None
@@ -810,7 +813,7 @@ class TestFusedMultiTransformerOp(OpTest):
         rotary_embs = None
 
         if self.rotary_emb_dims > 0:
-            rotary_embs = paddle.fluid.data(
+            rotary_embs = paddle.static.data(
                 'rotary_embs', self.rotary_embs.shape, self.rotary_embs.dtype
             )
 
@@ -862,13 +865,13 @@ class TestFusedMultiTransformerOp(OpTest):
                 assert self.query_length == self.cache_length
                 cache_kv[:] = 0
             else:
-                time_step = layers.fill_constant(
+                time_step = paddle.tensor.fill_constant(
                     shape=[1], dtype="int32", value=0, force_cpu=True
                 )
                 time_step_feed = self.cache_length
 
         if self.remove_padding:
-            seq_lens = paddle.fluid.data(
+            seq_lens = paddle.static.data(
                 'seq_lens', self.seq_lens.shape, self.seq_lens.dtype
             )
             seq_lens_feed = self.seq_lens
@@ -947,7 +950,7 @@ class TestFusedMultiTransformerOp(OpTest):
         for i in range(self.layers):
             if self.has_cache_kv:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
@@ -955,13 +958,13 @@ class TestFusedMultiTransformerOp(OpTest):
 
             if self.has_pre_cache:
                 cache_kvs.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=cache_kv.shape, dtype=cache_kv.dtype, value=0
                     )
                 )
                 cache_kvs_feed.append(cache_kv)
                 pre_caches.append(
-                    layers.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=self.pre_cache_kv.shape,
                         dtype=self.pre_cache_kv.dtype,
                         value=0,

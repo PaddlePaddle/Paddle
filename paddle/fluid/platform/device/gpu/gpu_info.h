@@ -82,7 +82,8 @@ size_t GpuInitAllocSize();
 //! Get the re-allocation size of current GPU device.
 size_t GpuReallocSize();
 
-using phi::backends::gpu::GpuMinChunkSize;
+//! Get the minimum chunk size for GPU buddy allocator.
+size_t GpuMinChunkSize();
 
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();

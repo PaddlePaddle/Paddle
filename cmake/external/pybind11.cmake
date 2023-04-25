@@ -16,10 +16,18 @@ include(ExternalProject)
 
 set(PYBIND_PREFIX_DIR ${THIRD_PARTY_PATH}/pybind)
 set(PYBIND_REPOSITORY ${GIT_URL}/pybind/pybind11.git)
-set(PYBIND_TAG v2.6.0)
+set(PYBIND_TAG v2.10.3)
 
 set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
+
+set(PYBIND_PATCH_COMMAND "")
+if(NOT WIN32)
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
+       native_dst)
+  set(PYBIND_PATCH_COMMAND patch -d ${PYBIND_INCLUDE_DIR}/pybind11 <
+                           ${native_dst})
+endif()
 
 ExternalProject_Add(
   extern_pybind
@@ -33,6 +41,7 @@ ExternalProject_Add(
   # third-party library version changes cannot be incorporated.
   # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
   UPDATE_COMMAND ""
+  PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

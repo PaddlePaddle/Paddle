@@ -21,8 +21,8 @@ DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace pybind {
 
-PyTypeObject* p_tensor_type;
-PyTypeObject* p_string_tensor_type;
+PyTypeObject* p_tensor_type = nullptr;
+PyTypeObject* p_string_tensor_type = nullptr;
 
 bool PyCheckTensor(PyObject* obj) {
   if (!p_tensor_type) {

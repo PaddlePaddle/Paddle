@@ -16,7 +16,6 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
 
 np.random.seed(2021)
 paddle.seed(1024)
@@ -25,7 +24,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = paddle.nn.Sequential(
@@ -41,7 +40,7 @@ class SimpleNet(fluid.Layer):
         self.step = 0
 
     def forward(self, x):
-        return paddle.to_tensor(0.0, dtype='float32')
+        return paddle.to_tensor([0.0], dtype='float32')
 
 
 def fake_sample_reader():
@@ -65,7 +64,7 @@ class TestSimpleNet(TestParallelDyGraphRunnerBase):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        x_data = np.array([x for x in batch])
+        x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
         x = paddle.to_tensor(x_data)
         out = model(x)

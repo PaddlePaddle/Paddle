@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -97,7 +97,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
-            fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(
+            fused_bn_add_act = paddle.incubate.layers.nn.fused_bn_add_act(
                 conv1_2,
                 bn,
                 param_attr=self.bn_param_attr2,

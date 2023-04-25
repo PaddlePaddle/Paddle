@@ -37,7 +37,7 @@ __global__ void AdagradGPUKernel(const T* param,
                                  MT* master_param_out,
                                  int num) {
   auto idx = blockDim.x * blockIdx.x + threadIdx.x;
-  MT lr_data = static_cast<T>(lr[0]);
+  MT lr_data = static_cast<MT>(lr[0]);
 
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
     MT grad_data = static_cast<MT>(grad[i]);
@@ -47,7 +47,7 @@ __global__ void AdagradGPUKernel(const T* param,
     MT param_out_data =
         in - (lr_data * grad_data) / (sqrt(moment_out_data) + epsilon);
 
-    param_out[i] = static_cast<MT>(param_out_data);
+    param_out[i] = static_cast<T>(param_out_data);
 
     if (master_param_out) {
       master_param_out[i] = param_out_data;
@@ -210,7 +210,12 @@ PD_REGISTER_KERNEL(adagrad,
                    phi::AdagradDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 
 PD_REGISTER_KERNEL(adagrad_dense_param_sparse_grad,
                    GPU,

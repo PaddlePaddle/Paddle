@@ -31,11 +31,10 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
-                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
-
+  int axis = -1;
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
@@ -63,10 +62,10 @@ void MinimumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
-                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
+  int axis = -1;
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
@@ -150,4 +149,5 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}

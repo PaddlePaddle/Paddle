@@ -105,16 +105,16 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   template <typename T1 = T>
   HOSTDEVICE explicit complex(
-      const std::enable_if_t<std::is_same<T1, float>::value, complex<double>>&
-          val) {
+      const typename std::enable_if<std::is_same<T1, float>::value,
+                                    complex<double>>::type& val) {
     real = val.real;
     imag = val.imag;
   }
 
   template <typename T1 = T>
   HOSTDEVICE explicit complex(
-      const std::enable_if_t<std::is_same<T1, double>::value, complex<float>>&
-          val) {
+      const typename std::enable_if<std::is_same<T1, double>::value,
+                                    complex<float>>::type& val) {
     real = val.real;
     imag = val.imag;
   }

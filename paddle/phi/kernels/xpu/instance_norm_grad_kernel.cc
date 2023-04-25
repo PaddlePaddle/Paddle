@@ -77,27 +77,45 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                           scale_ptr->dims()));
   }
 
-  DenseTensor scale_tmp;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  float* scale_ptr_data_tmp;
   int r;
   if (!scale_ptr) {
-    scale_tmp.Resize({C});
-    dev_ctx.template Alloc<T>(&scale_tmp);
+    scale_ptr_data_tmp = RAII_GUARD.alloc_l3_or_gm<float>(C);
     r = xpu::constant(dev_ctx.x_context(),
-                      reinterpret_cast<XPUType*>(scale_tmp.data<T>()),
-                      scale_tmp.numel(),
-                      static_cast<XPUType>(1));
+                      reinterpret_cast<float*>(scale_ptr_data_tmp),
+                      C,
+                      static_cast<float>(1));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   }
-  auto scale_ptr_tmp = scale_ptr ? scale_ptr : &scale_tmp;
+  auto scale_ptr_data =
+      scale_ptr ? scale_ptr->data<float>() : scale_ptr_data_tmp;
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  if ((H * W * D) == 1) {
+    r = xpu::copy(dev_ctx.x_context(),
+                  reinterpret_cast<const XPUType*>(d_y.data<T>()),
+                  reinterpret_cast<XPUType*>(d_x->data<T>()),
+                  d_y.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    r = xpu::constant(dev_ctx.x_context(),
+                      reinterpret_cast<float*>(d_scale),
+                      C,
+                      static_cast<float>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    r = xpu::constant(dev_ctx.x_context(),
+                      reinterpret_cast<float*>(d_bias),
+                      C,
+                      static_cast<float>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    return;
+  }
   auto d_x_data =
       d_x ? d_x->data<T>() : RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
   r = xpu::instance_norm_grad(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x.data<T>()),
                               reinterpret_cast<const XPUType*>(d_y.data<T>()),
                               reinterpret_cast<XPUType*>(d_x_data),
-                              scale_ptr_tmp->data<float>(),
+                              scale_ptr_data,
                               saved_mean.data<float>(),
                               saved_variance.data<float>(),
                               d_scale_data,

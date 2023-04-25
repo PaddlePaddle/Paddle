@@ -127,6 +127,10 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kNPU): {
       return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
     }
+    case static_cast<int>(PlaceType::kCUSTOM): {
+      return tensor->mutable_data<T>(
+          paddle::platform::CustomPlace(device_type_, device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
           "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
@@ -148,8 +152,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
-  } else if (paddle::platform::is_npu_place(tensor->place())) {
-    *place = PlaceType::kNPU;
+  } else if (paddle::platform::is_custom_place(tensor->place())) {
+    *place = PlaceType::kCUSTOM;
   } else {
     *place = PlaceType::kUNK;
   }
@@ -166,7 +170,9 @@ DataType Tensor::type() const {
 #endif
   EAGER_GET_TENSOR(phi::DenseTensor);
   auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
-  if (type == paddle::framework::proto::VarType::FP32) {
+  if (type == paddle::framework::proto::VarType::FP64) {
+    return DataType::FLOAT64;
+  } else if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {
     return DataType::FLOAT16;
@@ -237,25 +243,6 @@ void Tensor::CopyFromCpu(const T *data) {
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
-  } else if (place_ == PlaceType::kNPU) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::NPUPlace npu_place(device_);
-    auto *t_data = tensor->mutable_data<T>(npu_place);
-    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
-        pool.Get(npu_place));
-    paddle::memory::Copy(npu_place,
-                         static_cast<void *>(t_data),
-                         paddle::platform::CPUPlace(),
-                         data,
-                         ele_size,
-                         dev_ctx->stream());
-#else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Can not create tensor with NPU place because paddle is not compiled "
-        "with NPU."));
-#endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_type_id =
@@ -286,38 +273,43 @@ template <typename T>
 struct DataTypeInfo;
 
 template <>
-struct DataTypeInfo<bool> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::BOOL;
+struct DataTypeInfo<double> {
+  phi::DataType TYPE = phi::DataType::FLOAT64;
 };
 
 template <>
 struct DataTypeInfo<float> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT32;
+  phi::DataType TYPE = phi::DataType::FLOAT32;
 };
 
 template <>
 struct DataTypeInfo<float16> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT16;
+  phi::DataType TYPE = phi::DataType::FLOAT16;
 };
 
 template <>
 struct DataTypeInfo<int64_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT64;
+  phi::DataType TYPE = phi::DataType::INT64;
 };
 
 template <>
 struct DataTypeInfo<int8_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT8;
+  phi::DataType TYPE = phi::DataType::INT8;
 };
 
 template <>
 struct DataTypeInfo<uint8_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::UINT8;
+  phi::DataType TYPE = phi::DataType::UINT8;
 };
 
 template <>
 struct DataTypeInfo<int32_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT32;
+  phi::DataType TYPE = phi::DataType::INT32;
+};
+
+template <>
+struct DataTypeInfo<bool> {
+  phi::DataType TYPE = phi::DataType::BOOL;
 };
 
 phi::DataLayout LayoutConvert(DataLayout layout) {
@@ -351,9 +343,16 @@ void Tensor::ShareExternalData(const T *data,
             const_cast<T *>(data), size, paddle::platform::CUDAPlace(device_)),
         meta);
     *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kXPU) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(
+            const_cast<T *>(data), size, paddle::platform::XPUPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
+        "PlaceType must be one of [PlaceType::kCPU, PlaceType::kGPU, "
+        "PlaceType::kXPU]."));
   }
 }
 
@@ -456,25 +455,6 @@ void Tensor::CopyToCpuImpl(T *data,
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
-  } else if (place_ == PlaceType::kNPU) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto npu_place = t_place;
-    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
-        pool.Get(npu_place));
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         static_cast<void *>(data),
-                         npu_place,
-                         t_data,
-                         ele_num * sizeof(T),
-                         dev_ctx->stream());
-    paddle::platform::NPUStreamSync(dev_ctx->stream());
-#else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Can not create tensor with NPU place because paddle is not compiled "
-        "with NPU."));
-#endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     paddle::platform::DeviceContextPool &pool =
@@ -488,7 +468,7 @@ void Tensor::CopyToCpuImpl(T *data,
                          t_data,
                          ele_num * sizeof(T),
                          dev_ctx->stream());
-// TODO(wangran16): sync_stream
+    dev_ctx->GetStream()->Synchronize();
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
@@ -518,6 +498,7 @@ void Tensor::CopyToCpuAsync(T *data, CallbackFunc cb, void *cb_params) const {
   CopyToCpuImpl<T>(data, nullptr, cb, cb_params);
 }
 
+template PD_INFER_DECL void Tensor::CopyFromCpu<double>(const double *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
@@ -526,6 +507,11 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<bool>(const bool *data);
 
+template PD_INFER_DECL void Tensor::ShareExternalData<double>(
+    const double *data,
+    const std::vector<int> &shape,
+    PlaceType place,
+    DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<float>(
     const float *data,
     const std::vector<int> &shape,
@@ -562,6 +548,7 @@ template PD_INFER_DECL void Tensor::ShareExternalData<bool>(
     PlaceType place,
     DataLayout layout);
 
+template PD_INFER_DECL void Tensor::CopyToCpu<double>(double *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data) const;
@@ -570,6 +557,8 @@ template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<bool>(bool *data) const;
 
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<double>(
+    double *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuImpl<float>(float *data,
                                                          void *exec_stream,
                                                          CallbackFunc cb,
@@ -589,6 +578,8 @@ template PD_INFER_DECL void Tensor::CopyToCpuImpl<bool>(bool *data,
                                                         CallbackFunc cb,
                                                         void *cb_params) const;
 
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<double>(
+    double *data, void *exec_stream) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, void *exec_stream) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<int64_t>(
@@ -604,6 +595,8 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<float16>(
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(
     bool *data, void *exec_stream) const;
 
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<double>(
+    double *data, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, CallbackFunc cb, void *cb_params) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<int64_t>(
@@ -620,6 +613,8 @@ template PD_INFER_DECL void Tensor::CopyToCpuAsync<bool>(bool *data,
                                                          CallbackFunc cb,
                                                          void *cb_params) const;
 
+template PD_INFER_DECL double *Tensor::data<double>(PlaceType *place,
+                                                    int *size) const;
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;
 template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
@@ -635,6 +630,7 @@ template PD_INFER_DECL float16 *Tensor::data<float16>(PlaceType *place,
 template PD_INFER_DECL bool *Tensor::data<bool>(PlaceType *place,
                                                 int *size) const;
 
+template PD_INFER_DECL double *Tensor::mutable_data<double>(PlaceType place);
 template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType place);
 template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType place);
 template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
@@ -741,9 +737,12 @@ void Tensor::SetName(const std::string &name) { name_ = name; }
 
 const std::string &Tensor::name() const { return name_; }
 
-void Tensor::SetPlace(PlaceType place, int device) {
+void Tensor::SetPlace(PlaceType place,
+                      int device,
+                      const std::string device_type) {
   place_ = place;
   device_ = device;
+  device_type_ = device_type;
 }
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -913,6 +912,8 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   }
 }
 
+template void InternalUtils::CopyFromCpuWithIoStream<double>(
+    paddle_infer::Tensor *t, const double *data, cudaStream_t stream);
 template void InternalUtils::CopyFromCpuWithIoStream<float>(
     paddle_infer::Tensor *t, const float *data, cudaStream_t stream);
 template void InternalUtils::CopyFromCpuWithIoStream<int64_t>(
@@ -928,6 +929,8 @@ template void InternalUtils::CopyFromCpuWithIoStream<float16>(
 template void InternalUtils::CopyFromCpuWithIoStream<bool>(
     paddle_infer::Tensor *t, const bool *data, cudaStream_t stream);
 
+template void InternalUtils::CopyToCpuWithIoStream<double>(
+    paddle_infer::Tensor *t, double *data, cudaStream_t stream);
 template void InternalUtils::CopyToCpuWithIoStream<float>(
     paddle_infer::Tensor *t, float *data, cudaStream_t stream);
 template void InternalUtils::CopyToCpuWithIoStream<int64_t>(

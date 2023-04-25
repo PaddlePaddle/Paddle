@@ -15,8 +15,8 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
-
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace detail {
@@ -47,7 +47,7 @@ struct UnrollAssign {
 template <size_t kStart, size_t kEnd>
 struct UnrollAssign<kStart, kEnd, true> {
   template <typename Tin, typename Tout>
-  HOSTDEVICE inline static void Run(const Tin *d1, Tout *d2) {}
+  HOSTDEVICE inline static void Run(const Tin *d1 UNUSED, Tout *d2 UNUSED) {}
 };
 
 template <typename T, size_t kStart, size_t kEnd, bool kStop>

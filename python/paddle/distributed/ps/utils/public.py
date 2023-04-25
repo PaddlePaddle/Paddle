@@ -194,7 +194,7 @@ class TrainerRuntimeConfig:
                     'communicator_send_queue_size'
                 ] = num_threads
 
-        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+        return {key: str(self.runtime_configs[key]) for key in need_keys}
 
 
 def get_lr_ops(program):
@@ -386,7 +386,7 @@ def get_dense_send_context(
             grad = merged[1]
             origin_varnames.append(grad.merged_var.name)
             var = program.global_block().vars[grad.merged_var.name]
-            var_numel += reduce(lambda x, y: x * y, var.shape)
+            var_numel += reduce(lambda x, y: x * y, var.shape, 1)
         grad_name = "Dense@GRAD_" + str(idx)
         aggregate = True
         # print("public get_dense_send_context dense_table:", grad_name,
@@ -422,7 +422,7 @@ def get_dense_send_context(
             grad = merged[1]
             origin_varnames.append(grad.merged_var.name)
             var = program.global_block().vars[grad.merged_var.name]
-            var_numel += reduce(lambda x, y: x * y, var.shape)
+            var_numel += reduce(lambda x, y: x * y, var.shape, 1)
         grad_name = "DataNorm@GRAD_" + str(idx)
         aggregate = True
         # print("public get_dense_send_context data_norm table:", grad_name,
@@ -452,7 +452,7 @@ def get_dense_send_context(
             grad = merged[1]
             origin_varname = grad.merged_var.name
             var = program.global_block().vars[origin_varname]
-            var_numel = reduce(lambda x, y: x * y, var.shape)
+            var_numel = reduce(lambda x, y: x * y, var.shape, 1)
             grad_name = origin_varname
             aggregate = True
             from paddle.fluid.core import CommContext
@@ -503,7 +503,7 @@ def get_geo_trainer_send_context(attrs):
                 True if param_name in distibuted_varnames else False
             )
             var = program.global_block().vars[grad.merged_var.name]
-            var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+            var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
             from paddle.fluid.core import CommContext
 
             print(
@@ -571,7 +571,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])
     origin_programs = attrs['origin_main_programs']
-    print("is_heter_ps_mode? {}".format(split_dense_table))
+    print(f"is_heter_ps_mode? {split_dense_table}")
 
     idx = 0
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
@@ -589,7 +589,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 
             splited_varname = []
             for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
+                splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
                 True if param_name in distibuted_varnames else False
@@ -1167,9 +1167,9 @@ def get_communicate_var_info(
     for name in entrance_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
-        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
+        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
+        input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
     info = {
         "input_var_reshape_dim": input_var_reshape_dim,
@@ -1448,7 +1448,7 @@ dtype_to_size = {
 
 
 def get_var_mem_size(var):
-    m_size = reduce(lambda x, y: x * y, var.shape)
+    m_size = reduce(lambda x, y: x * y, var.shape, 1)
     m_size *= dtype_to_size[var.dtype]
     return m_size
 
@@ -1698,7 +1698,7 @@ def add_send_op(program, block, _vars):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 

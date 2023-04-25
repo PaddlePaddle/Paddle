@@ -14,13 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #endif
 
 namespace phi {
@@ -101,7 +103,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -493,7 +495,7 @@ void MatMulFunctionImplWithCublasLt(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
@@ -526,7 +528,7 @@ void MatMulFunctionImplWithCublasLt(
                 M,
                 false,
                 true,
-                matmul_key);
+                matmul_planner);
     return;
   }
 
@@ -576,7 +578,7 @@ void MatMulFunctionImplWithCublasLt(
                   N,
                   false,
                   false,
-                  matmul_key);
+                  matmul_planner);
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
@@ -591,7 +593,7 @@ void MatMulFunctionImplWithCublasLt(
                     N,
                     true,
                     false,
-                    matmul_key);
+                    matmul_planner);
       } else {
         VLOG(3) << "MatMul with blaslt 4";
         blaslt::RunWithBatch(dev_ctx,
@@ -607,7 +609,7 @@ void MatMulFunctionImplWithCublasLt(
                              M * N,
                              0,
                              M,
-                             matmul_key);
+                             matmul_planner);
       }
     }
     return;
@@ -662,7 +664,7 @@ void MatMulFunctionImplWithCublasLt(
                     N,
                     true,
                     false,
-                    matmul_key);
+                    matmul_planner);
       } else {
         VLOG(3) << "MatMul with blaslt 6";
         blaslt::RunWithBatch(dev_ctx,
@@ -678,7 +680,7 @@ void MatMulFunctionImplWithCublasLt(
                              M * N,
                              0,
                              M,
-                             matmul_key);
+                             matmul_planner);
       }
     } else {
       const int M = X.numel() / N;
@@ -692,7 +694,7 @@ void MatMulFunctionImplWithCublasLt(
                   N,
                   false,
                   false,
-                  matmul_key);
+                  matmul_planner);
     }
     return;
   }
@@ -775,7 +777,7 @@ void MatMulFunctionImplWithCublasLt(
                 K,
                 trans_x,
                 trans_y,
-                matmul_key);
+                matmul_planner);
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul with blaslt 9";
@@ -788,7 +790,7 @@ void MatMulFunctionImplWithCublasLt(
                   K,
                   false,
                   false,
-                  matmul_key);
+                  matmul_planner);
     } else {
       VLOG(3) << "MatMul with blaslt 10";
       blaslt::RunWithBatch(dev_ctx,
@@ -804,7 +806,7 @@ void MatMulFunctionImplWithCublasLt(
                            0,
                            K * N,
                            M * N,
-                           matmul_key);
+                           matmul_planner);
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
@@ -818,7 +820,7 @@ void MatMulFunctionImplWithCublasLt(
                   K,
                   false,
                   trans_y,
-                  matmul_key);
+                  matmul_planner);
     } else {
       VLOG(3) << "MatMul with blaslt 12";
       blaslt::RunWithBatch(dev_ctx,
@@ -834,7 +836,7 @@ void MatMulFunctionImplWithCublasLt(
                            M * K,
                            0,
                            M * N,
-                           matmul_key);
+                           matmul_planner);
     }
   } else if (!is_broadcast_dims) {
     VLOG(3) << "MatMul with blaslt 13";
@@ -851,7 +853,7 @@ void MatMulFunctionImplWithCublasLt(
                          M * K,
                          K * N,
                          M * N,
-                         matmul_key);
+                         matmul_planner);
   } else {
     // in the case, can't use stridedgemm
     std::vector<const T*> x_ptr(out_batch_size);
@@ -881,7 +883,7 @@ void MatMulFunctionImplWithCublasLt(
                          trans_x,
                          trans_y,
                          out_batch_size,
-                         matmul_key);
+                         matmul_planner);
   }
 }
 #endif
@@ -918,14 +920,14 @@ struct MatMulDispatcher<phi::GPUContext, T> {
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
-    phi::autotune::MatmulCacheKey matmul_cache(
-        x_dims,
-        y_dims,
-        trans_x,
-        trans_y,
-        paddle::experimental::CppTypeToDataType<T>::Type());
+    phi::funcs::MatmulPlanner matmul_planner(x_dims,
+                                             y_dims,
+                                             trans_x,
+                                             trans_y,
+                                             phi::CppTypeToDataType<T>::Type(),
+                                             funcs::MatmulFusedType::kMatmul);
     tuner->Run(ctx,
-               matmul_cache.GetKey(),
+               matmul_planner.GetKey(),
                ctx,
                x,
                y,
@@ -935,7 +937,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                trans_x,
                trans_y,
                flag,
-               &matmul_cache);
+               &matmul_planner);
 #else
     MatMulFunctionImplWithBlas<phi::GPUContext, T>(
         ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);

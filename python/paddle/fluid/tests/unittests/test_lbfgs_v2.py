@@ -31,7 +31,7 @@ np.random.seed(123)
 
 class Net(paddle.nn.Layer):
     def __init__(self, np_w, func):
-        super(Net, self).__init__()
+        super().__init__()
         self.func = func
         w = paddle.to_tensor(np_w)
         self.w = paddle.create_parameter(
@@ -208,64 +208,64 @@ class TestLbfgs(unittest.TestCase):
 
     def test_line_search(self):
         def func1(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([0.0])
 
         def func2(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([1.0])
 
         def func3(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(-1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([-1.0])
 
         _strong_wolfe(
             func1,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.001]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([0.0]),
             max_ls=0,
         )
 
         _strong_wolfe(
             func2,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         _strong_wolfe(
             func3,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         _cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
             [0.1, 0.5],
         )
 
         _cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(-3.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.1),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([-3.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.1]),
             [0.1, 0.5],
         )
 

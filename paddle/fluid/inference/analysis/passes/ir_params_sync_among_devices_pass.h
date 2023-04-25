@@ -35,10 +35,6 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
   std::string repr() const override;
 
  private:
-#ifdef PADDLE_WITH_ASCEND_CL
-  void CopyParamsToNpu(Argument *argument);
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void CopyParamsToGpu(Argument *argument);
 #endif

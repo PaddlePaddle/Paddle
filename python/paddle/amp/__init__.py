@@ -16,15 +16,78 @@ from .auto_cast import auto_cast  # noqa: F401
 from .auto_cast import decorate  # noqa: F401
 from .auto_cast import amp_guard  # noqa: F401
 from .auto_cast import amp_decorate  # noqa: F401
-from .auto_cast import low_precision_op_list  # noqa: F401
-from .auto_cast import WHITE_LIST  # noqa: F401
-from .auto_cast import BLACK_LIST  # noqa: F401
-from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
-from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
+from .amp_lists import white_list  # noqa: F401
+from .amp_lists import black_list  # noqa: F401
 
 from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
 from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
 
-__all__ = ['auto_cast', 'GradScaler', 'decorate']
+from . import debugging  # noqa: F401
+
+from paddle.fluid import core
+from paddle.fluid.framework import (
+    _current_expected_place,
+    _get_paddle_place,
+)
+
+__all__ = [
+    'auto_cast',
+    'GradScaler',
+    'decorate',
+    'is_float16_supported',
+    'is_bfloat16_supported',
+]
+
+
+def is_float16_supported(device=None):
+    """
+    Determine whether the place supports float16 in the auto-mixed-precision training.
+
+    Args:
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_float16_supported() # True or False
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_float16_supported(device)
+
+
+def is_bfloat16_supported(device=None):
+    """
+    Determine whether the place supports bfloat16 in the auto-mixed-precision training.
+
+    Args:
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+        paddle.amp.is_bfloat16_supported() # True or False
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_bfloat16_supported(device)

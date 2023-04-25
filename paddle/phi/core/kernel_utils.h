@@ -332,7 +332,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
-    static void Compute(KernelContext* ctx, DevCtx dev_ctx, Args&... args) {
+    static void Compute(KernelContext* ctx UNUSED,
+                        DevCtx dev_ctx,
+                        Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       return kernel_fn(dev_ctx, args...);
@@ -343,8 +345,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 inline bool recompute_reduce_all(const DenseTensor& x,
                                  const IntArray& dims,
                                  bool reduce_all = false) {
-  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size() ||
-      reduce_all) {
+  if (dims.size() == 0 || x.dims().size() == 0 ||
+      static_cast<int>(dims.size()) == x.dims().size() || reduce_all) {
+    // when input 0D, it can only reduce_all
     return true;
   } else {
     return false;

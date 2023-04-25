@@ -19,9 +19,9 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -44,7 +44,7 @@ class TestPSPassWithBow(unittest.TestCase):
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[1], value=batch_size * 1.0, dtype='float64'
                 ),
                 name="simnet_acc",
@@ -76,7 +76,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="1", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.contrib.layers.sparse_embedding(
+        q_emb = paddle.static.nn.sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -108,7 +108,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="2", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.contrib.layers.sparse_embedding(
+        pt_emb = paddle.static.nn.sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -139,7 +139,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="3", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.contrib.layers.sparse_embedding(
+        nt_emb = paddle.static.nn.sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
