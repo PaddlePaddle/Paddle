@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -170,15 +171,18 @@ void TransposeCooKernel(const Context &dev_ctx,
   const auto *x_indices_data = x_indices.data<int64_t>();
   auto *out_indices_data = out_indices.data<int64_t>();
   int *d_perm;
-#ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  hipMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
-#else
-  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  cudaMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
-#endif
+
+  auto d_perm_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int) * perm.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_perm,
+                     phi::CPUPlace(),
+                     perm.data(),
+                     sizeof(int) * perm.size(),
+                     dev_ctx.stream());
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
   TransposeCooCudaKernel<<<config.block_per_grid.x,
@@ -242,39 +246,41 @@ void TransposeCsrKernel(const Context &dev_ctx,
   const T *x_values_data = x_values.data<T>();
   int *d_perm;
   int64_t *d_x_dims, *d_out_dims;
-#ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  hipMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), hipMemcpyHostToDevice);
-  hipMalloc(reinterpret_cast<void **>(&d_x_dims),
-            sizeof(int64_t) * x.dims().size());
-  hipMemcpy(d_x_dims,
-            x.dims().Get(),
-            sizeof(int64_t) * x.dims().size(),
-            hipMemcpyHostToDevice);
-  hipMalloc(reinterpret_cast<void **>(&d_out_dims),
-            sizeof(int64_t) * out_dims.size());
-  hipMemcpy(d_out_dims,
-            out_dims.Get(),
-            sizeof(int64_t) * out_dims.size(),
-            hipMemcpyHostToDevice);
-#else
-  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  cudaMemcpy(
-      d_perm, perm.data(), sizeof(int) * perm.size(), cudaMemcpyHostToDevice);
-  cudaMalloc(reinterpret_cast<void **>(&d_x_dims),
-             sizeof(int64_t) * x.dims().size());
-  cudaMemcpy(d_x_dims,
-             x.dims().Get(),
-             sizeof(int64_t) * x.dims().size(),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(reinterpret_cast<void **>(&d_out_dims),
-             sizeof(int64_t) * out_dims.size());
-  cudaMemcpy(d_out_dims,
-             out_dims.Get(),
-             sizeof(int64_t) * out_dims.size(),
-             cudaMemcpyHostToDevice);
-#endif
+
+  auto d_perm_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int) * perm.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  d_perm = reinterpret_cast<int *>(d_perm_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_perm,
+                     phi::CPUPlace(),
+                     perm.data(),
+                     sizeof(int) * perm.size(),
+                     dev_ctx.stream());
+  auto d_x_dims_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * x.dims().size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_x_dims,
+                     phi::CPUPlace(),
+                     x.dims().Get(),
+                     sizeof(int64_t) * x.dims().size(),
+                     dev_ctx.stream());
+  auto d_out_dims_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * out_dims.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_out_dims,
+                     phi::CPUPlace(),
+                     out_dims.Get(),
+                     sizeof(int64_t) * out_dims.size(),
+                     dev_ctx.stream());
+
   int64_t x_nnz = x.nnz();
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);

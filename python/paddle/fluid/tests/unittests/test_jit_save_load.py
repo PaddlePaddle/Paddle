@@ -283,7 +283,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
         super().__init__()
         self._linear_0 = Linear(in_size, out_size)
         self._linear_1 = Linear(in_size, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -1196,7 +1196,7 @@ class LayerSaved(paddle.nn.Layer):
         self._linear_1_0 = Linear(self.hidden, self.hidden)
         self._linear_1_1 = Linear(self.hidden, self.hidden)
         self._linear_2 = Linear(self.hidden, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -1319,7 +1319,7 @@ class LayerLoadFinetune(paddle.nn.Layer):
         self._linear_1_0 = Linear(out_size, in_size)
         self._linear_1_1 = Linear(out_size, in_size)
         self._linear_2 = Linear(out_size, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
         # Load multiple times
         self._load_l1 = paddle.jit.load(load_path)

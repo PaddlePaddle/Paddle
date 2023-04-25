@@ -72,7 +72,7 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -1152,8 +1152,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-
-  x_dims[x_dims.size() - 1] = 1;
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  x_dims = phi::make_ddim(x_dims_vec_cut);
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
