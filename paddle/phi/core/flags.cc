@@ -243,7 +243,7 @@ PHI_DEFINE_EXPORTED_bool(
  *       embedding op. If it is 2, it will use the legacy deterministic
  *       CUDA kernel in embedding op.
  */
-PADDLE_DEFINE_EXPORTED_int64(
+PHI_DEFINE_EXPORTED_int64(
     embedding_deterministic,
     0,
     "Whether allow using an deterministic algorithm for embedding "
