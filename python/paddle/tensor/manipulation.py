@@ -4750,7 +4750,7 @@ def index_add_(x, index, axis, value, name=None):
     return _C_ops.index_add_(x, index, value, axis)
 
 
-def unflatten(x, shape, axis):
+def unflatten(x, shape, axis, name=None):
 
     check_variable_and_dtype(
         x,
@@ -4770,48 +4770,26 @@ def unflatten(x, shape, axis):
         ],
         'unflatten',
     )
-    if isinstance(shape, list) or isinstance(shape, tuple):
-        pass
-    elif isinstance(shape, paddle.Tensor) or isinstance(shape, Variable):
-        shape = list(shape)
+    if axis < 0:
+        axis = axis + x.dim()
+    if isinstance(shape, (list, tuple)):
+        new_shape = (
+            list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
+        )
+    elif isinstance(shape, Variable):
+        new_shape = paddle.concat(
+            [
+                paddle.to_tensor(x.shape[:axis], dtype=shape.dtype),
+                shape,
+                paddle.to_tensor(x.shape[axis + 1 :], dtype=shape.dtype),
+            ]
+        )
     else:
         raise TypeError(
             "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
                 type(shape)
             )
         )
-    if len(shape) == 0:
-        raise ValueError("The input for shape cannot be empty.")
-    if np.array(shape).dtype not in [
-        'uint8',
-        'int8',
-        'int16',
-        'int32',
-        'int64',
-    ]:
-        raise TypeError(
-            "The data type of shape should be one of ['uint8', 'int8', 'int16', 'int32', 'int64'], but got {}".format(
-                shape
-            )
-        )
-    if np.min(shape) < -1:
-        raise ValueError(f"invalid shape dimension {np.min(shape)}.")
-    if shape.count(-1) > 1:
-        raise ValueError("The shape can contain only one -1.")
-    elif shape.count(-1) == 1:
-        list(shape)[shape.index(-1)] = int(x.shape[axis] / abs(np.prod(shape)))
-    else:
-        sizes = np.prod(shape)
-        if sizes != x.shape[axis]:
-            raise ValueError(
-                "The product of the elements in shape{} is not equal to {}.".format(
-                    shape, x.shape[axis]
-                )
-            )
-    length = len(x.shape)
-    if axis < 0:
-        axis = axis + length
-    new_shape = list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
     x = x.reshape(new_shape)
     return x
 
