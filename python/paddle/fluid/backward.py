@@ -2380,7 +2380,7 @@ def _calc_and_ret_grad_info_map(
     targets, inputs, target_gradients=None, no_grad_set=None
 ):
     '''
-    For Dy2St
+    This function is used in dy2st to get grad_info_map and then get grad var names
     '''
     targets = _as_list(targets)
     inputs = _as_list(inputs)
@@ -2534,6 +2534,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None
     """
 
+    # NOTE: If you want to modify the logic of calc_gradient, please modify
+    # it inside the _calc_and_ret_grad_info_map and _get_grad_vars functions
+    # to ensure the correctness of dy2st mode.
     grad_info_map = _calc_and_ret_grad_info_map(
         targets,
         inputs,

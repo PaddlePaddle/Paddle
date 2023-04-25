@@ -727,15 +727,7 @@ class PartialProgramLayer:
             self.program_id,
         ]
 
-        if self.training and self._grad_var_names:
-            inputs_size = len(
-                [
-                    var
-                    for var in self._inputs
-                    if isinstance(var, framework.Variable)
-                ]
-            )
-            params_size = len(self._params)
+        if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
             # the correct names of the parameter grads from program. And out grads are similar to above.
