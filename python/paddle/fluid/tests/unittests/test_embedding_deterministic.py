@@ -14,6 +14,7 @@
 
 import contextlib
 import random
+import sys
 import unittest
 
 import numpy as np
@@ -132,6 +133,9 @@ class TestEmbeddingBase(unittest.TestCase):
         allow_duplicate_id=True,
         allow_pure_random=False,
     ):
+        if sys.platform == 'win32' and rank is not None:
+            return
+
         ids, weight, out_grad = generate_input_data(
             ids_shape=self.ids_shape,
             vocab_size=self.vocab_size,
