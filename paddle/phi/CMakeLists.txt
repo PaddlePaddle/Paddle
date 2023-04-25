@@ -129,14 +129,22 @@ set_target_properties(phi PROPERTIES COMPILE_OPTIONS ${BUILD_PHI_SHARED})
 
 if(WIN32)
   set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  set(PHI_LIB
-      "${CMAKE_CURRENT_BINARY_DIR}/phi.dll"
-      CACHE FILEPATH "PHI Library" FORCE)
+  set(PHI_NAME
+      phi.dll
+      CACHE INTERNAL "" FORCE)
+elseif(APPLE)
+  set(PHI_NAME
+      libphi.dylib
+      CACHE INTERNAL "" FORCE)
 else()
-  set(PHI_LIB
-      "${CMAKE_CURRENT_BINARY_DIR}/libphi.so"
-      CACHE FILEPATH "PHI Library" FORCE)
+  set(PHI_NAME
+      libphi.so
+      CACHE INTERNAL "" FORCE)
 endif()
+
+set(PHI_LIB
+    "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
+    CACHE FILEPATH "PHI Library" FORCE)
 
 if(MKL_FOUND AND WITH_ONEMKL)
   target_include_directories(phi PRIVATE ${MKL_INCLUDE})
