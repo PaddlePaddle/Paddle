@@ -1,9 +1,9 @@
+cmake_minimum_required(VERSION 3.15)
 project(test_paddle_lib)
 
-get_filename_component(PADDLE_BINARY_DIR "${CMAKE_CURRENT_LIST_FILE}/../.."
+get_filename_component(PADDLE_BINARY_DIR "${CMAKE_CURRENT_LIST_FILE}/../../.."
                        ABSOLUTE)
 list(APPEND CMAKE_PREFIX_PATH "${PADDLE_BINARY_DIR}/paddle_install_dir")
-message(CMAKE_PREFIX_PATH)
 find_package(Paddle REQUIRED)
 include_directories(${PADDLE_INCLUDE_DIRS})
 
