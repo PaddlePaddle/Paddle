@@ -68,6 +68,7 @@ class Operation1 : public ir::Op<Operation1> {
   using Op::Op;
   static const char *name() { return "Operation1"; }
   static const char *attributes_name_[];
+  static uint32_t attributes_num() { return 2; }
 };
 const char *Operation1::attributes_name_[] = {"op1_attr1", "op1_attr2"};
 
@@ -78,6 +79,7 @@ class Operation2
   using Op::Op;
   static const char *name() { return "Operation2"; }
   static const char *attributes_name_[];
+  static uint32_t attributes_num() { return 2; }
   static void InferShape() {
     std::cout << "This is op2's InferShape interface." << std::endl;
   }
