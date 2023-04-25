@@ -42,9 +42,6 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
-  } else if (platform::is_npu_place(tensor->place())) {
-    // TODO(kuizhiqing)
-    VLOG(4) << "divnrank for npu not support yet";
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
@@ -250,10 +247,6 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_npu_place(place)) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't concat npu grads since it's not compiled with HCCL,"
-        "Please recompile or reinstall Paddle with HCCL support."));
   } else if (platform::is_cpu_place(place)) {
     ConcatTensorsWithType(static_cast<const phi::CPUContext &>(context),
                           dense_tensors_,
@@ -290,10 +283,6 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
-  } else if (platform::is_npu_place(place)) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split npu grad since it's not compiled with HCCL,"
-        "Please recompile or reinstall Paddle with HCCL support."));
   } else if (platform::is_cpu_place(place)) {
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,

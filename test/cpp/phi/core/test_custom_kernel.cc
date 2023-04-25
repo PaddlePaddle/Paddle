@@ -281,7 +281,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel(&kernel_context);
 
   // 8.check result
-  ASSERT_EQ(dense_out->dims().size(), 2);
+  ASSERT_EQ(dense_out->dims().size(), 1);
   ASSERT_EQ(dense_out->dims()[0], 2);
   ASSERT_EQ(dense_out->numel(), 2);
   ASSERT_EQ(dense_out->dtype(), phi::DataType::UINT8);

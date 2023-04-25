@@ -152,8 +152,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||
-      platform::is_custom_place(place_)) {
+  if (platform::is_gpu_place(place_) || platform::is_custom_place(place_)) {
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -447,8 +446,6 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(
   } else {
     if (platform::is_xpu_place(place_)) {
       return platform::kXPU;
-    } else if (platform::is_npu_place(place_)) {
-      return platform::kNPU;
     } else if (platform::is_custom_place(place_)) {
       return platform::kCUSTOM_DEVICE;
     }
@@ -464,7 +461,7 @@ DownstreamRunType StreamAnalyzer::AnalyseRunTypeForTwoInstructions(
   }
 
   // npu d2h kernel is asynchronous.
-  if (platform::is_npu_place(place_) || platform::is_custom_place(place_)) {
+  if (platform::is_custom_place(place_)) {
     if (interpreter::IsCpuOp(cur_instr) ||
         interpreter::IsMemcpyH2D(next_instr)) {
       return DownstreamRunType::kDirectRun;
