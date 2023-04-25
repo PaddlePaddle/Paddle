@@ -72,7 +72,7 @@ cc_test(
        variable_helper
        mul_op
        reduce_sum_op
-       elementwise_add_op
+       generated_static_op
        memcpy)
 cc_test(
   test_hooks
@@ -85,7 +85,7 @@ cc_test(
        op_registry
        variable_helper
        mul_op
-       elementwise_add_op
+       generated_static_op
        memcpy)
 cc_test(
   test_eager

@@ -22,6 +22,26 @@
 
 namespace phi {
 
+KernelKey ElementwiseGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  // const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+
+  if (IsComplexType(expected_kernel_type.dtype())) {
+    // only promote inputs’s types when contains complex input
+    return KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  }
+  if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN) &&
+      OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::kNCHW) {
+    return KernelKey(
+        tensor.place(), DataLayout::kNCHW, expected_kernel_type.dtype());
+  }
+  return KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 template <typename T, dnnl::algorithm BINARY_OP>
 void ElementwiseKernel(const OneDNNContext& dev_ctx,
                        const DenseTensor& x,
@@ -156,7 +176,9 @@ PD_REGISTER_KERNEL(add_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(add,
                    OneDNN,
@@ -165,7 +187,9 @@ PD_REGISTER_KERNEL(add,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(subtract_raw,
                    OneDNN,

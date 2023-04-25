@@ -72,6 +72,14 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : elementwise_add
+  version :
+    - checkpoint : Register elementwise_add for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_add.
+          default : 1.0
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]

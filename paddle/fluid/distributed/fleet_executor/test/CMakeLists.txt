@@ -47,7 +47,7 @@ cc_test_old(
   ${BRPC_DEPS}
   op_registry
   fill_constant_op
-  elementwise_add_op
+  generated_static_op
   scope
   device_context)
 

@@ -9,13 +9,13 @@ if(WITH_TESTING AND NOT WIN32)
   set(JIT_DEPS
       phi
       phi_api
-      elementwise_add_op
       matmul_v2_op
       activation_op
       reduce_mean_op
       feed_op
       fetch_op
       generated_op
+      generated_static_op
       transfer_layout_op
       jit_layer)
   cc_test(

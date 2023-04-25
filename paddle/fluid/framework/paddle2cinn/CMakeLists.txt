@@ -57,7 +57,7 @@ if(WITH_TESTING)
     op_registry
     mul_op
     activation_op
-    elementwise_add_op
+    generated_static_op
     generated_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})

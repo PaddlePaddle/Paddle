@@ -73,7 +73,7 @@ if(WITH_TESTING)
     cinn_compiler
     cinn_launch_op
     cinn_instruction_run_op
-    elementwise_add_op)
+    generated_static_op)
   target_link_libraries(cinn_instruction_run_op_test ${PYTHON_LIBRARIES})
   set_tests_properties(
     cinn_instruction_run_op_test PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT

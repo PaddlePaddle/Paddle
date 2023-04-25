@@ -165,7 +165,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
-cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
+cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op generated_static_op softmax_op softmax)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(assign_op_test SRCS assign_op_test.cc DEPS generated_static_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
@@ -175,7 +175,7 @@ cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_co
 if (WITH_GPU)
     nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
     nv_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
-    nv_test(feed_forward_test SRCS feed_forward_test.cu DEPS elementwise_add_op matmul_op tensor generator)
+    nv_test(feed_forward_test SRCS feed_forward_test.cu DEPS generated_static_op matmul_op tensor generator)
 elseif(WITH_ROCM)
     hip_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
     hip_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
@@ -192,7 +192,7 @@ endif()
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
-cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
+cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS generated_op generated_static_op ${COMMON_OP_DEPS})
 
 
 if(WITH_MKLDNN)

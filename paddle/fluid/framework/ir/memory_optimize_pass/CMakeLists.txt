@@ -44,7 +44,7 @@ if(WITH_CINN)
     share_varinfo_into_cinn_pass_test
     SRCS share_varinfo_into_cinn_pass_test.cc
     DEPS share_varinfo_into_cinn_pass parallel_executor cinn_compiler
-         elementwise_add_op mul_op cinn_launch_op)
+         generated_static_op mul_op cinn_launch_op)
   list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
 endif()
 
@@ -76,5 +76,4 @@ cc_library(
 cc_test(
   test_reference_count_pass_last_lived_ops
   SRCS test_reference_count_pass_last_lived_ops.cc
-  DEPS parallel_executor elementwise_mul_op elementwise_add_op generated_op
-       eigen_function)
+  DEPS parallel_executor elementwise_mul_op generated_op eigen_function)
