@@ -48,7 +48,7 @@ class IrContext {
   IrContextImpl &impl() { return *impl_; }
 
   ///
-  /// \brief Register an AbstractType to IrContext
+  /// \brief Register an AbstractType to IrContext.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \param abstract_type AbstractType* provided by user.
@@ -65,13 +65,9 @@ class IrContext {
   StorageManager &type_storage_manager();
 
   ///
-  /// \brief Returns the storage uniquer used for constructing TypeStorage
-  /// instances.
+  /// \brief Get registered AbstractType from IrContext.
   ///
-  /// \return The storage uniquer used for constructing TypeStorage
-  /// instances.
-  ///
-  std::unordered_map<TypeId, AbstractType *> &registed_abstract_type();
+  AbstractType *GetRegisteredAbstractType(TypeId id);
 
   ///
   /// \brief Register an AbstractAttribute to IrContext
@@ -92,21 +88,16 @@ class IrContext {
   StorageManager &attribute_storage_manager();
 
   ///
-  /// \brief Returns the storage uniquer used for constructing AttributeStorage
-  /// instances.
+  /// \brief Get registered AbstractAttribute from IrContext.
   ///
-  /// \return The storage uniquer used for constructing AttributeStorage
-  /// instances.
-  ///
-  std::unordered_map<TypeId, AbstractAttribute *>
-      &registed_abstract_attribute();
+  AbstractAttribute *GetRegisteredAbstractAttribute(TypeId id);
 
   ///
   /// \brief Get or register operaiton.
   ///
-  std::unordered_map<TypeId, OpInfoImpl *> &registed_operation();
-
   void RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo);
+
+  OpInfoImpl *GetRegisteredOpInfo(ir::TypeId id);
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,

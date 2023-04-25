@@ -49,8 +49,10 @@ class Dialect {
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
-    if (this->ir_context()->registed_abstract_type().count(
-            ir::TypeId::get<T>()) == 0) {
+    // if (this->ir_context()->registed_abstract_type().count(
+    //         ir::TypeId::get<T>()) == 0) {
+    if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
+        nullptr) {
       ir::AbstractType *abstract_type =
           new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
       this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
@@ -82,8 +84,8 @@ class Dialect {
   template <typename T>
   void RegisterAttribute() {
     VLOG(4) << "Attribute registered into Dialect. --->";
-    if (this->ir_context()->registed_abstract_attribute().count(
-            ir::TypeId::get<T>()) == 0) {
+    if (this->ir_context()->GetRegisteredAbstractAttribute(
+            ir::TypeId::get<T>()) == nullptr) {
       ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
           std::move(ir::AbstractAttribute::get<T>(*this)));
       this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
@@ -106,8 +108,8 @@ class Dialect {
   template <typename ConcertOp>
   void RegisterOp() {
     VLOG(4) << "Op registered into Dialect. --->";
-    if (this->ir_context()->registed_operation().count(
-            ir::TypeId::get<ConcertOp>()) == 0) {
+    if (this->ir_context()->GetRegisteredOpInfo(ir::TypeId::get<ConcertOp>()) ==
+        nullptr) {
       ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>();
       this->ir_context()->RegisterOpInfo(ir::TypeId::get<ConcertOp>(), op_info);
     }

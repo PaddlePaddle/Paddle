@@ -197,9 +197,12 @@ StorageManager &IrContext::type_storage_manager() {
   return impl().registed_type_storage_manager_;
 }
 
-std::unordered_map<TypeId, AbstractType *>
-    &IrContext::registed_abstract_type() {
-  return impl().registed_abstract_types_;
+AbstractType *IrContext::GetRegisteredAbstractType(TypeId id) {
+  auto search = impl().registed_abstract_types_.find(id);
+  if (search != impl().registed_abstract_types_.end()) {
+    return search->second;
+  }
+  return nullptr;
 }
 
 void IrContext::RegisterAbstractAttribute(
@@ -211,9 +214,12 @@ StorageManager &IrContext::attribute_storage_manager() {
   return impl().registed_attribute_storage_manager_;
 }
 
-std::unordered_map<TypeId, AbstractAttribute *>
-    &IrContext::registed_abstract_attribute() {
-  return impl().registed_abstract_attributes_;
+AbstractAttribute *IrContext::GetRegisteredAbstractAttribute(TypeId id) {
+  auto search = impl().registed_abstract_attributes_.find(id);
+  if (search != impl().registed_abstract_attributes_.end()) {
+    return search->second;
+  }
+  return nullptr;
 }
 
 Dialect *IrContext::GetOrRegisterDialect(
@@ -248,8 +254,9 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   return nullptr;
 }
 
-std::unordered_map<TypeId, OpInfoImpl *> &IrContext::registed_operation() {
-  return impl().registed_op_infos_;
+OpInfoImpl *IrContext::GetRegisteredOpInfo(ir::TypeId id) {
+  OpInfoImpl *rtn = impl().GetOpInfo(id);
+  return rtn ? rtn : nullptr;
 }
 
 void IrContext::RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo) {

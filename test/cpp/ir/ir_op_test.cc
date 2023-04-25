@@ -115,12 +115,13 @@ TEST(op_test, op_test) {
   std::cout << test_dialect << std::endl;
 
   // (2) Get registered operations.
-  std::unordered_map<ir::TypeId, ir::OpInfoImpl *> operations =
-      ctx->registed_operation();
-  EXPECT_EQ(operations.count(ir::TypeId::get<Operation1>()) == 1, true);
-  EXPECT_EQ(operations.count(ir::TypeId::get<Operation2>()) == 1, true);
-  ir::OpInfoImpl *op1_info = operations[ir::TypeId::get<Operation1>()];
-  ir::OpInfoImpl *op2_info = operations[ir::TypeId::get<Operation2>()];
+  ir::OpInfoImpl *op1_info =
+      ctx->GetRegisteredOpInfo(ir::TypeId::get<Operation1>());
+  EXPECT_EQ(op1_info != nullptr, true);
+  ir::OpInfoImpl *op2_info =
+      ctx->GetRegisteredOpInfo(ir::TypeId::get<Operation2>());
+  EXPECT_EQ(op2_info != nullptr, true);
+
   EXPECT_EQ(op1_info->HasTrait<ReadOnlyTrait>(), false);
   EXPECT_EQ(op1_info->HasInterface<InferShapeInterface>(), false);
   EXPECT_EQ(op2_info->HasTrait<ReadOnlyTrait>(), true);
