@@ -554,7 +554,7 @@
     func : EditDistanceInferMeta
   kernel :
     func : edit_distance
-    data_type : float
+    data_type : DataType::FLOAT32
   optional : hypslength, refslength
 
 - op : eig
