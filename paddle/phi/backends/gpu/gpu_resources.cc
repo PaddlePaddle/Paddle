@@ -16,12 +16,12 @@
 
 #include <set>
 
+#include <map>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -78,7 +78,7 @@ void InitGpuProperties(Place place,
       for (const int32_t& arch : compiled_archs) {
         compile_arch_str += std::to_string(arch) + " ";
       }
-      const std::map<int, std::string> arch_computing_mapping_table = {
+      std::map<int, std::string> arch_computing_mapping_table = {
           {20, "Fermi"},
           {30, "Kepler"},
           {35, "Kapler"},
