@@ -74,21 +74,6 @@ else()
   set(IPU_CTX_DEPS)
 endif()
 
-if(WITH_ASCEND_CL)
-  set(NPU_CTX_DEPS npu_stream npu_info)
-endif()
-
-if(WITH_MLU)
-  set(MLU_CTX_DEPS mlu_device_context)
-endif()
-
-if(WITH_ASCEND_CL OR WITH_MLU)
-  cc_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
-endif()
-
 if(WITH_GPU)
   nv_library(
     stream_callback_manager
@@ -103,8 +88,6 @@ if(WITH_ROCM)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(STREAM_CALLBACK_DEPS stream_callback_manager)
-elseif(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 else()
   set(STREAM_CALLBACK_DEPS)
@@ -146,37 +129,22 @@ cc_library(
        dlpack
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS}
        phi_backends
        phi_device_context
-       generator)
+       generator
+       phi_enforce)
 
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context enforce)
-if(WITH_ASCEND_CL)
-  target_link_libraries(collective_helper npu_collective_helper)
-endif()
-
-if(WITH_CNCL)
-  target_link_libraries(collective_helper mlu_collective_helper)
-endif()
 
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
 
-if(WITH_ASCEND_CL)
-  target_link_libraries(device_context npu_resource_pool)
-endif()
-
 if(WITH_XPU)
   target_link_libraries(device_context xpu_resource_pool)
-endif()
-
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
@@ -197,16 +165,6 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
-
-if(WITH_ASCEND_CL)
-  cc_library(
-    device_event_npu
-    SRCS device_event_npu.cc
-    DEPS device_event_base npu_resource_pool)
-  set(DEVICE_EVENT_LIBS
-      device_event_npu
-      CACHE INTERNAL "device event libs")
-endif()
 
 if(WITH_GPU)
   nv_library(

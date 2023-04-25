@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -31,7 +31,7 @@
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 #endif
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace framework {
 namespace details {
@@ -39,6 +39,10 @@ namespace details {
 void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
+
+void SetNanInfStackLimit(const int& stack_limit);
+
+int GetNanInfStackLimit();
 
 template <typename T,
           typename MT,
@@ -87,15 +91,7 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
         static_cast<float>(min_value),
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-      PADDLE_ENFORCE(false,
-                     "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
-                     "num_zero=%lld) in %s.",
-                     static_cast<long long>(num_nan),   // NOLINT
-                     static_cast<long long>(num_inf),   // NOLINT
-                     static_cast<long long>(num_zero),  // NOLINT
-                     debug_info);
-#else
+#if !(defined(__NVCC__) || defined(__HIPCC__))
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
           "%s.",

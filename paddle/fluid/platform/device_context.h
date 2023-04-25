@@ -96,7 +96,6 @@ enum DeviceType {
   NPU = 2,
   XPU = 3,
   IPU = 4,
-  MLU = 5,
   CUSTOM_DEVICE = 6,
 
   MAX_DEVICE_TYPES = 7,
@@ -109,7 +108,6 @@ constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
-constexpr DeviceType kMLU = DeviceType::MLU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
@@ -133,10 +131,6 @@ class IPUDeviceContext
  private:
   IPUPlace place_;
 };
-#endif
-
-#ifdef PADDLE_WITH_MLU
-class MLUDeviceContext;
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -171,11 +165,6 @@ template <>
 struct DefaultDeviceContextType<phi::IPUPlace> {
   using TYPE = paddle::platform::IPUDeviceContext;
 };
-#endif
-
-#ifdef PADDLE_WITH_MLU
-template <>
-struct DefaultDeviceContextType<phi::MLUPlace>;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

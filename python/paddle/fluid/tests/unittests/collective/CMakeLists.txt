@@ -368,12 +368,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" LABELS
                                                       "RUN_TYPE=DIST")
 endif()
-if((WITH_GPU
-    OR WITH_ROCM
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH

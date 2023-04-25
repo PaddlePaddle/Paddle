@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import os
+
 from paddle import static
 from paddle.fluid import core
+from paddle.framework import _global_flags
+from paddle.framework.ir import apply_build_strategy
 from paddle.utils import unique_name
 
 from .common import (
@@ -59,6 +63,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
             )
             self.calc_comm_same_stream = (
                 user_defined_strategy._calc_comm_same_stream
+            )
+            self.sync_before_allreduce = os.environ.get(
+                'FLAGS_sync_before_allreduce', None
             )
 
     def _can_apply(self):
@@ -146,6 +153,18 @@ class RawProgramOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
+        if _global_flags()['FLAGS_apply_pass_to_program']:
+            pass_attrs = {"use_cuda": True}
+            build_strategy = self.user_defined_strategy.build_strategy._copy()
+            build_strategy.fuse_all_optimizer_ops = False
+            build_strategy.fuse_all_reduce_ops = False
+            apply_build_strategy(
+                self.main_program,
+                self.startup_program,
+                build_strategy,
+                pass_attrs,
+            )
+            self.main_program._pass_applied = True
         if self.nranks == 1:
             return optimize_ops, params_grads
         self._init_process_group()
@@ -357,23 +376,38 @@ class RawProgramOptimizer(MetaOptimizerBase):
         # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
         # each entry of the list is a tuple stores the grads segment list and
         # the corresponding params segment list
-        grad_param_segments = []
-        last_dtype = None
+
+        # its type is: dict[dtype, list[tuple[list[grad], list[param]]]]
+        grad_param_segments_by_dtype = {}
         # split the grad based on dtype and fused size
         for param, grad in param_grads:
-            if (
-                len(grad_param_segments) == 0
-                or len(grad_param_segments[-1][0]) == self.fuse_grad_size_in_num
-                or grad.dtype != last_dtype
-            ):
-                grad_param_segments.append(([grad], [param]))
-                last_dtype = grad.dtype
-            else:
-                grad_param_segments[-1][0].append(grad)
-                grad_param_segments[-1][1].append(param)
+            if grad.dtype not in grad_param_segments_by_dtype:
+                grad_param_segments_by_dtype[grad.dtype] = [([], [])]
+            grad_segment, param_segment = grad_param_segments_by_dtype[
+                grad.dtype
+            ][-1]
+            if len(param_segment) == self.fuse_grad_size_in_num:
+                grad_param_segments_by_dtype[grad.dtype].append(([], []))
+                grad_segment, param_segment = grad_param_segments_by_dtype[
+                    grad.dtype
+                ][-1]
+            param_segment.append(param)
+            grad_segment.append(grad)
+
+        grad_param_segments = []
+        for _, group in grad_param_segments_by_dtype.items():
+            grad_param_segments.extend(group)
 
         if len(grad_param_segments) == 0:
             return
+
+        # because the regroup operation make the relative order invalid,
+        # we need to reorder these fuse group by after_idx
+        def get_after_idx_of_fuse_group(grad_param_segments):
+            grad_segment, param_segment = grad_param_segments
+            return max([outputs_name_to_idx[grad][1] for grad in grad_segment])
+
+        grad_param_segments.sort(key=get_after_idx_of_fuse_group)
 
         fused_vars = [None] * len(grad_param_segments)
         for i in range(len(grad_param_segments) - 1, -1, -1):
@@ -390,7 +424,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 stop_gradient=True,
             )
             fused_vars[i] = fused_var
-            after_idx = outputs_name_to_idx[grad_segment[-1]][1]
+            after_idx = max(
+                [outputs_name_to_idx[grad][1] for grad in grad_segment]
+            )
             block._insert_op_without_sync(
                 after_idx + 1,
                 type='c_allreduce_sum',
@@ -402,17 +438,28 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
+            if not self.calc_comm_same_stream and self.sync_before_allreduce:
+                block._insert_op_without_sync(
+                    after_idx + 1,
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: OpRole.Backward},
+                )
         idx = 0
-        if not self.calc_comm_same_stream:
+        if not self.calc_comm_same_stream and not self.sync_before_allreduce:
             for i in range(len(grad_param_segments)):
-                while block.ops[idx].type != 'c_allreduce_sum':
+                while (
+                    block.ops[idx].type != 'c_allreduce_sum'
+                    or fused_vars[i].name not in block.ops[idx].input_arg_names
+                ):
                     idx += 1
                 grad_segment, param_segment = grad_param_segments[i]
                 for grad in grad_segment:
                     block._insert_op_without_sync(
                         idx + 1,
                         type='depend',
-                        inputs={'X': grad, 'Dep': fused_var},
+                        inputs={'X': grad, 'Dep': fused_vars[i]},
                         outputs={'Out': grad},
                     )
                     idx += 1
@@ -455,6 +502,21 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 },
             )
 
+        if self.calc_comm_same_stream or not self.sync_before_allreduce:
+            block._sync_with_cpp()
+            return
+
+        # insert the sync comm op
+        for idx, op in enumerate(block.ops):
+            if is_optimizer_op(op):
+                block._insert_op_without_sync(
+                    idx,
+                    type='c_sync_comm_stream',
+                    inputs={'X': fused_vars},
+                    outputs={'Out': fused_vars},
+                    attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
+                )
+                break
         block._sync_with_cpp()
 
     def __get_ouputs_name_to_idx(self, first_backward_idx, block):

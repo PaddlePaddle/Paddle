@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
@@ -43,95 +44,14 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {
-
-namespace detail {
-
-// dynamic lib load func
-template <typename T>
-static T* DynLoad(void* handle, std::string name) {
-  T* func = reinterpret_cast<T*>(dlsym(handle, name.c_str()));
-#if !defined(_WIN32)
-  auto errorno = dlerror();
-#else
-  auto errorno = GetLastError();
-#endif  // !_WIN32
-  PADDLE_ENFORCE_NOT_NULL(
-      func,
-      platform::errors::NotFound(
-          "Failed to load dynamic operator library, error message(%s).",
-          errorno));
-  return func;
-}
-
-inline static bool IsDuplicableVar(const std::string& var_name) {
-  std::string suffix = kTensorVectorSuffix;
-  return var_name.rfind(suffix) != std::string::npos;
-}
-
-inline static bool IsOptionalVar(const std::string& var_name) {
-  std::string suffix = kOptionalSuffix;
-  return var_name.rfind(suffix) != std::string::npos;
-}
-
-inline static std::string NoGrad(const std::string& var_name,
-                                 bool is_double_grad = false) {
-  std::string suffix = kGradVarSuffix;
-  std::string new_out_suffix = kDoubleGradNewOutSuffix;
-  std::string tmp_var_name(var_name);
-  if (is_double_grad &&
-      (tmp_var_name.rfind(new_out_suffix) != std::string::npos)) {
-    tmp_var_name = tmp_var_name.substr(
-        0, tmp_var_name.size() - /*kDoubleGradNewOutSuffix length*/ 4);
-  }
-  return tmp_var_name.substr(0, tmp_var_name.size() - kGradVarSuffixSize);
-}
-
-inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
-  std::string suffix = kGradVarSuffix;
-  if (!is_double_grad) {
-    return var_name.rfind(suffix) != std::string::npos;
-  } else {
-    // for double grad cases, the X@GRAD is not a grad var, X@GRAD@GRAD is a
-    // grad var, here we remove a @GRAD suffix
-    return NoGrad(var_name).rfind(suffix) != std::string::npos;
-  }
-}
-
-inline static bool IsMemberOf(const std::vector<std::string>& vec,
-                              const std::string& name) {
-  return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
-}
-
-static std::vector<std::string> ParseAttrStr(const std::string& attr) {
-  auto split_pos = attr.find_first_of(":");
-  PADDLE_ENFORCE_NE(split_pos,
-                    std::string::npos,
-                    platform::errors::InvalidArgument(
-                        "Invalid attribute string format. Attribute string "
-                        "format is `<name>:<type>`."));
-
-  std::vector<std::string> rlt;
-  // 1. name
-  rlt.emplace_back(string::trim_spaces(attr.substr(0, split_pos)));
-  // 2. type
-  rlt.emplace_back(string::trim_spaces(attr.substr(split_pos + 1)));
-
-  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
-
-  return rlt;
-}
-
-}  // namespace detail
-
-////////////////// Kernel Define ////////////////////
 
 // custom op kernel call function define
 static void RunKernelFunc(
@@ -229,7 +149,7 @@ static void RunKernelFunc(
   }
 
   for (auto& attr_str : attrs) {
-    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
     if (attr_type_str == "bool") {
@@ -355,7 +275,7 @@ static void RunKernelFunc(
     }
 
     // handle inplace map
-    kernel_ctx.MapPlainOutputs(inputs, outputs, inplace_map);
+    kernel_ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
     func(&kernel_ctx);
     kernel_ctx.AssignInplaceOutputs();
 
@@ -544,7 +464,7 @@ static void RunInferShapeFunc(
 
   std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
-    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
     if (attr_type_str == "bool") {
@@ -571,13 +491,13 @@ static void RunInferShapeFunc(
       custom_attrs.emplace_back(
           ctx->Attrs().Get<std::vector<std::string>>(attr_name));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<std::string>`, "
-          "Please check whether the attribute data type and "
-          "data type string are matched.",
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether the attribute data "
+          "type and data type string are matched.",
           attr_type_str));
     }
   }
@@ -952,7 +872,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       }
     }
     for (auto& attr : attrs_) {
-      auto attr_name_and_type = detail::ParseAttrStr(attr);
+      auto attr_name_and_type = paddle::ParseAttrStr(attr);
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       if (attr_type_str == "bool") {

@@ -19,6 +19,7 @@ from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import fluid
+from paddle.incubate.layers.nn import tdm_child
 
 
 def create_tdm_tree():
@@ -147,7 +148,7 @@ class TestTDMChildShape(unittest.TestCase):
             tdm_tree_info = create_tdm_tree()
             tree_info_np = np.array(tdm_tree_info).astype('int32')
 
-            child, leaf_mask = fluid.contrib.layers.tdm_child(
+            child, leaf_mask = tdm_child(
                 x=x,
                 node_nums=26,
                 child_nums=2,

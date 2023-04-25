@@ -52,6 +52,16 @@ phi_header_path_compat(
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core)
 
+# NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
+file(READ
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     HEADER_CONTENT)
+string(REGEX REPLACE "#if !defined\\(PADDLE_ON_INFERENCE\\).*#endif" ""
+                     HEADER_CONTENT "${HEADER_CONTENT}")
+file(WRITE
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     "${HEADER_CONTENT}")
+
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME
      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h

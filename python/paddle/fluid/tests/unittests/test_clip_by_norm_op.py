@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
 
 import paddle
@@ -100,6 +100,48 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestClipByNormBF16Op(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = clip.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.np_dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': input,
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
 
 
 class TestClipByNormOpWithSelectedRows(unittest.TestCase):

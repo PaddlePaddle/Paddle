@@ -37,8 +37,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -197,7 +198,7 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
 
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -395,7 +396,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

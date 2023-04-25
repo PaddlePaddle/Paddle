@@ -44,13 +44,6 @@ inline std::vector<int> get_expand_shape(
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
-#ifdef PADDLE_WITH_MLU
-    if (platform::is_mlu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(
-          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
-      shape_data = cpu_shape_tensor.data<int>();
-    }
-#endif
     auto vec_shape =
         std::vector<int>(shape_data, shape_data + shape_tensor->numel());
     return vec_shape;
@@ -70,13 +63,6 @@ inline std::vector<int> get_expand_shape(
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
-        phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_shape.push_back(*temp.data<int32_t>());
-      }
-#endif
-#ifdef PADDLE_WITH_MLU
-      else if (platform::is_mlu_place(tensor->place())) {  // NOLINT
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());

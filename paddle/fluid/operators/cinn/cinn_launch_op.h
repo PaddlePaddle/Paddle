@@ -21,7 +21,6 @@
 #include <unordered_set>
 
 #include "cinn/common/target.h"
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,9 +28,10 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_interpretercore_launch_cinn);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
@@ -60,7 +60,7 @@ void SetCinnRandomSeed();
 
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnLaunchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

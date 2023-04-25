@@ -20,7 +20,6 @@ limitations under the License. */
 #include <random>
 #include <string>
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -29,18 +28,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(cinn_launch);
-USE_OP(cinn_instruction_run);
+USE_OP_ITSELF(cinn_launch);
+USE_OP_ITSELF(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
-DECLARE_double(eager_delete_tensor_gb);
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_interpretercore_launch_cinn);
-DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
+PHI_DECLARE_bool(enable_cinn_auto_tune);
 
+PD_DECLARE_KERNEL(cinn_launch, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 #ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(cinn_launch, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cinn_instruction_run, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 

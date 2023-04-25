@@ -16,7 +16,7 @@
 
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
     true,
@@ -297,12 +297,10 @@ void DependencyBuilder::AddDependencyForReadOp() {
 void DependencyBuilder::AddDependencyForSequentialRun() {
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (!IsCpuOp(instructions_->at(op_idx))) {
-      if (dependence_op_idx != ULLONG_MAX) {
-        AddDownstreamOp(dependence_op_idx, op_idx);
-      }
-      dependence_op_idx = op_idx;
+    if (dependence_op_idx != ULLONG_MAX) {
+      AddDownstreamOp(dependence_op_idx, op_idx);
     }
+    dependence_op_idx = op_idx;
   }
 }
 

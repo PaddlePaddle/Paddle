@@ -20,13 +20,15 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
+#include <atomic>
 #include <random>
 #include <string>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_shm_cache);
+PHI_DECLARE_bool(use_shm_cache);
 
 namespace paddle {
 namespace memory {
@@ -34,12 +36,15 @@ namespace allocation {
 
 std::string GetIPCName() {
   static std::random_device rd;
+  static std::atomic<uint64_t> counter{0};
   std::string handle = "/paddle_";
 #ifdef _WIN32
   handle += std::to_string(GetCurrentProcessId());
 #else
   handle += std::to_string(getpid());
 #endif
+  handle += "_";
+  handle += std::to_string(counter.fetch_add(1));
   handle += "_";
   handle += std::to_string(rd());
   return handle;

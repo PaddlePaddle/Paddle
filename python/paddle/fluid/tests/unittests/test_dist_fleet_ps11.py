@@ -73,7 +73,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="1", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.contrib.layers.sparse_embedding(
+        q_emb = paddle.static.nn.sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -105,7 +105,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="2", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.contrib.layers.sparse_embedding(
+        pt_emb = paddle.static.nn.sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
@@ -136,7 +136,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="3", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.contrib.layers.sparse_embedding(
+        nt_emb = paddle.static.nn.sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(

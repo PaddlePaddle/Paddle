@@ -23,11 +23,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -78,6 +81,22 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
       op->SetInput("Out", this->Output("Out"));  // out
     }
+  }
+};
+class HardSwishCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ protected:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    VLOG(6) << "Runing hardswish_grad composite func";
+    prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
   }
 };
 
@@ -400,6 +419,25 @@ namespace plat = paddle::platform;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
+#define REGISTER_ACTIVATION_OP_WITH_COMP(                              \
+    KERNEL_TYPE, OP_NAME, functor, grad_functor)                       \
+  REGISTER_OPERATOR(                                                   \
+      KERNEL_TYPE,                                                     \
+      ops::ActivationOp,                                               \
+      ops::OP_NAME##OpMaker,                                           \
+      ops::ActivationOpInferVarType,                                   \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::framework::OpDesc>,           \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::imperative::OpBase>,          \
+      ops::OP_NAME##CompositeGradOpMaker,                              \
+      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
+                       ops::ActFwdInplaceInferer,                      \
+                       void>::type);                                   \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                \
+                    ops::ActivationOpGrad,                             \
+                    ops::ActivationGradOpInplaceInferer);
+
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
@@ -416,10 +454,10 @@ REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
-REGISTER_ACTIVATION_OP(hard_swish,
-                       HardSwish,
-                       HardSwishFunctor,
-                       HardSwishGradFunctor);
+REGISTER_ACTIVATION_OP_WITH_COMP(hard_swish,
+                                 HardSwish,
+                                 HardSwishFunctor,
+                                 HardSwishGradFunctor);
 REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 
 /* ==========================  register checkpoint ===========================*/

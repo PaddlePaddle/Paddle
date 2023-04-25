@@ -95,21 +95,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/fluid/pybind/custom_device_py.h"
-#include "paddle/fluid/pybind/distributed_py.h"
-#include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/jit.h"
-#include "paddle/fluid/pybind/xpu_streams_py.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/lod_utils.h"
-#include "paddle/utils/none.h"
-#ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#endif
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -117,7 +102,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
+#include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
@@ -125,12 +114,20 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/lod_utils.h"
+#include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -196,11 +193,12 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -265,14 +263,6 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
-bool IsCompiledWithAscend() {
-#ifndef PADDLE_WITH_ASCEND
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -280,8 +270,6 @@ bool IsCompiledWithXPU() {
   return true;
 #endif
 }
-
-bool IsCompiledWithNPU() { return false; }
 
 bool IsCompiledWithCustomDevice(std::string device_type) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
@@ -1026,70 +1014,6 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
-  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
-      m, "CustomOpKernelContext", R"DOC()DOC");
-  g_custom_op_kernel_ctx_pytype =
-      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
-  custom_op_kernel_ctx.def(py::init<>())
-      .def("add_inputs",
-           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
-             PyObject *obj = input.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackInputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else if (obj == Py_None) {
-               // Check optional Tensor, use one un-initialized tensor to
-               // indicate both Tensor and vector<Tensor> inputs
-               self.EmplaceBackInput(std::move(paddle::Tensor()));
-             } else {
-               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_outputs",
-           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
-             PyObject *obj = outputs.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackOutputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else {
-               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, bool attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, float attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int64_t attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<std::string> &attr) {
-             self.EmplaceBackAttr(attr);
-           });
-
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -1592,14 +1516,6 @@ All parameter, weight, gradient are variables in Paddle.
       return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](paddle::platform::NPUPlace &place)
-              -> paddle::platform::DeviceContext * {
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with NPU support."));
-          })
       .def_static("create",
                   [](paddle::platform::CustomPlace &place)
                       -> paddle::platform::DeviceContext * {
@@ -1766,13 +1682,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const platform::XPUPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::NPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -1985,9 +1894,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
-  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
-  m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
@@ -2053,17 +1960,6 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetGPUComputeCapability(place.device) >= 53;
-  });
-  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
-    return platform::GetGPUComputeCapability(place.device) >= 80;
-  });
-#endif
 
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
@@ -2775,8 +2671,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
   // Add the api for nan op debug
+  m.def("set_nan_inf_stack_limit",
+        &paddle::framework::details::SetNanInfStackLimit);
+
+  // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  // Add check op lost
+  m.def("set_checked_op_list",
+        [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
+
+  // Add skipped op list
+  m.def("set_skipped_op_list",
+        [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
   m.def("check_numerics",
         [](const std::string &op_name, const paddle::Tensor &tensor) {
@@ -2820,11 +2728,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindGenerator(&m);
 #ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
-#endif
-#ifdef PADDLE_WITH_ASCEND
-  BindAscendWrapper(&m);
-  BindAscendGraph(&m);
-  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);

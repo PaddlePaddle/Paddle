@@ -14,14 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/system_allocator.h"
 
+#include <gtest/gtest.h>
 #include <memory>
 
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_pinned_memory);
+PHI_DECLARE_bool(use_pinned_memory);
 
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;
@@ -79,26 +79,6 @@ TEST(GPUAllocator, AllocFailure) {
     ASSERT_TRUE(false);
   } catch (paddle::memory::allocation::BadAlloc&) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::GpuGetLastError());
-  }
-}
-#endif
-
-#ifdef PADDLE_WITH_MLU
-TEST(MLUAllocator, Alloc) {
-  paddle::memory::detail::MLUAllocator a(0);
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
-}
-
-TEST(MLUAllocator, AllocFailure) {
-  paddle::memory::detail::MLUAllocator allocator(0);
-  size_t index;
-  size_t alloc_size = (static_cast<size_t>(1) << 40);  // Very large number
-  try {
-    allocator.Alloc(&index, alloc_size);
-    ASSERT_TRUE(false);
-  } catch (paddle::memory::allocation::BadAlloc&) {
-    PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetLastError());
   }
 }
 #endif

@@ -21,9 +21,10 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
-DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace operators {
@@ -195,5 +196,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(cinn_launch,
-                       ops::CinnLaunchOpKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    cinn_launch, CPU, ALL_LAYOUT, ops::CinnLaunchOpKernel, float) {}

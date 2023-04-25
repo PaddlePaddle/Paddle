@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -380,12 +382,12 @@ template <typename DeviceContext,
           typename Tout = T>
 void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     const DDim &x_dim,
-                                    const DDim &y_dim,
+                                    const DDim &y_dim UNUSED,
                                     const DenseTensor &x,
                                     const DenseTensor &y,
                                     const DenseTensor &out,
                                     const DenseTensor &dout,
-                                    int axis,
+                                    int axis UNUSED,
                                     DenseTensor *dx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,

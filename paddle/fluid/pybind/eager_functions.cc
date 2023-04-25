@@ -33,6 +33,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
+#include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -43,8 +44,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -59,11 +62,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -424,55 +427,6 @@ static void ConstructFwdAndBwdMap(
   }
 }
 
-static std::vector<paddle::any> CastAttrsToTargetType(
-    const std::vector<paddle::any>& src,
-    const std::vector<std::string>& attrs_names) {
-  std::vector<paddle::any> res;
-  PADDLE_ENFORCE_EQ(src.size(),
-                    attrs_names.size(),
-                    paddle::platform::errors::InvalidArgument(
-                        "We Expected same size of attrs and attrs_name list, "
-                        "if u got this error indicate your custom op setting "
-                        "%s attrs, but you just give %s",
-                        attrs_names.size(),
-                        src.size()));
-  for (size_t i = 0; i < src.size(); i++) {
-    size_t end = attrs_names[i].find(": ");
-    std::string type_name = attrs_names[i].substr(end + 2);
-    if (type_name == "int") {
-      if (src[i].type() == typeid(bool)) {
-        res.emplace_back(static_cast<int>(paddle::any_cast<bool>(src[i])));
-      } else if (src[i].type() == typeid(int)) {
-        res.emplace_back(src[i]);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Your No. %s attrs should only can be bool or int32, other type is "
-            "forbidden for now but we got %s. Check your code first please",
-            i,
-            src[i].type().name()));
-      }
-    } else if (type_name == "int64_t") {
-      if (src[i].type() == typeid(bool)) {
-        res.emplace_back(static_cast<int64_t>(paddle::any_cast<bool>(src[i])));
-      } else if (src[i].type() == typeid(int)) {
-        res.emplace_back(static_cast<int64_t>(paddle::any_cast<int>(src[i])));
-      } else if (src[i].type() == typeid(int64_t)) {
-        res.emplace_back(src[i]);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Your No. %s attrs should only can be bool or int32 or int64_t, "
-            "other type is forbidden for now but we got %s. Check your code "
-            "first please",
-            i,
-            src[i].type().name()));
-      }
-    } else {
-      res.emplace_back(src[i]);
-    }
-  }
-  return res;
-}
-
 static PyObject* eager_api_jit_function_call(PyObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -534,6 +488,25 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+// This function copies from function `EmptyTensorInitializer` with default
+// parameters
+static Tensor InitializedEmptyTensor() {
+  auto ddims = phi::make_ddim({0});
+  auto tensor = paddle::Tensor();
+  tensor.set_name(
+      egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+  autograd_meta->SetPersistable(false);
+  std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+  std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+  dense_tensor = std::make_shared<phi::DenseTensor>(
+      allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
+  tensor.set_impl(dense_tensor);
+  autograd_meta->SetGradNode(
+      std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  return tensor;
+}
+
 static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -545,14 +518,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 
-  paddle::CustomOpKernelContext ctx =
-      CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
-  std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
-  bool trace_backward = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  VLOG(7) << "Get things from python for Custom Op: " << op_type;
+  paddle::CustomOpKernelContext ctx;
   {
     eager_gil_scoped_release guard;
-    VLOG(7) << "Get things for python for Custom Op: " << op_type
-            << ", trace_backward is: " << trace_backward;
     auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
     PADDLE_ENFORCE_NE(
         meta_info_map.find(op_type),
@@ -562,40 +532,137 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             "created by LoadOpMetaInfoAndRegisterOp, please make "
             "sure you registered your op first and try again. ",
             op_type));
-    VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-    // TODO(HongyuJia): Optimize Attrs Cast naming and implementation
-    std::vector<paddle::any> res_attrs = CastAttrsToTargetType(
-        ctx.Attrs(),
-        paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[0]));
-    ctx.EmplaceBackAttrs(res_attrs);
     const auto& vec_map = meta_info_map.at(op_type);
-
-    const auto& inputs =
-        paddle::OpMetaInfoHelper::GetInputs(meta_info_map.at(op_type)[0]);
-    const auto& outputs =
-        paddle::OpMetaInfoHelper::GetOutputs(meta_info_map.at(op_type)[0]);
+    const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+    const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
     const auto& inplace_map =
-        paddle::OpMetaInfoHelper::GetInplaceMap(meta_info_map.at(op_type)[0]);
+        paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      const auto& input = inputs.at(i);
+      // Parse op_type first, so that use i + 1
+      PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
+      // Emplace Py_None from python, this means optional inputs passed to C++,
+      // use one un-initialized tensor to indicate both Tensor and
+      // vector<Tensor> inputs.
+      if (obj == Py_None) {
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add un-initialized tensor "
+                   "because the optional input is None";
+        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        continue;
+      }
+      if (paddle::framework::detail::IsDuplicableVar(input)) {
+        ctx.EmplaceBackInputs(std::move(CastPyArg2VectorOfTensor(obj, i + 1)));
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add vector<Tensor> size = "
+                << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+      } else {
+        ctx.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, i + 1)));
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add Tensor for general case.";
+      }
+    }
+    // Parse op_type and inputs first, so that use 1 + inputs.size() + i
+    int attr_start_idx = 1 + inputs.size();
+    for (size_t i = 0; i < attrs.size(); ++i) {
+      const auto& attr = attrs.at(i);
+      std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
+      auto attr_type_str = attr_name_and_type[1];
+      VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
+              << " to CustomOpKernelContext. Attribute type = "
+              << attr_type_str;
+      PyObject* obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
+      if (attr_type_str == "bool") {
+        ctx.EmplaceBackAttr(CastPyArg2AttrBoolean(obj, attr_start_idx + i));
+      } else if (attr_type_str == "int") {
+        ctx.EmplaceBackAttr(CastPyArg2AttrInt(obj, attr_start_idx + i));
+      } else if (attr_type_str == "float") {
+        ctx.EmplaceBackAttr(CastPyArg2AttrFloat(obj, attr_start_idx + i));
+      } else if (attr_type_str == "int64_t") {
+        ctx.EmplaceBackAttr(CastPyArg2Long(obj, op_type, attr_start_idx + i));
+      } else if (attr_type_str == "std::string") {
+        ctx.EmplaceBackAttr(CastPyArg2AttrString(obj, attr_start_idx + i));
+      } else if (attr_type_str == "std::vector<int>") {
+        ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
+      } else if (attr_type_str == "std::vector<float>") {
+        ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
+      } else if (attr_type_str == "std::vector<int64_t>") {
+        ctx.EmplaceBackAttr(CastPyArg2Longs(obj, op_type, attr_start_idx + i));
+      } else if (attr_type_str == "std::vector<std::string>") {
+        ctx.EmplaceBackAttr(CastPyArg2VectorOfString(obj, attr_start_idx + i));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported `%s` type value as custom attribute now. "
+            "Supported data types include `bool`, `int`, `float`, "
+            "`int64_t`, `std::string`, `std::vector<int>`, "
+            "`std::vector<float>`, `std::vector<int64_t>`, "
+            "`std::vector<std::string>`, Please check whether "
+            "the attribute data type and data type string are matched.",
+            attr_type_str));
+      }
+    }
+    ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
+    const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
+    for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
+      const auto& output = outputs.at(out_idx);
+      // inplace special case
+      if (inplace_reverse_idx_map.find(out_idx) !=
+          inplace_reverse_idx_map.end()) {
+        size_t in_idx = inplace_reverse_idx_map.at(out_idx);
+        const auto& input_range = ctx.InputRangeAt(in_idx);
+        const auto& input_tensor = ctx.InputAt(input_range.first);
+        // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
+        if (paddle::framework::detail::IsOptionalVar(output) &&
+            !input_tensor.initialized()) {
+          VLOG(7) << "Custom operator add output " << output
+                  << " to CustomOpKernelContext. Add un-initialized tensor "
+                     "because the inplace optional input is None";
+          ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+          continue;
+        }
+        /// inplace vector<Tensor>, initialized tensor.
+        if (paddle::framework::detail::IsDuplicableVar(output)) {
+          std::vector<paddle::Tensor> empty_tensors;
+          size_t vector_size = input_range.second - input_range.first;
+          empty_tensors.resize(vector_size);
+          for (size_t i = 0; i < vector_size; ++i) {
+            empty_tensors[i] = InitializedEmptyTensor();
+          }
+          VLOG(7) << "Custom operator add output " << output
+                  << " to CustomOpKernelContext. Add vector<tensor> size = "
+                  << empty_tensors.size();
+          ctx.EmplaceBackOutputs(std::move(empty_tensors));
+          continue;
+        }
+      }
+      VLOG(7) << "Custom operator add output " << output
+              << " to CustomOpKernelContext. Add initialized Tensor because "
+                 "using general or inplace mechanism";
+      // general Tensor or inplace Tensor, initialized tensor.
+      ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
+    }
+
     // handle inplace map
-    ctx.MapPlainOutputs(inputs, outputs, inplace_map);
+    ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
+    VLOG(7) << "Run Kernel of Custom Op: " << op_type;
     (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
     ctx.AssignInplaceOutputs();
 
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
-        size_t idx = ctx.OutputRangeAt(i).first;
-        paddle::Tensor* out_tensor = ctx.MutableOutputAt(idx);
+        paddle::Tensor* out_tensor =
+            ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->initialized()) {
           PADDLE_ENFORCE(
-              outputs.at(idx).find(paddle::kOptionalSuffix) !=
-                  std::string::npos,
+              paddle::framework::detail::IsOptionalVar(outputs.at(i)),
               phi::errors::InvalidArgument(
                   "Custom operator's %d-th output is not initialized. "
                   "Please check your implementation again. If you are "
                   "using inplace optional output, then you must use "
                   "`paddle::Optional` to decorate this output",
-                  idx));
+                  i));
           // We can also consider using `autograd_meta` to tolerant nullptr.
           out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
         }
@@ -603,45 +670,37 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     }
 
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
-    std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
-    std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
-    VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-    ins_auto_grad_metas.resize(ctx.InputRange().size());
-    VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-    outs_auto_grad_metas.resize(ctx.OutputRange().size());
+    size_t slot_ins_num = ctx.InputRange().size();
+    size_t slot_outs_num = ctx.OutputRange().size();
+    VLOG(7) << "We got slot num of ins is: " << slot_ins_num;
+    VLOG(7) << "We got slot num of outs is: " << slot_outs_num;
+    std::vector<egr::AutogradMeta*> ins_auto_grad_metas =
+        egr::EagerUtils::nullable_autograd_meta(*ctx.AllMutableInput());
+    std::vector<egr::AutogradMeta*> outs_auto_grad_metas =
+        egr::EagerUtils::unsafe_autograd_meta(*ctx.AllMutableOutput());
 
-    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-      ins_auto_grad_metas[i] =
-          egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
-              ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
-    }
-    for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
-      outs_auto_grad_metas[i] =
-          egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
-              ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
-    }
     bool require_any_grad = false;
-    for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+    bool trace_backward = true;
+    for (size_t i = 0; i < ins_auto_grad_metas.size(); ++i) {
       require_any_grad =
           require_any_grad || egr::EagerUtils::ComputeRequireGrad(
-                                  trace_backward, &(ins_auto_grad_metas[i]));
+                                  trace_backward, ins_auto_grad_metas[i]);
     }
 
     // handle inplace map
-    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-      if (inplace_map.find(inputs[i]) != inplace_map.end()) {
-        size_t input_size =
-            ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
-        size_t start_idx = ctx.InputRangeAt(i).first;
-        for (size_t j = 0; j < input_size; j++) {
-          egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
-                                        ins_auto_grad_metas[i][j],
-                                        require_any_grad);
-          if (ctx.MutableInputAt(start_idx + j).defined()) {
+    if (!inplace_map.empty()) {
+      for (size_t i = 0; i < ctx.InputRange().size(); i++) {
+        if (inplace_map.find(inputs[i]) == inplace_map.end()) {
+          continue;
+        }
+        const auto& input_pair = ctx.InputRangeAt(i);
+        for (size_t j = input_pair.first; j < input_pair.second; j++) {
+          egr::EagerUtils::CheckInplace(
+              ctx.InputAt(j), ins_auto_grad_metas[j], require_any_grad);
+          if (ctx.MutableInputAt(j).defined()) {
             // Bump Inplace Version
-            ctx.MutableInputAt(start_idx + j).bump_inplace_version();
-            VLOG(3) << "Custom operator: Tensor("
-                    << ctx.InputAt(start_idx + j).name()
+            ctx.MutableInputAt(j).bump_inplace_version();
+            VLOG(3) << "Custom operator: Tensor(" << ctx.InputAt(j).name()
                     << ") uses Inplace Strategy.";
           }
         }
@@ -651,45 +710,50 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     if (require_any_grad && (vec_map.size() > 1)) {
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-        egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
+      for (size_t i = 0; i < outs_auto_grad_metas.size(); ++i) {
+        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_metas[i]);
       }
       // Note(HongyuJia): In dygraph eager mode, CheckInplace makes sure leaf
       // nodes set stop_gradient=True. However, dygraph mode can also outputs
       // lead nodes' gradients (For example, we can get x.grad after x.add_(y)).
       // To be consistent with dygraph mode, we have to PassStopGradient for all
       // inplaced ins_auto_grad_metas.
-      std::unordered_map<size_t, size_t> inplace_tensor_map =
-          ctx.GetInplaceTensorMap();
-      for (auto pair : inplace_tensor_map) {
-        egr::EagerUtils::PassStopGradient(false,
-                                          &(ins_auto_grad_metas[pair.first]));
+      const auto& inplace_index_map = ctx.GetInplaceIndexMap();
+      for (auto pair : inplace_index_map) {
+        const auto& size_pair = ctx.InputRangeAt(pair.first);
+        for (size_t i = size_pair.first; i < size_pair.second; ++i) {
+          egr::EagerUtils::PassStopGradient(false, ins_auto_grad_metas[i]);
+        }
       }
       auto grad_node = std::make_shared<egr::RunCustomOpNode>(
-          outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
-      auto slot_map =
+          slot_outs_num, slot_ins_num, op_type);
+      const auto& slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
+
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
-      for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+      for (size_t i = 0; i < slot_ins_num; i++) {
         const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
             ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
-          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
+          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0].at(i));
         } else {
-          grad_node->SetGradOutMeta(
-              in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
+          grad_node->SetGradOutMeta(in_tensors, slot_ins_num - 1 - no_grad_cnt);
           no_grad_cnt++;
         }
       }
       // Prepare Grad inputs with grad of fwd outputs
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-        const std::vector<paddle::Tensor>& out_tensors = ctx.OutputsBetweeen(
-            ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second);
-
-        egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
-        egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
+      for (size_t i = 0; i < slot_outs_num; i++) {
+        const auto& size_pair = ctx.OutputRangeAt(i);
+        const std::vector<paddle::Tensor>& out_tensors =
+            ctx.OutputsBetweeen(size_pair.first, size_pair.second);
+        for (size_t j = size_pair.first; j < size_pair.second; j++) {
+          // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
+          outs_auto_grad_metas[j]->SetSingleOutRankWithSlot(
+              i, j - size_pair.first);
+          egr::EagerUtils::SetHistory(outs_auto_grad_metas[j], grad_node);
+        }
         grad_node->SetGradInMeta(out_tensors, i);
       }
 
@@ -713,9 +777,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   ctx.InputRangeAt(it->first).second));
       }
 
-      auto attrs_names =
-          paddle::OpMetaInfoHelper::GetAttrs(meta_info_map.at(op_type)[1]);
-      std::vector<paddle::any> attrs(attrs_names.size());
+      const std::vector<paddle::any>& res_attrs = ctx.Attrs();
+      std::vector<paddle::any> attrs(res_attrs.size());
       // Prepare attrs for Grad node
       for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
         VLOG(7) << "Prepare fwd attrs: " << it->first
@@ -725,7 +788,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       grad_node->SetAttrs(attrs);
     }
   }
-  RETURN_PY_NONE
+  return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1183,6 +1246,37 @@ static PyObject* eager_api__add_backward_final_hook(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_set_master_grads(PyObject* self,
+                                            PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  // tensor_list is a list of model parameters.
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "set master_grad for tensor: " << tensor.name();
+    PADDLE_ENFORCE_EQ(
+        egr::egr_utils_api::IsLeafTensor(tensor),
+        true,
+        paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+    paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
+    PADDLE_ENFORCE_NE(grad,
+                      nullptr,
+                      paddle::platform::errors::Fatal(
+                          "Detected NULL grad"
+                          "Please check if you have manually cleared"
+                          "the grad inside autograd_meta"));
+    auto dtype = (*grad).dtype();
+    if ((*grad).initialized() &&
+        (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16)) {
+      auto master_grad =
+          paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
+      grad->set_impl(master_grad.impl());
+    }
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
@@ -1251,6 +1345,11 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_reset_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    /**amp functions**/
+    {"set_master_grads",
+     (PyCFunction)(void (*)(void))eager_api_set_master_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read",
@@ -1271,7 +1370,7 @@ PyMethodDef variable_functions[] = {
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle erroe in BindFunctions(PyModule_AddFunctions)."));
+        "Init Paddle error in BindFunctions(PyModule_AddFunctions)."));
     return;
   }
 }
