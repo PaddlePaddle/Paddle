@@ -23,10 +23,10 @@ KernelSignature SequencePoolOpArgumentMapping(
 
 KernelSignature SequencePoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  const auto& use_pooltype_maxindex =
+  const auto& pooltype_value =
       paddle::any_cast<std::string>(ctx.Attr("pooltype"));
 
-  if (use_pooltype_maxindex == "MAX") {
+  if (pooltype_value == "MAX" || pooltype_value == "SUM") {
     return KernelSignature("sequence_pool_grad",
                            {"X", "MaxIndex", "Out@GRAD"},
                            {"is_test", "pooltype", "pad_value"},
