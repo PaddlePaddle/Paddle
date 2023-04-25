@@ -2528,7 +2528,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             op_node.op()._set_attr("skip_quant", True)
             op_node.op()._set_attr("with_quant_attr", True)
 
-    def _transform_forward(self, graph, op):
+    def _transform_forward(self, graph, op, FLAG=False):
         op.op()._set_attr("quantization_type", "qat_with_weight")
         op_role = op.op().attr("op_role")
         weight_scale_node = None
@@ -2592,16 +2592,14 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 channel_wise = False
                 if quant_type == 'channel_wise_abs_max':  # Weight quantization
                     channel_wise = True
-                    op_type = op.name()
-                    trans_y = (op_type == 'matmul_v2') and op.op().attr(
-                        'trans_y'
-                    )
-                    op_type = op_type + '_trans_y' if trans_y else op_type
-                    quant_axis = (
+                    if FLAG:
+                        quant_axis=1
+                    else:
+                        quant_axis = (
                         1
-                        if op_type in utils._channelwise_quant_axis1_ops
+                        if op.name() in utils._channelwise_quant_axis1_ops
                         else 0
-                    )
+                        )
                 insert_quant_pass = InsertQuantizeLinear(
                     self._place,
                     self._scope,
@@ -2657,7 +2655,20 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         for _op in graph.all_op_nodes():
             var_names = utils._get_op_output_var_names(_op)
             if conv_weight_var_name in var_names and self._has_weight(_op):
-                weight_scale_node = self._transform_forward(graph, _op)
+                if op.name()=='conv2d_transpose':
+                    # in_names = utils._get_op_output_var_names(_op)
+                    # # utils._channelwise_quant_axis1_ops.append('unsqueeze2')
+                    # for in_name in in_names:
+                    #     if 'conv1d' in in_name:
+                    #         print(utils._get_op_output_var_names(op))
+                    #     else:
+                    # print(utils._get_op_output_var_names(op))
+                    if self._is_skip_quant(graph, _op):
+                        print(utils._get_op_output_var_names(_op))
+                    else:
+                        weight_scale_node = self._transform_forward(graph, _op ,True)
+                else:
+                    weight_scale_node = self._transform_forward(graph, _op ,False)
         # insert qdq before conv2d
         for var_node in op.inputs:
             quant_bits = (
@@ -2677,37 +2688,42 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 quant_axis = (
                     1 if op.name() in utils._channelwise_quant_axis1_ops else 0
                 )
-            insert_quant_pass = InsertQuantizeLinear(
-                self._place,
-                self._scope,
-                quant_bits=quant_bits,
-                quant_axis=quant_axis,
-                channel_wise=channel_wise,
-                moving_rate=self._moving_rate,
-                is_test=self._is_test,
-            )
-            scale_var_node = (
-                weight_scale_node
-                if var_node.name() == conv_weight_var_name
-                else None
-            )
-            (
-                quant_var_node,
-                scale_var_node,
-            ) = insert_quant_pass.insert_quant_op(
-                graph,
-                var_node,
-                var_name=var_node.name(),
-                scale_var_node=scale_var_node,
-                op_role=op.op().attr("op_role"),
-            )
-            dequant_var_node = insert_quant_pass.insert_dequant_op(
-                graph,
-                quant_var_node,
-                scale_var_node,
-                op.op().attr("op_role"),
-            )
-            graph.update_input_link(var_node, dequant_var_node, op)
+                if 'unsqueeze2' in utils._channelwise_quant_axis1_ops:
+                    utils._channelwise_quant_axis1_ops.remove('unsqueeze2')
+            if self._is_skip_quant(graph, op):
+                print(utils._get_op_output_var_names(op))
+            else:
+                insert_quant_pass = InsertQuantizeLinear(
+                   self._place,
+                   self._scope,
+                   quant_bits=quant_bits,
+                   quant_axis=quant_axis,
+                   channel_wise=channel_wise,
+                   moving_rate=self._moving_rate,
+                   is_test=self._is_test,
+                )
+                scale_var_node = (
+                   weight_scale_node
+                   if var_node.name() == conv_weight_var_name
+                   else None
+                )
+                (
+                   quant_var_node,
+                   scale_var_node,
+                ) = insert_quant_pass.insert_quant_op(
+                   graph,
+                   var_node,
+                   var_name=var_node.name(),
+                   scale_var_node=scale_var_node,
+                   op_role=op.op().attr("op_role"),
+                )
+                dequant_var_node = insert_quant_pass.insert_dequant_op(
+                   graph,
+                   quant_var_node,
+                   scale_var_node,
+                   op.op().attr("op_role"),
+                )
+                graph.update_input_link(var_node, dequant_var_node, op)
 
     def apply(self, graph):
         """
