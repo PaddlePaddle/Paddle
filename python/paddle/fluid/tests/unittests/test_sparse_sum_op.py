@@ -18,6 +18,10 @@ import numpy as np
 
 import paddle
 
+devices = ['cpu']
+if paddle.device.get_device() != "cpu":
+    devices.append(paddle.device.get_device())
+
 
 class TestSparseSum(unittest.TestCase):
     """
@@ -37,8 +41,7 @@ class TestSparseSum(unittest.TestCase):
     def check_result(
         self, x_shape, dims, keepdim, format, sparse_dim=None, dtype=None
     ):
-
-        for device in ['cpu', 'gpu']:
+        for device in devices:
             paddle.device.set_device(device)
             if sparse_dim:
                 mask_shape = [*x_shape[:sparse_dim]] + [1] * (
@@ -47,6 +50,15 @@ class TestSparseSum(unittest.TestCase):
                 mask = paddle.randint(0, 2, mask_shape)
             else:
                 mask = paddle.randint(0, 2, x_shape)
+
+            while paddle.sum(mask) == 0:
+                if sparse_dim:
+                    mask_shape = [*x_shape[:sparse_dim]] + [1] * (
+                        len(x_shape) - sparse_dim
+                    )
+                    mask = paddle.randint(0, 2, mask_shape)
+                else:
+                    mask = paddle.randint(0, 2, x_shape)
             # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
             # or the backward checks may fail.
             origin_x = (paddle.rand(x_shape, dtype='float64') + 1) * mask
@@ -105,9 +117,11 @@ class TestSparseSum(unittest.TestCase):
 
 class TestSparseSumStatic(unittest.TestCase):
     def check_result_coo(self, x_shape, dims, keepdim, dtype=None):
-        for device in ['cpu', 'gpu']:
+        for device in devices:
             paddle.device.set_device(device)
             mask = paddle.randint(0, 2, x_shape)
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, x_shape)
             origin_data = (paddle.rand(x_shape, dtype='float32') + 1) * mask
             sparse_data = origin_data.detach().to_sparse_coo(
                 sparse_dim=len(x_shape)
