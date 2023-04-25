@@ -18,9 +18,6 @@ import numpy as np
 
 import paddle
 
-for device in ['cpu', 'gpu']:
-    paddle.device.set_device(device)
-
 
 class TestSparseSum(unittest.TestCase):
     """
@@ -40,32 +37,35 @@ class TestSparseSum(unittest.TestCase):
     def check_result(
         self, x_shape, dims, keepdim, format, sparse_dim=None, dtype=None
     ):
-        if sparse_dim:
-            mask_shape = [*x_shape[:sparse_dim]] + [1] * (
-                len(x_shape) - sparse_dim
+
+        for device in ['cpu', 'gpu']:
+            paddle.device.set_device(device)
+            if sparse_dim:
+                mask_shape = [*x_shape[:sparse_dim]] + [1] * (
+                    len(x_shape) - sparse_dim
+                )
+                mask = paddle.randint(0, 2, mask_shape)
+            else:
+                mask = paddle.randint(0, 2, x_shape)
+            # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
+            # or the backward checks may fail.
+            origin_x = (paddle.rand(x_shape, dtype='float64') + 1) * mask
+            dense_x = origin_x.detach()
+            dense_x.stop_gradient = False
+            dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
+            sp_x = self.to_sparse(origin_x, format, sparse_dim)
+            sp_x.stop_gradient = False
+            sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
+            np.testing.assert_allclose(
+                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
             )
-            mask = paddle.randint(0, 2, mask_shape)
-        else:
-            mask = paddle.randint(0, 2, x_shape)
-        # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
-        # or the backward checks may fail.
-        origin_x = (paddle.rand(x_shape, dtype='float64') + 1) * mask
-        dense_x = origin_x.detach()
-        dense_x.stop_gradient = False
-        dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
-        sp_x = self.to_sparse(origin_x, format, sparse_dim)
-        sp_x.stop_gradient = False
-        sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
-        np.testing.assert_allclose(
-            sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
-        )
-        dense_out.backward()
-        sp_out.backward()
-        np.testing.assert_allclose(
-            sp_x.grad.to_dense().numpy(),
-            (dense_x.grad * mask).numpy(),
-            rtol=1e-05,
-        )
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                (dense_x.grad * mask).numpy(),
+                rtol=1e-05,
+            )
 
     def test_sum_1d(self):
         self.check_result([5], None, False, 'coo')
@@ -105,52 +105,58 @@ class TestSparseSum(unittest.TestCase):
 
 class TestSparseSumStatic(unittest.TestCase):
     def check_result_coo(self, x_shape, dims, keepdim, dtype=None):
-        mask = paddle.randint(0, 2, x_shape)
-        origin_data = (paddle.rand(x_shape, dtype='float32') + 1) * mask
-        sparse_data = origin_data.detach().to_sparse_coo(
-            sparse_dim=len(x_shape)
-        )
-        indices_data = sparse_data.indices()
-        values_data = sparse_data.values()
+        for device in ['cpu', 'gpu']:
+            paddle.device.set_device(device)
+            mask = paddle.randint(0, 2, x_shape)
+            origin_data = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+            sparse_data = origin_data.detach().to_sparse_coo(
+                sparse_dim=len(x_shape)
+            )
+            indices_data = sparse_data.indices()
+            values_data = sparse_data.values()
 
-        dense_x = origin_data
-        dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
+            dense_x = origin_data
+            dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
 
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            indices = paddle.static.data(
-                name='indices',
-                shape=indices_data.shape,
-                dtype=indices_data.dtype,
-            )
-            values = paddle.static.data(
-                name='values', shape=values_data.shape, dtype=values_data.dtype
-            )
-            sp_x = paddle.sparse.sparse_coo_tensor(
-                indices,
-                values,
-                shape=origin_data.shape,
-                dtype=origin_data.dtype,
-            )
-            sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
-            sp_dense_out = sp_out.to_dense()
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                indices = paddle.static.data(
+                    name='indices',
+                    shape=indices_data.shape,
+                    dtype=indices_data.dtype,
+                )
+                values = paddle.static.data(
+                    name='values',
+                    shape=values_data.shape,
+                    dtype=values_data.dtype,
+                )
+                sp_x = paddle.sparse.sparse_coo_tensor(
+                    indices,
+                    values,
+                    shape=origin_data.shape,
+                    dtype=origin_data.dtype,
+                )
+                sp_out = paddle.sparse.sum(
+                    sp_x, dims, keepdim=keepdim, dtype=dtype
+                )
+                sp_dense_out = sp_out.to_dense()
 
-            sparse_exe = paddle.static.Executor()
-            sparse_fetch = sparse_exe.run(
-                feed={
-                    'indices': indices_data.numpy(),
-                    "values": values_data.numpy(),
-                },
-                fetch_list=[sp_dense_out],
-                return_numpy=True,
-            )
+                sparse_exe = paddle.static.Executor()
+                sparse_fetch = sparse_exe.run(
+                    feed={
+                        'indices': indices_data.numpy(),
+                        "values": values_data.numpy(),
+                    },
+                    fetch_list=[sp_dense_out],
+                    return_numpy=True,
+                )
 
-            np.testing.assert_allclose(
-                dense_out.numpy(), sparse_fetch[0], rtol=1e-5
-            )
-        paddle.disable_static()
+                np.testing.assert_allclose(
+                    dense_out.numpy(), sparse_fetch[0], rtol=1e-5
+                )
+            paddle.disable_static()
 
     def test_sum(self):
         # 1d
