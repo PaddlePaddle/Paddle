@@ -288,6 +288,8 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool adaptive_seqlen = false,
                  bool enable_multi_stream = false);
 
+  void SetXpuConfig(bool xpu_enable_quant_weight_only = false);
+
   ///
   /// \brief configs of IPU
   ///
@@ -1181,6 +1183,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+  bool xpu_enable_quant_weight_only_{false};
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

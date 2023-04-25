@@ -308,6 +308,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
+    } else if (pass_name == "fused_multi_transformer_xpu_quant_pass") {
+      pass->Set("quant_weight_only",
+                new bool(argument->xpu_enable_quant_weight_only()));
     }
     pre_pass = pass_name;
 

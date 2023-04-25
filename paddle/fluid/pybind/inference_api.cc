@@ -767,6 +767,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id",
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
+      .def("set_xpu_config",
+           &AnalysisConfig::SetXpuConfig,
+           py::arg("xpu_enable_quant_weight_only") = false)
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),

@@ -195,6 +195,11 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
   Update();
 }
 
+void AnalysisConfig::SetXpuConfig(bool xpu_enable_quant_weight_only) {
+  xpu_enable_quant_weight_only_ = xpu_enable_quant_weight_only;
+  Update();
+}
+
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
                                         int device_id,
                                         Precision precision_mode) {
@@ -488,6 +493,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
+  CP_MEMBER(xpu_enable_quant_weight_only_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
@@ -1090,6 +1096,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
+  ss << xpu_enable_quant_weight_only_;
 
   ss << use_npu_;
   ss << npu_device_id_;
@@ -1330,6 +1337,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
     os.InsertRow(
         {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+    os.InsertRow({"xpu_enable_quant_weight_only",
+                  std::to_string(xpu_enable_quant_weight_only_)});
   }
   os.InsetDivider();
 

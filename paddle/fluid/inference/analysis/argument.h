@@ -289,6 +289,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+  DECL_ARGUMENT_FIELD(xpu_enable_quant_weight_only,
+                      XpuEnableQuantWeightOnly,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 

@@ -1426,6 +1426,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
   argument_->SetXpuDeviceId(config_.xpu_device_id_);
   argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+  argument_->SetXpuEnableQuantWeightOnly(config_.xpu_enable_quant_weight_only_);
 #endif
 
   auto *pass_builder = config_.pass_builder();
