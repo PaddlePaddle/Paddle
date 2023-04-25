@@ -26,8 +26,8 @@ import paddle
 
 from ...fluid.framework import IrGraph, IrNode
 from ...framework import _get_paddle_place, core
+from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
-from .. import Program, data, program_guard, scope_guard
 from ..log_helper import get_logger
 from . import utils
 from .quant_config import (
