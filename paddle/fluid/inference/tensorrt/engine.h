@@ -389,6 +389,14 @@ class TensorRTEngine {
     return quant_dynamic_range_.count(tensor);
   }
 
+  void SetOpsRunFloat(const std::unordered_set<std::string>& ops) {
+    ops_run_float_ = ops;
+  }
+
+  bool OpIsRunFloat(const std::string& op_type) const {
+    return ops_run_float_.count(op_type) > 0;
+  }
+
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
   // so we need to copy the weights from GPU to CPU in our op converter.
@@ -717,6 +725,7 @@ class TensorRTEngine {
   ShapeMapType max_shape_tensor_;
   ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
+  std::unordered_set<std::string> ops_run_float_;
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
   bool use_dla_{false};

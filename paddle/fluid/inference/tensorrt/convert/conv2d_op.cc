@@ -157,6 +157,12 @@ void ConvertConv2d(TensorRTEngine* engine,
   auto output_name = op_desc.Output("Output").front();
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
+
+  if (engine->OpIsRunFloat(op_desc.Type())) {
+    layer->resetPrecision();
+    layer->setPrecision(nvinfer1::DataType::kFLOAT);
+  }
+
   engine->SetITensor(output_name, layer->getOutput(0));
 
   if (test_mode) {

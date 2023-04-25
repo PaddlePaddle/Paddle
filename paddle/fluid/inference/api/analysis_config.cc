@@ -445,6 +445,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_inspector_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+  CP_MEMBER(trt_ops_run_float_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -797,6 +798,11 @@ void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
+}
+
+void AnalysisConfig::Exp_DisableTensorRtHalfOps(
+    const std::unordered_set<std::string> &ops) {
+  trt_ops_run_float_ = ops;
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }

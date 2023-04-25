@@ -701,10 +701,15 @@ struct PD_INFER_DECL AnalysisConfig {
   bool shape_range_info_collected() const;
 
   ///
-  /// \brief Prevent ops running in Paddle-TRT
+  /// \brief Prevent ops running in Paddle-TRT.
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
+  ///
+  /// \brief Prevent ops running in Paddle-TRT with half precision.
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
+  void Exp_DisableTensorRtHalfOps(const std::unordered_set<std::string>& ops);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
@@ -1139,6 +1144,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{false};
   int trt_engine_memory_sharing_identifier_{0};
+
+  std::unordered_set<std::string> trt_ops_run_float_;
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

@@ -319,6 +319,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
   DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
 
+  DECL_ARGUMENT_FIELD(trt_ops_run_float,
+                      TrtOpsRunFloat,
+                      std::unordered_set<std::string>);
+
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
   DECL_ARGUMENT_FIELD(memory_optim_sort_kind, MemoryOptimSortKind, int);
