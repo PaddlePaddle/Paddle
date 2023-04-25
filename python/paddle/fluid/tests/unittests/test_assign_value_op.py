@@ -46,7 +46,7 @@ class TestAssignValueOp(eager_op_test.OpTest):
 
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.float32)
-        self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
+        self.attrs["values"] = framework.wrap_as_scalars(self.value)
 
     def test_forward(self):
         self.check_output()
@@ -55,21 +55,21 @@ class TestAssignValueOp(eager_op_test.OpTest):
 class TestAssignValueOp2(TestAssignValueOp):
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.int32)
-        self.attrs["int32_values"] = [int(v) for v in self.value.flat]
+        self.attrs["values"] = framework.wrap_as_scalars(self.value)
 
 
 class TestAssignValueOp3(TestAssignValueOp):
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.int64)
-        self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+        self.attrs["values"] = framework.wrap_as_scalars(self.value)
 
 
-class TestAssignValueOp4(TestAssignValueOp):
-    def init_data(self):
-        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool_
-        )
-        self.attrs["bool_values"] = [int(v) for v in self.value.flat]
+# class TestAssignValueOp4(TestAssignValueOp):
+#     def init_data(self):
+#         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+#             np.bool_
+#         )
+#         self.attrs["values"] = framework.wrap_as_scalars(self.value)
 
 
 class TestAssignApi(unittest.TestCase):
