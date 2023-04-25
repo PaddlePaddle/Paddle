@@ -29,6 +29,10 @@ class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.rand(1, 2).astype('float32')
         self.y = np.random.rand(1, 2).astype('float32')
+        self.x1 = np.array([0, 0, 10]).astype("float32")
+        self.y1 = np.array([np.inf, -np.inf, 10]).astype("float32")
+        self.x2 = np.array([np.nan, 0]).astype("float32")
+        self.y2 = np.array([0, np.nan]).astype("float32")
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -49,6 +53,32 @@ class TestNextafterAPI(unittest.TestCase):
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
         out_ref = ref_nextafter(self.x, self.y)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            x1 = paddle.static.data(
+                name='x', shape=self.x1.shape, dtype='float32'
+            )
+            y1 = paddle.static.data(
+                name='y', shape=self.y1.shape, dtype='float32'
+            )
+            out = paddle.nextafter(x1, y1)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x1, 'y': self.y1}, fetch_list=[out])
+        out_ref = ref_nextafter(self.x1, self.y1)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            x2 = paddle.static.data(
+                name='x', shape=self.x2.shape, dtype='float32'
+            )
+            y2 = paddle.static.data(
+                name='y', shape=self.y2.shape, dtype='float32'
+            )
+            out = paddle.nextafter(x2, y2)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x2, 'y': self.y2}, fetch_list=[out])
+        out_ref = ref_nextafter(self.x2, self.y2)
+        self.assertTrue((out.numpy() == out_ref).all(), True)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
