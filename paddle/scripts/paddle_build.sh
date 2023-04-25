@@ -3008,7 +3008,7 @@ EOF
     echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     infer_ut_startTime_s=`date +%s`
-    cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?

@@ -29,8 +29,7 @@ inline std::vector<int> get_repeat_times(
     auto* repeat_data = repeat_tensor->data<int>();
     phi::DenseTensor cpu_repeat_tensor;
     if (platform::is_gpu_place(repeat_tensor->place()) ||
-        platform::is_xpu_place(repeat_tensor->place()) ||
-        platform::is_npu_place(repeat_tensor->place())) {
+        platform::is_xpu_place(repeat_tensor->place())) {
       paddle::framework::TensorCopySync(
           *repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
       repeat_data = cpu_repeat_tensor.data<int>();
@@ -48,8 +47,7 @@ inline std::vector<int> get_repeat_times(
     for (size_t i = 0; i < list_repeat_times_tensor.size(); ++i) {
       auto tensor = list_repeat_times_tensor[i];
       if (platform::is_gpu_place(tensor->place()) ||
-          platform::is_xpu_place(tensor->place()) ||
-          platform::is_npu_place(tensor->place())) {
+          platform::is_xpu_place(tensor->place())) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_repeat_times.push_back(*temp.data<int32_t>());
