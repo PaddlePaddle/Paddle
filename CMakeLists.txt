@@ -673,7 +673,7 @@ if(WITH_CPP_DIST)
           FORCE)
   else()
     set(PADDLE_INSTALL_DIR ${PADDLE_BINARY_DIR}/paddle_install_dir)
-    set(PADDLE_LIB_TEST_DIR ${PADDLE_BINARY_DIR}/test/paddle_lib_test)
+    set(PADDLE_LIB_TEST_DIR ${PADDLE_BINARY_DIR}/test/paddle_lib)
     configure_file(${PADDLE_SOURCE_DIR}/cmake/PaddleConfig.cmake.in
                    ${PADDLE_INSTALL_DIR}/cmake/PaddleConfig.cmake @ONLY)
     version(${PADDLE_INSTALL_DIR}/version.txt)
