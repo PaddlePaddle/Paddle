@@ -19,9 +19,23 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from eager_op_test import OpTest
+from eager_op_test import OpTest, copy_bits_from_float_to_uint16
 
 from paddle.fluid import core
+
+
+def convert_float_to_uint16(float_list, data_format="NCHW"):
+    if data_format == "NHWC":
+        float_list = np.transpose(float_list, [0, 4, 1, 2, 3])
+
+    new_output = []
+    for x in np.nditer(float_list):
+        new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+    new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
+
+    if data_format == "NHWC":
+        new_output = np.transpose(new_output, [0, 2, 3, 4, 1])
+    return new_output
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -134,6 +148,86 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
+def create_test_cudnn_fp16_class(parent, grad_check=True):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestConv3DTransposeCUDNNFP16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
+                )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
+                )
+
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFP16OP")
+    TestConv3DTransposeCUDNNFP16.__name__ = cls_name
+    globals()[cls_name] = TestConv3DTransposeCUDNNFP16
+
+
+def create_test_cudnn_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestConv3DTransposeCUDNNBF16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                {'Input', 'Filter'},
+                'Output',
+            )
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                no_grad_set={'Filter'},
+            )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                no_grad_set={'Input'},
+            )
+
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
+    TestConv3DTransposeCUDNNBF16.__name__ = cls_name
+    globals()[cls_name] = TestConv3DTransposeCUDNNBF16
+
+
 def conv3d_transpose_wrapper(
     x,
     weight,
@@ -172,12 +266,16 @@ class TestConv3DTransposeOp(OpTest):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "EXPLICIT"
         self.init_op_type()
+        self.init_kernel_type()
         self.init_test_case()
 
-        input_ = np.random.random(self.input_size).astype("float32")
-        filter_ = np.random.random(self.filter_size).astype("float32")
+        if self.is_bfloat16_op():
+            input = np.random.random(self.input_size).astype(np.float32)
+            filter = np.random.random(self.filter_size).astype(np.float32)
+        else:
+            input = np.random.random(self.input_size).astype(self.dtype)
+            filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
@@ -189,8 +287,20 @@ class TestConv3DTransposeOp(OpTest):
         }
 
         output = conv3dtranspose_forward_naive(
-            input_, filter_, self.attrs
+            input, filter, self.attrs
         ).astype("float32")
+
+        if self.is_bfloat16_op():
+            self.inputs = {
+                'Input': convert_float_to_uint16(input),
+                'Filter': convert_float_to_uint16(filter),
+            }
+        else:
+            self.inputs = {
+                'Input': input,
+                'Filter': filter,
+            }
+            output = output.astype(self.dtype)
 
         self.outputs = {'Output': output}
 
@@ -263,6 +373,9 @@ class TestConv3DTransposeOp(OpTest):
     def init_op_type(self):
         self.op_type = "conv3d_transpose"
         self.python_api = conv3d_transpose_wrapper
+
+    def init_kernel_type(self):
+        self.dtype = np.float32
 
 
 class TestWithSymmetricPad(TestConv3DTransposeOp):
@@ -594,6 +707,30 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
         self.python_api = conv3d_transpose_wrapper
+
+
+# ----------------Conv3DTransposeCUDNN fp16----------------
+create_test_cudnn_fp16_class(TestConv3DTransposeOp)
+create_test_cudnn_fp16_class(TestWithSymmetricPad)
+create_test_cudnn_fp16_class(TestWithAsymmetricPad)
+create_test_cudnn_fp16_class(TestWithSAMEPad)
+create_test_cudnn_fp16_class(TestWithVALIDPad)
+create_test_cudnn_fp16_class(TestWithStride)
+create_test_cudnn_fp16_class(TestWithGroups)
+create_test_cudnn_fp16_class(TestWithDilation)
+create_test_cudnn_fp16_class(Test_NHWC)
+
+
+# ----------------Conv3DTransposeCUDNN bf16----------------
+create_test_cudnn_bf16_class(TestConv3DTransposeOp)
+create_test_cudnn_bf16_class(TestWithSymmetricPad)
+create_test_cudnn_bf16_class(TestWithAsymmetricPad)
+create_test_cudnn_bf16_class(TestWithSAMEPad)
+create_test_cudnn_bf16_class(TestWithVALIDPad)
+create_test_cudnn_bf16_class(TestWithStride)
+create_test_cudnn_bf16_class(TestWithGroups)
+create_test_cudnn_bf16_class(TestWithDilation)
+create_test_cudnn_bf16_class(Test_NHWC)
 
 
 class TestConv3dTranspose(unittest.TestCase):

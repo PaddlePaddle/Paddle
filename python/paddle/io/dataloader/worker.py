@@ -398,3 +398,6 @@ def _worker_loop(
     finally:
         if use_shared_memory:
             _cleanup_mmap()
+    if done_event.is_set():
+        out_queue.cancel_join_thread()
+        out_queue.close()

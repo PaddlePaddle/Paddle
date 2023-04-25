@@ -272,6 +272,7 @@ __global__ void DropOutNdForwardKernel(
       idx = fast_divmoder.val[0];
       offset += broadcast_config.strides[j] * fast_divmoder.val[1];
     }
+    __syncthreads();
     y[i] = dst_functor(src[i], mask[offset]);
   }
 }
