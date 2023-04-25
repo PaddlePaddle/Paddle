@@ -998,23 +998,8 @@ class FlashAttnWithGating {
 
     // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
     phi::DenseTensor cu_seq_q, cu_seq_k;
-    int64_t end_size = seq_batch_size + 1;
-    int64_t seq_size = 0;
-    int64_t start = 0;
-    int64_t end = end_size;
-    int64_t step = static_cast<int>(config->seq_len_r);
-    phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
-    cu_seq_q.Resize({end_size});
-    cu_seq_k.Resize({end_size});
-    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_q", &cu_seq_q);
-    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_k", &cu_seq_k);
-    int64_t block = std::min(seq_size, static_cast<int64_t>(256));
-    int64_t grid = (seq_size + block - 1) / block;
-    FlashAttRange<int32_t><<<grid, block, 0, dev_ctx_.stream()>>>(
-        start, step, end, cu_seq_q.data<int32_t>(), cu_seq_k.data<int32_t>());
-    VLOG(4) << "[Flash_attn] cu_seq_len : start = " << start
-            << ", step = " << step << ", end = " << end;
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_) << "2: Init cu_seq_q and cu_seq_k";
+    int64_t step = static_cast<int64_t>(config->seq_len_r);
+    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
 
     // 3. Dealing with mask and bias for flash_attn.
     phi::DenseTensor temp_mask, temp_bias;
@@ -1071,9 +1056,7 @@ class FlashAttnWithGating {
               << "]";
 
     // 6. construct random seed
-    auto gen = dev_ctx_.GetGenerator();
-    uint64_t inc = batch_size_ * num_heads_ * 32;
-    auto seed_offset_pair = gen->IncrementOffset(inc);
+    auto seed_offset_pair = GenerateSeedOffsetPair(batch_size_, num_heads_);
     uint64_t seed = seed_offset_pair.first;
     uint64_t offset = seed_offset_pair.second;
 
@@ -1124,13 +1107,7 @@ class FlashAttnWithGating {
     LOG(INFO) << WaitWithDebugInfo(dev_ctx_)
               << "7: Get workspace_size=" << workspace_size;
 
-    phi::DenseTensor workspace;
-    if (workspace_size > 0) {
-      workspace = phi::Empty<float, phi::GPUContext>(
-          dev_ctx_, {int64_t(workspace_size / sizeof(float))});
-      DBGPTR(workspace.data(), "workspace");
-    }
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_) << "Allocate workspace";
+    phi::DenseTensor workspace = CreateWorkspace(workspace_size);
 
     LOG(INFO) << "qkv_transpose_out: " << TensorDebugString(qkv_transpose_out);
     LOG(INFO) << "src_mask: " << TensorDebugString(src_mask);
@@ -1191,15 +1168,6 @@ class FlashAttnWithGating {
                        const phi::DenseTensor* softmax_lse = nullptr,
                        const phi::DenseTensor* nonbatched_bias = nullptr,
                        const phi::DenseTensor* src_mask = nullptr) {
-    T* q_grad_ptr = nullptr;
-    T* k_grad_ptr = nullptr;
-    T* v_grad_ptr = nullptr;
-
-    phi::DenseTensor q_transpose_out_grad;
-    phi::DenseTensor k_transpose_out_grad;
-    phi::DenseTensor v_transpose_out_grad;
-    phi::DenseTensor qkv_transpose_out_grad;
-
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
 
@@ -1215,38 +1183,29 @@ class FlashAttnWithGating {
         qkv_transpose_out,
         platform::errors::NotFound("The input qkv_transpose_out can not be"
                                    "nullptr when merge_qkv is true."));
+
     int64_t q_size = config->GetQuerySize();
     const T* q_ptr = qkv_transpose_out->data<T>();
     const T* k_ptr = q_ptr + q_size;
     const T* v_ptr = k_ptr + q_size;
 
+    phi::DenseTensor qkv_transpose_out_grad;
     qkv_transpose_out_grad.Resize(config->qkv_transpose_out_dims);
     AllocWithDebugInfo<T>(
         dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
+
+    T* q_grad_ptr = qkv_transpose_out_grad.data<T>();
+    T* k_grad_ptr = q_grad_ptr + q_size;
+    T* v_grad_ptr = k_grad_ptr + q_size;
 
     int seq_batch_size = static_cast<int>(config->batch_size) *
                          static_cast<int>(config->seq_len_m);
     LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
 
-    // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
+    // 2. Init with cu_seq_q and cu_seq_k for flash_attn.
     phi::DenseTensor cu_seq_q, cu_seq_k;
-    int64_t start = 0;
-    int64_t step = static_cast<int>(config->seq_len_r);
-    int64_t end_size = (seq_batch_size + 1);
-    int64_t end = end_size;
-    int64_t seq_size = 0;
-    phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
-    cu_seq_q.Resize({end_size});
-    cu_seq_k.Resize({end_size});
-    AllocWithDebugInfo<int32_t>(dev_ctx_, "Grad: cu_seq_q", &cu_seq_q);
-    AllocWithDebugInfo<int32_t>(dev_ctx_, "Grad: cu_seq_k", &cu_seq_k);
-    int64_t block = std::min(seq_size, static_cast<int64_t>(256));
-    int64_t grid = (seq_size + block - 1) / block;
-    FlashAttRange<int32_t><<<grid, block, 0, dev_ctx_.stream()>>>(
-        start, step, end, cu_seq_q.data<int32_t>(), cu_seq_k.data<int32_t>());
-    VLOG(4) << "[Flash_attn] cu_seq_len : start = " << start
-            << ", step = " << step << ", end = " << end;
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
+    int64_t step = static_cast<int64_t>(config->seq_len_r);
+    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
 
     // 3. Dealing with mask and bias for flash_attn.
     phi::DenseTensor temp_mask, temp_bias;
@@ -1308,24 +1267,8 @@ class FlashAttnWithGating {
     }
     LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
 
-    q_ptr = q_transpose_out->data<T>();
-    k_ptr = k_transpose_out->data<T>();
-    v_ptr = v_transpose_out->data<T>();
-    q_transpose_out_grad.Resize(config->q_transpose_out_dims);
-    k_transpose_out_grad.Resize(config->kv_transpose_out_dims);
-    v_transpose_out_grad.Resize(config->kv_transpose_out_dims);
-
-    q_grad_ptr = dev_ctx_.Alloc<T>(&q_transpose_out_grad,
-                                   q_transpose_out_grad.numel() * sizeof(T));
-    k_grad_ptr = dev_ctx_.Alloc<T>(&k_transpose_out_grad,
-                                   k_transpose_out_grad.numel() * sizeof(T));
-    v_grad_ptr = dev_ctx_.Alloc<T>(&v_transpose_out_grad,
-                                   v_transpose_out_grad.numel() * sizeof(T));
-
     // 6. construct random seed
-    auto gen = dev_ctx_.GetGenerator();
-    uint64_t inc = batch_size_ * num_heads_ * 32;
-    auto seed_offset_pair = gen->IncrementOffset(inc);
+    auto seed_offset_pair = GenerateSeedOffsetPair(batch_size_, num_heads_);
     uint64_t seed = seed_offset_pair.first;
     uint64_t offset = seed_offset_pair.second;
 
@@ -1376,15 +1319,7 @@ class FlashAttnWithGating {
     }
     LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
 
-    phi::DenseTensor workspace;
-    printf("workspace_size = %d\n", workspace_size);
-    if (workspace_size > 0) {
-      workspace = phi::Empty<float, phi::GPUContext>(
-          dev_ctx_, {int64_t(workspace_size / sizeof(float))});
-      DBGPTR(workspace.data(), "workspace");
-    }
-    LOG(INFO) << WaitWithDebugInfo(dev_ctx_);
-
+    phi::DenseTensor workspace = CreateWorkspace(workspace_size);
     succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
         static_cast<const void*>(q_ptr),
         static_cast<const void*>(k_ptr),
@@ -1447,23 +1382,55 @@ class FlashAttnWithGating {
           {0});
     }
 
-    if (merge_qkv_) {
-      phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
-      ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
-    } else {
-      phi::DenseTensor* q_out_grad = config->GetQueryOutGrad();
-      phi::DenseTensor* k_out_grad = config->GetKeyOutGrad();
-      phi::DenseTensor* v_out_grad = config->GetValueOutGrad();
-      ComputeQKVTransposeBackward(q_transpose_out_grad,
-                                  k_transpose_out_grad,
-                                  v_transpose_out_grad,
-                                  q_out_grad,
-                                  k_out_grad,
-                                  v_out_grad);
-    }
+    phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
+    ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
   }
 
  private:
+  void AllocAndInitSeqQK(int64_t seq_batch_size,
+                         int64_t step,
+                         phi::DenseTensor* cu_seq_q,
+                         phi::DenseTensor* cu_seq_k) {
+    int64_t start = 0;
+    int64_t end_size = seq_batch_size + 1;
+    int64_t end = end_size;
+    int64_t seq_size = 0;
+    phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
+
+    cu_seq_q->Resize({end_size});
+    cu_seq_k->Resize({end_size});
+    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_q", cu_seq_q);
+    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_k", cu_seq_k);
+
+    int64_t block = std::min(seq_size, static_cast<int64_t>(256));
+    int64_t grid = (seq_size + block - 1) / block;
+    FlashAttRange<int32_t><<<grid, block, 0, dev_ctx_.stream()>>>(
+        start, step, end, cu_seq_q->data<int32_t>(), cu_seq_k->data<int32_t>());
+
+    LOG(INFO) << WaitWithDebugInfo(dev_ctx_)
+              << "AllocAndInit cu_seq_q and cu_seq_k: start=" << start
+              << ", step=" << step << ", end=" << end;
+  }
+
+  phi::DenseTensor CreateWorkspace(uint64_t workspace_size) {
+    phi::DenseTensor workspace;
+    if (workspace_size > 0) {
+      workspace = phi::Empty<float, phi::GPUContext>(
+          dev_ctx_, {int64_t(workspace_size / sizeof(float))});
+      DBGPTR(workspace.data(), "workspace");
+    }
+    LOG(INFO) << WaitWithDebugInfo(dev_ctx_)
+              << "Allocate workspace: workspace_size=" << workspace_size;
+    return workspace;
+  }
+
+  std::pair<uint64_t, uint64_t> GenerateSeedOffsetPair(int64_t batch_size,
+                                                       int64_t num_heads) {
+    auto gen = dev_ctx_.GetGenerator();
+    uint64_t inc = batch_size * num_heads * 32;
+    return gen->IncrementOffset(inc);
+  }
+
   // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
   //         [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
   void ComputeQKVTransposeForwardForFlashAttn(
