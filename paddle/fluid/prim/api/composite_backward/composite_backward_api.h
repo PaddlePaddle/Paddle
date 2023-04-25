@@ -1839,7 +1839,7 @@ void pad_grad(const Tensor& input,
 
       for (size_t i = 0; i < rank; ++i) {
       starts.push_back(paddings[2*i]);
-      ends.push_back(out_dims[i] - paddings[2*i + 1] + 1);
+      ends.push_back(out_dims[i] - paddings[2*i + 1]);
       axes.push_back(i);
       }
       auto out_tmp = slice<T>(out_grad,axes,starts,ends,infer_flags,decrease_axis);
