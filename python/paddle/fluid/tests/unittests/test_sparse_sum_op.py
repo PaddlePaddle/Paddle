@@ -18,6 +18,9 @@ import numpy as np
 
 import paddle
 
+for device in ['cpu', 'gpu']:
+    paddle.device.set_device(device)
+
 
 class TestSparseSum(unittest.TestCase):
     """
