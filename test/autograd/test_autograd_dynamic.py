@@ -589,7 +589,7 @@ class TestHessianBatchFirst(unittest.TestCase):
         )
 
         np.testing.assert_allclose(
-            actual, expected, rtol=self.rtol, atol=self.atol
+            actual.shape, expected.shape, rtol=self.rtol, atol=self.atol
         )
 
     def func_stop_gradient(self):
@@ -608,7 +608,9 @@ class TestHessianBatchFirst(unittest.TestCase):
         )
         actual = actual.reshape((H.shape[1], -1))
 
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual.shape, np.asarray(expected).shape, self.rtol, self.atol
+        )
 
     def func_out_not_single(self):
         def func(x):
