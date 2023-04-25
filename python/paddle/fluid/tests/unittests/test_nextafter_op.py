@@ -88,7 +88,7 @@ class TestNextafterAPI(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         out = paddle.nextafter(x, y)
         expected_out = ref_nextafter(x_data, y_data)
-        self.assertEqual(out.numpy(), expected_out)
+        self.assertEqual((out.numpy() == expected_out).all(), True)
         paddle.enable_static()
 
     def test_dygraph_api(self):
