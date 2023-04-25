@@ -392,7 +392,7 @@ def monkey_patch_varbase():
             else:
                 return np.array(new_ivar.value().get_tensor())
 
-    @framework.dygraph_only
+    # @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.

@@ -643,19 +643,20 @@ def func_to_source_code(function, dedent=True):
                 type(function).__name__
             )
         )
-    source_code_list, _ = inspect.getsourcelines(function)
-    # Replace comments with blank lines so that error messages are not misplaced
-    source_code_list = [
-        line if not line.lstrip().startswith('#') else '\n'
-        for line in source_code_list
-    ]
-    source_code = ''.join(source_code_list)
-    # check the 'register hook' in the source code
-    if 'register_hook' in source_code:
-        source_code = modify_function_code(function)
+    # return modified function source code if there is 'register_hook', otherwise return None
+    source_code = modify_function_code(function)
 
-    if dedent:
-        source_code = textwrap.dedent(source_code)
+    if source_code is None:
+        source_code_list, _ = inspect.getsourcelines(function)
+        # Replace comments with blank lines so that error messages are not misplaced
+        source_code_list = [
+            line if not line.lstrip().startswith('#') else '\n'
+            for line in source_code_list
+        ]
+        source_code = ''.join(source_code_list)
+
+        if dedent:
+            source_code = textwrap.dedent(source_code)
 
     return source_code
 

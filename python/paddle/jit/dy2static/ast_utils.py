@@ -43,67 +43,76 @@ def ast_to_source_code(ast_node):
     return source_code
 
 
-def modify_function_code(func, code_str='register_hook'):
+class RegisterHookVisitor(gast.NodeVisitor):
+    def __init__(self, func_name):
+        self.register_hook_pos_map = collections.defaultdict(list)
+        self.assignment_pos_map = collections.defaultdict(list)
+        self.func_name = func_name
+        self.check_hook = False
+
+    def visit_FunctionDef(self, func_def):
+        # The inner function that has register_hook will not be processed
+        if func_def.name != self.func_name:
+            return
+        register_hook_pos_map = self.register_hook_pos_map
+        assignment_pos_map = self.assignment_pos_map
+
+        for i in range(len(func_def.body) - 1, -1, -1):
+
+            body = func_def.body[i]
+            # Check if the code body contains the register_hook
+            if isinstance(body, ast.Expr):
+                for node in ast.walk(body):
+                    if (
+                        isinstance(node, ast.Attribute)
+                        and node.attr == 'register_hook'
+                    ):
+                        self.check_hook = True
+                        # parameter name for register_hook
+                        param_name = node.value.id
+                        register_hook_pos_map[param_name].append(i)
+            elif isinstance(body, ast.Assign):
+                for target in body.targets:
+                    assignment_pos_map[target.id].append(i)
+
+        # Confirm the order
+        order_map = {}
+        for k, idx_list in register_hook_pos_map.items():
+            for idx in idx_list:
+                if k not in assignment_pos_map:
+                    order_map[idx] = 1
+                else:
+                    for assignment_idx in assignment_pos_map[k]:
+                        if idx > assignment_idx:
+                            order_map[idx] = assignment_idx + 1
+                            break
+        code_order = [*range(len(func_def.body))]
+        for k, v in sorted(order_map.items(), key=lambda x: x[1], reverse=True):
+            if k == v:
+                continue
+            code_order.remove(k)
+            code_order.insert(v, k)
+
+        # rearrange the code according to the specified order
+        new_body = [func_def.body[i] for i in code_order]
+        func_def.body = new_body
+
+
+def modify_function_code(func):
     """
-    Modify the function for the register hook
+    Modify the function code for the register hook
     """
-    # 将函数代码解析为 AST 对象
+
     func_ast = ast.parse(textwrap.dedent(inspect.getsource(func)))
 
-    # 从 AST 中提取函数定义节点
-    func_def = next(
-        (
-            node
-            for node in ast.walk(func_ast)
-            if isinstance(node, ast.FunctionDef) and node.name == func.__name__
-        ),
-        None,
-    )
+    visitor = RegisterHookVisitor(func.__name__)
+    visitor.visit(func_ast)
+    # check if there is register_hook on code after visit the tree.
+    if not visitor.check_hook:
+        return
 
-    register_hook_pos_map = collections.defaultdict(list)
-    assignment_pos_map = collections.defaultdict(list)
-    # 获取代码中包含有 register_hook 的位置 并获取前面参数的位置
-    for i in range(len(func_def.body) - 1, -1, -1):
-        body = func_def.body[i]
-        # print(ast.dump(body))
-        # 获取某一片段代码的字符串形式
-        body_str = astor.to_source(body)
-        # 查看该代码片段是否有效（即 含有所要的 register_hook 且不是字符串或者被注释掉）
-        if (
-            '"""' not in body_str
-            and code_str in body_str
-            and not isinstance(body, ast.FunctionDef)
-        ):
-            # 查找 register_hook 所对应的参数信息
-            param_name = body_str.split('.')[0]
-            register_hook_pos_map[param_name].append(i)
-        if isinstance(body, ast.Assign):
-            for target in body.targets:
-                assignment_pos_map[target.id].append(i)
+    def pretty_source(source):
+        return ''.join(source)
 
-    # 确定顺序
-    order_map = {}
-    for k, idx_list in register_hook_pos_map.items():
-        for idx in idx_list:
-            if k not in assignment_pos_map:
-                order_map[idx] = 1
-            else:
-                for assignment_idx in assignment_pos_map[k]:
-                    if idx > assignment_idx:
-                        order_map[idx] = assignment_idx + 1
-                        break
-    code_order = [*range(len(func_def.body))]
-    for k, v in sorted(order_map.items(), key=lambda x: x[1], reverse=True):
-        if k == v:
-            continue
-        code_order.remove(k)
-        code_order.insert(v, k)
-
-    # 根据指定顺序重新排列函数代码
-    new_body = [func_def.body[i] for i in code_order]
-    func_def.body = new_body
-
-    # 将修改后的 AST 对象转换为源代码字符串
-    new_code = astor.to_source(func_ast)
-    # print(new_code)
+    new_code = astor.to_source(func_ast, pretty_source=pretty_source)
     return new_code
