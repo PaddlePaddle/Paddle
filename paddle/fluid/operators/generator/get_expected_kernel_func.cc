@@ -176,7 +176,8 @@ phi::KernelKey GetUniqueExpectedKernelType(
 
 phi::KernelKey GetInstanceNormExpectedKernelType(
     const framework::ExecutionContext& ctx) {
-  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  auto input_data_type =
+      Operator::OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
@@ -219,8 +220,9 @@ phi::KernelKey GetInstanceNormGradExpectedKernelType(
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return phi::KernelKey(
+      Operator::OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.GetPlace());
 }
 
 phi::KernelKey GetInstanceNormDoubleGradExpectedKernelType(
@@ -240,8 +242,9 @@ phi::KernelKey GetInstanceNormDoubleGradExpectedKernelType(
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
-  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                        ctx.GetPlace());
+  return phi::KernelKey(
+      Operator::OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.GetPlace());
 }
 
 }  // namespace operators
