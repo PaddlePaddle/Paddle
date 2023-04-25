@@ -79,6 +79,10 @@ if(WITH_MKLML)
   list(APPEND PHI_DEPS pocketfft dynload_mklml)
 endif()
 
+if(WITH_XPU)
+  list(APPEND PHI_DEPS xpulib)
+endif()
+
 if(WIN32)
   list(APPEND PHI_DEPS shlwapi.lib)
 endif()

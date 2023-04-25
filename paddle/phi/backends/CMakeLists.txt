@@ -44,7 +44,7 @@ endif()
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
-       custom/custom_device_op_list.cc device_base.cc)
+       custom/custom_device_op_list.cc)
 endif()
 
 collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})
