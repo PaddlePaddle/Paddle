@@ -632,6 +632,10 @@ class CauchyTestError(unittest.TestCase):
             (np.array(0.0), 0.0, TypeError),  # ndarray
             ([0.0, 0.0], 0.0, TypeError),  # list
             ((0.0, 0.0), 0.0, TypeError),  # tuple
+            (0.0, -1j + 1, TypeError),  # complex
+            (0.0, np.array(0.0), TypeError),  # ndarray
+            (0.0, [0.0, 0.0], TypeError),  # list
+            (0.0, (0.0, 0.0), TypeError),  # tuple
         ]
     )
     def test_bad_init(self, loc, scale, error):
@@ -650,6 +654,56 @@ class CauchyTestError(unittest.TestCase):
                 _ = rv.variance
             with self.assertRaises(ValueError):
                 _ = rv.stddev
+
+    @parameterize_func(
+        [
+            (100,),  # int
+            (100.0,),  # float
+        ]
+    )
+    def test_bad_sample_shape_type(self, shape):
+        with paddle.fluid.dygraph.guard(self.place):
+            rv = Cauchy(loc=0.0, scale=1.0)
+
+            with self.assertRaises(TypeError):
+                _ = rv.sample(shape)
+
+            with self.assertRaises(TypeError):
+                _ = rv.rsample(shape)
+
+    @parameterize_func(
+        [
+            (1,),  # int
+            (1.0,),  # float
+            ([1.0],),  # list
+            ((1.0),),  # tuple
+            (np.array(1.0),),  # ndarray
+        ]
+    )
+    def test_bad_value_type(self, value):
+        with paddle.fluid.dygraph.guard(self.place):
+            rv = Cauchy(loc=0.0, scale=1.0)
+
+            with self.assertRaises(TypeError):
+                _ = rv.log_prob(value)
+
+            with self.assertRaises(TypeError):
+                _ = rv.prob(value)
+
+            with self.assertRaises(TypeError):
+                _ = rv.cdf(value)
+
+    @parameterize_func(
+        [
+            (np.array(1.0),),  # ndarray or other distribution
+        ]
+    )
+    def test_bad_kl_other_type(self, other):
+        with paddle.fluid.dygraph.guard(self.place):
+            rv = Cauchy(loc=0.0, scale=1.0)
+
+            with self.assertRaises(TypeError):
+                _ = rv.kl_divergence(other)
 
     @parameterize_func(
         [
