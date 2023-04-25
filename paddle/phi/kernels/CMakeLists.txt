@@ -116,6 +116,11 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
+endif()
+
 if(WITH_CUTLASS)
   execute_process(
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -175,6 +180,9 @@ else()
     "strings/cpu/*.cc"
     "fusion/*.cc"
     "fusion/cpu/*.cc")
+endif()
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
 endif()
 
 file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
