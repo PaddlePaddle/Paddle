@@ -258,16 +258,16 @@ class CauchyTestFeature(unittest.TestCase):
         # 1-D params
         (
             'params_1d',
-            0.1,
-            1.2,
+            [0.1],
+            [1.2],
             [100],
             [100, 1],
         ),
         # N-D params
         (
             'params_2d',
-            0.3,
-            (1.2, 2.3),
+            [0.3],
+            [1.2, 2.3],
             [100],
             [100, 2],
         ),

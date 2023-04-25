@@ -438,8 +438,8 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_1d_sample_1d_32',
-            paddle.to_tensor(0.1),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([0.1]),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             paddle.to_tensor([100]),
@@ -447,8 +447,8 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_1d_sample_1d_64',
-            paddle.to_tensor(0.1, dtype='float64'),
-            paddle.to_tensor(1.2, dtype='float64'),
+            paddle.to_tensor([0.1], dtype='float64'),
+            paddle.to_tensor([1.2], dtype='float64'),
             'float64',
             'float64',
             paddle.to_tensor([100]),
@@ -456,8 +456,8 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_1d_sample_2d',
-            paddle.to_tensor(0.1),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([0.1]),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             [100, 2],
@@ -465,8 +465,8 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_1d_sample_3d',
-            paddle.to_tensor(0.1),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([0.1]),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             [100, 2, 3],
@@ -476,7 +476,7 @@ class CauchyTestFeature(CauchyTest):
         (
             'params_0d_1d_sample_1d',
             paddle.full((), 0.3),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             [100],
@@ -484,7 +484,7 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_0d_sample_1d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             paddle.full((), 1.2),
             'float32',
             'float32',
@@ -494,7 +494,7 @@ class CauchyTestFeature(CauchyTest):
         (
             'params_0d_1d_sample_2d',
             paddle.full((), 0.3),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             [100, 2],
@@ -502,7 +502,7 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_0d_sample_2d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             paddle.full((), 1.2),
             'float32',
             'float32',
@@ -511,7 +511,7 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_2d_sample_1d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             paddle.to_tensor((1.2, 2.3)),
             'float32',
             'float32',
@@ -521,7 +521,7 @@ class CauchyTestFeature(CauchyTest):
         (
             'params_2d_1d_sample_1d',
             paddle.to_tensor((0.3, -0.3)),
-            paddle.to_tensor(1.2),
+            paddle.to_tensor([1.2]),
             'float32',
             'float32',
             [100],
@@ -547,7 +547,7 @@ class CauchyTestFeature(CauchyTest):
         ),
         (
             'params_1d_2d_sample_3d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             paddle.to_tensor((1.2, 2.3)),
             'float32',
             'float32',
