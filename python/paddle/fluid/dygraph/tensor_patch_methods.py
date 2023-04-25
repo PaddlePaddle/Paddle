@@ -32,7 +32,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from .base import switch_to_static_graph
-from .math_op_patch import monkey_patch_math_varbase
+from .math_op_patch import monkey_patch_math_tensor
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -86,7 +86,7 @@ class TensorHookRemoveHelper:
 _already_patch_repr = False
 
 
-def monkey_patch_varbase():
+def monkey_patch_tensor():
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
@@ -110,8 +110,8 @@ def monkey_patch_varbase():
 
                 data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    var_base = to_variable(data)
-                    static_var = var_base._to_static_var()
+                    tensor = to_variable(data)
+                    static_var = tensor._to_static_var()
 
         """
 
@@ -700,11 +700,11 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        new_varbase = core.eager.Tensor()
-        new_varbase.name = self.name + unique_name.generate("_deepcopy")
-        memo[id(self)] = new_varbase
-        new_varbase.copy_(self, True)
-        return new_varbase
+        new_tensor = core.eager.Tensor()
+        new_tensor.name = self.name + unique_name.generate("_deepcopy")
+        memo[id(self)] = new_tensor
+        new_tensor.copy_(self, True)
+        return new_tensor
 
     @property
     def block(self):
@@ -1073,5 +1073,5 @@ def monkey_patch_varbase():
         setattr(core.VarDesc.VarType, "__str__", dtype_str)
         _already_patch_repr = True
 
-    # patch math methods for varbase
-    monkey_patch_math_varbase()
+    # patch math methods for tensor
+    monkey_patch_math_tensor()
