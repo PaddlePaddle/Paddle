@@ -1832,8 +1832,7 @@ void scatter_nd_add_grad(const Tensor& index,
   }
   if (updates_grad) {
     // Gradient by Gather: dUpdates = dO[Ids]
-    Scalar tmp_zero = 0;
-    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
+    auto tmp_updates_grad = gather_nd<T>(out_grad, index);
     set_output<T>(tmp_updates_grad, updates_grad);
   }
 }
