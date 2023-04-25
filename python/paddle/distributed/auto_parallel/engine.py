@@ -50,7 +50,11 @@ from .dist_loader import (
     DistributedDataLoader,
 )
 from .process_group import new_process_group, get_all_process_groups
-from .dist_context import DistributedContext, get_default_distributed_context
+from .dist_context import (
+    DistributedContext,
+    DistributedOperatorContext,
+    get_default_distributed_context,
+)
 from .strategy import Strategy
 from .interface import CollectionNames, get_collection, fetch
 from .utils import to_list, get_dist_attr, get_lr, validate_opt
@@ -191,6 +195,10 @@ class Engine:
                 "Distribute training by paddle.distributed.launch"
             )
             fleet.init(is_collective=True)
+
+        get_default_distributed_context()._dist_op_context = (
+            DistributedOperatorContext()
+        )
 
         # for compute cost
         # TODO: remove _fwd_main_progs and _orig_optimizer
