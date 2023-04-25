@@ -22,4 +22,9 @@ InferGPUContext::InferGPUContext(const phi::Place& place)
     : phi::GPUContext(place, false) {}
 #endif
 
+#if defined(PADDLE_WITH_XPU)
+InferXPUContext::InferXPUContext(const phi::Place& place)
+    : phi::XPUContext(place) {}
+#endif
+
 }  // namespace paddle

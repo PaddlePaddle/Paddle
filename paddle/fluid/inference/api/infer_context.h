@@ -45,4 +45,15 @@ class InferGPUContext : public phi::GPUContext {
   using phi::GPUContext::SetRuntimeVersion;
 };
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+class InferXPUContext : public phi::XPUContext {
+ public:
+  explicit InferXPUContext(const phi::Place& place);
+  using phi::XPUContext::SetDriverVersion;
+  using phi::XPUContext::SetRuntimeVersion;
+  using phi::XPUContext::SetStream;
+  using phi::XPUContext::SetXpuVersion;
+};
+#endif
 }  // namespace paddle
