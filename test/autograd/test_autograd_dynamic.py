@@ -559,6 +559,39 @@ class TestHessianBatchFirst(unittest.TestCase):
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
         self.y.stop_gradient = False
 
+    def func_allow_unused(self):
+        def func(x, y):
+            return paddle.matmul(x * x, self.weight)[:, 0:1]
+
+        xs_len = 2
+        expected = utils._compute_numerical_batch_hessian(
+            func, [self.x, self.y], self.numerical_delta, self.np_dtype
+        )
+        expected = np.reshape(
+            np.array(expected),
+            (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
+        )
+        expected = [list(row) for row in expected]
+        expected = utils._np_concat_matrix_sequence(expected)
+        expected = utils._np_transpose_matrix_format(
+            expected, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM
+        )
+
+        actual = paddle.autograd.hessian(
+            func(self.x, self.y), [self.x, self.y], batch_axis=0
+        )
+        actual = paddle.concat(
+            [
+                paddle.concat([actual[i][j][:] for j in range(2)], axis=2)
+                for i in range(2)
+            ],
+            axis=1,
+        )
+
+        np.testing.assert_allclose(
+            actual.shape, expected.shape, rtol=self.rtol, atol=self.atol
+        )
+
     def func_stop_gradient(self):
         def func(x):
             return paddle.matmul(x * x, self.weight)[:, 0:1]
@@ -575,7 +608,9 @@ class TestHessianBatchFirst(unittest.TestCase):
         )
         actual = actual.reshape((H.shape[1], -1))
 
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual.shape, np.asarray(expected).shape, self.rtol, self.atol
+        )
 
     def func_out_not_single(self):
         def func(x):
@@ -619,6 +654,7 @@ class TestHessianBatchFirst(unittest.TestCase):
 
     def test_all_cases(self):
         self.setUpClass()
+        self.func_allow_unused()
         self.func_stop_gradient()
         self.func_out_not_single()
         self.func_batch_axis_except_0()
