@@ -16,7 +16,6 @@
 
 import math
 import re
-import warnings
 
 import numpy as np
 
@@ -34,6 +33,7 @@ from ..fluid.framework import (
     Variable,
     _in_eager_without_dygraph_check,
     device_guard,
+    wrap_as_scalars,
 )
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -2117,33 +2117,7 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == core.VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.VarDesc.VarType.FP32
-        if dtype == core.VarDesc.VarType.BOOL:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
+        values = wrap_as_scalars(input)
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
@@ -2170,7 +2144,7 @@ def assign(x, output=None):
                 attrs={
                     'dtype': dtype,
                     'shape': list(input.shape),
-                    value_name: values,
+                    'values': values,
                 },
             )
 

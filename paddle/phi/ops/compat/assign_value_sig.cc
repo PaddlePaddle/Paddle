@@ -41,7 +41,7 @@ KernelSignature AssignValueOpArgumentMapping(
   // }
   // now we use scalar represent all data types, so here unified to values
   return KernelSignature(
-      "assign_value", {}, {"shape", "dtype", "values"}, {"Out"})
+      "assign_value", {}, {"shape", "dtype", "values"}, {"Out"});
 }
 
 }  // namespace phi
