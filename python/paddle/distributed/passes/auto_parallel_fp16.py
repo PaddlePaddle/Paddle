@@ -515,7 +515,7 @@ class FP16State:
 
                 assert src_name in op.input(
                     slot_name
-                ), "var: {} not in op's {}. {}".format(
+                ), "var : {} not in op's {}. {}".format(
                     src_name, slot_name, str(op)
                 )
                 src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
