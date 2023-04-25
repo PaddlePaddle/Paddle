@@ -122,7 +122,7 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
 
 
 class TestMomentumOptimizer(unittest.TestCase):
-    class MockMomentum(optimizer.MomentumOptimizer):
+    class MockMomentum(paddle.optimizer.Momentum):
         def get_accumulators(self):
             return self._accumulators
 

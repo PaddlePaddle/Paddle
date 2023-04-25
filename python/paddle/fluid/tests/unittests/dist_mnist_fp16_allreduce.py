@@ -53,9 +53,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9
-        )
+        opt = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 
         opt = FP16AllReduce(opt)
 
