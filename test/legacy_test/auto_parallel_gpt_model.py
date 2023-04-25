@@ -233,7 +233,7 @@ class MultiHeadAttention(nn.Layer):
         product = paddle.matmul(x=q, y=k, transpose_y=True)
         product = paddle.multiply(
             product,
-            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
+            paddle.to_tensor([self.head_dim**-0.5], dtype=product.dtype),
         )
         if attn_mask is not None:
             product = product + attn_mask
