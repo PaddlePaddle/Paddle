@@ -48,16 +48,31 @@ struct LerpScalarDirectCUDAFunctor {
   }
 };
 
-template <typename Context, typename T>
-static void LerpFunction(const Context &ctx,
-                         const DenseTensor &x,
-                         const DenseTensor &y,
-                         const DenseTensor &weight,
-                         DenseTensor *out) {
-  std::vector<DenseTensor *> outputs;
-  outputs.reserve(1);
-  outputs.emplace_back(out);
+template <typename T, typename Context>
+void LerpKernel(const Context &ctx,
+                const DenseTensor &x,
+                const DenseTensor &y,
+                const DenseTensor &weight,
+                DenseTensor *out) {
+  int rank = out->dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "greater than or equal to 0, but the value received is %d.",
+          rank));
+  PADDLE_ENFORCE_LE(
+      rank,
+      6,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "less than or equal to 6, but the value received is %d.",
+          rank));
+
   ctx.template Alloc<T>(out);
+  std::vector<DenseTensor *> outputs = {out};
+
   std::vector<const DenseTensor *> inputs;
   if (weight.dims().size() == 0) {
     const T *weight_ptr = weight.data<T>();
@@ -74,6 +89,7 @@ static void LerpFunction(const Context &ctx,
         weight.dims().size() != y.dims().size()) {
       DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
       std::vector<const DenseTensor *> broadcast_min_inputs;
+      broadcast_min_inputs.reserve(1);
       std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
       auto broadcast_min_functor =
           BroadcastMinElementWiseDirectCUDAFunctor<T>();
@@ -120,31 +136,6 @@ static void LerpFunction(const Context &ctx,
     funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
         ctx, inputs, &outputs, -1, functor);
   }
-}
-
-template <typename T, typename Context>
-void LerpKernel(const Context &ctx,
-                const DenseTensor &x,
-                const DenseTensor &y,
-                const DenseTensor &weight,
-                DenseTensor *out) {
-  int rank = out->dims().size();
-  PADDLE_ENFORCE_GE(
-      rank,
-      0,
-      phi::errors::InvalidArgument(
-          "The number of dimensions for LerpOp must be "
-          "greater than or equal to 0, but the value received is %d.",
-          rank));
-  PADDLE_ENFORCE_LE(
-      rank,
-      6,
-      phi::errors::InvalidArgument(
-          "The number of dimensions for LerpOp must be "
-          "less than or equal to 6, but the value received is %d.",
-          rank));
-
-  LerpFunction<Context, T>(ctx, x, y, weight, out);
 }
 
 }  // namespace phi
