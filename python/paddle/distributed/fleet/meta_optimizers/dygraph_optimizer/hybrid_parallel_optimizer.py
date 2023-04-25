@@ -295,9 +295,20 @@ class HybridParallelOptimizer:
                                 inner_opt._grad_clip, hcg
                             )
 
-    def _filter_fn(self, param):
+    def _insert_sync(self, sync_var, src, mp_group, sync_mode):
+        if sync_mode == "broadcast":
+            paddle.distributed.broadcast(
+                sync_var, src=src, group=mp_group, sync_op=True
+            )
+        else:
+            paddle.distributed.all_reduce(
+                sync_var, group=mp_group, sync_op=True
+            )
+            sync_var.scale_(1.0 / mp_group.nranks)
+
+    def _filter_fn(self, param, strategy):
         p_name = param.name
-        tar_param = ["embedding", "layer_norm", ".b_"]
+        tar_param = strategy.sync_param_name
         if param.is_distributed is False:
             for tar in tar_param:
                 if tar in p_name:
@@ -321,26 +332,48 @@ class HybridParallelOptimizer:
             or mp_configs.sync_moment
         ):
             params = sorted(
-                [p for p in parameters_list if self._filter_fn(p)],
+                [
+                    p
+                    for p in parameters_list
+                    if self._filter_fn(p, fleet.fleet._user_defined_strategy)
+                ],
                 key=lambda p: p.name,
             )
 
+        # Grad sync before opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
-                if p.grad is None:
-                    continue
-                paddle.distributed.broadcast(
-                    p.grad, src=src_rank, group=mp_group, sync_op=True
-                )
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    self._insert_sync(
+                        p.main_grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
+                elif p.grad is not None:
+                    self._insert_sync(
+                        p.grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
 
         self._inner_opt.step()
 
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
-                paddle.distributed.broadcast(
-                    p, src=src_rank, group=mp_group, sync_op=True
-                )
+                # Param sync after opt
+                self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
 
+                # Master param sync after opt
+                if (
+                    hasattr(self._inner_opt, "_multi_precision")
+                    and self._inner_opt._multi_precision
+                    and p.name in self._inner_opt._master_weights
+                ):
+                    self._insert_sync(
+                        self._inner_opt._master_weights[p.name],
+                        src_rank,
+                        mp_group,
+                        mp_configs.sync_mode,
+                    )
+
+        # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 # support opt state of adam and adamw to broadcast now.
@@ -349,28 +382,30 @@ class HybridParallelOptimizer:
                     (paddle.optimizer.Adam, paddle.optimizer.AdamW),
                 ):
                     if (
-                        self._inner_opt._multi_precision
-                        and p.name in self._master_weights
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment1_acc_str
+                        ]
                     ):
-                        paddle.distributed.broadcast(
-                            self._inner_opt._master_weights[p.name],
-                            src=src_rank,
-                            group=mp_group,
-                            sync_op=True,
+                        moment1 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment1_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment1, src_rank, mp_group, mp_configs.sync_mode
                         )
 
-                    moment1 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment1_acc_str, p
-                    )
-                    moment2 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment2_acc_str, p
-                    )
-                    paddle.distributed.broadcast(
-                        moment1, src=src_rank, group=mp_group, sync_op=True
-                    )
-                    paddle.distributed.broadcast(
-                        moment2, src=src_rank, group=mp_group, sync_op=True
-                    )
+                    if (
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment2_acc_str
+                        ]
+                    ):
+                        moment2 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment2_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment2, src_rank, mp_group, mp_configs.sync_mode
+                        )
 
     @no_grad()
     @framework.dygraph_only
