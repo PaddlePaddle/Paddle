@@ -96,16 +96,20 @@ void InitGpuProperties(Place place,
         LOG(WARNING)
             << "The GPU architecture in your current machine is "
             << arch_computing_mapping_table[*compute_capability]
-            << ",which is not compatible with Paddle installation with arch: "
+            << ", which is not compatible with Paddle installation with arch: "
             << compile_arch_str
-            << ",it is recommended to install the corresponding wheel package "
+            << ", it is recommended to install the corresponding wheel package "
                "according to the installation information on the official "
                "Paddle "
                "website.";
       } else {
-        LOG(WARNING) << "The GPU architecture corresponding to your current "
-                        "machine capability:"
-                     << *compute_capability << "is not supported by Paddle";
+        LOG(WARNING)
+            << "The GPU compute capability in your current machine is "
+            << *compute_capability << ", which is not supported by Paddle"
+            << ", it is recommended to install the corresponding wheel package "
+               "according to the installation information on the official "
+               "Paddle "
+               "website.";
       }
     }
   }
