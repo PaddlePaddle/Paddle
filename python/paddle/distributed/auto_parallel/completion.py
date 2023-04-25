@@ -1894,7 +1894,6 @@ class Completer:
                     )
 
                     if not learning_rate_completed:
-                        learning_rate_completed = True
                         var_dist_attr = TensorDistributedAttribute()
                         var_dist_attr.process_mesh = world_ranks
                         var_dist_attr.dims_mapping = [-1]

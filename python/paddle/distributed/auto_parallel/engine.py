@@ -17,6 +17,7 @@ import copy
 import logging
 import random
 import numbers
+import warnings
 import numpy as np
 from collections import defaultdict
 
@@ -156,7 +157,7 @@ class Engine:
             optimizer,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
         ):
-            raise TypeError(
+            warnings.warn(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
                 " or `paddle.fluid.optimizer.Optimizer`."
             )
