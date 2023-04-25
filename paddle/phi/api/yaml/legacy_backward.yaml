@@ -1,25 +1,3 @@
-- backward_op : abs_double_grad
-  forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_x_grad)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : abs_double_grad
-
-- backward_op : abs_grad
-  forward : abs (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : abs_grad
-  composite : abs_grad(x, out_grad, x_grad)
-  backward : abs_double_grad
-
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
