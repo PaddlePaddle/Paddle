@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
-#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -156,7 +155,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
         "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace/CustomPlace"));
+        "CustomPlace"));
   }
 }
 
@@ -200,8 +199,6 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, place, zero_copy);
-  } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_ipu_place(place)) {
     SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
@@ -210,8 +207,7 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -1069,18 +1065,6 @@ void BindImperative(py::module *m_ptr) {
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
              if (!none_axes.empty()) {
-               // Deal with cases when all axes are decreased.
-               // After slice, the shape of out is [1], which should have been
-               // [], but Paddle doesn't support scalar.
-               // In order to ensure the correctness of the final shape of out,
-               // one dimension of out needs to be decreased.
-               // For example:
-               // # x.shape: (2,3,4)
-               // out = x[0, 1, 1, None] # out.shape : (1)
-               if (static_cast<int>(decrease_axis.size()) ==
-                   tensor->dims().size()) {
-                 none_axes.pop_back();
-               }
                if (!none_axes.empty()) {
                  // Deal with cases that decrease_axes is not empty
                  // For example:
@@ -1334,7 +1318,7 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle
 
-                x = paddle.to_tensor(1.0, stop_gradient=False)
+                x = paddle.to_tensor([1.0], stop_gradient=False)
                 detach_x = x.detach()
                 detach_x[:] = 10.0
                 print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
@@ -2227,7 +2211,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, IPUPlace, MLUPlace"
+                  "CPUPlace, NPUPlace, IPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }

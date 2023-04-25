@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -78,33 +79,31 @@ void ReshapeCooKernel(const Context& dev_ctx,
   int64_t *destination_x_sparse_part_strides,
       *destination_out_sparse_part_strides;
 
-#ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
-            sizeof(int64_t) * x_sparse_part_strides.size());
-  hipMemcpy(destination_x_sparse_part_strides,
-            x_sparse_part_strides.Get(),
-            sizeof(int64_t) * x_sparse_part_strides.size(),
-            hipMemcpyHostToDevice);
-  hipMalloc(reinterpret_cast<void**>(&destination_out_sparse_part_strides),
-            sizeof(int64_t) * out_sparse_part_strides.size());
-  hipMemcpy(destination_out_sparse_part_strides,
-            out_sparse_part_strides.Get(),
-            sizeof(int64_t) * out_sparse_part_strides.size(),
-            hipMemcpyHostToDevice);
-#else
-  cudaMalloc(reinterpret_cast<void**>(&destination_x_sparse_part_strides),
-             sizeof(int64_t) * x_sparse_part_strides.size());
-  cudaMemcpy(destination_x_sparse_part_strides,
-             x_sparse_part_strides.Get(),
-             sizeof(int64_t) * x_sparse_part_strides.size(),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(reinterpret_cast<void**>(&destination_out_sparse_part_strides),
-             sizeof(int64_t) * out_sparse_part_strides.size());
-  cudaMemcpy(destination_out_sparse_part_strides,
-             out_sparse_part_strides.Get(),
-             sizeof(int64_t) * out_sparse_part_strides.size(),
-             cudaMemcpyHostToDevice);
-#endif
+  auto destination_x_sparse_part_strides_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * x_sparse_part_strides.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  destination_x_sparse_part_strides = reinterpret_cast<int64_t*>(
+      destination_x_sparse_part_strides_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     reinterpret_cast<void*>(destination_x_sparse_part_strides),
+                     phi::CPUPlace(),
+                     x_sparse_part_strides.Get(),
+                     sizeof(int64_t) * x_sparse_part_strides.size(),
+                     dev_ctx.stream());
+
+  auto destination_out_sparse_part_strides_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * out_sparse_part_strides.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  destination_out_sparse_part_strides = reinterpret_cast<int64_t*>(
+      destination_out_sparse_part_strides_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     destination_out_sparse_part_strides,
+                     phi::CPUPlace(),
+                     out_sparse_part_strides.Get(),
+                     sizeof(int64_t) * out_sparse_part_strides.size(),
+                     dev_ctx.stream());
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   ReshapeCooCudaKernel<<<config.block_per_grid.x,

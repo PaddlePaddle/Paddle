@@ -7,6 +7,16 @@
   composite: assign_grad(out_grad, x_grad)
   invoke : assign(out_grad)
 
+- backward_op : deformable_conv_grad
+  forward : deformable_conv (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64) -> Tensor(out)
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(x_grad), Tensor(offset_grad), Tensor(filter_grad), Tensor(mask_grad)
+  infer_meta :
+    func : DeformableConvGradInferMeta
+  kernel :
+    func : deformable_conv_grad
+    data_type : x
+
 - backward_op : embedding_grad
   forward : embedding (Tensor x, Tensor weight, int64_t padding_idx=-1) -> Tensor(out)
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1)
@@ -32,3 +42,14 @@
   kernel :
     func : frobenius_norm_grad
     param : [x, out, out_grad, axis, keepdim, reduce_all]
+
+- backward_op : rnn_grad
+  forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
+  args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor dropout_state_out, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
+  output : Tensor(x_grad), Tensor[](pre_state_grad){pre_state.size()}, Tensor[](weight_list_grad){weight_list.size()}
+  infer_meta :
+    func : RnnGradInferMeta
+    param : [x, pre_state, weight_list]
+  kernel :
+    func : rnn_grad
+    data_type: out_grad

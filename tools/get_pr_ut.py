@@ -343,7 +343,6 @@ class PRChecker:
                 elif (
                     ('/xpu/' in filename.lower())
                     or ('/npu/' in filename.lower())
-                    or ('/mlu/' in filename.lower())
                     or ('/ipu/' in filename.lower())
                 ):
                     filterFiles.append(filename)
