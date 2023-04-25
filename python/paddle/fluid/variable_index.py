@@ -479,8 +479,9 @@ def _getitem_impl_(var, item):
 
             idx = paddle.assign(np.array(slice_item).astype("int32"))
             tmp = index_select(var, index=idx, axis=0)
-            var.is_view_var = True
-            tmp.is_view_var = True
+            if hasattr(var, "is_view_var") and hasattr(tmp, "is_view_var"):
+                var.is_view_var = True
+                tmp.is_view_var = True
             return tmp
 
         elif isinstance(slice_item, (Variable, core.eager.Tensor)):
@@ -490,15 +491,21 @@ def _getitem_impl_(var, item):
 
                 if slice_item.dtype == paddle.bool:
                     tmp = get_value_for_bool_tensor(var, slice_item)
-                    var.is_view_var = True
-                    tmp.is_view_var = True
+                    if hasattr(var, "is_view_var") and hasattr(
+                        tmp, "is_view_var"
+                    ):
+                        var.is_view_var = True
+                        tmp.is_view_var = True
                     return tmp
 
                 else:
                     if len(slice_item.shape) == 1:
                         tmp = index_select(var, index=slice_item, axis=0)
-                        var.is_view_var = True
-                        tmp.is_view_var = True
+                        if hasattr(var, "is_view_var") and hasattr(
+                            tmp, "is_view_var"
+                        ):
+                            var.is_view_var = True
+                            tmp.is_view_var = True
                         return tmp
 
                     else:
@@ -529,8 +536,9 @@ def _getitem_impl_(var, item):
                 )
             )
         tmp = slice_info.get_item(var)
-        var.is_view_var = True
-        tmp.is_view_var = True
+        if hasattr(var, "is_view_var") and hasattr(tmp, "is_view_var"):
+            var.is_view_var = True
+            tmp.is_view_var = True
         return tmp
 
     inputs = {'Input': [var]}
@@ -602,8 +610,9 @@ def _getitem_impl_(var, item):
 
         out = unsqueeze(out, axis=none_axes)
 
-    var.is_view_var = True
-    out.is_view_var = True
+    if hasattr(var, "is_view_var") and hasattr(tmp, "is_view_var"):
+        var.is_view_var = True
+        out.is_view_var = True
     return out
 
 
@@ -641,14 +650,15 @@ def _setitem_for_tensor_array(var, item, value):
 
 
 def _setitem_impl_(var, item, value):
-    if var.is_view_var:
-        import warnings
-        import inspect
+    if hasattr(var, "is_view_var"):
+        if var.is_view_var:
+            import warnings
+            import inspect
 
-        warnings.warn(
-            'Write view var check: _setitem_impl_ write view var, call stack: %s'
-            % inspect.stack()
-        )
+            warnings.warn(
+                'Write view var check: _setitem_impl_ write view var, call stack: %s'
+                % inspect.stack()
+            )
 
     from .framework import default_main_program, Variable
     from paddle.fluid import core
