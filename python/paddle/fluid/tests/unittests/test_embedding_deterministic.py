@@ -112,7 +112,7 @@ def get_all_dtypes():
 
     dtypes = [paddle.float32, paddle.float16]
     if 'A100' in paddle.device.cuda.get_device_properties().name:
-        dtypes.append(paddle.float16)
+        dtypes.append(paddle.bfloat16)
     return dtypes
 
 
@@ -169,9 +169,6 @@ class TestEmbeddingBase(unittest.TestCase):
 
     def test_main(self):
         weight_dtypes = get_all_dtypes()
-        if 'A100' in paddle.device.cuda.get_device_properties().name:
-            weight_dtypes.append(paddle.float16)
-
         ids_dtypes = [paddle.int64, paddle.int32]
         deterministic_levels = [0, 1]
         ranks = [None, 0, 2, 4, 8]
