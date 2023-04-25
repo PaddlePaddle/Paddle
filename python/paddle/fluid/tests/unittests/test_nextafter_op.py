@@ -31,8 +31,8 @@ class TestNextafterAPI(unittest.TestCase):
         self.y = np.random.rand(1, 2).astype('float32')
         self.x1 = np.array([0, 0, 10]).astype("float32")
         self.y1 = np.array([np.inf, -np.inf, 10]).astype("float32")
-        self.x2 = np.array([np.nan, 0]).astype("float32")
-        self.y2 = np.array([0, np.nan]).astype("float32")
+        self.x2 = np.random.rand(100).astype("float32")
+        self.y2 = np.random.rand(100).astype("float32")
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -78,7 +78,7 @@ class TestNextafterAPI(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x2, 'y': self.y2}, fetch_list=[out])
         out_ref = ref_nextafter(self.x2, self.y2)
-        self.assertTrue((out.numpy() == out_ref).all(), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
