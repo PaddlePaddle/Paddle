@@ -215,17 +215,17 @@ class OpInfoImpl {
               reinterpret_cast<char *>(const_cast<OpInfoImpl *>(this)) -
               sizeof(ir::TypeId) * num_traits_ -
               sizeof(std::pair<ir::TypeId, void *>) * num_interfaces_);
-      int left = 0;
-      int right = num_interfaces_ - 1;
-      while (left <= right) {
-        int mid = (right - left) / 2 + left;
+      size_t left = 0;
+      size_t right = num_interfaces_;
+      while (left < right) {
+        size_t mid = left + (right - left) / 2;
         if ((p_first_interface + mid)->first == interface_id) {
           return reinterpret_cast<typename Interface::Concept *>(
               (p_first_interface + mid)->second);
         } else if ((p_first_interface + mid)->first < interface_id) {
           left = mid + 1;
         } else {
-          right = mid - 1;
+          right = mid;
         }
       }
     }
