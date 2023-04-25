@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -59,9 +58,7 @@ static void LerpFunction(const Context &ctx,
   outputs.reserve(1);
   outputs.emplace_back(out);
   ctx.template Alloc<T>(out);
-
   std::vector<const DenseTensor *> inputs;
-
   if (weight.dims().size() == 0) {
     const T *weight_ptr = weight.data<T>();
     inputs.reserve(2);
@@ -72,7 +69,6 @@ static void LerpFunction(const Context &ctx,
         ctx, inputs, &outputs, -1, functor);
   } else {
     inputs.reserve(3);
-
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
@@ -126,29 +122,6 @@ static void LerpFunction(const Context &ctx,
   }
 }
 
-template <typename Context, typename T>
-static void LerpFunctionZero(const Context &ctx,
-                             const DenseTensor &x,
-                             const DenseTensor &y,
-                             const DenseTensor &weight,
-                             DenseTensor *out) {
-  ctx.template Alloc<T>(out);
-
-  auto dim = make_ddim(std::vector<int64_t>(1, 1));
-  auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
-  auto eigen_y = phi::EigenTensor<T, 1>::From(y, dim);
-  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
-  auto eigen_out = phi::EigenTensor<T, 1>::From(*out, dim);
-
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto &place = *ctx.eigen_device();
-  eigen_out.device(place) =
-      (eigen_x.template cast<MPType>() +
-       eigen_w.template cast<MPType>() *
-           (eigen_y.template cast<MPType>() - eigen_x.template cast<MPType>()))
-          .template cast<T>();
-}
-
 template <typename T, typename Context>
 void LerpKernel(const Context &ctx,
                 const DenseTensor &x,
@@ -171,11 +144,7 @@ void LerpKernel(const Context &ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
 
-  if (rank == 0) {
-    LerpFunctionZero<Context, T>(ctx, x, y, weight, out);
-  } else {
-    LerpFunction<Context, T>(ctx, x, y, weight, out);
-  }
+  LerpFunction<Context, T>(ctx, x, y, weight, out);
 }
 
 }  // namespace phi
