@@ -80,6 +80,17 @@ class TestNextafterAPI(unittest.TestCase):
         out_ref = ref_nextafter(self.x2, self.y2)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    def test_nan_case(self):
+        paddle.disable_static()
+        x_data = np.array([0, np.nan]).astype("float32")
+        y_data = np.array([np.nan, 0]).astype("float32")
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.nextafter(x, y)
+        expected_out = np.nextafter(x_data, y_data)
+        self.assertTrue((out.numpy() == expected_out).all(), True)
+        paddle.enable_static()
+
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
