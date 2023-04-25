@@ -12,23 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
+#include <cassert>
 
 #include "paddle/extension.h"
 
-TEST(PaddleLib, CPU) {
+int main() {
   int data[] = {1, 2, 3, 4};
   auto tensor = paddle::from_blob(data, {2, 2}, phi::DataType::INT32);
 
-  ASSERT_EQ(tensor.numel(), 4);
-  ASSERT_EQ(tensor.dtype(), phi::DataType::INT32);
-  ASSERT_EQ(tensor.is_cpu(), true);
-
-  auto* tensor_data = tensor.template data<int>();
-  ASSERT_EQ(data, tensor_data);
-}
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  assert(tensor.numel() == 4);
+  assert(tensor.dtype() == phi::DataType::INT32);
+  assert(tensor.is_cpu());
+  assert(tensor.template data<int>() == data);
 }

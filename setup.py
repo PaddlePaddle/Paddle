@@ -1545,21 +1545,21 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
-def install_cpp_dist(paddle_install_dir, headers, libs):
+def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
         return
-    os.makedirs(paddle_install_dir, exist_ok=True)
+    os.makedirs(install_dir, exist_ok=True)
     # install C++ header files
     for header in headers:
-        install_dir = get_header_install_dir(header)
-        install_dir = os.path.join(
-            paddle_install_dir, 'include', os.path.dirname(install_dir)
+        header_install_dir = get_header_install_dir(header)
+        header_install_dir = os.path.join(
+            install_dir, 'include', os.path.dirname(header_install_dir)
         )
-        os.makedirs(install_dir, exist_ok=True)
-        shutil.copy(header, install_dir)
+        os.makedirs(header_install_dir, exist_ok=True)
+        shutil.copy(header, header_install_dir)
 
     # install C++ shared libraries
-    lib_install_dir = os.path.join(paddle_install_dir, 'lib')
+    lib_install_dir = os.path.join(install_dir, 'lib')
     os.makedirs(lib_install_dir, exist_ok=True)
     # install libpaddle.ext
     paddle_libs = glob.glob(
@@ -1575,6 +1575,10 @@ def install_cpp_dist(paddle_install_dir, headers, libs):
     for lib in libs:
         lib_path = os.path.join(libs_path, lib)
         shutil.copy(lib_path, lib_install_dir)
+
+    # build test target
+    subprocess.check_call([CMAKE, lib_test_dir, "-B", lib_test_dir])
+    subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
 
 def main():
@@ -1652,8 +1656,12 @@ def main():
     # install cpp distribution
     if env_dict.get("WITH_CPP_DIST") == 'ON':
         paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
-        install_cpp_dist(
-            paddle_install_dir, headers, package_data['paddle.libs']
+        paddle_lib_test_dir = env_dict.get("PADDLE_LIB_TEST_DIR")
+        install_cpp_dist_and_build_test(
+            paddle_install_dir,
+            paddle_lib_test_dir,
+            headers,
+            package_data['paddle.libs'],
         )
 
     setup(

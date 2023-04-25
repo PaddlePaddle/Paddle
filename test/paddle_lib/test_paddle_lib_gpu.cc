@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
+#include <cassert>
 
 #include "paddle/extension.h"
 
-TEST(PaddleLib, GPU) {
+int main() {
   float data[] = {1., 2., 3., 4.};
   auto tensor = paddle::from_blob(data, {2, 2}, phi::DataType::FLOAT32);
   auto gpu_tensor =
       paddle::experimental::copy_to(tensor, phi::GPUPlace(), false);
-  ASSERT_EQ(tensor.is_gpu(), true);
-}
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  assert(gpu_tensor.is_gpu());
 }
