@@ -21,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -233,25 +234,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    auto out_grad_name = framework::GradVarName("Out");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
-                   "Input",
-                   out_grad_name,
-                   "ElementwiseOpGrad");
-    auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->ShareDim("X", /*->*/ x_grad_name);
-      ctx->ShareLoD("X", /*->*/ x_grad_name);
-    }
-    if (ctx->HasOutput(y_grad_name)) {
-      ctx->ShareDim("Y", /*->*/ y_grad_name);
-      ctx->ShareLoD("Y", /*->*/ y_grad_name);
-    }
-  }
-
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
@@ -392,10 +374,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(elementwise_add,
                             ElementwiseAddInferShapeFunctor,
                             PD_INFER_META(phi::ElementwiseRawInferMeta));
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+DECLARE_INFER_SHAPE_FUNCTOR(elementwise_add_grad,
+                            ElementwiseAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(elementwise_add_double_grad,
+                            ElementwiseAddGradGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplaceInferer,
                            {"DDX", "DDOut"});
 
@@ -472,7 +458,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     elementwise_add_grad,
     ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseAddGradInferShapeFunctor,
     ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
@@ -481,6 +467,7 @@ REGISTER_OPERATOR(
     elementwise_add_grad_grad,
     ops::ElementwiseOpDoubleGradWithoutDXDY,
     ops::ElementwiseDoubleGradOpInplaceInferer,
+    // ops::ElementwiseAddGradGradInferShapeFunctor,
     ops::ElementwiseDoubleGradNoBufVarsInferer,
     ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);

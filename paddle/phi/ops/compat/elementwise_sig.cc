@@ -23,7 +23,7 @@ KernelSignature ElementwiseAddOpArgumentMapping(
 
 KernelSignature ElementwiseGradAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("grad_add", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseSubOpArgumentMapping(
