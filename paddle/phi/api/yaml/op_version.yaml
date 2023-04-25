@@ -154,10 +154,10 @@
     - checkpoint : Change dispensable of attribute from False to True in instance_norm.
       action :
         - modify_attr : Bias
-          comment : The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'.
+          comment : "The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'."
           default : "true"
         - modify_attr : Scale
-          comment : The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'.
+          comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
           default : "true"
 
 - op : lamb
