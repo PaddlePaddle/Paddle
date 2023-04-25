@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace phi {
 namespace detail {
 
@@ -1169,7 +1173,8 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,
-                             MetaTensor* out) {
+                             MetaTensor* out,
+                             MetaConfig config) {
   if (x.dims() != y.dims()) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -1198,6 +1203,31 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
+
+#ifdef PADDLE_WITH_MKLDNN
+    bool should_rotate =
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC) &&
+        (x_dims.size() >= 3 || y_dims.size() >= 3);
+
+    if (config.is_run_mkldnn_kernel) {
+      // Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // if model is using NHWC and any of shapes in at least 3D
+      if (should_rotate) {
+        // Pick bigger shape and rotate this one
+        bool x_over_y = (x_dims.size() > y_dims.size());
+        auto vdims = x_over_y ? phi::vectorize<int>(x_dims)
+                              : phi::vectorize<int>(y_dims);
+        std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
+        if (x_over_y) {
+          x_dims = phi::make_ddim(vdims);
+        } else {
+          y_dims = phi::make_ddim(vdims);
+        }
+      }
+    }
+#endif
+
     funcs::GetBroadcastDimsArrays(x_dims,
                                   y_dims,
                                   x_dims_array.data(),
@@ -1205,6 +1235,18 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (config.is_run_mkldnn_kernel) {
+      // Now rotate shape back if needed (NHWC -> NCHW)
+      if (should_rotate) {
+        std::rotate(out_dims_array.begin() + 1,
+                    out_dims_array.end() - 1,
+                    out_dims_array.end());
+      }
+    }
+#endif
+
     auto out_dims = phi::make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
@@ -3132,5 +3174,3 @@ void Unpool3dInferMeta(const MetaTensor& x,
 }
 
 }  // namespace phi
-
-PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

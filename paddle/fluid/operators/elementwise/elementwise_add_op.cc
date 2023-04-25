@@ -18,6 +18,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "glog/logging.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
@@ -42,121 +48,6 @@ namespace operators {
 class ElementwiseAddOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
-
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Y").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be phi::DenseTensor, but the "
-            "received is %s [%s].",
-            ctx->GetInputsVarType("Y").front(),
-            ctx->Inputs("Y").front()));
-
-    if (ctx->GetInputsVarType("X").front() ==
-        framework::proto::VarType::SELECTED_ROWS) {
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Y").size(),
-          1u,
-          platform::errors::InvalidArgument(
-              "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-              "), Y must be scalar, the size of Y should be 1. "
-              "But reveived the size of Y = %s.",
-              ctx->GetInputDim("Y").size()));
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Y")[0],
-          1,
-          platform::errors::InvalidArgument(
-              "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-              "), Y must be scalar, the first dimension of Y should be 1. "
-              "But reveived the first dimension of Y = %s.",
-              ctx->GetInputDim("Y")[0]));
-    } else if (ctx->GetInputsVarType("X").front() !=
-               framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Input X's type[%s] is not supported by elementwise_op. Please set "
-          "its type to LOD_TENSOR.",
-          ctx->GetInputsVarType("X").front()));
-    }
-
-    if (ctx->GetInputDim("X") == ctx->GetInputDim("Y")) {
-      ctx->ShareDim("X", /*->*/ "Out");
-      ctx->ShareLoD("X", /*->*/ "Out");
-    } else {
-      auto x_dims = ctx->GetInputDim("X");
-      auto y_dims = ctx->GetInputDim("Y");
-      int max_dim = std::max(x_dims.size(), y_dims.size());
-      int axis = ctx->Attrs().Get<int>("axis");
-      if (x_dims.size() == y_dims.size()) {
-        PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "axis should be -1 or 0 while the dimension of "
-                              "tensor X (%s) is equal to the dimension of "
-                              "tensor Y (%s), but received axis: %s",
-                              x_dims.size(),
-                              y_dims.size(),
-                              axis));
-      }
-      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The axis range must be [%s, %s), but axis is %s. "
-                            "Please set the axis again.",
-                            -1 * max_dim,
-                            max_dim,
-                            axis));
-      axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
-                       : axis);
-      std::vector<int> x_dims_array(max_dim);
-      std::vector<int> y_dims_array(max_dim);
-      std::vector<int> out_dims_array(max_dim);
-#ifdef PADDLE_WITH_MKLDNN
-      // Broadcasting of dims has to be done on Paddle shapes (NHWC)
-      // if model is using NHWC and any of shapes in at least 3D
-      bool should_rotate =
-          ctx->IsRunMKLDNNKernel() &&
-          (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           phi::DataLayout::kNHWC) &&
-          (x_dims.size() >= 3 || y_dims.size() >= 3);
-      if (should_rotate) {
-        // Pick bigger shape and rotate this one
-        bool x_over_y = (x_dims.size() > y_dims.size());
-        auto vdims = x_over_y ? phi::vectorize<int>(x_dims)
-                              : phi::vectorize<int>(y_dims);
-        std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
-        if (x_over_y) {
-          x_dims = phi::make_ddim(vdims);
-        } else {
-          y_dims = phi::make_ddim(vdims);
-        }
-      }
-#endif
-
-      GetBroadcastDimsArrays(x_dims,
-                             y_dims,
-                             x_dims_array.data(),
-                             y_dims_array.data(),
-                             out_dims_array.data(),
-                             max_dim,
-                             axis);
-#ifdef PADDLE_WITH_MKLDNN
-      // Now rotate shape back if needed (NHWC -> NCHW)
-      if (should_rotate) {
-        std::rotate(out_dims_array.begin() + 1,
-                    out_dims_array.end() - 1,
-                    out_dims_array.end());
-      }
-#endif
-      ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
-      // to do
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
 
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -497,6 +388,10 @@ class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INFER_SHAPE_FUNCTOR(elementwise_add,
+                            ElementwiseAddInferShapeFunctor,
+                            PD_INFER_META(phi::ElementwiseRawInferMeta));
+
 DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -570,7 +465,7 @@ REGISTER_OPERATOR(elementwise_add,
                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
                   elementwise_addGradMaker<::paddle::imperative::OpBase>,
                   ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
-                  ::paddle::operators::ElementwiseOpInplaceInferer);
+                  ::paddle::operators::ElementwiseAddInferShapeFunctor);
 
 namespace ops = paddle::operators;
 
