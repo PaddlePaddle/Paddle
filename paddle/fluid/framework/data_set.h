@@ -241,7 +241,7 @@ class DatasetImpl : public Dataset {
   virtual void LocalShuffle();
   virtual void GlobalShuffle(int thread_num UNUSED = -1) {}
   virtual void SlotsShuffle(
-      const std::set<std::string>& UNUSED slots_to_replace) {}
+      const std::set<std::string>& slots_to_replace UNUSED) {}
   virtual const std::vector<T>& GetSlotsOriginalData() {
     return slots_shuffle_original_data_;
   }
