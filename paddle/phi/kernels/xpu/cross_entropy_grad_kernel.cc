@@ -54,22 +54,12 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
           d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
     } else {
+      int* labels_int_ptr_l3 = nullptr;
       if (labels.dtype() == DataType::INT32) {
-        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
-            dev_ctx.x_context(),
-            reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
-            labels.data<int32_t>(),
-            reinterpret_cast<const XPUType*>(softmax.data<T>()),
-            reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-            ignore_index,
-            use_softmax,
-            n,
-            d);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
-      } else {
+        labels_int_ptr_l3 = const_cast<int*> labels.data<int32_t>();
+      } else if (labels.dtype() == DataType::INT64) {
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-        int* labels_int_ptr_l3 =
-            RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+        labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
         PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
 
         r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
@@ -77,19 +67,24 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
                                         labels_int_ptr_l3,
                                         labels.numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-
-        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
-            dev_ctx.x_context(),
-            reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
-            labels_int_ptr_l3,
-            reinterpret_cast<const XPUType*>(softmax.data<T>()),
-            reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-            ignore_index,
-            use_softmax,
-            n,
-            d);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
+      } else {
+        // TODO(lilujia): other data types should be handled
+        errors::Unimplemented(
+            ("cross_entropy does not support data types other than int32 and "
+             "int64"));
       }
+
+      r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
+          labels_int_ptr_l3,
+          reinterpret_cast<const XPUType*>(softmax.data<T>()),
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
+          ignore_index,
+          use_softmax,
+          n,
+          d);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
     }
   } else {
     int t = logit_grad->dims()[axis];
@@ -127,41 +122,37 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
           t);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
     } else {
-      int* labels_int_ptr_l3 =
-          RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
-      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
-
+      int* labels_int_ptr_l3 = nullptr;
       if (labels.dtype() == DataType::INT32) {
-        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
-            dev_ctx.x_context(),
-            reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
-            labels.data<int32_t>(),
-            trans_softmax,
-            trans_logit,
-            ignore_index,
-            use_softmax,
-            n * d / t,
-            t);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
-      } else {
+        labels_int_ptr_l3 = const_cast<int*> labels.data<int32_t>();
+      } else if (labels.dtype() == DataType::INT64) {
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+        labels_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
+
         r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
                                         labels.data<int64_t>(),
                                         labels_int_ptr_l3,
                                         labels.numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-
-        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
-            dev_ctx.x_context(),
-            reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
-            labels_int_ptr_l3,
-            trans_softmax,
-            trans_logit,
-            ignore_index,
-            use_softmax,
-            n * d / t,
-            t);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
+      } else {
+        // TODO(lilujia): other data types should be handled
+        errors::Unimplemented(
+            ("cross_entropy does not support data types other than int32 and "
+             "int64"));
       }
+
+      r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(loss_grad.data<T>()),
+          labels_int_ptr_l3,
+          trans_softmax,
+          trans_logit,
+          ignore_index,
+          use_softmax,
+          n * d / t,
+          t);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
     }
 
     r = xpu::transpose<XPUType>(
