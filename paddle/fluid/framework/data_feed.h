@@ -929,11 +929,12 @@ struct BufState {
 };
 
 /// Related behaviors and events during sampling
-const int EVENT_FINISH_EPOCH = 0;       // End of sampling single epoch
-const int EVENT_CONTINUE_SAMPLE = 1;    // Continue sampling
-const int EVENT_WALKBUF_FULL = 2;       // d_walk is full, end current pass sampling
-const int EVENT_NOT_SWTICH = 0;         // Continue sampling on the current metapath.
-const int EVENT_SWTICH_METAPATH = 1;    // Switch to the next metapath to perform sampling
+const int EVENT_FINISH_EPOCH = 0;     // End of sampling single epoch
+const int EVENT_CONTINUE_SAMPLE = 1;  // Continue sampling
+const int EVENT_WALKBUF_FULL = 2;  // d_walk is full, end current pass sampling
+const int EVENT_NOT_SWTICH = 0;    // Continue sampling on the current metapath.
+const int EVENT_SWTICH_METAPATH =
+    1;  // Switch to the next metapath to perform sampling
 
 struct GraphDataGeneratorConfig {
   bool need_walk_ntype;
@@ -976,8 +977,7 @@ class GraphDataGenerator {
   int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
-  int FillIdShowClkTensor(int total_instance,
-                          bool gpu_graph_training);
+  int FillIdShowClkTensor(int total_instance, bool gpu_graph_training);
   int FillGraphIdShowClkTensor(int uniq_instance,
                                int total_instance,
                                int index);
@@ -988,7 +988,7 @@ class GraphDataGenerator {
   int FillSlotFeature(uint64_t* d_walk, size_t key_num);
   int GetPathNum() { return total_row_; }
   void ResetPathNum() { total_row_ = 0; }
-  int GetGraphBatchsize() {return conf_.batch_size;};
+  int GetGraphBatchsize() { return conf_.batch_size; };
   void SetNewBatchsize(int batch_num) {
     if (!conf_.gpu_graph_training && !conf_.sage_mode) {
       conf_.batch_size = (total_row_ + batch_num - 1) / batch_num;
@@ -1236,9 +1236,7 @@ class DataFeed {
     return gpu_graph_data_generator_.get_pass_end();
   }
 
-  virtual void reset_pass_end() {
-    gpu_graph_data_generator_.reset_pass_end();
-  }
+  virtual void reset_pass_end() { gpu_graph_data_generator_.reset_pass_end(); }
 
   virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
 
