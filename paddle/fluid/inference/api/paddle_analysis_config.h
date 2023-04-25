@@ -288,6 +288,12 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool adaptive_seqlen = false,
                  bool enable_multi_stream = false);
 
+  ///
+  /// \brief configs of XPU
+  ///
+  /// \param xpu_enable_quant_weight_only Whether to enable weight only optimize
+  /// on fused_multi_transformer.
+  ///
   void SetXpuConfig(bool xpu_enable_quant_weight_only = false);
 
   ///
