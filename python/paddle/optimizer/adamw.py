@@ -160,6 +160,7 @@ class AdamW(Optimizer):
         lazy_mode=False,
         multi_precision=False,
         name=None,
+        master_grad=False,
     ):
         assert learning_rate is not None
         assert beta1 is not None
@@ -284,6 +285,11 @@ class AdamW(Optimizer):
         self.regularization = None
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
+
+        # master gradients
+        self._already_create_master_grad = set()
+        self._master_grads = {}
+        self._master_grad = False
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -419,6 +425,14 @@ class AdamW(Optimizer):
         master_weight = (
             self._master_weights[param_and_grad[0].name]
             if find_master
+            else None
+        )
+        find_master_grad = self._master_grad and self._is_dtype_fp16_or_bf16(
+            param_and_grad[1].dtype
+        )
+        master_grad = (
+            self._master_grads[param_and_grad[1].name]
+            if find_master_grad
             else None
         )
         lr = self._create_param_lr(param_and_grad)

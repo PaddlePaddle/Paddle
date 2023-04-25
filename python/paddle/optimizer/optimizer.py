@@ -277,6 +277,11 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        # master gradients
+        self._already_create_master_grad = set()
+        self._master_grads = {}
+        self._master_grad = False
+
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
 
@@ -669,6 +674,35 @@ class Optimizer:
                 },
             )
             self._master_weights[param.name] = var
+        return var
+
+    def _create_master_grad(self, grad):
+        global_block = framework.default_main_program().global_block()
+        target_block = global_block
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
+            assert (
+                current_block.backward_block_idx != -1
+            ), "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx
+            ]
+
+        if grad.name in self._master_grads:
+            var = self._master_grads[grad.name]
+        else:
+            var_name = grad.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = grad.block.create_var(
+                name=var_name,
+                shape=grad.shape,
+                value=0,
+                dtype='float32',
+                lod_level=grad.lod_level,
+                persistable=grad.persistable,
+                is_data=grad.is_data,
+            )
+            self._master_grads[grad.name] = var
         return var
 
     def _create_accumulators(self, block, parameters):
@@ -1139,6 +1173,49 @@ class Optimizer:
                 self._append_dgc_ops(params_grads)
         return params_grads
 
+    def append_cast_to_master_grad_op(self, param_grads):
+        """ """
+
+        if not self._master_grad:
+            return param_grads
+
+        global_block = framework.default_main_program().global_block()
+        target_block = global_block
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
+            assert (
+                current_block.backward_block_idx != -1
+            ), "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx
+            ]
+
+        start = len(target_block.ops)
+
+        params_master_grads = []
+
+        assert isinstance(target_block, framework.Block)
+        # create
+        for p, g in param_grads:
+            if g.name in self._already_create_master_grad:
+                continue
+            if self._is_dtype_fp16_or_bf16(g.dtype):
+                master_g = self._create_master_grad(g)
+                params_master_grads.append((p, master_g))
+                self._already_create_master_grad.add(g.name)
+                target_block.append_op(
+                    type="cast",
+                    inputs={"X": [g]},
+                    outputs={"Out": [master_g]},
+                    attrs={
+                        "in_dtype": g.dtype,
+                        "out_dtype": master_g.dtype,
+                    },
+                )
+                continue
+
+        return params_master_grads
+
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -1170,9 +1247,10 @@ class Optimizer:
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
+            # create master gradients
+            params_grads = self.append_cast_to_master_grad_op(params_grads)
             params_grads = self._grad_clip(params_grads)
         else:
-
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any

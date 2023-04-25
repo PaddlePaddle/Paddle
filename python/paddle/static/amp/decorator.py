@@ -81,6 +81,7 @@ class OptimizerWithMixedPrecision:
         incr_ratio,
         decr_ratio,
         use_amp_guard=None,
+        use_master_grad=False,
     ):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
@@ -88,6 +89,7 @@ class OptimizerWithMixedPrecision:
         self._train_program = None
 
         self._is_distributed = False
+        self._use_master_grad = False
         self._scaled_loss = None
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
@@ -106,6 +108,9 @@ class OptimizerWithMixedPrecision:
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = level == "O2"
+        if self._use_pure_fp16 and (dtype == "bfloat16" or dtype == "float16"):
+            self._use_master_grad = use_master_grad
+            self._optimizer._master_grad = use_master_grad
         self._use_fp16_guard = use_amp_guard
         self._to_fp16_var_names = None
         if self._use_dynamic_loss_scaling:
@@ -622,6 +627,7 @@ def decorate(
     use_pure_fp16=False,
     use_fp16_guard=None,
     use_bf16=False,
+    use_master_grad=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -734,6 +740,7 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_fp16_guard,
+        use_master_grad=use_master_grad,
     )
 
     return mp_optimizer
