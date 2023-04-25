@@ -51,6 +51,58 @@ function(find_phi_register FILENAME ADD_PATH PATTERN)
   endif()
 endfunction()
 
+# Just for those gpu kernels locating at "fluid/operators/", such as 'class_center_sample_op.cu'.
+# Add other file modes if need in the future.
+function(register_cu_kernel TARGET)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(register_cu_kernel "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  set(cu_srcs)
+  set(op_common_deps operator op_registry math_function layer
+                     common_infer_shape_functions)
+  foreach(cu_src ${register_cu_kernel_SRCS})
+    if(${cu_src} MATCHES ".*\\.cu$")
+      list(APPEND cu_srcs ${cu_src})
+    endif()
+  endforeach()
+  list(LENGTH cu_srcs cu_srcs_len)
+  if(${cu_srcs_len} EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The GPU kernel file of ${TARGET} should contains at least one .cu file"
+    )
+  endif()
+  if(WITH_GPU)
+    nv_library(
+      ${TARGET}
+      SRCS ${cu_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  elseif(WITH_ROCM)
+    hip_library(
+      ${TARGET}
+      SRCS ${cu_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  endif()
+  set(OP_LIBRARY
+      ${TARGET} ${OP_LIBRARY}
+      CACHE INTERNAL "op libs")
+  foreach(cu_src ${cu_srcs})
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+    endif()
+  endforeach()
+endfunction()
+
 function(op_library TARGET)
   # op_library is a function to create op library. The interface is same as
   # cc_library. But it handle split GPU/CPU code and link some common library
