@@ -78,7 +78,7 @@ void InitGpuProperties(Place place,
       for (const int32_t& arch : compiled_archs) {
         compile_arch_str += std::to_string(arch) + " ";
       }
-      std::map<int, std::string> arch_computing_mapping_table = {
+      std::map<int64_t, std::string> arch_computing_mapping_table = {
           {20, "Fermi"},
           {30, "Kepler"},
           {35, "Kapler"},
@@ -90,7 +90,8 @@ void InitGpuProperties(Place place,
           {70, "Volta"},
           {75, "Turing"},
           {80, "Ampere"},
-          {86, "Ampere"}};
+          {86, "Ampere"},
+          {89, "Ampere"}};
       if (arch_computing_mapping_table.count(*compute_capability)) {
         LOG(WARNING)
             << "The GPU architecture in your current machine is "
