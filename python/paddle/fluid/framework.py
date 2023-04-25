@@ -781,7 +781,7 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns: 
+    Returns:
         Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
