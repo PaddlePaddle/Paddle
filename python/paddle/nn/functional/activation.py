@@ -965,7 +965,7 @@ def silu(x, name=None):
     Where :math:`x` is the input Tensor.
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
