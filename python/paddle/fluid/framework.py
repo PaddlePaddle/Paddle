@@ -1681,19 +1681,6 @@ class Variable(metaclass=VariableMetaClass):
             """do nothing but return a new variable."""
             return x
 
-        # class HookRemoveHelper:
-        #     def __init__(self, var, idx):
-        #         self.idx = idx
-        #         self.variable = var
-        #
-        #     def remove(self):
-        #         try:
-        #             self.variable.block.ops.remove(self.idx)
-        #             return True
-        #         except:
-        #             return False
-
-        # idx = len(self.block.ops)
         paddle.static.py_func(
             func=forward_hook_wrapper,
             x=self,
@@ -1701,8 +1688,6 @@ class Variable(metaclass=VariableMetaClass):
             backward_func=backward_hook_wrapper,
             skip_vars_in_backward_input=[self],
         )
-        # helper = HookRemoveHelper(self, idx)
-        # return helper
 
     def __str__(self):
         return self._to_readable_code()

@@ -48,7 +48,6 @@ class RegisterHookVisitor(gast.NodeVisitor):
         self.register_hook_pos_map = collections.defaultdict(list)
         self.assignment_pos_map = collections.defaultdict(list)
         self.func_name = func_name
-        self.check_hook = False
 
     def visit_FunctionDef(self, func_def):
         # The inner function that has register_hook will not be processed
@@ -67,7 +66,6 @@ class RegisterHookVisitor(gast.NodeVisitor):
                         isinstance(node, ast.Attribute)
                         and node.attr == 'register_hook'
                     ):
-                        self.check_hook = True
                         # parameter name for register_hook
                         param_name = node.value.id
                         register_hook_pos_map[param_name].append(i)
@@ -104,12 +102,20 @@ def modify_function_code(func):
     """
 
     func_ast = ast.parse(textwrap.dedent(inspect.getsource(func)))
+    # check if there is register_hook on code after visit the tree.
+    check_register_hook = next(
+        (
+            node
+            for node in ast.walk(func_ast)
+            if isinstance(node, ast.Attribute) and node.attr == 'register_hook'
+        ),
+        None,
+    )
+    if check_register_hook is None:
+        return
 
     visitor = RegisterHookVisitor(func.__name__)
     visitor.visit(func_ast)
-    # check if there is register_hook on code after visit the tree.
-    if not visitor.check_hook:
-        return
 
     def pretty_source(source):
         return ''.join(source)
