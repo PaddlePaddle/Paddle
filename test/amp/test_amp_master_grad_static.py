@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import numpy as np
+
 import paddle
 from paddle.distributed import fleet
 
@@ -52,17 +54,19 @@ def exclude_from_weight_decay(name):
     return False
 
 
-def optimization(use_distributed, use_amp, use_pure_fp16, use_bf16):
+def optimization(
+    use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad
+):
 
     dist_strategy = init_dist_strategy(
         use_distributed, use_amp, use_pure_fp16, use_bf16
     )
 
     multi_precision = True
-    master_grad = True
+    master_grad = use_master_grad
     clip_norm_thres = 1.0
     clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=clip_norm_thres)
-    scheduled_lr = 0.004
+    scheduled_lr = 1.0  # 0.004
     beta1 = 0.78
     beta2 = 0.836
     epsilon = 1e-4
@@ -101,7 +105,12 @@ def model(data):
 
 
 def main(
-    use_distributed=False, use_amp=False, use_pure_fp16=False, use_bf16=False
+    use_distributed=False,
+    use_amp=False,
+    use_pure_fp16=False,
+    use_bf16=False,
+    use_master_grad=False,
+    steps=10,
 ):
     if use_distributed:
         fleet.init(is_collective=True)
@@ -116,7 +125,7 @@ def main(
         out = model(data)
         loss = paddle.mean(out)
         optimizer = optimization(
-            use_distributed, use_amp, use_pure_fp16, use_bf16
+            use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad
         )
         optimizer.minimize(loss)
 
@@ -137,13 +146,45 @@ def main(
             saved_model_name = "test.fp16_o2"
         else:
             saved_model_name = "test.fp16_o1"
-    paddle.static.save(train_program, 'models/' + saved_model_name)
+    # paddle.static.save(train_program, 'models/' + saved_model_name)
 
-    exe.run(train_program)
+    # feed and fetch data
+    feed_vars = [data]
+    data_np_fp32 = np.random.random(size=[1, 1, 28, 28]).astype("float32")
+    fetch_vars = [loss]
+    losses = []
+
+    for i in range(steps):
+        results = exe.run(
+            train_program,
+            feed={feed_vars[0].name: data_np_fp32},
+            fetch_list=fetch_vars,
+        )
+        import struct
+
+        def convert_uint16_to_float(in_list):
+            if in_list.dtype == np.uint16:
+                in_list = np.asarray(in_list)
+                out = np.vectorize(
+                    lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[
+                        0
+                    ],
+                    otypes=[np.float32],
+                )(in_list.flat)
+                return np.reshape(out, in_list.shape)
+            else:
+                return in_list
+
+        if use_bf16:
+            loss = convert_uint16_to_float(results[0])
+        print(f"-- [BF16 {saved_model_name}] iter={i}, loss={loss}")
+        losses.append(results[0])
 
 
 use_distributed = False
 use_amp = True
 use_pure_fp16 = True
 use_bf16 = True
-main(use_distributed, use_amp, use_pure_fp16, use_bf16)
+use_master_grad = False
+steps = 100
+main(use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad, steps)
