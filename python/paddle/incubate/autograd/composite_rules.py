@@ -685,3 +685,12 @@ def sum_composite(x):
     for xi in x:
         ans += xi
     return ans
+
+
+@REGISTER_COMPOSITE('leaky_relu')
+def leaky_relu_composite(x, negative_slope):
+    """define composite rule of op leaky_relu."""
+    if negative_slope < 1.0:
+        return maximum(x, negative_slope * x)
+    else:
+        return minimum(x, negative_slope * x)
