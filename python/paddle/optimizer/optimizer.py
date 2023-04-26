@@ -769,12 +769,12 @@ class Optimizer:
 
         if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:
-                assert (
-                    var_name in self._accumulators_holder
-                ), "Optimizer set error, {} should in state dict".format(
-                    var_name
-                )
-                var.set_value(self._accumulators_holder.pop(var_name))
+                if var_name in self._accumulators_holder:
+                    var.set_value(self._accumulators_holder.pop(var_name))
+                else:
+                    logging.warning(
+                        f"Optimizer set warning, {var_name} does not in state dict."
+                    )
 
         self._accumulators[name][param.name] = var
         return var
