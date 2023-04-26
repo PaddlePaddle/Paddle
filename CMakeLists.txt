@@ -672,13 +672,7 @@ if(WITH_CPP_DIST)
           "Currently C++ Distribution Generation is only available on Linux and compiling WITH_PYTHON=ON."
           FORCE)
   else()
-    set(PADDLE_INSTALL_DIR ${PADDLE_BINARY_DIR}/paddle_install_dir)
-    set(PADDLE_LIB_TEST_DIR ${PADDLE_BINARY_DIR}/test/paddle_lib)
-    configure_file(${PADDLE_SOURCE_DIR}/cmake/PaddleConfig.cmake.in
-                   ${PADDLE_INSTALL_DIR}/cmake/PaddleConfig.cmake @ONLY)
-    configure_file(${PADDLE_SOURCE_DIR}/test/paddle_lib/CMakeLists.txt.in
-                   ${PADDLE_BINARY_DIR}/test/paddle_lib/CMakeLists.txt @ONLY)
-    version(${PADDLE_INSTALL_DIR}/version.txt)
+    include(paddle_lib)
   endif()
 endif()
 
