@@ -2269,6 +2269,7 @@
     x : X
   outputs :
     out : Out
+  manual_signature : [tile]
   int_array:
     repeat_times :
       data_type : int
