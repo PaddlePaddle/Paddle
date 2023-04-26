@@ -115,6 +115,7 @@ class SegmentLayers:
             source_num_parts = len(seg_method) - 1
 
             def check_sanity():
+                assert seg_method[0] == 0, "seg_method[0] should be 0"
                 for part in seg_method:
                     assert isinstance(part, int), "part should be int"
                     assert part >= 0, f"part[{part}] should be greater than 0"

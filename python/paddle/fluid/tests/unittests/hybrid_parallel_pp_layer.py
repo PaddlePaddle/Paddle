@@ -148,7 +148,7 @@ class TestPipeLayerAPI(unittest.TestCase):
         if stage_id == 0:
             np.testing.assert_array_equal(len(pipe_model.parameters()), 4)
         elif stage_id == 1:
-            np.testing.assert_array_equal(len(pipe_model.parameters()), 2)
+            np.testing.assert_array_equal(len(pipe_model.parameters()), 8)
 
 
 if __name__ == '__main__':
