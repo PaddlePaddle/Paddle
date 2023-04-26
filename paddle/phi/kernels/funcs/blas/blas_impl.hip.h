@@ -983,6 +983,70 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
 }
 
 template <>
+template <>
+inline void Blas<phi::GPUContext>::GEMM(bool transA,
+                                        bool transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::bfloat16 alpha,
+                                        const phi::dtype::bfloat16 *A,
+                                        int lda,
+                                        const phi::dtype::bfloat16 *B,
+                                        int ldb,
+                                        phi::dtype::bfloat16 beta,
+                                        phi::dtype::bfloat16 *C,
+                                        int ldc UNUSED) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(),
+      80,
+      phi::errors::InvalidArgument(
+          "rocblas fp16 gemm requires GPU compute capability >= 80,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+
+  context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_gemm_ex(handle,
+                                      cuTransB,
+                                      cuTransA,
+                                      N,
+                                      M,
+                                      K,
+                                      &h_alpha,
+                                      B,
+                                      rocblas_datatype_bf16_r,
+                                      ldb,
+                                      A,
+                                      rocblas_datatype_bf16_r,
+                                      lda,
+                                      &h_beta,
+                                      C,
+                                      rocblas_datatype_bf16_r,
+                                      N,
+                                      C,
+                                      rocblas_datatype_bf16_r,
+                                      N,
+                                      rocblas_datatype_f32_r,
+                                      algo,
+                                      0,
+                                      0));
+  });
+}
+
+template <>
 template <typename T>
 void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   context_.CublasCall([&](rocblas_handle handle) {
