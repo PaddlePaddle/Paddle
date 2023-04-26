@@ -25,6 +25,10 @@ g_enable_mem_efficient = None
 
 @signature_safe_contextmanager
 def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
+    r"""
+    With the sdp_kernel context manager, different algorithm implementations can
+    be selected for scaled_dot_product_attention.
+    """
     global g_enable_math, g_enable_flash, g_enable_mem_efficient
     original_enable_math = g_enable_math
     original_enable_flash = g_enable_math
@@ -41,7 +45,7 @@ def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
         g_enable_mem_efficient = original_enable_mem_efficient
 
 
-def math_attention(
+def _math_attention(
     query,
     key,
     value,
@@ -50,6 +54,10 @@ def math_attention(
     return_softmax=False,
     training=True,
 ):
+    r"""
+    This is a basic implementation of scaled dot product attention composed of
+    combinations of fundamental components.
+    """
     head_dim = query.shape[-1]
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
@@ -72,21 +80,26 @@ def math_attention(
     return out, weights if return_softmax else None
 
 
-def select_sdp_cuda(head_dim):
+def _select_sdp_cuda(head_dim):
     if head_dim < 128:
         return "flash_attn"
     else:
         return "mem_efficient"
 
 
-def select_sdp(head_dim):
+def _select_sdp(head_dim):
+    r"""
+    There are currently three different implementation options available for
+    scaled dot product attention, and the chosen approach depends on whether it
+    is determined by the sdp_kernel configuration or specified through input values.
+    """
     place = paddle.get_device()
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:
             return "math"
         else:
-            return select_sdp_cuda(head_dim)
+            return _select_sdp_cuda(head_dim)
 
     if (
         g_enable_math is False
@@ -103,7 +116,7 @@ def select_sdp(head_dim):
         if "gpu" not in place:
             return "math"
     if g_enable_flash is True and g_enable_mem_efficient is True:
-        return select_sdp_cuda(head_dim)
+        return _select_sdp_cuda(head_dim)
     if g_enable_flash is True:
         return "flash_attn"
     return "mem_efficient"
@@ -177,7 +190,7 @@ def flash_attention(
             print(output)
     """
     head_dim = query.shape[3]
-    sdp_func_name = select_sdp(head_dim)
+    sdp_func_name = _select_sdp(head_dim)
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_mode():
@@ -242,7 +255,7 @@ def flash_attention(
             )
             return output, None
         else:
-            return math_attention(
+            return _math_attention(
                 query,
                 key,
                 value,
