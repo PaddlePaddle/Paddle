@@ -343,6 +343,12 @@
   outputs :
     out : Out
 
+- op : box_coder
+  inputs :
+    {prior_box : PriorBox , prior_box_var : PriorBoxVar, target_box: TargetBox}
+  outputs :
+    output_box : OutputBox
+
 - op : broadcast_tensors
   backward : broadcast_tensors_grad
   inputs :
@@ -378,6 +384,12 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
 
 - op : clip
   backward : clip_grad, clip_double_grad
