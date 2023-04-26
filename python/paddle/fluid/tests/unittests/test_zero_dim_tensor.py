@@ -2456,7 +2456,7 @@ class TestSundryAPI(unittest.TestCase):
         out_2.retain_grads()
         out_2.backward()
 
-        self.assertEqual(out_2.shape, [1])
+        self.assertEqual(out_2.shape, [])
         self.assertEqual(x_2.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = 0,
@@ -4646,7 +4646,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out_2, x_2.grad_name])
-        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = 1 ,axis = 0,
@@ -4775,7 +4775,89 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         # self.assertTrue(res[0].shape, ())
         # self.assertTrue(res[1].shape, (3, 3))
-        # np.testing.assert_allclose(out, np.array(1.41421342))
+
+        # p = fro : use paddle.sum
+        # x2 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x2.stop_gradient = False
+        # out_fro = paddle.linalg.cond(x2, p='fro')
+        # paddle.static.append_backward(out_fro)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_fro, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p = nuc : use paddle.sum
+        # x3 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x3.stop_gradient = False
+        # out_nuc = paddle.linalg.cond(x3, p='nuc')
+        # paddle.static.append_backward(out_nuc)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_nuc, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-1, 1) : use paddle.sum
+        # x4 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x4.stop_gradient = False
+        # out_1 = paddle.linalg.cond(x4, p=1)
+        # paddle.static.append_backward(out_1)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_1, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # x5 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x5.stop_gradient = False
+        # out_minus_1 = paddle.linalg.cond(x5, p=-1)
+        # paddle.static.append_backward(out_minus_1)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_minus_1, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-2, 2)  depends on paddle.sum
+        # x6 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x6.stop_gradient = False
+        # out_2 = paddle.linalg.cond(x6, p=2)
+        # paddle.static.append_backward(out_2)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_2, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-inf, inf):use paddle.sum
+        # x8 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x8.stop_gradient = False
+        # out_inf = paddle.linalg.cond(x8, p=float("inf"))
+        # paddle.static.append_backward(out_inf)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_inf, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # depends on paddle.sum
+        # a = paddle.randn([2, 4, 4])
+        # a.stop_gradient = False
+        # a_cond_fro = paddle.linalg.cond(a, p='fro')
+        # paddle.static.append_backward(a_cond_fro)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[a_cond_fro, a.grad_name])
+
+        # self.assertEqual(res[0].shape, (2,))
+        # self.assertEqual(res[1].shape, (2, 4, 4))
 
     @prog_scope()
     def test_trace(self):
