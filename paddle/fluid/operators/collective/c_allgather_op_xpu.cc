@@ -43,12 +43,9 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, comm->nranks()));
 
-    framework::DDim out_dims = in->dims();
-    out_dims[0] *= nranks;
-
     size_t numel = in->numel();
     const void* sendbuff = in->data<T>();
-    void* recvbuff = out->mutable_data<T>(out_dims, place);
+    void* recvbuff = out->mutable_data<T>(place);
 
     XPUStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
