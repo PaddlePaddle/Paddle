@@ -354,7 +354,7 @@ class _JacobianNoBatch(_Jacobian):
 
     def _evaluate(self, row_index):
         return self._flatten(
-            _grad(
+            _grad_for_jacobian(
                 self._flatten_ys[row_index],
                 self._xs,
             )
@@ -394,7 +394,9 @@ class _JacobianBatchFirst(_Jacobian):
         )
 
     def _evaluate(self, row_index):
-        return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
+        return self._flatten(
+            _grad_for_jacobian(self._flatten_ys[:, row_index], self._xs)
+        )
 
 
 def _multi_index(indexes, shape):
@@ -450,7 +452,8 @@ def jacobian(
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]:
-    r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
+    r"""
+    Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
 
     Where ``ys`` represents the output of ``xs`` after a certain operation, ``ys`` and
@@ -462,12 +465,12 @@ def jacobian(
     The ``xs`` tuples are identical in one-to-one correspondence.
 
     - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
-        supported, assuming the shape of ``xs`` is ``[N, ]``, the shape of ``ys`` is
-        ``[M, ]``, then the output Jacobian matrix shape is ``[M, N]``.
+      supported, assuming the shape of ``xs`` is ``[N, ]``, the shape of ``ys`` is
+      ``[M, ]``, then the output Jacobian matrix shape is ``[M, N]``.
 
     - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
-        supported, assuming the shape of ``xs`` is ``[B, N]``, The shape of ``ys`` is
-        ``[B, M]``, then the output Jacobian matrix shape is ``[B, M, N]``.
+      supported, assuming the shape of ``xs`` is ``[B, N]``, The shape of ``ys`` is
+      ``[B, M]``, then the output Jacobian matrix shape is ``[B, M, N]``.
 
     After the ``Jacobian`` object is created, the actual calculation process does not
     occur, but the lazy evaluation method is used for calculation. It can be
@@ -492,8 +495,7 @@ def jacobian(
 
     Returns:
 
-        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys
-            deriveted from xs.
+        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys deriveted from xs.
 
     Examples:
 
@@ -542,7 +544,8 @@ def hessian(
     xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
     batch_axis: Optional[int] = None,
 ) -> Union[Tuple[Tuple[Hessian, ...], ...], Hessian]:
-    r"""Computes the Jacobian of the dependent variable ``ys`` versus the independent
+    r"""
+    Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
 
     Among them, ``ys`` means the output of ``xs`` after a certain operation, ``ys`` can
@@ -550,15 +553,14 @@ def hessian(
     ``batch_axis`` means The position of the batch dimension of the parameter data.
 
     When the input ``xs`` is a Tensor tuple, the returned result is a ``Hessian`` tuple,
-    assuming that the internal shape of the ``xs`` tuple is composed of
-    ``([M1, ], [M2, ]) ``, the shape of the returned result consists of
-    ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
+    assuming that the internal shape of the ``xs`` tuple is composed of ``([M1, ], [M2, ]) ``, the shape of the returned
+    result consists of ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
 
     - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
-    supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]``(0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
+      supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]`` (0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
 
     - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
-    supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is `` [B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
+      supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is `` [B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
 
     After the ``Hessian`` object is created, the complete calculation process does not
     occur, but a partial lazy evaluation method is used for calculation. It can be
@@ -575,8 +577,7 @@ def hessian(
 
     Returns:
 
-        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys
-            deriveted from xs.
+        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys deriveted from xs.
 
     Examples:
 
@@ -653,7 +654,7 @@ def _replace_none_with_zero_tensor(xs, refs):
         return xs
 
 
-def _grad(ys, xs, v=None):
+def _grad_for_jacobian(ys, xs, v=None):
     """A gradient function that can be used in dynamic graph and static graph.
 
     The ``grad`` combines ``paddle.grad`` used in dynamic graph and
@@ -665,7 +666,7 @@ def _grad(ys, xs, v=None):
         only makes sense in dynamic graph.
     * When xs is a single Tensor, ``paddle.grad`` returns a list which only
         contains one Tensor. It may confuse users, thus in this case we improve
-        to return a single Tensor in _grad interface.
+        to return a single Tensor in _grad_for_jacobian interface.
 
     Args:
         ys (Tensor|Sequence[Tensor]): The output tensor or tensor sequence of
@@ -700,5 +701,11 @@ def _grad(ys, xs, v=None):
         ):
             xs_grad = xs_grad[0]
     else:
-        xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
+        xs_grad = paddle.static.gradients(ys, xs, v)
+        if (
+            isinstance(xs, framework.Variable)
+            and isinstance(xs_grad, Sequence)
+            and len(xs_grad) > 0
+        ):
+            xs_grad = xs_grad[0]
     return _replace_none_with_zero_tensor(xs_grad, xs)
