@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
+template <typename DeviceContext, typename T>
 class XPULogsumexpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -70,6 +70,11 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(
-    logsumexp, XPU, ALL_LAYOUT, ops::XPULogsumexpKernel, float) {}
+// This kernel can not be registered in phi, because op logsumexp should run
+// phi::LogsumexpKernel rather than XPULogsumexpKernel here. And if register
+// xpu logsumexp kernel in phi, op logsumexp will run XPULogsumexpKernel here
+// and raise error.
+REGISTER_OP_XPU_KERNEL(
+    logsumexp,
+    ops::XPULogsumexpKernel<paddle::platform::XPUDeviceContext, float>);
 #endif
