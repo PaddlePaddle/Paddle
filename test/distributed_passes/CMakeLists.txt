@@ -30,7 +30,7 @@ if(NOT ((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6)))
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_gemm_epilogue_pass")
 endif()
 
-if(NOT ((WITH_GPU) AND (WITH_CUDNN_FRONTEND)))
+if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_resunit_pass")
 endif()
 
