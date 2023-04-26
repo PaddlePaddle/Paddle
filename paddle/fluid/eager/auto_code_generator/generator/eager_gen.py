@@ -361,7 +361,8 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
-DECLARE_bool(check_nan_inf);
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(check_nan_inf);
 {}
 """
 
@@ -388,8 +389,10 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/phi/core/flags.h"
+
 DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 {}
 {}
 """

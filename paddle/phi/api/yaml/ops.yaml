@@ -329,6 +329,15 @@
     func : bmm
   backward : bmm_grad
 
+- op : box_coder
+  args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
+  output : Tensor(output_box)
+  infer_meta :
+    func : BoxCoderInferMeta
+  kernel :
+    func : box_coder
+  optional : prior_box_var
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
@@ -376,6 +385,15 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : class_center_sample
+  args : (Tensor label, int num_classes, int num_samples, int ring_id = 0, int rank = 0, int nranks = 1, bool fix_seed = false, int seed = 0)
+  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
+  infer_meta :
+    func : ClassCenterSampleInferMeta
+  kernel :
+    func : class_center_sample
+    data_type : label
 
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -804,6 +822,16 @@
   kernel :
     func : gelu
   backward : gelu_grad
+
+- op : generate_proposals
+  args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
+  output : Tensor(rpn_rois), Tensor(rpn_roi_probs), Tensor(rpn_rois_num)
+  infer_meta :
+    func : GenerateProposalsV2InferMeta
+  kernel :
+    func : generate_proposals
+    data_type : anchors
+  optional : rpn_rois_num
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
@@ -2133,6 +2161,15 @@
     data_type: input
   intermediate: warprnntgrad
   backward : warprnnt_grad
+
+- op : weighted_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
+  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : WeightedSampleNeighborsInferMeta
+  kernel :
+    func : weighted_sample_neighbors
+  optional: eids
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

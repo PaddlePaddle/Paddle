@@ -1875,9 +1875,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
@@ -1932,9 +1929,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
