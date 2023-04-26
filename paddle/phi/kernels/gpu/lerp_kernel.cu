@@ -62,19 +62,12 @@ void LerpKernel(const Context &ctx,
           "The number of dimensions for LerpOp must be "
           "greater than or equal to 0, but the value received is %d.",
           rank));
-  PADDLE_ENFORCE_LE(
-      rank,
-      6,
-      phi::errors::InvalidArgument(
-          "The number of dimensions for LerpOp must be "
-          "less than or equal to 6, but the value received is %d.",
-          rank));
 
   ctx.template Alloc<T>(out);
   std::vector<DenseTensor *> outputs = {out};
 
   std::vector<const DenseTensor *> inputs;
-  if (weight.dims().size() == 0) {
+  if (weight.numel() == 1) {
     const T *weight_ptr = weight.data<T>();
     inputs.reserve(2);
     inputs.emplace_back(&x);
@@ -85,9 +78,9 @@ void LerpKernel(const Context &ctx,
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
+    DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
-      DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
       std::vector<const DenseTensor *> broadcast_min_inputs;
       broadcast_min_inputs.reserve(1);
       std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
