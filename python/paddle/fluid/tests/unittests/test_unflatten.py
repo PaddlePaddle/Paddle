@@ -627,6 +627,16 @@ class TestLayer(unittest.TestCase):
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
 
+class TestLayerName(unittest.TestCase):
+    def test_name(self):
+        self.x = np.random.randn(3, 4, 4, 5).astype('float32')
+        self.shape = [2, 2]
+        self.axis = 1
+        self.name = 'unflatten'
+        unflatten = paddle.nn.Unflatten(self.shape, self.axis, self.name)
+        _name = unflatten.extra_repr()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
