@@ -30,7 +30,7 @@
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
-DECLARE_bool(use_fast_math);
+PHI_DECLARE_bool(use_fast_math);
 
 namespace phi {
 namespace fusion {
