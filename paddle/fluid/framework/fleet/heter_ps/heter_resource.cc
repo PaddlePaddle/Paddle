@@ -23,10 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(enable_auto_detect_gpu_topo);
-DECLARE_bool(enable_auto_rdma_trans);
+PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
+PHI_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
