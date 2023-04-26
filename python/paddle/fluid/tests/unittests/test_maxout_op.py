@@ -150,6 +150,7 @@ class TestMaxoutFP16Case2(TestMaxOutOpFP16):
     def set_attrs(self):
         self.axis = 3
 
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
