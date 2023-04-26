@@ -253,9 +253,6 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     info->use_empty_grad_op_desc_maker_ =
         std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
         std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
-    std::cout << "op_registry: " << op_type
-              << " GradOpEmpty = " << info->use_empty_grad_op_desc_maker_
-              << std::endl;
   }
 };
 
