@@ -103,8 +103,15 @@ class TestUnflattenAPI(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype=self.x.dtype
                 )
+                if self.shape_is_tensor:
+                    shape = np.array(self.shape)
+                    shape = paddle.static.data(
+                        name='shape', shape=shape.shape, dtype=shape.dtype
+                    )
+                else:
+                    shape = self.shape
                 exe = paddle.static.Executor(place)
-                out = self.paddle_api(x=x, shape=self.shape, axis=self.axis)
+                out = self.paddle_api(x=x, shape=shape, axis=self.axis)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={
@@ -114,6 +121,7 @@ class TestUnflattenAPI(unittest.TestCase):
                     },
                     fetch_list=[out],
                 )
+
                 np.testing.assert_allclose(fetches[0], self.output, rtol=1e-05)
 
 
