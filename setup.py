@@ -1564,7 +1564,7 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     # install libpaddle.ext
     paddle_libs = glob.glob(
         paddle_binary_dir
-        + '/paddle/pybind/'
+        + '/paddle/fluid/pybind/'
         + env_dict.get("FLUID_CORE_NAME")
         + '.*'
     )
@@ -1577,7 +1577,10 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
         shutil.copy(lib_path, lib_install_dir)
 
     # build test target
-    subprocess.check_call([CMAKE, lib_test_dir, "-B", lib_test_dir])
+    cmake_args = [CMAKE, lib_test_dir, "-B", lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
     subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
 

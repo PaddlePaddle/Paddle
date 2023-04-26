@@ -917,7 +917,10 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
         shutil.copy(lib_path, lib_install_dir)
     
     # build test target
-    subprocess.check_call(["cmake", paddle_lib_test_dir, "-B", paddle_lib_test_dir])
+    cmake_args = ["cmake", paddle_lib_test_dir, "-B", paddle_lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
     subprocess.check_call(["cmake", "--build", paddle_lib_test_dir])
 
 
