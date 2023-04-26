@@ -4373,12 +4373,12 @@ class ExponentialMovingAverage:
                 ema = block._clone_variable(self._ema_vars[param.name])
                 paddle.assign(param, output=tmp)
                 # bias correction
-                with layers.control_flow.Switch() as switch:
-                    with switch.case(global_step > 0):
-                        paddle.assign(ema / (1.0 - decay_pow), output=param)
-                    with switch.default():
-                        paddle.assign(ema, output=param)
-
+                param_val = paddle.static.nn.cond(
+                    global_step > 0,
+                    lambda: ema / (1.0 - decay_pow),
+                    lambda: ema,
+                )
+                paddle.assign(param_val, output=param)
         self.restore_program = Program()
         block = self.restore_program.global_block()
         with program_guard(main_program=self.restore_program):
@@ -4399,13 +4399,12 @@ class ExponentialMovingAverage:
 
             if self._thres_steps is not None:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
-                with layers.control_flow.Switch() as switch:
-                    with switch.case(decay_t < self._decay):
-                        paddle.assign(decay_t, decay_var)
-                    with switch.default():
-                        paddle.assign(
-                            np.array([self._decay], dtype=np.float32), decay_var
-                        )
+                decay_val = paddle.static.nn.cond(
+                    decay_t < self._decay,
+                    lambda: decay_t,
+                    lambda: np.array([self._decay], dtype=np.float32),
+                )
+                paddle.assign(decay_val, decay_var)
         return decay_var
 
     def _get_decay_pow(self, block):
@@ -7408,26 +7407,30 @@ class LookaheadOptimizer:
             )
 
             mod = paddle.remainder(step, k)
-            with layers.control_flow.Switch() as switch:
-                with switch.case(step == one_var):
-                    for param_name in params:
-                        fast_var = main_block.var(param_name)
-                        slow_var = param_to_slow[param_name]
-                        paddle.assign(fast_var, output=slow_var)
-                with switch.case(mod == zero_var):
-                    for param_name in params:
-                        fast_var = main_block.var(param_name)
-                        slow_var = param_to_slow[param_name]
-                        tmp_var = paddle.add(
-                            paddle.multiply(fast_var, alpha),
-                            paddle.multiply(
-                                slow_var, paddle.subtract(one_var, alpha)
-                            ),
-                        )
-                        paddle.assign(tmp_var, output=slow_var)
-                        paddle.assign(tmp_var, output=fast_var)
-                with switch.default():
-                    pass
+            for param_name in params:
+                fast_var = main_block.var(param_name)
+                slow_var = param_to_slow[param_name]
+                tmp_var = paddle.add(
+                    paddle.multiply(fast_var, alpha),
+                    paddle.multiply(slow_var, paddle.subtract(one_var, alpha)),
+                )
+                slow_val = paddle.static.nn.case(
+                    [
+                        (step == one_var, lambda: fast_var),
+                        (mod == zero_var, lambda: tmp_var),
+                    ],
+                    default=lambda: slow_var,
+                )
+                paddle.assign(slow_val, slow_var)
+
+                fast_val = paddle.static.nn.case(
+                    [
+                        (mod == zero_var, lambda: tmp_var),
+                    ],
+                    default=lambda: fast_var,
+                )
+                paddle.assign(fast_val, fast_var)
+
         return mini_out
 
 
