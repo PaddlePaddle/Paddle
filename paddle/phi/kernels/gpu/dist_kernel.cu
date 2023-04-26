@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,23 +31,15 @@ template <typename Tx, typename Ty = Tx>
 struct ZeroOrderFunctor {
   HOSTDEVICE explicit inline ZeroOrderFunctor() {}
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x != Tx(0.0));
-  }
-
   HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
     return static_cast<Ty>(x != y);
   }
 };
 
 template <typename Tx, typename Ty = Tx>
-struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
+struct OtherOrderFunctor {
+  HOSTDEVICE explicit inline OtherOrderFunctor(const Ty& _p_order)
       : p_order(_p_order) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(pow(abs(static_cast<Ty>(x)), p_order));
-  }
 
   HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
     return static_cast<Ty>(
@@ -59,19 +50,33 @@ struct PowFunctor {
   Ty p_order;
 };
 
-template <typename Tx, typename Ty, typename Functor>
+template <typename Tx, typename Ty = Tx>
+struct PowFunctor {
+  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
+      : p_order(_p_order) {}
+
+  HOSTDEVICE inline Tx operator()(const Tx x) const {
+    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
+  }
+
+ private:
+  Ty p_order;
+};
+
+template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
-    const Tx* x, const Tx* y, Ty* out, int64_t N, Functor func) {
-  Ty sum_val = Ty(0.0);
+    const T* x, const T* y, T* out, int64_t N, Functor func) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT sum_val(0.0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    sum_val += func(x[i], y[i]);
+    sum_val += static_cast<MT>(func(x[i], y[i]));
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<Ty>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = sum_val;
+    out[blockIdx.x] = static_cast<T>(sum_val);
   }
 }
 
@@ -159,18 +164,13 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      T* i_ptr = dev_ctx.template Alloc<MT>(&intermediate);
+      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       MT p_order = static_cast<MT>(p);
-      ReduceSumWithSubtract<T, MT>
+      ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, PowFunctor<T, MT>(p_order));
-      phi::funcs::
-          ReduceKernel<MT, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-              dev_ctx,
-              intermediate,
-              out,
-              kps::IdentityFunctor<MT>(),
-              reduce_axis);
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
 
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
