@@ -136,8 +136,8 @@ Tensor slice<DescTensor>(const Tensor& input, const std::vector<int64_t>& axes, 
   auto out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   op->SetOutput("Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->SetAttr("axes", unsafe_vector_cast<int64_t, int>(axes));
-  op->SetAttr("starts", starts.GetData());
-  op->SetAttr("ends", ends.GetData());
+  op->SetAttr("starts",  unsafe_vector_cast<int64_t, int>(starts.GetData()));
+  op->SetAttr("ends",  unsafe_vector_cast<int64_t, int>(ends.GetData()));
   op->SetAttr("infer_flags", unsafe_vector_cast<int64_t, int>(infer_flags));
   op->SetAttr("decrease_axis", unsafe_vector_cast<int64_t, int>(decrease_axis));
   op->CheckAttrs();
