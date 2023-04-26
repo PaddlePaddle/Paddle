@@ -49,14 +49,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 for op_type in [
                     "relu",
                     "sigmoid",
-                    # "tanh",
-                    # "relu6",
-                    # "elu",
-                    # "selu",
-                    # "softsign",
-                    # "stanh",
-                    # "thresholded_relu",
-                    # "softplus",
+                    "tanh",
+                    "relu6",
+                    "elu",
+                    "selu",
+                    "softsign",
+                    "stanh",
+                    "thresholded_relu",
+                    "softplus",
                 ]:
                     # few samples to reduce time
                     # for beta in [-0.2, 0.5, 0.67, 3]:
