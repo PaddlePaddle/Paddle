@@ -31,7 +31,7 @@ class OpBase {
   const Operation *operator->() const { return operation_; }
 
  private:
-  const Operation *operation_;
+  const Operation *operation_;  // Not owned
 };
 
 ///

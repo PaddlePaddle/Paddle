@@ -95,9 +95,9 @@ class IrContext {
   ///
   /// \brief Get or register operaiton.
   ///
-  void RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo);
+  void RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo);
 
-  OpInfoImpl *GetRegisteredOpInfo(ir::TypeId id);
+  OpInfoImpl *GetRegisteredOpInfo(const std::string &name);
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,

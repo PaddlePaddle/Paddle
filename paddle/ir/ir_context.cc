@@ -99,25 +99,22 @@ class IrContextImpl {
     return nullptr;
   }
 
-  void RegisterOpInfo(ir::TypeId type_id, OpInfoImpl *opinfo) {
+  void RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
-    VLOG(4) << "Register an operation of: [TypeId_hash="
-            << std::hash<ir::TypeId>()(type_id) << ", OpInfoImpl ptr=" << opinfo
-            << "].";
-    registed_op_infos_.emplace(type_id, opinfo);
+    VLOG(4) << "Register an operation of: [Name=" << name
+            << ", OpInfoImpl ptr=" << opinfo << "].";
+    registed_op_infos_.emplace(name, opinfo);
   }
 
-  OpInfoImpl *GetOpInfo(ir::TypeId type_id) {
+  OpInfoImpl *GetOpInfo(const std::string &name) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
-    auto iter = registed_op_infos_.find(type_id);
+    auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Fonund a cached operation of: [TypeId_hash="
-              << std::hash<ir::TypeId>()(type_id)
+      VLOG(4) << "Fonund a cached operation of: [name=" << name
               << ", OpInfoImpl ptr=" << iter->second << "].";
       return iter->second;
     }
-    LOG(WARNING) << "No cache found operation of: [TypeId_hash="
-                 << std::hash<ir::TypeId>()(type_id) << "].";
+    LOG(WARNING) << "No cache found operation of: [Name=" << name << "].";
     return nullptr;
   }
 
@@ -164,7 +161,7 @@ class IrContextImpl {
   ir::SpinLock registed_dialect_lock_;
 
   // The Op registered in the context.
-  std::unordered_map<TypeId, OpInfoImpl *> registed_op_infos_;
+  std::unordered_map<std::string, OpInfoImpl *> registed_op_infos_;
   ir::SpinLock registed_op_infos_lock_;
 
   ir::SpinLock destructor_lock_;
@@ -254,14 +251,14 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   return nullptr;
 }
 
-OpInfoImpl *IrContext::GetRegisteredOpInfo(ir::TypeId id) {
-  OpInfoImpl *rtn = impl().GetOpInfo(id);
+OpInfoImpl *IrContext::GetRegisteredOpInfo(const std::string &name) {
+  OpInfoImpl *rtn = impl().GetOpInfo(name);
   return rtn ? rtn : nullptr;
 }
 
-void IrContext::RegisterOpInfo(ir::TypeId id, OpInfoImpl *opinfo) {
-  if (impl().GetOpInfo(id) == nullptr) {
-    impl().RegisterOpInfo(id, opinfo);
+void IrContext::RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo) {
+  if (impl().GetOpInfo(name) == nullptr) {
+    impl().RegisterOpInfo(name, opinfo);
   }
 }
 

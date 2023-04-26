@@ -32,7 +32,7 @@ void Dialect::RegisterAttribute(ir::AbstractAttribute &&abstract_attribute) {
       new_abstract_attribute->type_id(), new_abstract_attribute);
 }
 
-void Dialect::RegisterOp(ir::TypeId id, OpInfoImpl *op_info) {
-  this->ir_context()->RegisterOpInfo(id, op_info);
+void Dialect::RegisterOp(const std::string &name, OpInfoImpl *op_info) {
+  this->ir_context()->RegisterOpInfo(name, op_info);
 }
 }  // namespace ir

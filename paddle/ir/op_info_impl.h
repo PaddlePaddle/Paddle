@@ -20,10 +20,11 @@
 #include <utility>
 
 #include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/ir_context.h"
+// #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type.h"
 
 namespace ir {
+class Dialect;
 ///
 /// \brief Tool template class for construct interfaces or Traits.
 ///
@@ -95,7 +96,7 @@ class OpInfoImpl {
   /// OpInfoImpl is: std::pair<TypeId, void *>... | TypeId... | OpInfoImpl
   ///
   template <typename ConcreteOp>
-  static OpInfoImpl *create() {
+  static OpInfoImpl *create(ir::Dialect *dialect) {
     // (1) Malloc memory for interfaces, traits, opinfo_impl.
     size_t interfaces_num =
         std::tuple_size<typename ConcreteOp::InterfaceList>::value;
@@ -141,7 +142,8 @@ class OpInfoImpl {
                                        ConcreteOp::attributes_name_,
                                        attributes_num,
                                        ir::TypeId::get<ConcreteOp>(),
-                                       ConcreteOp::name());
+                                       ConcreteOp::name(),
+                                       dialect);
     return op_info;
   }
 
@@ -228,19 +230,27 @@ class OpInfoImpl {
     return nullptr;
   }
 
+  ir::TypeId id() const { return op_id_; }
+
+  const char *name() const { return op_name_; }
+
+  ir::Dialect *dialect() const { return dialect_; }
+
  private:
   OpInfoImpl(uint32_t num_interfaces,
              uint32_t num_traits,
              const char **p_attributes,
              uint32_t num_attributes,
              TypeId op_id,
-             const char *op_name)
+             const char *op_name,
+             ir::Dialect *dialect)
       : num_interfaces_(num_interfaces),
         num_traits_(num_traits),
         p_attributes_(p_attributes),
         num_attributes_(num_attributes),
         op_id_(op_id),
-        op_name_(op_name) {}
+        op_name_(op_name),
+        dialect_(dialect) {}
 
   static bool CompareInterface(const std::pair<ir::TypeId, void *> &a,
                                const std::pair<ir::TypeId, void *> &b) {
@@ -264,6 +274,9 @@ class OpInfoImpl {
 
   /// The name of this Op.
   const char *op_name_;
+
+  /// The dialect of this Op belong to.
+  ir::Dialect *dialect_;
 };
 
 }  // namespace ir
