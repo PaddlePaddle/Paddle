@@ -65,7 +65,10 @@ class Variable {
     return holder_ && holder_->Type() == VarTypeTrait<T>::kId;
   }
 
-  void Clear() { holder_.reset(); }
+  void Clear() {
+    VLOG(1) << "Variable clear";
+    holder_.reset();
+  }
 
   int Type() const {
     PADDLE_ENFORCE_NOT_NULL(

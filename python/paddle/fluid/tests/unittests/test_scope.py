@@ -14,27 +14,42 @@
 
 from __future__ import print_function
 
-import paddle.fluid.core
+import paddle.fluid.core as paddle_c
 import unittest
 import six
 
 
 class TestScope(unittest.TestCase):
+    def test_clear_vars(self):
+        scope = paddle_c.Scope()
+        var_names = ["var_a", "var_b", "var_c", "var_d"]
+        for var_name in var_names:
+            scope.var(var_name).get_tensor().set(
+                [0, 1, 2, 3], paddle_c.CPUPlace()
+            )
+
+        local_var_names = scope.local_var_names()
+        self.assertEqual(len(var_names), len(local_var_names))
+
+        var_names_to_cleared = [var_names[0], var_names[1], var_names[2]]
+        scope.clear(var_names_to_cleared)
+
+        for var_name in local_var_names:
+            actual_initialized_value = scope.var(var_name).is_initialized()
+            expect_initialized_value = var_name not in var_names_to_cleared
+            self.assertEqual(actual_initialized_value, expect_initialized_value)
 
     def test_create_destroy(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         self.assertIsNotNone(scope)
         scope_with_parent = scope.new_scope()
         self.assertIsNotNone(scope_with_parent)
 
     def test_none_variable(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         self.assertIsNone(scope.find_var("test"))
 
     def test_create_var_get_var(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         var_a = scope.var("var_a")
         self.assertIsNotNone(var_a)
@@ -43,7 +58,6 @@ class TestScope(unittest.TestCase):
         self.assertIsNotNone(scope2.find_var('var_a'))
 
     def test_var_get_int(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         var = scope.var("test_int")
         var.set_int(10)
@@ -51,17 +65,16 @@ class TestScope(unittest.TestCase):
         self.assertEqual(10, var.get_int())
 
     def test_scope_pool(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         # Delete the scope.
         scope._remove_from_pool()
         with self.assertRaisesRegexp(
-                Exception, "Deleting a nonexistent scope is not allowed*"):
+            Exception, "Deleting a nonexistent scope is not allowed*"
+        ):
             # It is not allowed to delete a nonexistent scope.
             scope._remove_from_pool()
 
     def test_size(self):
-        paddle_c = paddle.fluid.core
         scope = paddle_c.Scope()
         var_a = scope.var("var_a")
         self.assertEqual(scope.size(), 1)
