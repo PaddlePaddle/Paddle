@@ -61,6 +61,24 @@ def cal_mode(a, axis, keepdim=False):
     return modes, indexes
 
 
+def init_numeric_grads(input_shape, out_indices, axis):
+    grad = np.zeros(input_shape).astype(np.float32)
+    in_dims = list(range(grad.ndim))
+    a_view = np.transpose(
+        grad,
+        in_dims[:axis] + in_dims[axis + 1 :] + [axis],
+    )
+    idx = np.array(out_indices).flatten()
+    inds = np.ndindex(a_view.shape[:-1])
+    for i, ind in enumerate(inds):
+        a_view[ind][idx[i]] = 1 / np.prod(out_indices.shape)
+    grad = np.transpose(
+        a_view,
+        in_dims[:axis] + in_dims[-1:] + in_dims[axis:-1],
+    )
+    return grad
+
+
 class TestModeOp(OpTest):
     def init_args(self):
         self.axis = 1
@@ -75,23 +93,6 @@ class TestModeOp(OpTest):
         self.attrs = {'axis': self.axis}
         output, indices = cal_mode(self.input_data, axis=self.axis)
         self.outputs = {'Out': output, 'Indices': indices}
-        self.init_numeric_grads()
-
-    def init_numeric_grads(self):
-        self.grad = np.zeros(self.input_data.shape).astype(np.float32)
-        in_dims = list(range(self.grad.ndim))
-        a_view = np.transpose(
-            self.grad,
-            in_dims[: self.axis] + in_dims[self.axis + 1 :] + [self.axis],
-        )
-        idx = np.array(self.outputs['Indices']).flatten()
-        inds = np.ndindex(a_view.shape[:-1])
-        for i, ind in enumerate(inds):
-            a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
-        self.grad = np.transpose(
-            a_view,
-            in_dims[: self.axis] + in_dims[-1:] + in_dims[self.axis : -1],
-        )
 
     def test_check_output(self):
         paddle.enable_static()
@@ -99,7 +100,10 @@ class TestModeOp(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad({'X'}, 'Out', user_defined_grads=[self.grad])
+        grad = init_numeric_grads(
+            self.input_data.shape, self.outputs['Indices'], self.axis
+        )
+        self.check_grad({'X'}, 'Out', user_defined_grads=[grad])
 
 
 @unittest.skipIf(
@@ -113,31 +117,12 @@ class TestModeFP16Op(OpTest):
         self.op_type = "mode"
         self.python_api = paddle.mode
         self.dtype = np.float16
-        self.input_data = (
-            np.random.rand(2, 64, 1).astype(np.float16).astype(np.float32)
-        )
+        self.input_data = np.random.rand(2, 64, 1).astype(np.float16)
         self.init_args()
         self.inputs = {'X': self.input_data.astype(self.dtype)}
         self.attrs = {'axis': self.axis}
         output, indices = cal_mode(self.input_data, axis=self.axis)
         self.outputs = {'Out': output, 'Indices': indices}
-        self.init_numeric_grads()
-
-    def init_numeric_grads(self):
-        self.grad = np.zeros(self.input_data.shape).astype(np.float32)
-        in_dims = list(range(self.grad.ndim))
-        a_view = np.transpose(
-            self.grad,
-            in_dims[: self.axis] + in_dims[self.axis + 1 :] + [self.axis],
-        )
-        idx = np.array(self.outputs['Indices']).flatten()
-        inds = np.ndindex(a_view.shape[:-1])
-        for i, ind in enumerate(inds):
-            a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
-        self.grad = np.transpose(
-            a_view,
-            in_dims[: self.axis] + in_dims[-1:] + in_dims[self.axis : -1],
-        )
 
     def test_check_output(self):
         paddle.enable_static()
@@ -148,9 +133,13 @@ class TestModeFP16Op(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
+        grad = init_numeric_grads(
+            self.input_data.shape, self.outputs['Indices'], self.axis
+        )
+
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, {'X'}, 'Out', user_defined_grads=[self.grad]
+                place, {'X'}, 'Out', user_defined_grads=[grad]
             )
 
 
@@ -182,23 +171,6 @@ class TestModeBF16Op(OpTest):
             'Out': convert_float_to_uint16(output),
             'Indices': indices,
         }
-        self.init_numeric_grads()
-
-    def init_numeric_grads(self):
-        self.grad = np.zeros(self.input_data.shape).astype(np.float32)
-        in_dims = list(range(self.grad.ndim))
-        a_view = np.transpose(
-            self.grad,
-            in_dims[: self.axis] + in_dims[self.axis + 1 :] + [self.axis],
-        )
-        idx = np.array(self.outputs['Indices']).flatten()
-        inds = np.ndindex(a_view.shape[:-1])
-        for i, ind in enumerate(inds):
-            a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
-        self.grad = np.transpose(
-            a_view,
-            in_dims[: self.axis] + in_dims[-1:] + in_dims[self.axis : -1],
-        )
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -209,9 +181,12 @@ class TestModeBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         paddle.enable_static()
+        grad = init_numeric_grads(
+            self.input_data.shape, self.outputs['Indices'], self.axis
+        )
         if core.is_bfloat16_supported(place):
             self.check_grad_with_place(
-                place, {'X'}, 'Out', user_defined_grads=[self.grad]
+                place, {'X'}, 'Out', user_defined_grads=[grad]
             )
 
 
@@ -230,9 +205,9 @@ class TestModeOpLastdim(OpTest):
         self.attrs = {'axis': self.axis}
         output, indices = cal_mode(self.input_data, axis=self.axis)
         self.outputs = {'Out': output, 'Indices': indices}
-        self.init_numeric_grads()
+        self.init_last_dim_numeric_grads()
 
-    def init_numeric_grads(self):
+    def init_last_dim_numeric_grads(self):
         self.grad = np.zeros(self.input_data.shape).astype(np.float32)
         in_dims = list(range(self.grad.ndim))
         idx = np.array(self.outputs['Indices']).flatten()
