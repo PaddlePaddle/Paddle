@@ -652,16 +652,16 @@ def auto_cast(
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        custom_white_list(set|list|tuple, optional): Usually there is no need to set custom white list.
-             The set of ops should be considered numerically-safe and performance-critical. These ops
-             will be converted to float16/bfloat16.
-        custom_black_list(set|list|tuple, optional): The set of ops are considered numerically-dangerous
-             and whose effects may also be observed in downstream ops. These ops will not be converted to float16/bfloat16.
-        level(str, optional): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": For the O1 level,
-             the input data type of each operator will be casted by white_list and black_list. For the O2 level, model's
-            parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have any float32 input
-            will be converted to float16/bfloat16. For the OD level, operators in default white_list will compute in float16/bfloat16,
-            and the others will compute in float32. Default is O1.
+        custom_white_list(set|list|tuple, optional): A default white list is already set. Usually there is no need to set custom white list.
+             The set of ops should be considered numerically-safe and performance-critical. These ops will be converted to float16/bfloat16.
+        custom_black_list(set|list|tuple, optional): A default black list is already set. You can set a custom black list according to the model.
+             The set of ops are considered numerically-dangerous and whose effects may also be observed in downstream ops. These ops will not be
+             converted to float16/bfloat16.
+        level(str, optional): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": At the O1 level, operators in the white list
+             will use float16/bfloat16 inputs for calculations, and operators in the black list will use float32 inputs for calculations. At the O2
+             level, model's parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have all float16/bfloat16 inputs
+             will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
+             default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
 
     Examples:
