@@ -610,7 +610,7 @@ def _getitem_impl_(var, item):
 
         out = unsqueeze(out, axis=none_axes)
 
-    if hasattr(var, "is_view_var") and hasattr(tmp, "is_view_var"):
+    if hasattr(var, "is_view_var") and hasattr(out, "is_view_var"):
         var.is_view_var = True
         out.is_view_var = True
     return out
