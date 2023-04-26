@@ -664,6 +664,8 @@ if(WITH_STRIP)
 endif()
 
 if(WITH_CPP_DIST)
+  # TODO(huangjiyi): Separate installing C++ distribution from python package
+  # installation and support for installing C++ distribution on more platforms.
   if(NOT LINUX OR NOT WITH_PYTHON)
     set(WITH_CPP_DIST
         OFF

@@ -1546,6 +1546,13 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
 
 
 def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi):
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
     if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
         return
     os.makedirs(install_dir, exist_ok=True)

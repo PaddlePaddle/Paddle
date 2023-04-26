@@ -889,8 +889,14 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
-# install cpp distribution
 def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi): 
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
     if '${CMAKE_BUILD_TYPE}' != 'Release':
         return
     os.makedirs(paddle_install_dir, exist_ok=True)
