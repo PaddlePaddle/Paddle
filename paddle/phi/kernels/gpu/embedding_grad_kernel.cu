@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/embedding_grad.h"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -26,7 +27,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-DECLARE_bool(embedding_deterministic);
+DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -198,20 +199,18 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      if (FLAGS_embedding_deterministic) {
-        dim3 threads(WARP_SIZE, BLOCKDIMY);
-        dim3 grids(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
-        using MT = typename dtype::MPTypeTrait<T>::Type;
-        EmbeddingGradDeterministic<T, IdT>
-            <<<grids,
-               threads,
-               sizeof(MT) * WARP_SIZE * BLOCKDIMY +
-                   sizeof(IdT) * WARP_SIZE * BLOCKDIMY,
-               dev_ctx_.stream()>>>(d_table, d_output, ids, K, D);
+      if (FLAGS_embedding_deterministic == 1) {
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+            dev_ctx_, ids, d_output, d_table, N, D, K);
       } else {
         const int gridx = 2 * dev_ctx_.GetSMCount();
         dim3 threads(128, 8);
         dim3 grids(gridx, 1);
+        if (FLAGS_embedding_deterministic > 1) {
+          VLOG(2) << "Run grad kernel of embedding with single thread.";
+          grids.x = 1;
+          threads.y = 1;
+        }
         EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
             d_table, d_output, ids, N, K, D);
       }
