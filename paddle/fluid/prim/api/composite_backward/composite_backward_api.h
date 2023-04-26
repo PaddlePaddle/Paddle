@@ -1808,29 +1808,33 @@ void roll_grad(const Tensor& x,
 
 template <typename T>
 void pad_grad(const Tensor& input,
-               const Tensor& out_grad,
-               const std::vector<int>& paddings,
-               const Scalar& pad_value,
-               Tensor* input_grad) {
-    if (input_grad){
-      size_t rank = input.dims().size();
-      auto out_dims = out_grad.dims();
+              const Tensor& out_grad,
+              const std::vector<int>& paddings,
+              const Scalar& pad_value,
+              Tensor* input_grad) {
+  if (input_grad) {
+    size_t rank = input.dims().size();
+    auto out_dims = out_grad.dims();
 
-      std::vector<int> starts(rank,0);
-      std::vector<int64_t> ends(rank,0);
-      std::vector<int64_t> axes(rank,0);
-      std::vector<int64_t> infer_flags(rank,1);
-      std::vector<int64_t> decrease_axis({});
-      printf("rank : %d\n",rank);
-      for (int64_t i = 0; i < rank; ++i) {
-        starts.push_back(static_cast<int>(paddings[2*i]));
-        ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2*i + 1]));
-        printf("i : %d starts L %d ends : %d\n",i, paddings[2*i],(out_dims[i] - paddings[2*i + 1]));
-        axes.push_back(i);
-      }
-      auto out_tmp = slice<T>(out_grad,axes,starts,ends,infer_flags,decrease_axis);
-      set_output<T>(out_tmp,input_grad);
+    std::vector<int> starts(rank, 0);
+    std::vector<int64_t> ends(rank, 0);
+    std::vector<int64_t> axes(rank, 0);
+    std::vector<int64_t> infer_flags(rank, 1);
+    std::vector<int64_t> decrease_axis({});
+    printf("rank : %d\n", rank);
+    for (int64_t i = 0; i < rank; ++i) {
+      starts.push_back(static_cast<int>(paddings[2 * i]));
+      ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
+      printf("i : %d starts %d ends : %d\n",
+             i,
+             paddings[2 * i],
+             (out_dims[i] - paddings[2 * i + 1]));
+      axes.push_back(i);
     }
+    auto out_tmp =
+        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
+    set_output<T>(out_tmp, input_grad);
+  }
 }
 
 }  // namespace prim

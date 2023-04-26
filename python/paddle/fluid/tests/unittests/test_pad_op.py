@@ -24,7 +24,9 @@ from paddle.fluid import Program, core, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):
-    return paddle.nn.functional.pad(x, pad=list(paddings),mode = 'constant' ,value = pad_value)
+    return paddle.nn.functional.pad(
+        x, pad=list(paddings), mode='constant', value=pad_value
+    )
 
 
 class TestPadOp(OpTest):
@@ -43,7 +45,7 @@ class TestPadOp(OpTest):
             'Out': np.pad(
                 self.inputs['X'],
                 self.paddings,
-                mode = 'constant',
+                mode='constant',
                 constant_values=self.pad_value,
             )
         }
@@ -58,7 +60,7 @@ class TestPadOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out',check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def initTestCase(self):
         self.shape = (16, 16)
@@ -123,7 +125,9 @@ class TestPadOpError(unittest.TestCase):
 
                 self.assertRaises(TypeError, test_Variable)
 
-                data = paddle.static.data(name='data', shape=[4], dtype='float16')
+                data = paddle.static.data(
+                    name='data', shape=[4], dtype='float16'
+                )
                 paddle.nn.functional.pad(x=data, pad=[0, 1])
 
 
@@ -151,7 +155,9 @@ class TestPaddingValueTensor(UnittestBase):
                 exe = paddle.static.Executor()
                 exe.run(starup_prog)
                 res = exe.run(fetch_list=[feat, out])
-                gt = np.pad(res[0], [1, 1], 'constant', constant_values=[1.0, 1.0])
+                gt = np.pad(
+                    res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
+                )
                 np.testing.assert_allclose(res[1], gt)
                 paddle.static.save_inference_model(
                     self.save_path, [x], [feat, out], exe
@@ -159,7 +165,10 @@ class TestPaddingValueTensor(UnittestBase):
                 # Test for Inference Predictor
                 infer_outs = self.infer_prog()
                 gt = np.pad(
-                    infer_outs[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
+                    infer_outs[0],
+                    [1, 1],
+                    'constant',
+                    constant_values=[1.0, 1.0],
                 )
                 np.testing.assert_allclose(infer_outs[1], gt)
 
@@ -197,12 +206,14 @@ class TestPaddingValueTensor3(unittest.TestCase):
                 pad_value = paddle.assign([0.0]).astype('float64')
                 y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)
                 loss = y.sum()
-                optimize_ops, params_grads = paddle.optimizer.SGD(0.01).minimize(
-                    loss
-                )
+                optimize_ops, params_grads = paddle.optimizer.SGD(
+                    0.01
+                ).minimize(loss)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
-            res = exe.run(main_prog, fetch_list=[y] + [g for p, g in params_grads])
+            res = exe.run(
+                main_prog, fetch_list=[y] + [g for p, g in params_grads]
+            )
             pd_out = res[0]
             np_out = np.pad(np_x, [(0, 1), (2, 3)], constant_values=0.0)
             np.testing.assert_allclose(pd_out, np_out)
@@ -243,7 +254,7 @@ class TestPadBP16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out',check_prim=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 if __name__ == '__main__':
