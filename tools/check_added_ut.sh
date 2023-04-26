@@ -69,13 +69,18 @@ echo "New-UT:"
 cat $PADDLE_ROOT/added_ut
 
 # Check the single test path, whether it is stored under /Paddle/test
-NEW_CC_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.cc"`
-NEW_PY_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.py"`
+while read line
+do
+    new_test_name=$line
+    NEW_CC_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.cc"`
+    NEW_PY_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.py"`
 
-if [ -z ${NEW_CC_TEST_PATH} ] && [ -z ${NEW_PY_TEST_PATH} ];then
-    echo "Please put the newly added single test in the /test directoryi."
-    exit 8
-fi
+    if [ -n "${NEW_CC_TEST_PATH}" ] || [ -n "${NEW_PY_TEST_PATH}" ];then
+        echo "Please put the newly added single test in the /test directoryi."
+        exit 8
+    fi
+
+done<$PADDLE_ROOT/added_ut
 
 rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
