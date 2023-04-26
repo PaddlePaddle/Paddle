@@ -2456,7 +2456,10 @@ def min(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('min', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'min',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3054,7 +3057,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
 def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     """
-    This OP computes the diagonals of the input tensor x.
+    Computes the diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the diagonal.
     If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
