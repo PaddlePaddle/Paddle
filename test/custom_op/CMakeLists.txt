@@ -11,15 +11,6 @@ if(WITH_TESTING)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
     set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
-    if($ENV{USE_STANDALONE_EXECUTOR})
-      # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-      set_tests_properties(
-        test_custom_relu_op_setup PROPERTIES ENVIRONMENT
-                                             FLAGS_USE_STANDALONE_EXECUTOR=0)
-      set_tests_properties(
-        test_custom_relu_model PROPERTIES ENVIRONMENT
-                                          FLAGS_USE_STANDALONE_EXECUTOR=0)
-    endif()
   endif()
 
   if(WITH_GPU AND WITH_DISTRIBUTE)

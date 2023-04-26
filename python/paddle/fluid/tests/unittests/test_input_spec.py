@@ -349,7 +349,7 @@ class TestNegSpecWithPrim(unittest.TestCase):
         )
         x = paddle.randn([2, 10])
         out = net(x)
-        np.testing.assert_equal(out.shape, [2, 5])
+        np.testing.assert_equal(net.forward._input_spec, None)
 
 
 if __name__ == '__main__':

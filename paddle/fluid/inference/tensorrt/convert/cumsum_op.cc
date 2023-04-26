@@ -104,7 +104,6 @@ class CumsumOpConverter : public OpConverter {
                                        *data,
                                        *runningSumTensor,
                                        nvinfer1::ElementWiseOperation::kSUM);
-
     runningSum->setInput(1, *curSum->getOutput(0));
     auto reverseFlag = nvinfer1::LoopOutput::kCONCATENATE;
     nvinfer1::ILoopOutputLayer* loopOut =

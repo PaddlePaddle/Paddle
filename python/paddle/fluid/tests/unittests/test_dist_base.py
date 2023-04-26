@@ -17,11 +17,13 @@ import ast
 import os
 import pickle
 import random
+import socket
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from contextlib import closing
 
 import numpy as np
 
@@ -684,9 +686,6 @@ class TestParallelDyGraphRunnerBase:
         elif fluid.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
-        elif fluid.core.is_compiled_with_npu():
-            device_id = int(os.getenv("FLAGS_selected_npus", "0"))
-            place = fluid.NPUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
@@ -705,7 +704,6 @@ class TestParallelDyGraphRunnerBase:
                 args.update_method == "nccl2"
                 or args.update_method == "bkcl"
                 or args.update_method == "hccl"
-                or args.update_method == "cncl"
             ):
                 strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
@@ -863,7 +861,6 @@ def runtime_main(test_class):
             "nccl2_reduce_layer",
             "gloo",
             "hccl",
-            "cncl",
         ],
     )
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
@@ -888,7 +885,6 @@ def runtime_main(test_class):
     parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
-    parser.add_argument('--use_npu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -932,10 +928,6 @@ def runtime_main(test_class):
         model.run_trainer(args)
 
 
-import socket
-from contextlib import closing
-
-
 class TestDistBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
@@ -945,21 +937,13 @@ class TestDistBase(unittest.TestCase):
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
-            self.__use_npu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
-            self.__use_npu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
-            self.__use_npu = False
-        elif self._enforce_place == "NPU":
-            self.__use_cuda = False
-            self.__use_xpu = False
-            self._use_dgc = False
-            self.__use_npu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -985,7 +969,6 @@ class TestDistBase(unittest.TestCase):
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
         self._hccl_mode = False
-        self._cncl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -1146,13 +1129,6 @@ class TestDistBase(unittest.TestCase):
             cmd += " --use_xpu"
             env_local = {
                 "FLAGS_selected_xpus": devices,
-                "PADDLE_TRAINERS_NUM": "1",
-                "PADDLE_TRAINER_ID": "0",
-            }
-        elif self.__use_npu:
-            cmd += " --use_npu"
-            env_local = {
-                "FLAGS_selected_npus": devices,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0",
             }
@@ -1440,18 +1416,6 @@ class TestDistBase(unittest.TestCase):
                 {
                     "FLAGS_selected_xpus": f"{trainer_id}",
                     # "XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
-                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
-                    "PADDLE_TRAINER_ID": f"{trainer_id}",
-                    "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                    "PADDLE_CURRENT_ENDPOINT": ep,
-                    "GLOG_v": "2",
-                }
-            )
-        elif self.__use_npu:
-            tr_cmd += " --use_npu"
-            env.update(
-                {
-                    "FLAGS_selected_npus": f"{trainer_id}",
                     "PADDLE_TRAINERS_NUM": f"{trainer_num}",
                     "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -1808,14 +1772,6 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='hccl',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._cncl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='cncl',
                 check_error_log=check_error_log,
                 log_name=log_name,
             )

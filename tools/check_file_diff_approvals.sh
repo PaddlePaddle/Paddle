@@ -248,8 +248,8 @@ fi
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen or qili93) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
-    check_approval 1 22165420 6836917 46661762 26922892 16605440 2002279
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen, qili93 or ZzSean) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 22165420 6836917 46661762 26922892 16605440 2002279 32410583
   fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
@@ -352,6 +352,19 @@ if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql YuanRisheng zyfncg
 fi
 
+HAS_MODIFIED_PHI_HEADER_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/.*\.h" || true`
+PHI_INCLUDE_THIRD_PARTY_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -E "#include \"gflags/gflags.h\"|#include \"glog/logging.h\"" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_INCLUDE_THIRD_PARTY_FILES="${PHI_INCLUDE_THIRD_PARTY_FILES} ${CHANGE_FILE}"
+    fi
+done
+if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (jiahy0825, zyfncg, chenwhql, YuanRisheng or heavyrain-lzy) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
+    check_approval 1 jiahy0825 zyfncg chenwhql YuanRisheng heavyrain-lzy
+fi
+
 HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`
 USE_MUTABLE_DATA_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
@@ -443,8 +456,8 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
         CHECK_OP=${CHECK_WHOLE//+/'\n+'}
-        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
-        check_approval 1 6836917 47554610 12538138 43953930 35824027 6888866 16605440 2002279
+        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, lanxianghit, phlrain or ZzSean) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
+        check_approval 1 6836917 47554610 12538138 43953930 35824027 6888866 16605440 2002279 32410583
     fi
 fi
 

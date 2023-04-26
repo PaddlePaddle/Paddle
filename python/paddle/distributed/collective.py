@@ -172,16 +172,6 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _destroy_process_group_id_map():
-    """
-
-    Destroy the custom process group. Designed for CustomDevice.
-
-
-    """
-    core.ProcessGroupIdMap.destroy()
-
-
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -286,11 +276,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_npu():
-                place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             elif core.is_compiled_with_xpu():

@@ -201,9 +201,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
-  set_tests_properties(
-    test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60 ENVIRONMENT
-                                           FLAGS_USE_STANDALONE_EXECUTOR=0)
+  set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
   if(WITH_MKLDNN
      AND TENSORRT_FOUND
@@ -238,10 +236,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
                                                                      240)
-    set_tests_properties(test_trt_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT
-                                                                       240)
-    set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT
-                                                                       240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
     if(WIN32)

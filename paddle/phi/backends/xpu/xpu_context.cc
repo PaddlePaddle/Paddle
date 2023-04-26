@@ -16,6 +16,8 @@
 
 #include <memory>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"

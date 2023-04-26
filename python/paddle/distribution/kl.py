@@ -15,6 +15,7 @@ import functools
 import warnings
 
 import paddle
+from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
@@ -141,6 +142,11 @@ class _Compare:
             if cls_x is not cls_y:
                 break
         return True
+
+
+@register_kl(Bernoulli, Bernoulli)
+def _kl_bernoulli_bernoulli(p, q):
+    return p.kl_divergence(q)
 
 
 @register_kl(Beta, Beta)

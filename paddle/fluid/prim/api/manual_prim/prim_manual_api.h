@@ -38,8 +38,5 @@ Tensor full(const IntArray& shape,
 template <typename T>
 Tensor cast(const Tensor& x, DataType dtype);
 
-template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
-
 }  // namespace prim
 }  // namespace paddle
