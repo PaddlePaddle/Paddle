@@ -98,6 +98,10 @@ class FusedDconvDreluDbnOpMaker : public framework::OpProtoAndCheckerMaker {
         "groups",
         "(int default:1), the groups number of the convolution operator. ")
         .SetDefault(1);
+    AddAttr<bool>(
+        "exhaustive_search",
+        R"DOC((bool, default false). Whether to use exhaustive search for finding algorithm.)DOC")
+        .SetDefault(false);
     AddComment(R"DOC(
 This op includes 3 kernels:
 1. FusedDgradDreluBnBwdWeight

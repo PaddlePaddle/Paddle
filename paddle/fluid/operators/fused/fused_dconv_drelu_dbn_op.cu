@@ -26,6 +26,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
+DECLARE_bool(cudnn_deterministic);
+DECLARE_bool(cudnn_exhaustive_search);
+
 namespace paddle {
 namespace operators {
 
@@ -108,6 +111,8 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
                                 const std::vector<int>& dilations,
                                 const std::vector<int64_t>& pre_padding,
                                 const std::vector<int64_t>& post_padding,
+                                bool exhaustive_search,
+                                bool deterministic,
                                 Tensor* dx_tensor,
                                 Tensor* bn1_dgamma_tensor,
                                 Tensor* bn1_dbeta_tensor,
@@ -503,20 +508,22 @@ void _DgradDreluBnBwdWeightImpl(const framework::ExecutionContext& ctx,
     return;
   }
 
-  auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-  VLOG(6) << "Plan tag: " << plan.getTag();
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          &data_ptrs,
+                                          &uids,
+                                          handle,
+                                          &workspace_handle);
 
-  auto workspace_size = plan.getWorkspaceSize();
-  VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
-
-  helper::ExecutePlan(handle,
-                      &workspace_handle,
-                      &data_ptrs,
-                      &uids,
-                      plan.get_raw_desc(),
-                      workspace_size);
-
-  plan_cache.InsertPlan(feature_vector, plan, handle);
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               &data_ptrs,
+                               &uids,
+                               &plans,
+                               exhaustive_search,
+                               feature_vector,
+                               &plan_cache);
 }
 
 template <typename T>
@@ -531,6 +538,8 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
                    const Tensor* B_dual_tensor,
                    const Tensor* C_dual_tensor,
                    bool fuse_dual,
+                   bool exhaustive_search,
+                   bool deterministic,
                    Tensor* dX_tensor,
                    Tensor* dX_dual_tensor) {
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
@@ -703,18 +712,22 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
     return;
   }
 
-  auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-  auto workspace_size = plan.getWorkspaceSize();
-  VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          &data_ptrs,
+                                          &uids,
+                                          handle,
+                                          &workspace_handle);
 
-  helper::ExecutePlan(handle,
-                      &workspace_handle,
-                      &data_ptrs,
-                      &uids,
-                      plan.get_raw_desc(),
-                      workspace_size);
-
-  plan_cache.InsertPlan(feature_vector, plan, handle);
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               &data_ptrs,
+                               &uids,
+                               &plans,
+                               exhaustive_search,
+                               feature_vector,
+                               &plan_cache);
 }
 
 template <typename T>
@@ -728,6 +741,8 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
                      const std::vector<int>& dilations,
                      const std::vector<int64_t>& pre_padding,
                      const std::vector<int64_t>& post_padding,
+                     bool exhaustive_search,
+                     bool deterministic,
                      Tensor* dw_tensor) {
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kBnActWgrad);
@@ -883,19 +898,22 @@ void _BnActWgradImpl(const framework::ExecutionContext& ctx,
     return;
   }
 
-  auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-  auto workspace_size = plan.getWorkspaceSize();
-  VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          &data_ptrs,
+                                          &uids,
+                                          handle,
+                                          &workspace_handle);
 
-  helper::ExecutePlan(handle,
-                      &workspace_handle,
-                      &data_ptrs,
-                      &uids,
-                      plan.get_raw_desc(),
-                      workspace_size);
-
-  plan_cache.InsertPlan(feature_vector, plan, handle);
-
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               &data_ptrs,
+                               &uids,
+                               &plans,
+                               exhaustive_search,
+                               feature_vector,
+                               &plan_cache);
   // transfer back to NCWH
   TransToChannelFirst<Context, T>(ctx, &dw_tensor_transformed, dw_tensor);
 }
@@ -929,6 +947,15 @@ class FusedDconvDreluDbnOpKernel : public framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
+    // exhaustive search
+    bool exhaustive_search =
+        ctx.Attr<bool>("exhaustive_search") || FLAGS_cudnn_exhaustive_search;
+    bool deterministic = FLAGS_cudnn_deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
     // required input variables
     const Tensor* dy_tensor = ctx.Input<Tensor>("dY");
     const Tensor* w_tensor = ctx.Input<Tensor>("W");
@@ -1059,6 +1086,8 @@ class FusedDconvDreluDbnOpKernel : public framework::OpKernel<T> {
                                   dilations,
                                   pre_padding,
                                   post_padding,
+                                  exhaustive_search,
+                                  deterministic,
                                   &dx_tensor,
                                   bn1_dgamma_tensor,
                                   bn1_dbeta_tensor,
@@ -1082,6 +1111,8 @@ class FusedDconvDreluDbnOpKernel : public framework::OpKernel<T> {
                      &bn2_eqscale_x_tensor,
                      &bn2_eqbias_tensor,
                      fuse_dual,
+                     exhaustive_search,
+                     deterministic,
                      bn1_dx_tensor,
                      bn2_dx_tensor);
 
@@ -1098,6 +1129,8 @@ class FusedDconvDreluDbnOpKernel : public framework::OpKernel<T> {
                        dilations,
                        pre_padding,
                        post_padding,
+                       exhaustive_search,
+                       deterministic,
                        dw_tensor);
   }
 };

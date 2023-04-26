@@ -85,6 +85,10 @@ class FusedScaleBiasReluConvBnstatsOpMaker
         "fuse_prologue",
         R"DOC((bool, default true). Whether to fuse scale bias relu.)DOC")
         .SetDefault(true);
+    AddAttr<bool>(
+        "exhaustive_search",
+        R"DOC((bool, default false). Whether to use exhaustive search for finding algorithm.)DOC")
+        .SetDefault(false);
     AddComment(R"DOC(
 This op includes two fused kernels:
 1. FusedScaleBiasReluConvBnstats

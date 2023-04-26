@@ -287,6 +287,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
             'fuse_shortcut': self.fuse_shortcut,
             'fuse_dual': self.fuse_dual,
             'fuse_add': self.fuse_add,
+            'exhaustive_search': self.exhaustive_search,
         }
 
         op_inputs = {
@@ -416,6 +417,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.fuse_add = False
         self.fuse_shortcut = False
         self.fuse_dual = False
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -425,6 +427,7 @@ class TestFusedDconvDreluDbnOpShortcut(TestFusedDconvDreluDbnOp):
         self.fuse_add = False
         self.fuse_shortcut = True
         self.fuse_dual = False
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -434,6 +437,7 @@ class TestFusedDconvDreluDbnOpDual(TestFusedDconvDreluDbnOp):
         self.fuse_add = False
         self.fuse_shortcut = False
         self.fuse_dual = True
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -443,6 +447,7 @@ class TestFusedDconvDreluDbnOpShortcutAdd(TestFusedDconvDreluDbnOp):
         self.fuse_add = True
         self.fuse_shortcut = True
         self.fuse_dual = False
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -452,6 +457,17 @@ class TestFusedDconvDreluDbnOpDualAdd(TestFusedDconvDreluDbnOp):
         self.fuse_add = True
         self.fuse_shortcut = False
         self.fuse_dual = True
+        self.exhaustive_search = False
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(skip_unit_test(), skip_msg)
+class TestFusedDconvDreluDbnOpExhaustive(TestFusedDconvDreluDbnOp):
+    def init_attr(self):
+        self.fuse_add = False
+        self.fuse_shortcut = False
+        self.fuse_dual = False
+        self.exhaustive_search = True
 
 
 if __name__ == '__main__':

@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
+DECLARE_bool(cudnn_deterministic);
+DECLARE_bool(cudnn_exhaustive_search);
+
 namespace paddle {
 namespace operators {
 
@@ -45,6 +48,8 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
                                         std::vector<int> dilations,
                                         const std::string& padding_algorithm,
                                         bool fuse_prologue,
+                                        bool exhaustive_search,
+                                        bool deterministic,
                                         Tensor* output,
                                         Tensor* sum_output,
                                         Tensor* sqsum_output) {
@@ -271,18 +276,22 @@ void _FusedScaleBiasReluConvBnstatsImpl(const framework::ExecutionContext& ctx,
     return;
   }
 
-  auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-  auto workspace_size = plan.getWorkspaceSize();
-  VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          &data_ptrs,
+                                          &uids,
+                                          handle,
+                                          &workspace_handle);
 
-  helper::ExecutePlan(handle,
-                      &workspace_handle,
-                      &data_ptrs,
-                      &uids,
-                      plan.get_raw_desc(),
-                      workspace_size);
-
-  plan_cache.InsertPlan(feature_vector, plan, handle);
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               &data_ptrs,
+                               &uids,
+                               &plans,
+                               exhaustive_search,
+                               feature_vector,
+                               &plan_cache);
 }
 
 template <typename T>
@@ -296,6 +305,8 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
                      int64_t accumulation_count,
                      float exp_decay,
                      float epsilon,
+                     bool exhaustive_search,
+                     bool deterministic,
                      Tensor* updated_running_mean_tensor,
                      Tensor* updated_running_var_tensor,
                      Tensor* saved_mean_tensor,
@@ -468,18 +479,22 @@ void _BNFinalizeImpl(const framework::ExecutionContext& ctx,
     return;
   }
 
-  auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-  auto workspace_size = plan.getWorkspaceSize();
-  VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          &data_ptrs,
+                                          &uids,
+                                          handle,
+                                          &workspace_handle);
 
-  helper::ExecutePlan(handle,
-                      &workspace_handle,
-                      &data_ptrs,
-                      &uids,
-                      plan.get_raw_desc(),
-                      workspace_size);
-
-  plan_cache.InsertPlan(feature_vector, plan, handle);
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               &data_ptrs,
+                               &uids,
+                               &plans,
+                               exhaustive_search,
+                               feature_vector,
+                               &plan_cache);
 }
 
 template <typename T>
@@ -515,6 +530,15 @@ class FusedScaleBiasReluConvBnstatsOpKernel : public framework::OpKernel<T> {
     }
     epsilon = std::max(epsilon,
                        static_cast<float>(CUDNN_BN_MIN_EPSILON + FLT_EPSILON));
+    // exhaustive search
+    bool exhaustive_search =
+        ctx.Attr<bool>("exhaustive_search") || FLAGS_cudnn_exhaustive_search;
+    bool deterministic = FLAGS_cudnn_deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
     // input variables
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
@@ -577,6 +601,8 @@ class FusedScaleBiasReluConvBnstatsOpKernel : public framework::OpKernel<T> {
                                           dilations,
                                           padding_algorithm,
                                           fuse_prologue,
+                                          exhaustive_search,
+                                          deterministic,
                                           output,
                                           &sum_tensor,
                                           &sqsum_tensor);
@@ -591,6 +617,8 @@ class FusedScaleBiasReluConvBnstatsOpKernel : public framework::OpKernel<T> {
                        accumulation_count,
                        exp_decay,
                        epsilon,
+                       exhaustive_search,
+                       deterministic,
                        updated_running_mean_tensor,
                        updated_running_var_tensor,
                        saved_mean_tensor,

@@ -39,6 +39,10 @@ class FusedScaleBiasAddReluOpMaker : public framework::OpProtoAndCheckerMaker {
         "fuse_dual",
         R"DOC((bool, default false). Whether two resblocks are added before relu.)DOC")
         .SetDefault(false);
+    AddAttr<bool>(
+        "exhaustive_search",
+        R"DOC((bool, default false). Whether to use exhaustive search for finding algorithm.)DOC")
+        .SetDefault(false);
     AddComment(R"DOC(
 FusedScaleBiasAddRelu Operator
 Y = X1 * Scale1 + Bias1 + X2 (fuse_dual == false)

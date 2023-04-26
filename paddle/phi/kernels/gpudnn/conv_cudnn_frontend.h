@@ -185,26 +185,21 @@ class CudnnFrontendConvHelper {
       cudnn_frontend::OperationGraph* op_graph_pointer,
       bool exhaustive_search,
       bool deterministic,
-      void* x_data,
-      void* y_data,
-      void* w_data,
+      std::vector<void*>* data_ptrs,
+      std::vector<int64_t>* uids,
       cudnnHandle_t handle,
       phi::DnnWorkspaceHandle* workspace_handle) {
     auto heurgen_method = [=](cudnn_frontend::OperationGraph& op_graph_)
         -> cudnn_frontend::EngineConfigList {
-      auto heuristics = cudnn_frontend::EngineHeuristicsBuilder()
-                            .setOperationGraph(op_graph_)
-                            .setHeurMode(CUDNN_HEUR_MODE_INSTANT)
-                            .build();
-      VLOG(4) << "Heuristic has " << heuristics.getEngineConfigCount()
-              << " configurations ";
-
-      auto& engine_configs =
-          heuristics.getEngineConfig(heuristics.getEngineConfigCount());
       cudnn_frontend::EngineConfigList filtered_configs;
-      cudnn_frontend::filter(engine_configs,
-                             filtered_configs,
-                             deterministic ? IsNonDeterministic : AllowAll);
+      auto statuses = cudnn_frontend::get_heuristics_list<2>(
+          {"heuristics_instant", "heuristics_fallback"},
+          op_graph_,
+          deterministic ? IsNonDeterministic : AllowAll,
+          filtered_configs,
+          true);
+      VLOG(6) << "Filter config list has " << filtered_configs.size()
+              << " configurations ";
       return filtered_configs;
     };
 
@@ -232,30 +227,19 @@ class CudnnFrontendConvHelper {
         [=](cudnn_frontend::ExecutionPlan const& plan) -> bool {
       return plan.getWorkspaceSize() > workspace_size_limit;
     };
-
-    auto plans =
-        generator.cudnnGetPlan(handle, *op_graph_pointer, predicate_function);
-
+    VLOG(6) << "[cudnn_frontend] Max workspace size: " << workspace_size_limit;
+    cudnn_frontend::executionPlans_t plans;
     bool use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
 
     if (!deterministic && (exhaustive_search || use_autotune)) {
-      size_t workspace_size_max = 0;
-      std::for_each(
-          plans.begin(), plans.end(), [&](cudnn_frontend::ExecutionPlan& opt) {
-            if (opt.getWorkspaceSize() > workspace_size_max) {
-              workspace_size_max = opt.getWorkspaceSize();
-            }
-          });
-      VLOG(6) << "[cudnn_frontend] Max workspace size: " << workspace_size_max;
       workspace_handle->RunFunc(
           [&](void* workspace_ptr) {
-            void* data_ptrs[] = {x_data, y_data, w_data};
-            int64_t uids[] = {'x', 'y', 'w'};
-            auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                    .setWorkspacePointer(workspace_ptr)
-                                    .setDataPointers(3, data_ptrs)
-                                    .setUids(3, uids)
-                                    .build();
+            auto variant_pack =
+                cudnn_frontend::VariantPackBuilder()
+                    .setWorkspacePointer(workspace_ptr)
+                    .setDataPointers(data_ptrs->size(), data_ptrs->data())
+                    .setUids(uids->size(), uids->data())
+                    .build();
             plans =
                 generator
                     .cudnnFindPlan<cudnn_frontend::CudnnFindSamplingTechnique::
@@ -265,7 +249,10 @@ class CudnnFrontendConvHelper {
                         variant_pack,
                         predicate_function);
           },
-          workspace_size_max);
+          workspace_size_limit);
+    } else {
+      plans =
+          generator.cudnnGetPlan(handle, *op_graph_pointer, predicate_function);
     }
 
     std::for_each(
@@ -278,37 +265,24 @@ class CudnnFrontendConvHelper {
     return plans;
   }
 
-  static cudnn_frontend::ExecutionPlan GetPlanByHeuristics(
-      cudnn_frontend::OperationGraph&& op_graph, cudnnHandle_t handle_) {
-    cudnn_frontend::EngineConfigList filtered_configs;
-    auto statuses = cudnn_frontend::get_heuristics_list<2>(
-        {"heuristics_instant", "heuristics_fallback"},
-        op_graph,
-        AllowAll,
-        filtered_configs,
-        true);
-
-    VLOG(6) << "Filter config list has " << filtered_configs.size()
-            << " configurations ";
-
-    auto plan_builder = [&filtered_configs, &op_graph, &handle_]() {
-      for (size_t i = 0; i < filtered_configs.size(); i++) {
-        try {
-          auto plan =
-              cudnn_frontend::ExecutionPlanBuilder()
-                  .setHandle(handle_)
-                  .setEngineConfig(filtered_configs[i], op_graph.getTag())
-                  .build();
-          return plan;
-        } catch (cudnn_frontend::cudnnException&) {
-          continue;
-        }
-      }
-    };
-
-    auto plan = plan_builder();
-    VLOG(6) << "Plan tag: " << plan.getTag();
-    return plan;
+  static cudnn_frontend::executionPlans_t FindExecutionPlans(
+      cudnn_frontend::OperationGraph* op_graph_pointer,
+      bool exhaustive_search,
+      bool deterministic,
+      void* x_data,
+      void* y_data,
+      void* w_data,
+      cudnnHandle_t handle,
+      phi::DnnWorkspaceHandle* workspace_handle) {
+    std::vector<void*> data_ptrs({x_data, y_data, w_data});
+    std::vector<int64_t> uids({'x', 'y', 'w'});
+    return FindExecutionPlans(op_graph_pointer,
+                              exhaustive_search,
+                              deterministic,
+                              &data_ptrs,
+                              &uids,
+                              handle,
+                              workspace_handle);
   }
 
   static void ExecutePlan(cudnnHandle_t handle_,
@@ -329,6 +303,81 @@ class CudnnFrontendConvHelper {
               handle_, plan_desc, variant_pack.get_raw_desc()));
         },
         workspace_size);
+  }
+
+  static void ExecutePlan(cudnnHandle_t handle_,
+                          phi::DnnWorkspaceHandle* workspace_handle,
+                          void* x_data,
+                          void* y_data,
+                          void* w_data,
+                          cudnnBackendDescriptor_t plan_desc,
+                          int64_t workspace_size) {
+    std::vector<void*> data_ptrs({x_data, y_data, w_data});
+    std::vector<int64_t> uids({'x', 'y', 'w'});
+    ExecutePlan(handle_,
+                workspace_handle,
+                &data_ptrs,
+                &uids,
+                plan_desc,
+                workspace_size);
+  }
+
+  static void ExecutePlansAndCache(
+      cudnnHandle_t handle_,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      std::vector<void*>* data_ptrs,
+      std::vector<int64_t>* uids,
+      cudnn_frontend::executionPlans_t* plans,
+      bool exhaustive_search,
+      const cudnn_frontend::feature_vector_t& feature_vector,
+      phi::autotune::CudnnFrontendPlanCache* plan_cache) {
+    for (auto& plan : *plans) {
+      try {
+        ExecutePlan(handle_,
+                    workspace_handle,
+                    data_ptrs,
+                    uids,
+                    plan.get_raw_desc(),
+                    plan.getWorkspaceSize());
+        if (!exhaustive_search ||
+            plan_cache->IsStable(feature_vector, plan.getTag(), handle_)) {
+          plan_cache->InsertPlan(feature_vector, plan, handle_);
+        }
+        return;
+      } catch (cudnn_frontend::cudnnException& e) {
+        VLOG(4) << "Plan " << plan.describe()
+                << "failed to execute. Trying next plan.";
+      } catch (phi::enforce::EnforceNotMet& e) {
+        VLOG(4) << "Plan " << plan.describe()
+                << "failed to execute. Trying next plan.";
+      }
+    }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[CUDNN Frontend API] No valid plan could "
+        "be found to execute. Try setting FLAGS_conv_workspace_size_limit "
+        "higher."));
+  }
+
+  static void ExecutePlansAndCache(
+      cudnnHandle_t handle_,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      void* x_data,
+      void* y_data,
+      void* w_data,
+      cudnn_frontend::executionPlans_t* plans,
+      bool exhaustive_search,
+      const cudnn_frontend::OperationGraph& op_graph,
+      phi::autotune::CudnnFrontendPlanCache* plan_cache) {
+    std::vector<void*> data_ptrs({x_data, y_data, w_data});
+    std::vector<int64_t> uids({'x', 'y', 'w'});
+    ExecutePlansAndCache(handle_,
+                         workspace_handle,
+                         &data_ptrs,
+                         &uids,
+                         plans,
+                         exhaustive_search,
+                         op_graph.getFeatureVector(),
+                         plan_cache);
   }
 
   static cudnn_frontend::Operation MakePointwiseOp(
@@ -401,21 +450,13 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
     int64_t workspace_size = 0;
     plan_cache_bwd_data.GetPlan(
         op_graph, &cached_plan, &workspace_size, handle);
-    workspace_handle->RunFunc(
-        [&](void* workspace_ptr) {
-          void* data_ptrs[] = {dx_tensor_data, dy_tensor_data, w_tensor_data};
-          int64_t uids[] = {'x', 'y', 'w'};
-          auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                  .setWorkspacePointer(workspace_ptr)
-                                  .setDataPointers(3, data_ptrs)
-                                  .setUids(3, uids)
-                                  .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnBackendExecute(handle,
-                                                cached_plan->get_raw_desc(),
-                                                variant_pack.get_raw_desc()));
-        },
-        workspace_size);
+    helper::ExecutePlan(handle,
+                        workspace_handle,
+                        dx_tensor_data,
+                        dy_tensor_data,
+                        w_tensor_data,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
     return;
   }
 
@@ -428,34 +469,15 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
                                           handle,
                                           workspace_handle);
 
-  for (auto& plan : plans) {
-    try {
-      int64_t workspace_size = plan.getWorkspaceSize();
-      workspace_handle->RunFunc(
-          [&](void* workspace_ptr) {
-            void* data_ptrs[] = {dx_tensor_data, dy_tensor_data, w_tensor_data};
-            int64_t uids[] = {'x', 'y', 'w'};
-            auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                    .setWorkspacePointer(workspace_ptr)
-                                    .setDataPointers(3, data_ptrs)
-                                    .setUids(3, uids)
-                                    .build();
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-                handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
-          },
-          workspace_size);
-      if (!exhaustive_search ||
-          plan_cache_bwd_data.IsStable(op_graph, plan.getTag(), handle)) {
-        plan_cache_bwd_data.InsertPlan(op_graph, plan, handle);
-      }
-      return;
-    } catch (cudnn_frontend::cudnnException& e) {
-    } catch (phi::enforce::EnforceNotMet& e) {
-    }
-  }
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
-                                   "be found to execute conv backward data."));
+  helper::ExecutePlansAndCache(handle,
+                               workspace_handle,
+                               dx_tensor_data,
+                               dy_tensor_data,
+                               w_tensor_data,
+                               &plans,
+                               exhaustive_search,
+                               op_graph,
+                               &plan_cache_bwd_data);
 }
 
 template <typename T>
@@ -502,21 +524,13 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
     int64_t workspace_size = 0;
     plan_cache_bwd_filter.GetPlan(
         op_graph, &cached_plan, &workspace_size, handle);
-    workspace_handle->RunFunc(
-        [&](void* workspace_ptr) {
-          void* data_ptrs[] = {x_tensor_data, dy_tensor_data, dw_tensor_data};
-          int64_t uids[] = {'x', 'y', 'w'};
-          auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                  .setWorkspacePointer(workspace_ptr)
-                                  .setDataPointers(3, data_ptrs)
-                                  .setUids(3, uids)
-                                  .build();
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnBackendExecute(handle,
-                                                cached_plan->get_raw_desc(),
-                                                variant_pack.get_raw_desc()));
-        },
-        workspace_size);
+    helper::ExecutePlan(handle,
+                        workspace_handle,
+                        x_tensor_data,
+                        dy_tensor_data,
+                        dw_tensor_data,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
     return;
   }
 
@@ -529,39 +543,15 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
                                           handle,
                                           workspace_handle);
 
-  for (auto& plan : plans) {
-    try {
-      int64_t workspace_size = plan.getWorkspaceSize();
-      workspace_handle->RunFunc(
-          [&](void* workspace_ptr) {
-            void* data_ptrs[] = {x_tensor_data, dy_tensor_data, dw_tensor_data};
-            int64_t uids[] = {'x', 'y', 'w'};
-            auto variant_pack = cudnn_frontend::VariantPackBuilder()
-                                    .setWorkspacePointer(workspace_ptr)
-                                    .setDataPointers(3, data_ptrs)
-                                    .setUids(3, uids)
-                                    .build();
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
-                handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
-          },
-          workspace_size);
-      if (!exhaustive_search ||
-          plan_cache_bwd_filter.IsStable(op_graph, plan.getTag(), handle)) {
-        plan_cache_bwd_filter.InsertPlan(op_graph, plan, handle);
-      }
-      return;
-    } catch (cudnn_frontend::cudnnException& e) {
-      VLOG(4) << "Plan " << plan.describe()
-              << "failed to execute. Trying next plan.";
-    } catch (phi::enforce::EnforceNotMet& e) {
-      VLOG(4) << "Plan " << plan.describe()
-              << "failed to execute. Trying next plan.";
-    }
-  }
-
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "[CUDNN Frontend API] No valid plan could "
-      "be found to execute conv backward filter."));
+  helper::ExecutePlansAndCache(handle,
+                               workspace_handle,
+                               x_tensor_data,
+                               dy_tensor_data,
+                               dw_tensor_data,
+                               &plans,
+                               exhaustive_search,
+                               op_graph,
+                               &plan_cache_bwd_filter);
 }
 
 }  // namespace phi

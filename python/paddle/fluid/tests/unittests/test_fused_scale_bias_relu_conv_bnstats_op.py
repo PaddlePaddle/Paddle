@@ -60,6 +60,7 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
             'accumulation_count': self.accumulation_count,
             'momentum': self.momentum,
             'epsilon': self.epsilon,
+            'exhaustive_search': self.exhaustive_search,
         }
 
         # prepare inputs
@@ -349,6 +350,7 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
 
     def init_attr(self):
         self.fuse_prologue = True
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -358,6 +360,17 @@ class TestFusedScaleBiasReluConvBnstatsOpNoPrologue(
 ):
     def init_attr(self):
         self.fuse_prologue = False
+        self.exhaustive_search = False
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(skip_unit_test(), skip_msg)
+class TestFusedScaleBiasReluConvBnstatsOpExhaustive(
+    TestFusedScaleBiasReluConvBnstatsOp
+):
+    def init_attr(self):
+        self.fuse_prologue = True
+        self.exhaustive_search = True
 
 
 if __name__ == '__main__':

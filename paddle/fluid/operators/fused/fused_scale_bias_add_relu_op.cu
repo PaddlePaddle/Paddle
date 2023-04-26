@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
+DECLARE_bool(cudnn_deterministic);
+DECLARE_bool(cudnn_exhaustive_search);
+
 namespace paddle {
 namespace operators {
 
@@ -51,6 +54,15 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
 
     // attributes
     bool fuse_dual = ctx.Attr<bool>("fuse_dual");
+    // exhaustive search
+    bool exhaustive_search =
+        ctx.Attr<bool>("exhaustive_search") || FLAGS_cudnn_exhaustive_search;
+    bool deterministic = FLAGS_cudnn_deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
     // required input variables
     auto* x1_tensor = ctx.Input<Tensor>("X1");
     auto* scale1_tensor = ctx.Input<Tensor>("Scale1");
@@ -216,20 +228,22 @@ class FusedScaleBiasAddReluOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-    auto plan = helper::GetPlanByHeuristics(std::move(op_graph), handle);
-    VLOG(6) << "Plan tag: " << plan.getTag();
+    auto plans = helper::FindExecutionPlans(&op_graph,
+                                            exhaustive_search,
+                                            deterministic,
+                                            &data_ptrs,
+                                            &uids,
+                                            handle,
+                                            &workspace_handle);
 
-    auto workspace_size = plan.getWorkspaceSize();
-    VLOG(4) << plan.describe() << " requires workspace " << workspace_size;
-
-    helper::ExecutePlan(handle,
-                        &workspace_handle,
-                        &data_ptrs,
-                        &uids,
-                        plan.get_raw_desc(),
-                        workspace_size);
-
-    plan_cache.InsertPlan(feature_vector, plan, handle);
+    helper::ExecutePlansAndCache(handle,
+                                 &workspace_handle,
+                                 &data_ptrs,
+                                 &uids,
+                                 &plans,
+                                 exhaustive_search,
+                                 feature_vector,
+                                 &plan_cache);
   }
 };
 

@@ -184,6 +184,9 @@ ir::Node *CreateConvBNstatsOpNode(Graph *g,
                   PADDLE_GET_CONST(float, bn_op->Op()->GetAttr("momentum")));
   op_desc.SetAttr("epsilon",
                   PADDLE_GET_CONST(float, bn_op->Op()->GetAttr("epsilon")));
+  op_desc.SetAttr(
+      "exhaustive_search",
+      PADDLE_GET_CONST(bool, conv_op->Op()->GetAttr("exhaustive_search")));
   op_desc.SetAttr("op_role", conv_op->Op()->GetAttr("op_role"));
   auto op_node = g->CreateOpNode(&op_desc);
   IR_NODE_LINK_TO(input, op_node);
@@ -210,6 +213,7 @@ ir::Node *CreateConvBNstatsOpNode(Graph *g,
 ir::Node *CreateSBAROpNode(Graph *g,
                            BlockDesc *block,
                            bool fuse_dual,
+                           bool exhaustive_search,
                            ir::Node *act_op,
                            ir::Node *x1,
                            ir::Node *scale1,
@@ -230,6 +234,7 @@ ir::Node *CreateSBAROpNode(Graph *g,
   }
   op_desc.SetOutput("Y", {y_out->Name()});
   op_desc.SetAttr("fuse_dual", fuse_dual);
+  op_desc.SetAttr("exhaustive_search", exhaustive_search);
   op_desc.SetAttr("op_role", act_op->Op()->GetAttr("op_role"));
   auto op_node = g->CreateOpNode(&op_desc);
 
@@ -333,6 +338,9 @@ ir::Node *CreateDconvDreluDBNOpNode(Graph *g,
   op_desc.SetAttr("fuse_shortcut", fuse_shortcut);
   op_desc.SetAttr("fuse_dual", fuse_dual);
   op_desc.SetAttr("fuse_add", fuse_add);
+  op_desc.SetAttr(
+      "exhaustive_search",
+      PADDLE_GET_CONST(bool, conv_grad->Op()->GetAttr("exhaustive_search")));
   op_desc.SetAttr("op_role", conv_grad->Op()->GetAttr("op_role"));
   auto conv_grad_op_role_val =
       details::GetOpRoleVarsOrEmpty(*(conv_grad->Op()));
@@ -536,9 +544,12 @@ ir::Graph *FuseResUnitPass::FuseConvBNAddActFwd(
                               bn2_eqbias);
     }
     auto *sbar_input2 = shortcut ? x2 : conv2_out;
+    bool exhaustive_search =
+        PADDLE_GET_CONST(bool, conv1_op->Op()->GetAttr("exhaustive_search"));
     CreateSBAROpNode(g,
                      act_op->Op()->Block(),
                      !shortcut,
+                     exhaustive_search,
                      act_op,
                      conv1_out,
                      bn1_eqscale,

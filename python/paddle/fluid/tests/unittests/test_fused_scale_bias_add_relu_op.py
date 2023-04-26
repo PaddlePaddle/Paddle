@@ -44,7 +44,10 @@ class TestFusedScaleBiasAddReluOp(OpTest):
         self.init_test_case()
         self.init_attr()
 
-        self.attrs = {'fuse_dual': self.fuse_dual}
+        self.attrs = {
+            'fuse_dual': self.fuse_dual,
+            'exhaustive_search': self.exhaustive_search,
+        }
 
         c_dim = self.input_size[-1]
         x1_input = np.random.random(self.input_size).astype(self.dtype) - 0.5
@@ -104,6 +107,7 @@ class TestFusedScaleBiasAddReluOp(OpTest):
 
     def init_attr(self):
         self.fuse_dual = False
+        self.exhaustive_search = False
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -111,6 +115,15 @@ class TestFusedScaleBiasAddReluOp(OpTest):
 class TestFusedScaleBiasAddReluOpDual(TestFusedScaleBiasAddReluOp):
     def init_attr(self):
         self.fuse_dual = True
+        self.exhaustive_search = False
+
+
+@skip_check_grad_ci(reason="no grap op")
+@unittest.skipIf(skip_unit_test(), skip_msg)
+class TestFusedScaleBiasAddReluOpExhaustive(TestFusedScaleBiasAddReluOp):
+    def init_attr(self):
+        self.fuse_dual = False
+        self.exhaustive_search = True
 
 
 if __name__ == '__main__':

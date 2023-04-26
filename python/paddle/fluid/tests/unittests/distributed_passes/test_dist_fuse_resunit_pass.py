@@ -209,6 +209,10 @@ class TestFuseResUnitPass(DistPassTestBase):
     def init(self):
         self.atol = 1e-2
         self.rtol = 1e-2
+        paddle.set_flags({'FLAGS_conv_workspace_size_limit': 1000})
+        self.init_attr()
+
+    def init_attr(self):
         self.shortcut = True
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
@@ -264,9 +268,7 @@ class TestFuseResUnitPass(DistPassTestBase):
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFuseResUnitPassDual(TestFuseResUnitPass):
-    def init(self):
-        self.atol = 1e-2
-        self.rtol = 1e-2
+    def init_attr(self):
         self.shortcut = False
 
 
