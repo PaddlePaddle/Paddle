@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/meshgrid_grad_kernel.h"
+#include <cassert>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/meshgrid_grad_kernel_impl.h"
+#include "paddle/extension.h"
 
-PD_REGISTER_KERNEL(meshgrid_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MeshgridGradKernel,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+int main() {
+  int data[] = {1, 2, 3, 4};
+  auto tensor = paddle::from_blob(data, {2, 2}, phi::DataType::INT32);
+
+  assert(tensor.numel() == 4);
+  assert(tensor.dtype() == phi::DataType::INT32);
+  assert(tensor.is_cpu());
+  assert(tensor.template data<int>() == data);
+}

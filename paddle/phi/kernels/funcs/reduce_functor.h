@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 namespace phi {
 namespace funcs {
 
@@ -130,12 +130,12 @@ struct SumGradFunctor {
             typename DY,
             typename Dim>
   void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
+                  X* x UNUSED,
+                  Y* y UNUSED,
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = dy->broadcast(dim);
   }
 };
@@ -171,7 +171,7 @@ struct MaxOrMinGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     auto equals = (*x) == y->broadcast(dim);
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);
