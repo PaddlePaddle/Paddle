@@ -158,7 +158,9 @@ void ConvertConv2d(TensorRTEngine* engine,
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
 
-  if (engine->OpIsRunFloat(op_desc.Type())) {
+  if (engine->OpIsRunFloat(filter_var_name) ||
+      engine->OpIsRunFloat(op_desc.Type())) {
+    LOG(INFO) << "liuyuanle: " << filter_var_name << " is force run float.";
     layer->resetPrecision();
     layer->setPrecision(nvinfer1::DataType::kFLOAT);
   }
