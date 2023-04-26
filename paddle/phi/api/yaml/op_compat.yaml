@@ -2269,12 +2269,12 @@
     x : X
   outputs :
     out : Out
-  manual_signature : [tile]
   int_array:
     repeat_times :
       data_type : int
       tensor_name : RepeatTimes
       tensors_name : repeat_times_tensor
+  manual_signature : [tile, tile_grad]
 
 - op : topk (top_k_v2)
   backward : topk_grad (top_k_v2_grad)
