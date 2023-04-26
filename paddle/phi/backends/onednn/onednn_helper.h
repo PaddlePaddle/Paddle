@@ -282,8 +282,8 @@ inline std::string ThreadIDasStr(void) {
       std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
-inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
-                                                   const std::string& key) {
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const OneDNNContext& dev_ctx UNUSED, const std::string& key) {
   return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;

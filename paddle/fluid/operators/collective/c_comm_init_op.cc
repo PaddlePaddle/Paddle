@@ -57,15 +57,14 @@ class CCommInitOp : public framework::OperatorBase {
     using CommContext = platform::BKCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should be compiled with GPU or XPU or MLU."));
+        "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
-            platform::is_mlu_place(place),
+        platform::is_gpu_place(place) || platform::is_xpu_place(place),
         true,
         platform::errors::PreconditionNotMet(
-            "CCommInitOp can run on gpu or xpu or mlu place only."));
+            "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

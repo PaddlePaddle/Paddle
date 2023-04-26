@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-DECLARE_string(cuda_dir);
+PHI_DECLARE_string(cuda_dir);
 
 namespace paddle {
 namespace platform {

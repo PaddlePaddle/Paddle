@@ -18,8 +18,8 @@
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
 #include "paddle/fluid/framework/archive.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/utils/string/string_helper.h"
-
 DECLARE_bool(pserver_print_missed_key_num_every_push);
 DECLARE_bool(pserver_create_value_when_push);
 DECLARE_bool(pserver_enable_create_feasign_randomly);
@@ -549,7 +549,6 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
 }
 
 int32_t SSDSparseTable::UpdateTable() {
-  // TODO implement with multi-thread
   int count = 0;
   for (int i = 0; i < _real_local_shard_num; ++i) {
     auto& shard = _local_shards[i];
@@ -578,7 +577,6 @@ int64_t SSDSparseTable::LocalSize() {
   for (int i = 0; i < _real_local_shard_num; ++i) {
     local_size += _local_shards[i].size();
   }
-  // TODO rocksdb size
   return local_size;
 }
 

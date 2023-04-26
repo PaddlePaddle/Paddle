@@ -26,8 +26,9 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_shm_cache);
+PHI_DECLARE_bool(use_shm_cache);
 
 namespace paddle {
 namespace memory {

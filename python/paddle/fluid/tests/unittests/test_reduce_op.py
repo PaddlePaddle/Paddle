@@ -418,6 +418,51 @@ class TestMin8DOp(OpTest):
         self.check_output()
 
 
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework."
+)
+class TestMinFP16Op(OpTest):
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.python_api = paddle.min
+        self.public_python_api = paddle.min
+        self.init_dtype()
+        if self.dtype == np.uint16:
+            x = np.random.random((5, 6, 10)).astype(np.float32)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.random((5, 6, 10)).astype(self.dtype)
+            self.inputs = {'X': x}
+        self.attrs = {'dim': [2], 'keep_dim': True}
+        out = x.min(axis=tuple(self.attrs['dim']), keepdims=True)
+        if self.dtype == np.uint16:
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+        else:
+            self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestMinBF16Op(TestMinFP16Op):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+
 def raw_reduce_prod(x, dim=[0], keep_dim=False):
     return paddle.prod(x, dim, keep_dim)
 

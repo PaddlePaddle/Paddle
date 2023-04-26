@@ -21,7 +21,6 @@
 #include <set>
 #include <sstream>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
@@ -30,13 +29,14 @@
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
-DECLARE_bool(graph_load_in_parallel);
-DECLARE_bool(graph_get_neighbor_id);
-DECLARE_int32(gpugraph_storage_mode);
-DECLARE_uint64(gpugraph_slot_feasign_max_num);
-DECLARE_bool(graph_metapath_split_opt);
+PHI_DECLARE_bool(graph_load_in_parallel);
+PHI_DECLARE_bool(graph_get_neighbor_id);
+PHI_DECLARE_int32(gpugraph_storage_mode);
+PHI_DECLARE_uint64(gpugraph_slot_feasign_max_num);
+PHI_DECLARE_bool(graph_metapath_split_opt);
 
 namespace paddle {
 namespace distributed {
