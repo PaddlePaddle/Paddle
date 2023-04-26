@@ -8,6 +8,8 @@ pass_library(
   errors
   enforce)
 
+pass_library(cinn_zero_tensor_trick_pass base)
+
 cc_library(
   transform_desc
   SRCS transform_desc.cc
