@@ -61,9 +61,9 @@ yum -y install bzip2 make git patch unzip bison yasm diffutils \
 # /bin/sh cmake-3.8.1-Linux-x86_64.sh --prefix=/usr/local --skip-license
 # rm cmake-3.8.1-Linux-x86_64.sh
 
-wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz && tar xzf cmake-3.16.0.tar.gz && \
-cd cmake-3.16.0 && ./bootstrap && \
-make -j8 && make install && cd .. && rm cmake-3.16.0.tar.gz && rm -rf cmake-3.16.0
+wget -q https://cmake.org/files/v3.18/cmake-3.18.0.tar.gz && tar xzf cmake-3.18.0.tar.gz && \
+cd cmake-3.18.0 && ./bootstrap && \
+make -j8 && make install && cd .. && rm cmake-3.18.0.tar.gz && rm -rf cmake-3.18.0
 
 # Install newest autoconf
 build_autoconf $AUTOCONF_ROOT $AUTOCONF_HASH

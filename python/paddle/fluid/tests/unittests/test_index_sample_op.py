@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 class TestIndexSampleOp(OpTest):
@@ -119,6 +120,49 @@ class TestCase6(TestIndexSampleOp):
         self.x_type = "float16"
         self.index_shape = (10, 64)
         self.index_type = "int64"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestIndexSampleBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "index_sample"
+        self.python_api = paddle.index_sample
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        indexnp = np.random.randint(
+            low=0, high=self.x_shape[1], size=self.index_shape
+        ).astype(self.index_type)
+        self.inputs = {'X': xnp, 'Index': indexnp}
+        index_array = []
+        for i in range(self.index_shape[0]):
+            for j in indexnp[i]:
+                index_array.append(xnp[i, j])
+        index_array = np.array(index_array).astype(self.x_type)
+        out = np.reshape(index_array, self.index_shape)
+        self.outputs = {'Out': out}
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (10, 20)
+        self.x_type = "float32"
+        self.dtype = np.uint16
+        self.index_shape = (10, 10)
+        self.index_type = "int32"
 
 
 class TestIndexSampleShape(unittest.TestCase):

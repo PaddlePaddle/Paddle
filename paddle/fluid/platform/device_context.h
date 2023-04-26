@@ -96,7 +96,6 @@ enum DeviceType {
   NPU = 2,
   XPU = 3,
   IPU = 4,
-  MLU = 5,
   CUSTOM_DEVICE = 6,
 
   MAX_DEVICE_TYPES = 7,

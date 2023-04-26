@@ -126,12 +126,21 @@ if(WITH_TESTING)
   add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
-  # add_subdirectory(sequence)
+  add_subdirectory(sequence)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
   if(WITH_XPU)
     add_subdirectory(xpu)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
   endif()
 endif()
 
