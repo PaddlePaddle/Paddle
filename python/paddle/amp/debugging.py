@@ -428,14 +428,14 @@ def compare_accuracy(
     dump_path,
     another_dump_path,
     output_filename,
-    loss_scale=1,
+    loss_scale,
     dump_all_tensors=False,
 ):
     paddle.amp.accuracy_compare.compare_accuracy(
         dump_path,
         another_dump_path,
         output_filename,
-        loss_scale=1,
+        loss_scale,
         dump_all_tensors=False,
     )
 
