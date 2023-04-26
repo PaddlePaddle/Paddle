@@ -365,16 +365,30 @@ class TestUnflattenXBFloat16(unittest.TestCase):
         self.func_dygraph()
 
 
-# # Test error
-# class TestUnflattenError(unittest.TestCase):
-#     def set_api(self):
-#         self.paddle_api = paddle.unflatten
+# Test error
+class TestUnflattenError(unittest.TestCase):
+    def set_api(self):
+        self.paddle_api = paddle.unflatten
 
-#     def test_errors(self):
-#         self.set_api()
-#         with paddle.static.program_guard(
-#             paddle.static.Program(), paddle.static.Program()
-#         ):
+    def test_errors(self):
+        self.set_api()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            def test_int_shape_input():
+                x = paddle.static.data(
+                    name='x',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                shape = 1
+                axis = -1
+                self.paddle_api(x, shape, axis)
+
+            self.assertRaises(TypeError, test_int_shape_input)
+
+
 #             # test shape is empty
 #             def test_list_shape_empty():
 #                 x = paddle.static.data(
