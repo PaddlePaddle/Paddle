@@ -349,6 +349,9 @@ if(WITH_GPU)
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
       COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
   endif()
+  message(("add third party json"))
+  include(external/json)
+  list(APPEND third_party_deps extern_json)
 endif()
 
 if(WITH_XPU)

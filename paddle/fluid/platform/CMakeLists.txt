@@ -167,6 +167,24 @@ set(DEVICE_EVENT_LIBS
     CACHE INTERNAL "device event libs")
 
 if(WITH_GPU)
+  if(WITH_DISTRIBUTE)
+    set(BRPC_DEPS
+        brpc
+        ssl
+        crypto
+        protobuf
+        zlib
+        leveldb
+        snappy
+        gflags
+        glog)
+
+    cc_library(
+      rpc_utils
+      SRCS rpc_utils.cc
+      DEPS enforce ${BRPC_DEPS})
+  endif()
+
   nv_library(
     device_event_gpu
     SRCS device_event_gpu.cc
