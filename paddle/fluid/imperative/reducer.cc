@@ -61,9 +61,9 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    // TODO(liuyuhui) support xpu about div nranks in the future
-    VLOG(4) << "DivNRanks is not supported on XPU / XPU_BKCL, and should not "
-               "be called.";
+    PADDLE_THROW(
+        platform::errors::Unimplemented("DivNRanks is not supported on XPU / "
+                                        "XPU_BKCL, use EagerReducer instead."));
 #endif
   }
 }
