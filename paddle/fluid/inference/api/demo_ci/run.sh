@@ -32,7 +32,7 @@ cd `dirname $0`
 current_dir=`pwd`
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${phi_install_dir}
-export LIB_RARYPATH=${LIB_RARYPATH}:${phi_install_dir}
+export LIBRARY_PATH=$LIBRARY_PATH:${phi_install_dir}
 
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
