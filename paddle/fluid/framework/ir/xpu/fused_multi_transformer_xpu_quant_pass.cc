@@ -280,8 +280,8 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
                                                  with_time_step,
                                                  with_seq_lengths,
                                                  with_src_mask);
-  bool quant_weight_only =
-      Has("quant_weight_only") && Get<bool>("quant_weight_only");
+  int quant_weight_bits =
+      Has("quant_weight_bits") ? Get<int>("quant_weight_bits") : -1;
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -334,7 +334,7 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
             w_node,
             nullptr,
             platform::errors::Fatal("w node should not be nullptr"));
-        if (quant_weight_only) {
+        if (quant_weight_bits == 8) {
           PrepareWeight<int8_t>(
               graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
         } else {
