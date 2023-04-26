@@ -478,7 +478,7 @@ void FusedFeedForwardGradKernel(
                                      dropout2_fix_seed,
                                      nullptr,
                                      dropout2_seed_val);
-
+  dev_ctx.template Alloc<T>(d_x);
   dev_ctx.template Alloc<float>(d_ln_scale);
   dev_ctx.template Alloc<float>(d_ln_bias);
   dev_ctx.template Alloc<T>(d_linear1_bias);
