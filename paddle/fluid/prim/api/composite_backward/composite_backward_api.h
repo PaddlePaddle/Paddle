@@ -1837,6 +1837,7 @@ void pad_grad(const Tensor& input,
   }
 }
 
+template <typename T>
 void scatter_nd_add_grad(const Tensor& index,
                          const Tensor& updates,
                          const Tensor& out_grad,
