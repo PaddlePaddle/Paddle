@@ -53,13 +53,3 @@
   kernel :
     func : rnn_grad
     data_type: out_grad
-
-- backward_op : triangular_solve_grad
-  forward : triangular_solve (Tensor x, Tensor y, bool upper=true, bool tranpose=false, bool unitriangular=false) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper, bool tranpose, bool unitriangular)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : triangular_solve_grad
