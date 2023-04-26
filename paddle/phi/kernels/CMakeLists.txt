@@ -183,8 +183,14 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc"
-     "fusion/xpu/*.cc")
+file(
+  GLOB
+  kernel_xpu
+  "xpu/*.cc"
+  "legacy/xpu/*.cc"
+  "selected_rows/xpu/*.cc"
+  "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)
