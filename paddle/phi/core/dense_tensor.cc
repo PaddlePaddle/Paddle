@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 
 #include "gflags/gflags.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(throw_inplace_error_op, "", "");
 PADDLE_DEFINE_EXPORTED_string(throw_use_error_op, "", "");
