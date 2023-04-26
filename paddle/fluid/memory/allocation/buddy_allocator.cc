@@ -19,7 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU) 
 #define USE_DEVICE
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -56,6 +56,9 @@ BuddyAllocator::BuddyAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
     re_allocate_size_func_ = &platform::GpuReallocSize;
+#elif defined(PADDLE_WITH_XPU)
+    init_allocate_size_func_ = &platform::XPUInitAllocSize;
+    re_allocate_size_func_ = &platform::XPUReallocSize;
 #endif
   }
 #endif
@@ -122,6 +125,7 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   total_used_ += size;
   total_free_ -= size;
 
+  VLOG(10) << "alloc total_used_: " << total_used_ << "total_free_: " << total_free_;
   // split the allocation and return data for use
   return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->Data();
 }
@@ -250,6 +254,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(
       &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_XPU)
+  allocate_bytes = DeviceAllocateSize(
+      &platform::XPUInitAllocSize, &platform::XPUReallocSize, request_bytes);
 #endif
 #endif
 

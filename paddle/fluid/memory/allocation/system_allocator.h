@@ -85,6 +85,21 @@ class CustomAllocator : public SystemAllocator {
 };
 #endif
 
+#ifdef PADDLE_WITH_XPU
+class XPUAllocator : public SystemAllocator {
+ public:
+  explicit XPUAllocator(int xpu_id) : xpu_id_(xpu_id) {}
+
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t xpu_alloc_size_ = 0;
+  int xpu_id_;
+};
+#endif
+
 }  // namespace detail
 }  // namespace memory
 }  // namespace paddle
