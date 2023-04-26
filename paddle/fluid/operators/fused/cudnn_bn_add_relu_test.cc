@@ -23,19 +23,22 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
 
 USE_OP_ITSELF(batch_norm);
+USE_OP_ITSELF(fused_bn_add_activation);
+USE_OP_ITSELF(fused_bn_add_activation_grad);
 PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
-USE_CUDA_ONLY_OP(fused_bn_add_activation);
-USE_CUDA_ONLY_OP(fused_bn_add_activation_grad);
+PD_DECLARE_KERNEL(fused_bn_add_activation, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(fused_bn_add_activation_grad, GPU, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,

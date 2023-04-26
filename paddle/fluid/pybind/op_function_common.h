@@ -46,6 +46,8 @@ bool PyObject_CheckLongOrToLong(PyObject** obj);
 
 bool PyObject_CheckFloatOrToFloat(PyObject** obj);
 
+bool PyObject_CheckComplexOrToComplex(PyObject** obj);
+
 bool PyObject_CheckString(PyObject* obj);
 
 bool CastPyArg2Boolean(PyObject* obj,
@@ -67,6 +69,9 @@ double CastPyArg2Double(PyObject* obj,
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos);
+phi::dtype::complex<double> CastPyArg2Complex128(PyObject* obj,
+                                                 const std::string& op_type,
+                                                 ssize_t arg_pos);
 std::string CastPyArg2String(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos);
@@ -88,6 +93,9 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
 std::vector<std::string> CastPyArg2Strings(PyObject* obj,
                                            const std::string& op_type,
                                            ssize_t arg_pos);
+
+std::vector<paddle::experimental::Scalar> CastPyArg2Scalars(
+    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
 
 void CastPyArg2AttrBoolean(PyObject* obj,
                            paddle::framework::AttributeMap& attrs,  // NOLINT
@@ -125,6 +133,12 @@ void CastPyArg2AttrString(PyObject* obj,
                           const std::string& op_type,
                           ssize_t arg_pos);
 
+void CastPyArg2AttrScalar(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos);
+
 void CastPyArg2AttrBooleans(PyObject* obj,
                             paddle::framework::AttributeMap& attrs,  // NOLINT
                             const std::string& key,
@@ -154,6 +168,12 @@ void CastPyArg2AttrFloat64s(PyObject* obj,
                             const std::string& key,
                             const std::string& op_type,
                             ssize_t arg_pos);
+
+void CastPyArg2AttrScalars(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key,
+                           const std::string& op_type,
+                           ssize_t arg_pos);
 
 void CastPyArg2AttrStrings(PyObject* obj,
                            paddle::framework::AttributeMap& attrs,  // NOLINT

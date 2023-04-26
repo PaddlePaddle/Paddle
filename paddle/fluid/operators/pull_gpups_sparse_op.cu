@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullGpuPSSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -28,7 +28,7 @@ class PullGpuPSSparseCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushGpuPSSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -39,9 +39,15 @@ class PushGpuPSSparseCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(pull_gpups_sparse,
-                        ops::PullGpuPSSparseCUDAKernel<float>,
-                        ops::PullGpuPSSparseCUDAKernel<double>)
-REGISTER_OP_CUDA_KERNEL(push_gpups_sparse,
-                        ops::PushGpuPSSparseCUDAKernel<float>,
-                        ops::PushGpuPSSparseCUDAKernel<double>)
+PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PullGpuPSSparseCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PushGpuPSSparseCUDAKernel,
+                          float,
+                          double) {}

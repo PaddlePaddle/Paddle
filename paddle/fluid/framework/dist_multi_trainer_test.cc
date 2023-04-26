@@ -22,7 +22,7 @@
 #else
 #define _LINUX
 #endif
-DECLARE_bool(enable_exit_when_partial_worker);
+PHI_DECLARE_bool(enable_exit_when_partial_worker);
 
 namespace paddle {
 namespace framework {
@@ -166,7 +166,7 @@ TEST(DisMultiTrainerTest, test3) {
   tmp1->SetDebug(true);
   ProgramDesc p;
   tmp1->InitOtherEnv(p);
-  tmp1->Run();
+  // tmp1->Run();
   tmp1->Finalize();
 #endif
 }

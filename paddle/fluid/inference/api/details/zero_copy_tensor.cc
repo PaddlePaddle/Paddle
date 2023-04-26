@@ -152,8 +152,6 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
-  } else if (paddle::platform::is_npu_place(tensor->place())) {
-    *place = PlaceType::kNPU;
   } else if (paddle::platform::is_custom_place(tensor->place())) {
     *place = PlaceType::kCUSTOM;
   } else {
@@ -244,25 +242,6 @@ void Tensor::CopyFromCpu(const T *data) {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
-#endif
-  } else if (place_ == PlaceType::kNPU) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::NPUPlace npu_place(device_);
-    auto *t_data = tensor->mutable_data<T>(npu_place);
-    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
-        pool.Get(npu_place));
-    paddle::memory::Copy(npu_place,
-                         static_cast<void *>(t_data),
-                         paddle::platform::CPUPlace(),
-                         data,
-                         ele_size,
-                         dev_ctx->stream());
-#else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Can not create tensor with NPU place because paddle is not compiled "
-        "with NPU."));
 #endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -364,9 +343,16 @@ void Tensor::ShareExternalData(const T *data,
             const_cast<T *>(data), size, paddle::platform::CUDAPlace(device_)),
         meta);
     *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kXPU) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(
+            const_cast<T *>(data), size, paddle::platform::XPUPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
+        "PlaceType must be one of [PlaceType::kCPU, PlaceType::kGPU, "
+        "PlaceType::kXPU]."));
   }
 }
 
@@ -469,25 +455,6 @@ void Tensor::CopyToCpuImpl(T *data,
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
-  } else if (place_ == PlaceType::kNPU) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto npu_place = t_place;
-    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
-        pool.Get(npu_place));
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         static_cast<void *>(data),
-                         npu_place,
-                         t_data,
-                         ele_num * sizeof(T),
-                         dev_ctx->stream());
-    paddle::platform::NPUStreamSync(dev_ctx->stream());
-#else
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Can not create tensor with NPU place because paddle is not compiled "
-        "with NPU."));
-#endif
   } else {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     paddle::platform::DeviceContextPool &pool =
@@ -501,7 +468,7 @@ void Tensor::CopyToCpuImpl(T *data,
                          t_data,
                          ele_num * sizeof(T),
                          dev_ctx->stream());
-// TODO(wangran16): sync_stream
+    dev_ctx->GetStream()->Synchronize();
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));

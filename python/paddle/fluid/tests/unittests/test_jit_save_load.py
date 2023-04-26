@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import unique_name
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
@@ -283,7 +283,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
         super().__init__()
         self._linear_0 = Linear(in_size, out_size)
         self._linear_1 = Linear(in_size, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -1102,7 +1102,7 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
 
     def test_save_load_empty_layer(self):
         layer = EmptyLayer()
-        x = paddle.to_tensor(np.random.random((10)).astype('float32'))
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
         out = layer(x)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1124,8 +1124,8 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
 
     def test_save_load_no_param_layer(self):
         layer = NoParamLayer()
-        x = paddle.to_tensor(np.random.random((5)).astype('float32'))
-        y = paddle.to_tensor(np.random.random((5)).astype('float32'))
+        x = paddle.to_tensor(np.random.random(5).astype('float32'))
+        y = paddle.to_tensor(np.random.random(5).astype('float32'))
         out = layer(x, y)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -1196,7 +1196,7 @@ class LayerSaved(paddle.nn.Layer):
         self._linear_1_0 = Linear(self.hidden, self.hidden)
         self._linear_1_1 = Linear(self.hidden, self.hidden)
         self._linear_2 = Linear(self.hidden, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -1319,7 +1319,7 @@ class LayerLoadFinetune(paddle.nn.Layer):
         self._linear_1_0 = Linear(out_size, in_size)
         self._linear_1_1 = Linear(out_size, in_size)
         self._linear_2 = Linear(out_size, out_size)
-        self._scale = paddle.to_tensor(9.9)
+        self._scale = paddle.to_tensor([9.9])
 
         # Load multiple times
         self._load_l1 = paddle.jit.load(load_path)
@@ -1433,7 +1433,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         result_11 = layer_finetune(inps1)
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
-        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+        self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 
 
 # NOTE(weixin): When there are multiple test functions in an

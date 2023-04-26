@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -191,6 +191,15 @@ class TestDistAPI(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
+
+    def test_grad_x(self):
+        paddle.disable_static()
+        a = paddle.rand([2, 2, 3, 2])
+        b = paddle.rand([1, 1, 3, 1])
+        a.stop_gradient = False
+        c = paddle.dist(a, b, 2)
+        c.backward()
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.fluid import core
 
 
 class SimpleNet(nn.Layer):
@@ -554,7 +553,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         global HOOK_INIT_VALUE
         global HOOK_IS_CALLED
         for device in self.devices:
-            x = paddle.to_tensor(5.0, stop_gradient=False)
+            x = paddle.to_tensor([5.0], stop_gradient=False)
             x._register_backward_hook(global_void_hook)
             for i in range(5):
                 y = paddle.pow(x, 4.0)
@@ -568,14 +567,14 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             HOOK_IS_CALLED = False
 
     def test_register_backward_hook_for_interior_var(self):
-        x = paddle.to_tensor(5.0, stop_gradient=False)
+        x = paddle.to_tensor([5.0], stop_gradient=False)
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):
             y._register_backward_hook(global_void_hook)
 
     def test_register_backward_hook_for_var_without_gradient(self):
-        x = paddle.to_tensor(5.0)
+        x = paddle.to_tensor([5.0])
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):

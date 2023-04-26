@@ -116,7 +116,7 @@ struct Argument {
   }                                                                         \
   void Set##Field##NotOwned(type__* x) {                                    \
     valid_fields_.insert(#field__);                                         \
-    field__##_ = unique_ptr_t(x, [](void* x) {});                           \
+    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                    \
   }                                                                         \
   DECL_ARGUMENT_FIELD_VALID(field__);                                       \
   type__* field__##_ptr() {                                                 \
@@ -376,6 +376,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_custom_device, UseCustomDevice, bool);
   DECL_ARGUMENT_FIELD(custom_device_type, CustomDeviceType, std::string);
   DECL_ARGUMENT_FIELD(custom_device_id, CustomDeviceId, int);
+  DECL_ARGUMENT_FIELD(enable_custom_device_mixed,
+                      EnableCustomDeviceMixed,
+                      bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

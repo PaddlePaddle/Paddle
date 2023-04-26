@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -348,7 +349,7 @@ class ScopedDropoutDescriptor {
   }
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
-                                             const phi::Place& place,
+                                             const phi::Place& place UNUSED,
                                              bool initialized,
                                              float dropout_prob_,
                                              phi::DenseTensor* dropout_state_,
@@ -369,7 +370,7 @@ class ScopedDropoutDescriptor {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
     } else {
-      auto dropout_state_dims = dropout_state_->dims();
+      auto dropout_state_dims = phi::vectorize<int64_t>(dropout_state_->dims());
       state_size = dropout_state_dims[0];
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRestoreDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));

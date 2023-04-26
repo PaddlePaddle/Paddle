@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
-
+#include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -159,29 +159,17 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> cudnn_act_set({"identity", "relu"});
 #endif
 
-  std::unordered_set<std::string> cutlass_act_set;
+  std::unordered_set<std::string> cutlass_act_set =
+      CutlassTeller::Instance()->CbaAct(Get<int>("gpu_device_id"));
   std::unordered_set<std::string> all_act_set = cudnn_act_set;
 
   bool is_fp16_precision =
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
-  constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
   bool cutlass_enable = Get<bool>("use_cutlass");
   if (is_fp16_precision && cutlass_enable) {
-#ifdef PADDLE_WITH_CUTLASS
-    const auto& prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
-    int sm_version = prop.major * 10 + prop.minor;
-    // Now we only implement cutlass kernel on SM75.
-    if (sm_version == 75) {
-      // Cutlass now support these cba activations.
-      cutlass_act_set.insert("swish");
-      cutlass_act_set.insert("relu");
-      cutlass_act_set.insert("identity");
-      cutlass_act_set.insert("leaky_relu");
-    }
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
-#endif
   }
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
@@ -200,17 +188,12 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
     auto* scope = param_scope();
-    auto* filter_var = scope->FindLocalVar(conv_filter->Name());
-    auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-    CHECK_EQ(filter_tensor->dims().size() == 4UL, true);
-    // When this conv2d_fusion problem size is not supported by cutlass and not
-    // supported by cuDNN, we should not apply this pass.
-    int oc = filter_tensor->dims()[0];
-    int ic = filter_tensor->dims()[1];
-    bool cutlass_can_fuse = oc % CUTLASS_NHWC_ALIGNMENT == 0 &&
-                            ic % CUTLASS_NHWC_ALIGNMENT == 0 &&
-                            cutlass_act_set.count(act_op_type);
+    bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
+        conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
+    // When this conv2d_fusion specified by problem size and act type is not
+    // supported by cutlass and not supported by cuDNN, we should not apply this
+    // pass.
     if (!cutlass_can_fuse && !cudnn_can_fuse) {
       return;
     }
@@ -221,7 +204,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
-
+    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+      new_op_desc.SetAttr("use_cutlass", true);
+    }
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 

@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.metrics.metric as metric
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base.util_factory import UtilBase
+from paddle.distributed.fleet.metrics import metric
 
 paddle.enable_static()
 

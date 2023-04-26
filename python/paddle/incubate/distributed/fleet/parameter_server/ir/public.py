@@ -376,15 +376,13 @@ class CompileTimeStrategy:
             for slice in slices:
                 if self.is_geo_mode():
                     if is_send:
-                        names.append("{}.delta".format(slice.name))
+                        names.append(f"{slice.name}.delta")
                     else:
                         names.append(slice.name)
                 elif (
                     is_grad and self.is_sync_mode() and self.get_trainers() > 1
                 ):
-                    names.append(
-                        "{}.trainer_{}".format(slice.name, self.get_role_id())
-                    )
+                    names.append(f"{slice.name}.trainer_{self.get_role_id()}")
                 else:
                     names.append(slice.name)
 
@@ -654,7 +652,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+                var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 sparse_ctx = core.CommContext(
                     grad_name,
@@ -707,7 +705,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel += reduce(lambda x, y: x * y, var.shape)
+                var_numel += reduce(lambda x, y: x * y, var.shape, 1)
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
@@ -736,7 +734,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     origin_varname
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
                 grad_name = origin_varname
                 aggregate = True
                 dense_ctx = core.CommContext(
@@ -793,7 +791,7 @@ class CompileTimeStrategy:
             splited_varname = []
 
             for i in range(len(ep_list)):
-                splited_varname.append("{}.block{}".format(param_name, i))
+                splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
                 True if param_name in distibuted_varnames else False
@@ -1060,7 +1058,7 @@ class CompileTimeStrategy:
         blocks = []
         for var in var_list:
             if not uniform:
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
 
                 split_count = 1
 
@@ -1079,7 +1077,7 @@ class CompileTimeStrategy:
 
                 if len(var.shape) >= 2:
                     # align by dim1(width)
-                    dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                    dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
                     remains = block_size % dim1
                     if remains != 0:
                         block_size += dim1 - remains
@@ -1104,7 +1102,7 @@ class CompileTimeStrategy:
                 for i in range(remainder):
                     dim0s[i] = dim0s[i] + 1
 
-                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 for block_id in range(len(dim0s)):
                     numel = dim0s[block_id] * dim1
@@ -1327,7 +1325,7 @@ class CompileTimeStrategy:
                 del self.merged_sparse_pairs[index]
                 return
 
-        print("Not find {} in self.merge_pairs".format(var_name))
+        print(f"Not find {var_name} in self.merge_pairs")
 
 
 def _is_opt_role_op(op):
@@ -1362,11 +1360,11 @@ def _get_optimize_ops(_program):
 
 
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
-    if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
+    if hasattr(compiled_config.origin_main_program, 'lr_scheduler'):
         from paddle.optimizer.lr import LRScheduler
 
         assert isinstance(
-            compiled_config.origin_main_program.lr_sheduler, LRScheduler
+            compiled_config.origin_main_program.lr_scheduler, LRScheduler
         ), "must be LRScheduler"
         ops = _get_optimize_ops(compiled_config.origin_main_program)
         lr_param_dict = _get_lr_param_dict(ops)
@@ -1374,8 +1372,8 @@ def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
             lr_decay_main_program,
             lr_decay_startup_program,
             lr_name,
-        ) = _get_lr_sheduler_program(
-            compiled_config.origin_main_program.lr_sheduler,
+        ) = _get_lr_scheduler_program(
+            compiled_config.origin_main_program.lr_scheduler,
             lr_param_dict,
             lr_decay_steps,
         )
@@ -1399,7 +1397,7 @@ def _get_lr_param_dict(opt_ops):
     return lr_param_dict
 
 
-def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
+def _get_lr_scheduler_program(lr_scheduler, lr_param_dict, lr_decay_steps):
     schedler_decay = [
         'NoamDecay',
         'NaturalExpDecay',
@@ -1424,11 +1422,13 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
     decay_startup_program = paddle.static.Program()
     lr_name = ""
 
-    if isinstance(lr_sheduler, ExponentialDecay):
+    if isinstance(lr_scheduler, ExponentialDecay):
         with paddle.static.program_guard(
             decay_main_program, decay_startup_program
         ):
-            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr = exponential_decay(
+                1.0, lr_decay_steps, lr_scheduler.gamma, True
+            )
             lr_name = lr.name
             logging.warn(
                 "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
@@ -1437,21 +1437,25 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
                 % lr_decay_steps
             )
-    elif isinstance(lr_sheduler, NoamDecay):
+    elif isinstance(lr_scheduler, NoamDecay):
         with paddle.static.program_guard(
             decay_main_program, decay_startup_program
         ):
-            lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
+            lr = noam_decay(
+                lr_scheduler.d_model, lr_scheduler.warmup_steps, 1.0
+            )
             lr_name = lr.name
             logging.warn(
                 "NoamDecay is set, warmup steps is [ %d ]"
-                % lr_sheduler.warmup_steps
+                % lr_scheduler.warmup_steps
             )
-    elif isinstance(lr_sheduler, NaturalExpDecay):
+    elif isinstance(lr_scheduler, NaturalExpDecay):
         with paddle.static.program_guard(
             decay_main_program, decay_startup_program
         ):
-            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr = natural_exp_decay(
+                1.0, lr_decay_steps, lr_scheduler.gamma, True
+            )
             lr_name = lr.name
             logging.warn(
                 "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
@@ -1460,12 +1464,12 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
                 % lr_decay_steps
             )
-    elif isinstance(lr_sheduler, InverseTimeDecay):
+    elif isinstance(lr_scheduler, InverseTimeDecay):
         with paddle.static.program_guard(
             decay_main_program, decay_startup_program
         ):
             lr = inverse_time_decay(
-                1.0, lr_decay_steps, lr_sheduler.gamma, True
+                1.0, lr_decay_steps, lr_scheduler.gamma, True
             )
             lr_name = lr.name
             logging.warn(
