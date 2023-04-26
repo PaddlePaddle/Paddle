@@ -61,8 +61,7 @@ function(register_cu_kernel TARGET)
                         "${multiValueArgs}" ${ARGN})
 
   set(cu_srcs)
-  set(op_common_deps operator op_registry math_function layer
-                     common_infer_shape_functions)
+  set(op_common_deps operator op_registry layer common_infer_shape_functions)
   foreach(cu_src ${register_cu_kernel_SRCS})
     if(${cu_src} MATCHES ".*\\.cu$")
       list(APPEND cu_srcs ${cu_src})
