@@ -1358,33 +1358,23 @@ All parameter, weight, gradient are variables in Paddle.
                 op_desc, no_grad_set, &grad_to_var, grad_sub_block);
           }
         } else {
-          if (op_info.HasEmptyGradOpMaker()) {
-            std::cout << "HasEmptyGradOpMake" << std::endl;
-          } else {
-            std::cout << "don't HasEmptyGradOpMake" << std::endl;
-          }
-          if (grad_comp_op_maker != nullptr) {
-            std::cout << "grad_comp_op_maker is not nullptr" << std::endl;
-          } else {
-            std::cout << "grad_comp_op_maker is nullptr" << std::endl;
-          }
           if (op_info.HasEmptyGradOpMaker() && grad_comp_op_maker != nullptr) {
-            std::cout << "grad_op_maker is EmptyGradOpMaker, Runing composite "
-                         "fun for "
-                      << op_desc.Type() << std::endl;
+            VLOG(3) << "grad_op_maker is EmptyGradOpMaker, Runing composite "
+                       "fun for "
+                    << op_desc.Type();
             grad_op_descs = grad_comp_op_maker(op_desc,
                                                no_grad_set,
                                                &grad_to_var,
                                                op_desc.Block(),
                                                grad_sub_block);
           } else if (grad_op_maker != nullptr) {
-            std::cout << "grad_op_maker is ! nullptr, Runing origin fun for "
-                      << op_desc.Type() << std::endl;
+            VLOG(3) << "grad_op_maker is ! nullptr, Runing origin fun for "
+                    << op_desc.Type();
             grad_op_descs = grad_op_maker(
                 op_desc, no_grad_set, &grad_to_var, grad_sub_block);
           } else {
-            std::cout << "grad_op_maker is nullptr Runing composite fun for "
-                      << op_desc.Type() << std::endl;
+            VLOG(3) << "grad_op_maker is nullptr Runing composite fun for "
+                    << op_desc.Type();
             grad_op_descs = grad_comp_op_maker(op_desc,
                                                no_grad_set,
                                                &grad_to_var,

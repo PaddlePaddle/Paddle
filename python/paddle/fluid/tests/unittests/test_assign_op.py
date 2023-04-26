@@ -306,9 +306,9 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
         out = paddle.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        # gradient_checker.double_grad_check(
-        #     [data], out, x_init=[data_arr], place=place, eps=eps
-        # )
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
 
         gradient_checker.double_grad_check_for_dygraph(
             self.assign_wrapper, [data], out, x_init=[data_arr], place=place
