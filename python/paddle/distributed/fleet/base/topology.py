@@ -62,7 +62,7 @@ class CommunicateTopology:
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
-        self._world_size = reduce(lambda x, y: x * y, self._dims)
+        self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
 
         ranges = [range(d) for d in self._dims]
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]

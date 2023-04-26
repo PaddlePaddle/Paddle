@@ -519,6 +519,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
+      "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
       "delete_cast_op_pass",
       "stack_fuse_pass",

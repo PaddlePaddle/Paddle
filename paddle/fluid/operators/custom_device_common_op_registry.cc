@@ -486,6 +486,17 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
   }
 };
 
+template <typename DeviceContext, typename T>
+class CSyncCalcStreamCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto place = ctx.GetPlace();
+    auto dev_ctx = static_cast<DeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    dev_ctx->GetStream()->Synchronize();
+  }
+};
+
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
@@ -604,7 +615,27 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::CIdentityOpKernel<
           paddle::platform::float16,
           paddle::platform::CustomDeviceContext>) {}
-
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      c_sync_calc_stream,
+      device_type,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int16_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int32_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int64_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          float>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          double>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>) {}
 #endif
 }
 
