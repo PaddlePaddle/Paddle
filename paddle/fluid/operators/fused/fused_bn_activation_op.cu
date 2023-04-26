@@ -23,10 +23,11 @@
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {

@@ -100,10 +100,8 @@ def _proccess_archs(arch):
             assert a in [
                 "GPU",
                 "ROCM",
-                "ASCEND",
-                "ASCEND_CL",
                 "XPU",
-            ], f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", "XPU", but the options is {a}"""
+            ], f"""Supported arhc options are "GPU", "ROCM", and "XPU", but the options is {a}"""
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:

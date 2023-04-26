@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -62,10 +63,10 @@ class DenseTensor;
 #endif
 
 DECLARE_bool(benchmark);
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-DECLARE_bool(run_kp_kernel);
-DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(run_kp_kernel);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -2493,7 +2494,7 @@ Scope* OperatorWithKernel::PrepareData(
                                                  expected_kernel_key.layout(),
                                                  expected_kernel_key.dtype());
           }
-        } else if (in_def != nullptr &&
+        } else if (in_def != nullptr &&  // KernelRegisteredType is Function
                    in_def->backend != phi::Backend::ALL_BACKEND) {
           auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
           if ((in_def->backend != tensor_backend &&

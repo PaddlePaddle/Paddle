@@ -19,11 +19,10 @@
 #endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 
 namespace phi {
 
-// Create the definition of Maximum
-DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
 template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
@@ -33,8 +32,6 @@ void MaximumKernel(const Context& dev_ctx,
   MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
-// Create the definition of Minimum
-DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
@@ -43,10 +40,16 @@ void MinimumKernel(const Context& dev_ctx,
   int axis = -1;
   MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
-// Create the definition of Remainder
-DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
-// Create the definition of FloorDivide
-DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
+
+template <typename T, typename Context>
+void RemainderKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  int axis = -1;
+  RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
 template <typename T, typename Context>
 void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
@@ -73,8 +76,6 @@ void HeavisideKernel(const Context& dev_ctx,
       dev_ctx, inputs, &outputs, -1, funcs::ElementwiseHeavisideFunctor<T>());
 }
 
-// Create the definition of Pow
-DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -86,22 +87,59 @@ void ElementwisePowKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_REGISTER_KERNEL(maximum,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MaximumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(minimum,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MinimumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(remainder,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RemainderKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+#endif
+
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(maximum, KPS, ALL_LAYOUT, phi::MaximumKernel, float) {}
-PD_REGISTER_KERNEL(maximum_raw, KPS, ALL_LAYOUT, phi::MaximumRawKernel, float) {
-}
 PD_REGISTER_KERNEL(minimum, KPS, ALL_LAYOUT, phi::MinimumKernel, float) {}
-PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
-}
 PD_REGISTER_KERNEL(floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int) {
 }
 PD_REGISTER_KERNEL(
-    floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
-PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
-PD_REGISTER_KERNEL(
-    elementwise_pow_raw, KPS, ALL_LAYOUT, phi::ElementwisePowRawKernel, float) {
-}
 
 #else
 using float16 = phi::dtype::float16;
@@ -129,41 +167,6 @@ PD_REGISTER_KERNEL(fmin,
                    float16,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(maximum_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::MaximumRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   float16,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(minimum_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::MinimumRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   float16,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(remainder_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::RemainderRawKernel,
-                   float,
-                   double,
-                   int,
-                   float16,
-                   int64_t) {}
-PD_REGISTER_KERNEL(floor_divide_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::FloorDivideRawKernel,
-                   int,
-                   int64_t) {}
 PD_REGISTER_KERNEL(heaviside,
                    KPS,
                    ALL_LAYOUT,
@@ -172,15 +175,5 @@ PD_REGISTER_KERNEL(heaviside,
                    double,
                    int,
                    float16,
-                   int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
-                   float,
-                   double,
-                   int,
-                   float16,
-                   bfloat16,
                    int64_t) {}
 #endif
