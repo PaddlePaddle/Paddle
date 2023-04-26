@@ -1825,10 +1825,6 @@ void pad_grad(const Tensor& input,
     for (int64_t i = 0; i < rank; ++i) {
       starts.push_back(static_cast<int>(paddings[2 * i]));
       ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
-      printf("i : %d starts %d ends : %d\n",
-             i,
-             paddings[2 * i],
-             (out_dims[i] - paddings[2 * i + 1]));
       axes.push_back(i);
     }
     auto out_tmp =
