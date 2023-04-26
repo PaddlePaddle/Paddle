@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -71,7 +71,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
@@ -95,10 +95,15 @@ class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_XPU_KERNEL(uniform_random_inplace,
-                       paddle::operators::XPUUniformRandomInplaceKernel<float>);
-REGISTER_OP_XPU_KERNEL(
-    uniform_random_inplace_grad,
-    paddle::operators::XPUUniformRandomInplaceGradKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(uniform_random_inplace,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::XPUUniformRandomInplaceKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(uniform_random_inplace_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::XPUUniformRandomInplaceGradKernel,
+                          float) {}
 
 #endif  // PADDLE_WITH_XPU

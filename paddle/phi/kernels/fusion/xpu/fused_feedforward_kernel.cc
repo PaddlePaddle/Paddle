@@ -377,7 +377,7 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_feedward,
+PD_REGISTER_KERNEL(fused_feedforward,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedFeedForwardKernel,

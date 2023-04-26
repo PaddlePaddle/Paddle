@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include <cassert>
 
-namespace phi {
+#include "paddle/extension.h"
 
-KernelSignature BoxCoderOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("box_coder",
-                         {"PriorBox", "PriorBoxVar", "TargetBox"},
-                         {"code_type", "box_normalized", "axis", "variance"},
-                         {"OutputBox"});
+int main() {
+  float data[] = {1., 2., 3., 4.};
+  auto tensor = paddle::from_blob(data, {2, 2}, phi::DataType::FLOAT32);
+  auto gpu_tensor =
+      paddle::experimental::copy_to(tensor, phi::GPUPlace(), false);
+  assert(gpu_tensor.is_gpu());
 }
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(box_coder, phi::BoxCoderOpArgumentMapping);

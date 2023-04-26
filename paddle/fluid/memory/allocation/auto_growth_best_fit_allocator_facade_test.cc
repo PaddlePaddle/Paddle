@@ -19,17 +19,17 @@
 #include <random>
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_int64(gpu_allocator_retry_time);
 #endif
 
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
