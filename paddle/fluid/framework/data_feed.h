@@ -988,7 +988,7 @@ class GraphDataGenerator {
   int FillSlotFeature(uint64_t* d_walk, size_t key_num);
   int GetPathNum() { return total_row_; }
   void ResetPathNum() { total_row_ = 0; }
-  int GetGraphBatchsize() { return conf_.batch_size; }
+  int GetGraphBatchsize() { return conf_.batch_size; };
   void SetNewBatchsize(int batch_num) {
     if (!conf_.gpu_graph_training && !conf_.sage_mode) {
       conf_.batch_size = (total_row_ + batch_num - 1) / batch_num;
