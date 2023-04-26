@@ -74,7 +74,7 @@ inline typename std::enable_if<
     !std::is_same<typename KernelTuple::data_type, float>::value ||
         !std::is_same<PlaceType, phi::CPUPlace>::value,
     const Kernel*>::type
-GetJitCode(const typename KernelTuple::attr_type& attr) {
+GetJitCode(const typename KernelTuple::attr_type& attr UNUSED) {
   return nullptr;
 }
 
