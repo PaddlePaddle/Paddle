@@ -17,10 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -132,8 +132,7 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class PadCompositeGradOpMaker
-    : public prim::CompositeGradOpMakerBase {
+class PadCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
