@@ -2139,6 +2139,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("OD", paddle::imperative::AmpLevel::OD)
       .value("O1", paddle::imperative::AmpLevel::O1)
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
