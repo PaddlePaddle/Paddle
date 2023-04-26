@@ -21,6 +21,7 @@ from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
+from paddle.incubate.layers.nn import shuffle_batch
 
 paddle.enable_static()
 
@@ -145,7 +146,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         def body_func(i, ten, batch_info, origin_seq):
             print(batch_info)
-            batch_info = fluid.contrib.layers.shuffle_batch(batch_info)
+            batch_info = shuffle_batch(batch_info)
             print(batch_info)
             i = i + 1
             return [i, ten, batch_info, origin_seq]

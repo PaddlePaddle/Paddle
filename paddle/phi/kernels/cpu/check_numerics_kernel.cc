@@ -28,6 +28,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
+                         const int stack_height_limit,
                          const std::string& output_filepath) {
   std::string cpu_hint_str =
       phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());

@@ -1059,7 +1059,9 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
             optimizer.minimize(loss)
         exe.run(startup_program)
         if use_amp:
-            optimizer.amp_init(place=place, scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = numpy.random.random(size=(2, 2)).astype('float16')
         else:
             x = numpy.random.random(size=(2, 2)).astype('float32')

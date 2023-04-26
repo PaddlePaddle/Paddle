@@ -30,6 +30,10 @@ void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
 
+void SetNanInfStackLimit(const int& stack_limit);
+
+int GetNanInfStackLimit();
+
 template <typename Context>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,
@@ -56,7 +60,7 @@ struct TensorCheckerVisitor {
 
     auto file_path = GetNanPath();
     phi::CheckNumericsKernel<T, Context>(
-        *dev_ctx, tensor, op_type, var_name, file_path);
+        *dev_ctx, tensor, op_type, var_name, GetNanInfStackLimit(), file_path);
   }
 
   std::string op_type;

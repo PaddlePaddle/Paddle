@@ -19,11 +19,12 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace phi {
 
@@ -421,6 +422,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
+                         const int stack_height_limit,
                          const std::string& output_filepath) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
@@ -513,7 +515,7 @@ void CheckNumericsKernel(const Context& ctx,
                                   check_nan_inf_level,
                                   nan_inf_zero_ptr);
 
-  if (check_nan_inf_level == 0) {
+  if (check_nan_inf_level == 0 && stack_height_limit > 0) {
     auto nan_cpu =
         phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 3);
     int64_t* nan_cpu_ptr = reinterpret_cast<int64_t*>(nan_cpu->ptr());
