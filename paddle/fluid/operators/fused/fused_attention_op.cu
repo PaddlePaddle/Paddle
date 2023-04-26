@@ -490,60 +490,33 @@ void FusedAttentionGradKernel(
   auto *dropout_mask_out_data =
       has_dropout ? dropout_mask_out_p->data<uint8_t>() : nullptr;
 
-  phi::DenseTensor *qkv_out_grad = nullptr;
-  if (&qkv_out) {
-    qkv_out_grad = new phi::DenseTensor();
-    qkv_out_grad->Resize(qkv_out.dims());
-  }
-  phi::DenseTensor *qkv_bias_out_grad = nullptr;
+  phi::DenseTensor qkv_out_grad;
+  qkv_out_grad.Resize(qkv_out.dims());
+  phi::DenseTensor qkv_bias_out_grad;
   if (qkv_bias_out.get_ptr()) {
-    qkv_bias_out_grad = new phi::DenseTensor();
-    qkv_bias_out_grad->Resize(qkv_bias_out.get_ptr()->dims());
+    qkv_bias_out_grad.Resize(qkv_bias_out.get_ptr()->dims());
   }
-  phi::DenseTensor *qktv_out_grad = nullptr;
-  if (&qktv_out) {
-    qktv_out_grad = new phi::DenseTensor();
-    qktv_out_grad->Resize(qktv_out.dims());
-  }
-  phi::DenseTensor *transpose_out_2_grad = nullptr;
-  if (&transpose_out_2) {
-    transpose_out_2_grad = new phi::DenseTensor();
-    transpose_out_2_grad->Resize(transpose_out_2.dims());
-  }
-  phi::DenseTensor *qk_out_grad = nullptr;
-  if (&qk_out) {
-    qk_out_grad = new phi::DenseTensor();
-    qk_out_grad->Resize(qk_out.dims());
-  }
-  phi::DenseTensor *softmax_out_grad = nullptr;
-  if (&softmax_out) {
-    softmax_out_grad = new phi::DenseTensor();
-    softmax_out_grad->Resize(softmax_out.dims());
-  }
-  phi::DenseTensor *attn_dropout_out_grad = nullptr;
-  if (&attn_dropout_out) {
-    attn_dropout_out_grad = new phi::DenseTensor();
-    attn_dropout_out_grad->Resize(attn_dropout_out.dims());
-  }
-  phi::DenseTensor *src_mask_out_grad = nullptr;
+  phi::DenseTensor qktv_out_grad;
+  qktv_out_grad.Resize(qktv_out.dims());
+  phi::DenseTensor transpose_out_2_grad;
+  transpose_out_2_grad.Resize(transpose_out_2.dims());
+  phi::DenseTensor qk_out_grad;
+  qk_out_grad.Resize(qk_out.dims());
+  phi::DenseTensor softmax_out_grad;
+  softmax_out_grad.Resize(softmax_out.dims());
+  phi::DenseTensor attn_dropout_out_grad;
+  attn_dropout_out_grad.Resize(attn_dropout_out.dims());
+  phi::DenseTensor src_mask_out_grad;
   if (src_mask_out.get_ptr()) {
-    src_mask_out_grad = new phi::DenseTensor();
-    src_mask_out_grad->Resize(src_mask_out.get_ptr()->dims());
+    src_mask_out_grad.Resize(src_mask_out.get_ptr()->dims());
   }
-  phi::DenseTensor *fmha_out_grad = nullptr;
-  if (&fmha_out) {
-    fmha_out_grad = new phi::DenseTensor();
-    fmha_out_grad->Resize(fmha_out.dims());
-  }
-  phi::DenseTensor *out_linear_out_grad = nullptr;
-  if (&out_linear_out) {
-    out_linear_out_grad = new phi::DenseTensor();
-    out_linear_out_grad->Resize(out_linear_out.dims());
-  }
-  phi::DenseTensor *bias_dropout_residual_out_grad = nullptr;
+  phi::DenseTensor fmha_out_grad;
+  fmha_out_grad.Resize(fmha_out.dims());
+  phi::DenseTensor out_linear_out_grad;
+  out_linear_out_grad.Resize(out_linear_out.dims());
+  phi::DenseTensor bias_dropout_residual_out_grad;
   if (bias_dropout_residual_out.get_ptr()) {
-    bias_dropout_residual_out_grad = new phi::DenseTensor();
-    bias_dropout_residual_out_grad->Resize(
+    bias_dropout_residual_out_grad.Resize(
         bias_dropout_residual_out.get_ptr()->dims());
   }
   auto *d_x_data =
@@ -551,37 +524,31 @@ void FusedAttentionGradKernel(
   // when qkv_bias_p is not nullptr, qkv_out_grad is equals to
   // qkv_bias_out_grad, the space can be reused.
   auto *d_qkv_out_data =
-      (qkv_bias_out_grad != nullptr)
+      (qkv_bias_out.get_ptr() != nullptr)
           ? nullptr
-          : dev_ctx.template Alloc<T>(qkv_out_grad,
-                                      qkv_out_grad->numel() * sizeof(T));
+          : dev_ctx.template Alloc<T>(&qkv_out_grad,
+                                      qkv_out_grad.numel() * sizeof(T));
   auto *d_qkv_bias_out_data =
-      (qkv_bias_out_grad == nullptr)
+      (qkv_bias_out.get_ptr() == nullptr)
           ? nullptr
-          : dev_ctx.template Alloc<T>(qkv_bias_out_grad,
-                                      qkv_bias_out_grad->numel() * sizeof(T));
+          : dev_ctx.template Alloc<T>(&qkv_bias_out_grad,
+                                      qkv_bias_out_grad.numel() * sizeof(T));
   auto *d_qktv_out_data = dev_ctx.template Alloc<T>(
-      qktv_out_grad, qktv_out_grad->numel() * sizeof(T));
+      &qktv_out_grad, qktv_out_grad.numel() * sizeof(T));
   auto *d_transpose_out_2_data = dev_ctx.template Alloc<T>(
-      transpose_out_2_grad, transpose_out_2_grad->numel() * sizeof(T));
+      &transpose_out_2_grad, transpose_out_2_grad.numel() * sizeof(T));
   auto *d_qk_out_data =
-      dev_ctx.template Alloc<T>(qk_out_grad, qk_out_grad->numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&qk_out_grad, qk_out_grad.numel() * sizeof(T));
   auto *d_softmax_out_data = dev_ctx.template Alloc<T>(
-      softmax_out_grad, softmax_out_grad->numel() * sizeof(T));
-  auto *d_attn_dropout_out_data =
-      has_attn_dropout ? dev_ctx.template Alloc<T>(
-                             attn_dropout_out_grad,
-                             attn_dropout_out_grad->numel() * sizeof(T))
-                       : nullptr;
-  auto *d_src_mask_out_data =
-      (src_mask_p == nullptr)
-          ? nullptr
-          : dev_ctx.template Alloc<T>(src_mask_out_grad,
-                                      src_mask_out_grad->numel() * sizeof(T));
+      &softmax_out_grad, softmax_out_grad.numel() * sizeof(T));
+  auto *d_attn_dropout_out_data = dev_ctx.template Alloc<T>(
+      &attn_dropout_out_grad, attn_dropout_out_grad.numel() * sizeof(T));
+  auto *d_src_mask_out_data = dev_ctx.template Alloc<T>(
+      &src_mask_out_grad, src_mask_out_grad.numel() * sizeof(T));
   auto *d_fmha_out_data = dev_ctx.template Alloc<T>(
-      fmha_out_grad, fmha_out_grad->numel() * sizeof(T));
+      &fmha_out_grad, fmha_out_grad.numel() * sizeof(T));
   auto *d_out_linear_out_data = dev_ctx.template Alloc<T>(
-      out_linear_out_grad, out_linear_out_grad->numel() * sizeof(T));
+      &out_linear_out_grad, out_linear_out_grad.numel() * sizeof(T));
 
   // parameter grad
   auto *d_qkv_weight_data =
@@ -696,8 +663,8 @@ void FusedAttentionGradKernel(
              : dev_ctx.template Alloc<U>(ln_bias_2_grad,
                                          ln_bias_2_grad->numel() * sizeof(U)));
     auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
-        bias_dropout_residual_out_grad,
-        bias_dropout_residual_out_grad->numel() * sizeof(T));
+        &bias_dropout_residual_out_grad,
+        bias_dropout_residual_out_grad.numel() * sizeof(T));
 
     fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
         dev_ctx,
@@ -717,37 +684,38 @@ void FusedAttentionGradKernel(
 
   out_linear_compute.ComputeBackward(fmha_out_p,
                                      out_linear_weight_p,
-                                     out_linear_out_grad,
-                                     fmha_out_grad,
+                                     &out_linear_out_grad,
+                                     &fmha_out_grad,
                                      out_linear_weight_grad,
                                      nullptr);
 
   if (transpose_qkv_wb) {
     if (compute_qkv_bias) {
-      qkv_bias_out_grad->Resize(
+      qkv_bias_out_grad.Resize(
           {batch_size, max_seq_len, 3, num_head, dim_head});
     } else {
-      qkv_out_grad->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+      qkv_out_grad.Resize({batch_size, max_seq_len, 3, num_head, dim_head});
     }
   }
 
   if (qkv_bias_p != nullptr) {
-    fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
-                                     has_attn_dropout ? src_mask_p : nullptr,
-                                     *softmax_out_p,
-                                     *attn_dropout_mask_out_p,
-                                     *attn_dropout_out_p,
-                                     *qk_out_p,
-                                     *src_mask_out_p,
-                                     *fmha_out_grad,
-                                     qktv_out_grad,
-                                     attn_dropout_out_grad,
-                                     softmax_out_grad,
-                                     src_mask_out_grad,
-                                     qk_out_grad,
-                                     transpose_out_2_grad,
-                                     nullptr,
-                                     qkv_bias_out_grad);
+    fmha_ref_compute.ComputeBackward(
+        *transpose_out_2_p,
+        has_attn_dropout ? src_mask_p : nullptr,
+        *softmax_out_p,
+        *attn_dropout_mask_out_p,
+        *attn_dropout_out_p,
+        *qk_out_p,
+        *src_mask_out_p,
+        fmha_out_grad,
+        &qktv_out_grad,
+        &attn_dropout_out_grad,
+        &softmax_out_grad,
+        &src_mask_out_grad,
+        &qk_out_grad,
+        &transpose_out_2_grad,
+        nullptr,
+        qkv_bias_out.get_ptr() ? &qkv_bias_out_grad : nullptr);
   } else {
     fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
                                      has_attn_dropout ? src_mask_p : nullptr,
@@ -756,22 +724,22 @@ void FusedAttentionGradKernel(
                                      *attn_dropout_out_p,
                                      *qk_out_p,
                                      *src_mask_out_p,
-                                     *fmha_out_grad,
-                                     qktv_out_grad,
-                                     attn_dropout_out_grad,
-                                     softmax_out_grad,
-                                     src_mask_out_grad,
-                                     qk_out_grad,
-                                     transpose_out_2_grad,
+                                     fmha_out_grad,
+                                     &qktv_out_grad,
+                                     &attn_dropout_out_grad,
+                                     &softmax_out_grad,
+                                     &src_mask_out_grad,
+                                     &qk_out_grad,
+                                     &transpose_out_2_grad,
                                      nullptr,
-                                     qkv_out_grad);
+                                     &qkv_out_grad);
   }
 
   if (transpose_qkv_wb) {
     if (compute_qkv_bias) {
-      qkv_bias_out_grad->Resize({batch_size, max_seq_len, 3 * hidden_size});
+      qkv_bias_out_grad.Resize({batch_size, max_seq_len, 3 * hidden_size});
     } else {
-      qkv_out_grad->Resize({batch_size, max_seq_len, 3 * hidden_size});
+      qkv_out_grad.Resize({batch_size, max_seq_len, 3 * hidden_size});
     }
   }
 
@@ -783,13 +751,14 @@ void FusedAttentionGradKernel(
     auto *ln_var_data = ln_var_p->data<U>();
     auto *ln_out_data = ln_out_p->data<T>();
 
-    phi::DenseTensor *ln_out_grad = nullptr;
+    // phi::DenseTensor *ln_out_grad = nullptr;
+    phi::DenseTensor ln_out_grad;
     if (ln_out.get_ptr()) {
-      ln_out_grad = new phi::DenseTensor();
-      ln_out_grad->Resize(ln_out.get_ptr()->dims());
+      // ln_out_grad = new phi::DenseTensor();
+      ln_out_grad.Resize(ln_out.get_ptr()->dims());
     }
     auto *d_ln_out_data = dev_ctx.template Alloc<T>(
-        ln_out_grad, ln_out_grad->numel() * sizeof(T));
+        &ln_out_grad, ln_out_grad.numel() * sizeof(T));
     auto *d_ln_scale_data =
         (ln_scale_grad == nullptr
              ? nullptr
@@ -801,22 +770,23 @@ void FusedAttentionGradKernel(
              : dev_ctx.template Alloc<U>(ln_bias_grad,
                                          ln_bias_grad->numel() * sizeof(U)));
     if (qkv_bias_p != nullptr) {
-      qkv_compute.ComputeBackward(ln_out_p,
-                                  qkv_weight_p,
-                                  qkv_bias_out_grad,
-                                  ln_out_grad,
-                                  qkv_weight_grad,
-                                  qkv_bias_grad);
+      qkv_compute.ComputeBackward(
+          ln_out_p,
+          qkv_weight_p,
+          qkv_bias_out.get_ptr() ? &qkv_bias_out_grad : nullptr,
+          &ln_out_grad,
+          qkv_weight_grad,
+          qkv_bias_grad);
     } else {
       qkv_compute.ComputeBackward(ln_out_p,
                                   qkv_weight_p,
-                                  qkv_out_grad,
-                                  ln_out_grad,
+                                  &qkv_out_grad,
+                                  &ln_out_grad,
                                   qkv_weight_grad,
                                   qkv_bias_grad);
     }
     // tensor model parallel
-    phi::fusion::AllReduce<T>(*ln_out_grad, ring_id, dev_ctx);
+    phi::fusion::AllReduce<T>(ln_out_grad, ring_id, dev_ctx);
     layer_norm_compute.ComputeBackward(x_data,
                                        d_ln_out_data,
                                        ln_scale_data,
@@ -827,16 +797,17 @@ void FusedAttentionGradKernel(
                                        d_ln_bias_data);
   } else {
     if (qkv_bias_p != nullptr) {
-      qkv_compute.ComputeBackward(input_x,
-                                  qkv_weight_p,
-                                  qkv_bias_out_grad,
-                                  x_grad,
-                                  qkv_weight_grad,
-                                  qkv_bias_grad);
+      qkv_compute.ComputeBackward(
+          input_x,
+          qkv_weight_p,
+          qkv_bias_out.get_ptr() ? &qkv_bias_out_grad : nullptr,
+          x_grad,
+          qkv_weight_grad,
+          qkv_bias_grad);
     } else {
       qkv_compute.ComputeBackward(input_x,
                                   qkv_weight_p,
-                                  qkv_out_grad,
+                                  &qkv_out_grad,
                                   x_grad,
                                   qkv_weight_grad,
                                   qkv_bias_grad);
