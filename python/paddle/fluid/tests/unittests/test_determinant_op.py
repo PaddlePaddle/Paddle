@@ -50,6 +50,14 @@ class TestDeterminantOpCase1(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOpCase1FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(10, 10).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32))
+
+
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
@@ -57,6 +65,17 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.case = np.ones([4, 2, 4, 4]).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase2FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        # not invertible matrix
+        self.case = np.ones([4, 2, 4, 4]).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32)).astype(
+            np.float16
+        )
 
 
 class TestDeterminantAPI(unittest.TestCase):

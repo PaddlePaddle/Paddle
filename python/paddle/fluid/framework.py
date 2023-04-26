@@ -718,7 +718,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -733,7 +734,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -748,7 +750,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
