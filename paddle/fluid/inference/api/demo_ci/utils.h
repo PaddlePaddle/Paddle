@@ -20,8 +20,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
 #include "paddle/include/paddle_inference_api.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace demo {
