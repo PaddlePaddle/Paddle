@@ -12,8 +12,7 @@
     func : RealAndImagInferMeta
   kernel :
     func : abs
-  data_transform :
-    support_trans_dtype : x
+    data_type : x
   backward : abs_grad
 
 - op : accuracy

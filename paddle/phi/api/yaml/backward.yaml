@@ -8,8 +8,11 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+  data_transform :
+    support_trans_dtype : x, grad_x_grad
   kernel :
     func : abs_double_grad
+    data_type : grad_x_grad
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
@@ -20,6 +23,7 @@
     param : [x]
   kernel :
     func : abs_grad
+    data_type : x
   composite : abs_grad(x, out_grad, x_grad)
   backward : abs_double_grad
 
