@@ -472,7 +472,7 @@ void concat_grad(const std::vector<Tensor>& x,
     sections.push_back(x[i].dims()[axis_value]);
   }
   std::vector<Tensor> x_grad_tmp =
-      split<T>(out_grad, phi::IntArray(sections), axis);
+      split<T>(out_grad, phi::IntArray(sections), axis_value);
   for (int i = 0; i < x_num; ++i) {
     set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
   }

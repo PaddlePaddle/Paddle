@@ -675,3 +675,11 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     if is_amp:
         out = cast(out, "float16")
     return out, ret_mean_, ret_var_
+
+
+@REGISTER_COMPOSITE('sum')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans
