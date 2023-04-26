@@ -4,7 +4,6 @@ cc_test(
   DEPS op_registry
        elementwise_add_op
        activation_op
-       softmax_op
        softmax
        scope
        device_context
