@@ -55,7 +55,11 @@ def naive_offload_decorate(program, executor, scope=None):
     vars_to_offload = []
     offload_size_mb = 0
     for var in program.list_vars():
-        if var.persistable and var.type == core.VarDesc.VarType.LOD_TENSOR:
+        if (
+            var.persistable
+            and var.is_parameter
+            and var.type == core.VarDesc.VarType.LOD_TENSOR
+        ):
             vars_to_offload.append(var)
             var_size = get_var_size(var)
             offload_size_mb += var_size
