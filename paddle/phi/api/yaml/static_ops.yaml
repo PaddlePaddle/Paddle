@@ -1,10 +1,21 @@
+- op : add_n
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta :
+    func : SumInferMeta
+  invoke : add_n_impl(inputs)
+  backward : add_n_grad
+  kernel :
+    data_type : inputs
+  inplace : (x -> out)
+
 - op : all
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMetaBase
   kernel :
-    func : all
+    func : all`
 
 - op : all_gather
   args : (Tensor x, int ring_id = 0, int nranks=0)

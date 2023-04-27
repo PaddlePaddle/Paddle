@@ -73,7 +73,44 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
         return m;
     }}
     }};
-    """
+"""
+    elif op_name == "add_n":
+        return f"""
+    class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+    public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {{
+    if (!ctx->IsDygraph()) {{
+      auto var_type = framework::proto::VarType::SELECTED_ROWS;
+      if (VLOG_IS_ON(10)) {{
+        for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {{
+          VLOG(10) << ctx->InputVarName("X", ind) << " "
+                   << ctx->GetInputType("X", ind);
+        }}
+      }}
+
+      if (ctx->InputTypeAnyOf("X",
+                              framework::proto::VarType::LOD_TENSOR_ARRAY)) {{
+        if (!ctx->InputTypeAllOf("X",
+                                 framework::proto::VarType::LOD_TENSOR_ARRAY)) {{
+          std::ostringstream os;
+          for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {{
+            os << "    " << ctx->InputVarName("X", ind) << " type is "
+               << ctx->GetInputType("X", ind) << "\n";
+          }}
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Not all inputs are tensor array:\n%s", os.str()));
+                                 }}
+        var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
+                              }} else if (ctx->InputTypeAnyOf("X",
+                                     framework::proto::VarType::LOD_TENSOR)) {{
+        var_type = framework::proto::VarType::LOD_TENSOR;
+                                     }}
+
+      ctx->SetOutputType("Out", var_type);
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+    }}
+    }};
+"""
     else:
         return None
 

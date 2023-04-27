@@ -174,5 +174,97 @@ phi::KernelKey GetUniqueExpectedKernelType(
   }
 }
 
+phi::KernelKey GetAddNExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto x_vars = ctx.MultiInputVar("X");
+  auto x_vars_name = ctx.InputNames("X");
+
+  PADDLE_ENFORCE_GT(
+      x_vars.size(),
+      0,
+      platform::errors::InvalidArgument("Input[X] should not be empty"));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      x_vars[0],
+      platform::errors::NotFound("Input var[%s] should not be nullptr",
+                                 x_vars_name[0]));
+
+  if (x_vars[0]->IsType<phi::DenseTensor>()) {
+    int dtype = -1;
+    for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+      PADDLE_ENFORCE_NOT_NULL(
+          x_vars[idx],
+          platform::errors::NotFound("Input var[%s] should not be nullptr",
+                                     x_vars_name[idx]));
+      auto tensor =
+          framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
+      if (!tensor->IsInitialized()) {
+        continue;
+      }
+      if (dtype == -1) {
+        dtype = framework::TransToProtoVarType(tensor->dtype());
+      } else {
+        PADDLE_ENFORCE_EQ(dtype,
+                          framework::TransToProtoVarType(tensor->dtype()),
+                          platform::errors::InvalidArgument(
+                              "The inputs type of sum op must be same"));
+      }
+    }
+    PADDLE_ENFORCE_NE(dtype,
+                      -1,
+                      platform::errors::InvalidArgument(
+                          "Sum operator should have at least one tensor"));
+
+    auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
+
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    if (!((data_type == framework::proto::VarType::FP32 ||
+           data_type == framework::proto::VarType::BF16) &&
+          ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+      op_ptr->SetDnnFallback(true);
+    } else if (!std::all_of(x_vars.begin(),
+                            x_vars.end(),
+                            [](const framework::Variable* v) {
+                              return v->IsType<phi::DenseTensor>();
+                            })) {
+      op_ptr->SetDnnFallback(true);
+    }
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+    return phi::KernelKey(data_type, ctx.GetPlace());
+  } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
+    for (auto& var : x_vars) {
+      auto& value = var->Get<phi::SelectedRows>().value();
+      if (value.IsInitialized()) {
+        return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
+                              ctx.GetPlace());
+      }
+    }
+    // if input sparse vars are not initialized, use an default kernel type.
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+  } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
+    for (auto& x_var : x_vars) {
+      auto& array = x_var->Get<framework::LoDTensorArray>();
+      for (auto& each : array) {
+        if (each.numel() != 0 && each.IsInitialized()) {
+          return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
+                                ctx.GetPlace());
+        }
+      }
+    }
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected each tensor in Input(x) in sum op has be initialized, but "
+        "some tensor in Input(x) is not be initialized, please check your "
+        "code.",
+        framework::ToTypeName(x_vars[0]->Type())));
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Expected type of Input(X) must be Tensor,  SelectedRows or "
+      "LodTensorArray. But got "
+      "unsupport type: %s.",
+      framework::ToTypeName(x_vars[0]->Type())));
+}
+
 }  // namespace operators
 }  // namespace paddle
