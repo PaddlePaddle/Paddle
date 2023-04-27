@@ -110,12 +110,13 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
-void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto res = cast<T>(out_grad, dtype);
+    auto res = cast<T>(out_grad, x.dtype());
     set_output<T>(res, x_grad);
   }
 }
+
 template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
@@ -1359,7 +1360,8 @@ void max_grad(const Tensor& x,
 template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    by_pass<T>(out_grad, x_grad);
+    auto x_grad_tmp = assign<T>(out_grad);
+    set_output<T>(x_grad_tmp, x_grad);
   }
 }
 

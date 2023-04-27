@@ -54,8 +54,6 @@ void set_output<DescTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
 
 template <>
 void by_pass<DescTensor>(const paddle::Tensor& x, paddle::Tensor* out) {
-  Tensor new_out =
-      empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("assign");
@@ -66,7 +64,6 @@ void by_pass<DescTensor>(const paddle::Tensor& x, paddle::Tensor* out) {
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
-  set_output<DescTensor>(new_out, out);
 }
 
 }  // namespace prim
