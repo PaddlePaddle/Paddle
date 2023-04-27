@@ -61,6 +61,9 @@ def naive_offload_decorate(program, executor, scope=None):
             and var.is_parameter
             and var.type == core.VarDesc.VarType.LOD_TENSOR
         ):
+            assert (
+                var.is_initialized()
+            ), "Varibale: {} is NOT initialized !".format(str(var))
             vars_to_offload.append(var)
             var_size = get_var_size(var)
             offload_size_mb += var_size
