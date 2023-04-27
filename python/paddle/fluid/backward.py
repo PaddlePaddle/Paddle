@@ -2376,28 +2376,12 @@ def _find_op_path_(
     return op_path
 
 
-def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
-    """
-    Backpropagate the gradients of targets to inputs.
-
-    Args:
-        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
-        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
-        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
-            of targets which has the same shape with targets, If None, ones will
-            be created for them.
-        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All Tensors with
-                               `stop_gradient=True` from all blocks will
-                               be automatically added into this set.
-                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
-                               Default: None.
-
-    Return:
-        (list[Tensor]): A list of gradients for inputs
-        If an input does not affect targets, the corresponding gradient Tensor
-        will be None
-    """
+def calc_gradient_helper(
+    targets, inputs, target_gradients=None, no_grad_set=None
+):
+    '''
+    Calculate gradient and return grad_info_map
+    '''
     targets = _as_list(targets)
     inputs = _as_list(inputs)
     target_gradients = _as_list(target_gradients)
@@ -2510,7 +2494,11 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
+    return grad_info_map
 
+
+def _get_grad_vars(grad_info_map, inputs):
+    inputs = _as_list(inputs)
     grad_vars = []
     for input_var in inputs:
         if input_var.name not in grad_info_map:
@@ -2520,6 +2508,43 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             grad_block = grad_info[1]
             grad_var = grad_block.var(grad_info[0])
             grad_vars.append(grad_var)
+    return grad_vars
+
+
+def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
+    """
+    Backpropagate the gradients of targets to inputs.
+
+    Args:
+        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
+            of targets which has the same shape with targets, If None, ones will
+            be created for them.
+        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All Tensors with
+                               `stop_gradient=True` from all blocks will
+                               be automatically added into this set.
+                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
+                               Default: None.
+
+    Return:
+        (list[Tensor]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient Tensor
+        will be None
+    """
+
+    # NOTE: If you want to modify the logic of calc_gradient, please modify
+    # it inside the calc_gradient_helper and _get_grad_vars functions
+    # to ensure the correctness of dy2st mode.
+    grad_info_map = calc_gradient_helper(
+        targets,
+        inputs,
+        target_gradients=target_gradients,
+        no_grad_set=no_grad_set,
+    )
+
+    grad_vars = _get_grad_vars(grad_info_map, inputs)
 
     if len(grad_vars) == 1:
         return grad_vars[0]
