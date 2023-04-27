@@ -1010,7 +1010,7 @@ class FlashAttnWithGating {
 
     // 7. flas_attn part one, get temp worksapce size.
     float p_dropout = 0.f;
-    float softmax_scale = static_cast<float>(1);
+    float softmax_scale = static_cast<float>(1.0f / std::sqrt(head_size_));
     cudaStream_t stream = dev_ctx_.stream();
     uint64_t workspace_size;
     bool succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
@@ -1212,7 +1212,7 @@ class FlashAttnWithGating {
     // 7. flas_attn part one, get temp worksapce size.
     uint64_t workspace_size;
     float p_dropout = 0.f;
-    float softmax_scale = static_cast<float>(1);
+    float softmax_scale = static_cast<float>(1.0f / std::sqrt(head_size_));
     cudaStream_t stream = dev_ctx_.stream();
     int num_splits = 0;  // 0 for an internal heuristic, which is optimal
     bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
