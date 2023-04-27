@@ -125,6 +125,14 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     return NULL;
   }
 
+  // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
+  // In Python, gen close is also a Python function call that will enter this function
+  // with GeneratorExit set, which will cause the PyObject_CallObject raise SystemError.
+  // So we disable the custom behavior for GeneratorExit.
+  if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
+    return eval_frame_default(tstate, frame, throw_flag);
+  }
+
   // We don't run the current custom_eval_frame behavior for guards.
   // So we temporarily set the callback to Py_None to drive the correct behavior
   // in the shim.
