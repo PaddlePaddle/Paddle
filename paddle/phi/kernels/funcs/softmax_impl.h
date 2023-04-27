@@ -82,12 +82,12 @@ class SoftmaxEigen {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
-                                                   .maximum(along_axis)
-                                                   .eval()
-                                                   .reshape(batch_one_remain)
-                                                   .broadcast(one_axis_one)
-                                                   .reshape(batch_classes))
+          (logits.reshape(batch_classes) - logits.reshape(batch_axis_remain)
+                                               .maximum(along_axis)
+                                               .eval()
+                                               .reshape(batch_one_remain)
+                                               .broadcast(one_axis_one)
+                                               .reshape(batch_classes))
               .unaryExpr(ValueClip<T>());
     }
 

@@ -25,7 +25,7 @@ limitations under the License. */
 // flags.
 #include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_string(
+PHI_DEFINE_EXPORTED_string(
     selected_xpus,
     "",
     "A list of device ids separated by comma, like: 0,1,2,3. "

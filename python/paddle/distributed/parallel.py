@@ -14,9 +14,10 @@
 
 import itertools
 import os
+import sys
 import time
 import warnings
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
 from multiprocessing import Manager  # noqa: F401
 from multiprocessing import Process  # noqa: F401
@@ -46,7 +47,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.framework import core, in_dygraph_mode
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -114,21 +115,6 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 g_var.reshape_(shape=g_shape)
                 assert g_var.shape == g_shape
-
-
-def scale_loss(loss):
-    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
-    if not paddle.distributed.ParallelEnv().world_size > 1:
-        return loss
-
-    loss_scale = to_variable(
-        np.array([paddle.distributed.ParallelEnv().world_size]).astype(
-            "float32"
-        )
-    )
-    loss_scale.stop_gradient = True
-    scaled_loss = loss / loss_scale
-    return scaled_loss
 
 
 @imperative_base.no_grad
@@ -905,6 +891,31 @@ def _check_var_exists(var_name):
         )
 
 
+def _get_modified_flags():
+    ret = []
+    FLAGS = namedtuple('FLAGS', ['name', 'current_value', 'default_value'])
+    global_flags = core.globals()
+    for key in global_flags.keys():
+        value = global_flags.get(key)
+        default_value = global_flags.get_default(key)
+        if not value == default_value:
+            ret.append(FLAGS(key, value, default_value))
+    return ret
+
+
+def _print_modified_flags(modified_flags):
+    if len(modified_flags) > 0:
+        sys.stderr.write(
+            "======================= Modified FLAGS detected =======================\n"
+        )
+        for flag in modified_flags:
+            sys.stderr.write(str(flag))
+            sys.stderr.write("\n")
+        sys.stderr.write(
+            "=======================================================================\n"
+        )
+
+
 def init_parallel_env():
     """
 
@@ -966,6 +977,9 @@ def init_parallel_env():
                 dist.spawn(train)
 
     """
+
+    modified_flags = _get_modified_flags()
+    _print_modified_flags(modified_flags)
 
     # 0. get env & check world size
     global _global_parallel_env

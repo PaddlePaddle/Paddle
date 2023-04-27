@@ -523,7 +523,7 @@ class TestChainTransform(unittest.TestCase):
                 transform.ChainTransform(
                     (
                         transform.AffineTransform(
-                            paddle.to_tensor(0.0), paddle.to_tensor(1.0)
+                            paddle.to_tensor([0.0]), paddle.to_tensor([1.0])
                         ),
                         transform.ExpTransform(),
                     )
@@ -560,7 +560,7 @@ class TestChainTransform(unittest.TestCase):
                 transform.ChainTransform(
                     (
                         transform.AffineTransform(
-                            paddle.to_tensor(0.0), paddle.to_tensor(-1.0)
+                            paddle.to_tensor([0.0]), paddle.to_tensor([-1.0])
                         ),
                         transform.ExpTransform(),
                     )
@@ -595,9 +595,9 @@ class TestChainTransform(unittest.TestCase):
                 transform.ChainTransform(
                     (
                         transform.AffineTransform(
-                            paddle.to_tensor(0.0), paddle.to_tensor(-1.0)
+                            paddle.to_tensor([0.0]), paddle.to_tensor([-1.0])
                         ),
-                        transform.PowerTransform(paddle.to_tensor(2.0)),
+                        transform.PowerTransform(paddle.to_tensor([2.0])),
                     )
                 ),
                 np.array([1.0, 2.0, 3.0]),
@@ -619,7 +619,7 @@ class TestChainTransform(unittest.TestCase):
                 transform.ChainTransform(
                     (
                         transform.AffineTransform(
-                            paddle.to_tensor(0.0), paddle.to_tensor(-1.0)
+                            paddle.to_tensor([0.0]), paddle.to_tensor([-1.0])
                         ),
                         transform.ExpTransform(),
                     )
@@ -638,7 +638,7 @@ class TestChainTransform(unittest.TestCase):
                 transform.ChainTransform(
                     (
                         transform.AffineTransform(
-                            paddle.to_tensor(0.0), paddle.to_tensor(-1.0)
+                            paddle.to_tensor([0.0]), paddle.to_tensor([-1.0])
                         ),
                         transform.ExpTransform(),
                     )
@@ -743,7 +743,7 @@ class TestIndependentTransform(unittest.TestCase):
 @param.place(config.DEVICES)
 class TestPowerTransform(unittest.TestCase):
     def setUp(self):
-        self._t = transform.PowerTransform(paddle.to_tensor(2.0))
+        self._t = transform.PowerTransform(paddle.to_tensor([2.0]))
 
     def test_init(self):
         with self.assertRaises(TypeError):
