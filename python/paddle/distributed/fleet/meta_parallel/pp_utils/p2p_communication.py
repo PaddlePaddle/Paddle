@@ -406,8 +406,8 @@ def _p2p_helper(
                     group=_hcg.recv_prev_group,
                     use_calc_stream=sync_recv,
                 )
-                _xpu_comm_group_end()
                 if sync_recv:
+                    _xpu_comm_group_end()
                     allgather_partial(
                         d,
                         nranks=mp_degree,
@@ -426,8 +426,9 @@ def _p2p_helper(
                 group=_hcg.recv_prev_group,
                 use_calc_stream=sync_recv,
             )
-            _xpu_comm_group_end()
+
             if sync_recv:
+                _xpu_comm_group_end()
                 allgather_partial(
                     tensor_recv_prev,
                     nranks=mp_degree,
@@ -472,8 +473,9 @@ def _p2p_helper(
                     group=_hcg.recv_next_group,
                     use_calc_stream=sync_recv,
                 )
-                _xpu_comm_group_end()
+
                 if sync_recv:
+                    _xpu_comm_group_end()
                     allgather_partial(
                         d,
                         nranks=mp_degree,
@@ -494,6 +496,7 @@ def _p2p_helper(
                 use_calc_stream=sync_recv,
             )
             if sync_recv:
+                _xpu_comm_group_end()
                 allgather_partial(
                     tensor_recv_next,
                     nranks=mp_degree,
