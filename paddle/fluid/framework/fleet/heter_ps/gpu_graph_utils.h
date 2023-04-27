@@ -22,8 +22,9 @@
 #include <random>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(gpugraph_debug_gpu_memory);
+PHI_DECLARE_bool(gpugraph_debug_gpu_memory);
 
 namespace paddle {
 namespace framework {

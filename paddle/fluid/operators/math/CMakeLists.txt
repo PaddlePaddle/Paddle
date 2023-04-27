@@ -14,7 +14,6 @@ math_library(sample_prob)
 math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
-
 if(WITH_XPU)
   math_library(beam_search DEPS math_function beam_search_xpu)
 else()

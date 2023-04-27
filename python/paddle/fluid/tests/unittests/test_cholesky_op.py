@@ -104,7 +104,7 @@ class TestDygraph(unittest.TestCase):
         a = np.random.rand(3, 3)
         a_t = np.transpose(a, [1, 0])
         x_data = np.matmul(a, a_t) + 1e-03
-        x = paddle.to_tensor(x_data)
+        x = paddle.to_tensor([x_data])
         out = paddle.cholesky(x, upper=False)
 
 

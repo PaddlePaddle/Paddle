@@ -958,10 +958,10 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              int axis,
                               DenseTensor* dx,
                               DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
+  int axis = -1;
   phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
