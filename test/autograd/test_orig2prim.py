@@ -68,10 +68,7 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
             prim_out = paddle.utils.flatten(prim_out)
             for k, v in self.out_map.items():
-                if self.op_type == 'p_norm':
-                    self.assertEqual(prim_out[k].shape, ())
-                else:
-                    self.assertEqual(prim_out[k].shape, v.shape)
+                self.assertEqual(prim_out[k].shape, v.shape)
 
 
 class TestSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
