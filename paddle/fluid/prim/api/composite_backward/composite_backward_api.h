@@ -1852,7 +1852,6 @@ void roll_grad(const Tensor& x,
   }
 }
 
-
 template <typename T>
 void pad_grad(const Tensor& input,
               const Tensor& out_grad,
