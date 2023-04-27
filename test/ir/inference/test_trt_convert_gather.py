@@ -182,7 +182,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
-                if dynamic_shape and self.index_type_int32:
+                if dynamic_shape:
                     return 1, 3
                 else:
                     return 0, 4
