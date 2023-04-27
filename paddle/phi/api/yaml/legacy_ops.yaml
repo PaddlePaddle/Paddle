@@ -732,24 +732,6 @@
     func : max
   backward : max_grad
 
-- op : max_pool2d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
-  output : Tensor(out), Tensor(mask)
-  infer_meta :
-    func : MaxPoolWithIndexInferMeta
-  kernel :
-    func : max_pool2d_with_index
-  backward : max_pool2d_with_index_grad
-
-- op : max_pool3d_with_index
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
-  output : Tensor(out), Tensor(mask)
-  infer_meta :
-    func : MaxPoolWithIndexInferMeta
-  kernel :
-    func : max_pool3d_with_index
-  backward : max_pool3d_with_index_grad
-
 - op : maximum
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1157,16 +1139,6 @@
   kernel :
     func : transpose
   backward : transpose_grad
-
-- op : triangular_solve
-  args : (Tensor x, Tensor y, bool upper, bool transpose, bool unitriangular)
-  output : Tensor
-  infer_meta :
-    func : TriangularSolveInferMeta
-  kernel :
-    func : triangular_solve
-    data_type : x
-  backward : triangular_solve_grad
 
 - op : tril
   args : (Tensor x, int diagonal)

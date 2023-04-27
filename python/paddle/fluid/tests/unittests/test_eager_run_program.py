@@ -134,6 +134,8 @@ class TestRunProgram(unittest.TestCase):
             ['Fake_var@GRAD'],
             'out_grad_names',
             [out.name + '@GRAD'],
+            'x_grad_names',
+            [x_t.name + '@GRAD', y_t.name + '@GRAD'],
         ]
 
         use_interpretorcore = True
