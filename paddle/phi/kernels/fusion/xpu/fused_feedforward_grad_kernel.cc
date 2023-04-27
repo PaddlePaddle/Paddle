@@ -478,7 +478,7 @@ void FusedFeedForwardGradKernel(
                                      dropout2_fix_seed,
                                      nullptr,
                                      dropout2_seed_val);
-
+  dev_ctx.template Alloc<T>(d_x);
   dev_ctx.template Alloc<float>(d_ln_scale);
   dev_ctx.template Alloc<float>(d_ln_bias);
   dev_ctx.template Alloc<T>(d_linear1_bias);
@@ -529,7 +529,7 @@ void FusedFeedForwardGradKernel(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_feedward_grad,
+PD_REGISTER_KERNEL(fused_feedforward_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedFeedForwardGradKernel,

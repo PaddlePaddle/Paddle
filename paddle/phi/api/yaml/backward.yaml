@@ -1454,6 +1454,7 @@
   kernel :
     func : scatter_nd_add_grad
   no_need_buffer : updates
+  composite: scatter_nd_add_grad(index, updates, out_grad, x_grad, updates_grad)
 
 - backward_op : segment_pool_grad
   forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype="SUM") -> Tensor(out), Tensor(summed_ids)
