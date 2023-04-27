@@ -31,10 +31,10 @@ from paddle.fluid.framework import (
     EagerParamBase,
     Program,
     Variable,
+    _create_tensor,
     _current_expected_place,
     _dygraph_tracer,
     _non_static_mode,
-    _varbase_creator,
 )
 
 from .io_utils import (
@@ -133,7 +133,7 @@ def _load_state_dict_from_save_params(model_path):
     # 2. create and load Tensor
     with fluid.dygraph.guard():
         for name in var_name_list:
-            new_var = _varbase_creator(name=name, persistable=True)
+            new_var = _create_tensor(name=name, persistable=True)
             _dygraph_tracer().trace_op(
                 type='load',
                 inputs={},
@@ -458,7 +458,7 @@ def _ndarray_to_tensor(obj, return_numpy):
 
 
 def _lod_tensor2varbase(tensor):
-    return_var = _varbase_creator()
+    return_var = _create_tensor()
     return_var.value().get_tensor().set(tensor, _current_expected_place())
     return return_var
 
@@ -1071,11 +1071,18 @@ def load(path, **configs):
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
 
-                        for key in load_result["StructuredToParameterName@@"]:
+                        for (key, name) in load_result[
+                            "StructuredToParameterName@@"
+                        ].items():
                             if isinstance(load_result[key], np.ndarray):
                                 load_result[key] = _ndarray_to_tensor(
                                     load_result[key], config.return_numpy
                                 )
+                                # default name is "generatedxxx" which is set in Tensor init, if not set
+                                if not config.return_numpy and getattr(
+                                    load_result[key], "name", ""
+                                ):
+                                    load_result[key].name = name
 
                         if (
                             not config.keep_name_table

@@ -15,4 +15,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/maxout_kernel_impl.h"
 
-PD_REGISTER_KERNEL(maxout, GPU, ALL_LAYOUT, phi::MaxOutKernel, float, double) {}
+PD_REGISTER_KERNEL(maxout,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaxOutKernel,
+                   float,
+                   phi::dtype::float16,
+                   double) {}

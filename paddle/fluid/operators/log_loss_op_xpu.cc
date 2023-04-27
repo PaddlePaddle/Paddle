@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class LogLossXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -37,7 +37,7 @@ class LogLossXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss");
   }
 };
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class LogLossGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -67,10 +67,9 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
-    log_loss_grad,
-    ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 
+PD_REGISTER_STRUCT_KERNEL(
+    log_loss, XPU, ALL_LAYOUT, ops::LogLossXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    log_loss_grad, XPU, ALL_LAYOUT, ops::LogLossGradXPUKernel, float) {}
 #endif

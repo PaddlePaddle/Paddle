@@ -56,7 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -1426,6 +1426,10 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
   argument_->SetXpuDeviceId(config_.xpu_device_id_);
   argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+  argument_->SetXpuQuantPostDynamicWeightBits(
+      config_.xpu_quant_post_dynamic_weight_bits_);
+  argument_->SetXpuQuantPostDynamicOpTypss(
+      config_.xpu_quant_post_dynamic_op_types_);
 #endif
 
   auto *pass_builder = config_.pass_builder();
@@ -1874,9 +1878,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
@@ -1931,9 +1932,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
-    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(

@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -3306,6 +3307,11 @@ int main(int argc, char* argv[]) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // We need a fake device to trigger the registration of the common kernel and
+  // generate api
+  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
+#endif
 
   std::string eager_root = argv[1];
   int split_count = atoi(argv[2]);

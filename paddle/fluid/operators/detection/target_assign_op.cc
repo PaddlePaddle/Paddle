@@ -186,6 +186,6 @@ REGISTER_OPERATOR(
     ops::TargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(target_assign,
-                       ops::TargetAssignKernel<phi::CPUContext, int, float>,
-                       ops::TargetAssignKernel<phi::CPUContext, float, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    target_assign, CPU, ALL_LAYOUT, ops::TargetAssignKernel, int, float) {}
