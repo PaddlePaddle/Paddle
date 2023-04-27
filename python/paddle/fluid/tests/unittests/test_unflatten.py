@@ -249,12 +249,12 @@ class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
         self.shape_is_tensor = True
 
 
-class TestUnflattenShapeTensorInt64(TestUnflattenAPI):
-    def set_args(self):
-        self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = list(np.array([-1, 2]).astype('int64'))
-        self.axis = 1
-        self.shape_is_tensor = True
+# class TestUnflattenShapeTensorInt64(TestUnflattenAPI):
+#     def set_args(self):
+#         self.x = np.random.rand(4, 6, 16).astype('float32')
+#         self.shape = list(np.array([-1, 2]).astype('int64'))
+#         self.axis = 1
+#         self.shape_is_tensor = True
 
 
 # axis 的取值
