@@ -626,10 +626,6 @@ def get_static_double_grad(
         dy_t = set_var_in_scope(scope, place, dy_name, value)
         dys.append(dy)
 
-    print("program:", program)
-    print("x", x)
-    print("y", y)
-    print("dys", dys)
     # append second order backward
     ddx = fluid.gradients(y, x, dys)
     exe = fluid.Executor(place)

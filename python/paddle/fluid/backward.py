@@ -1397,7 +1397,11 @@ def _append_backward_ops_(
         #       x_grad = reduce_sum(x_grad_unreduce)
         grad_op_desc = []
         op_grad_to_var = {}
-        if core._is_bwd_prim_enabled():
+        if (
+            not core.has_grad_op_maker(op.type)
+            and core.has_comp_grad_op_maker(op.type)
+            or core._is_bwd_prim_enabled()
+        ):
 
             def find_op_index(block_desc, cur_op_desc):
                 for idx in range(block_desc.op_size()):
@@ -2322,12 +2326,13 @@ def _find_op_path_(
     # All the inputs of the block are used if inputs is empty,
     if inputs:
         for i, op in enumerate(block.ops):
-            if _some_in_set_(
-                op.desc.input_arg_names(), input_names
-            ) and core.has_non_empty_grad_op_maker(op.type):
-                for name in op.desc.output_arg_names():
-                    if name not in no_grad_set:
-                        input_names.add(name)
+            if _some_in_set_(op.desc.input_arg_names(), input_names):
+                if core.has_non_empty_grad_op_maker(
+                    op.type
+                ) or core.has_comp_grad_op_maker(op.type):
+                    for name in op.desc.output_arg_names():
+                        if name not in no_grad_set:
+                            input_names.add(name)
             else:
                 relevant_op_flags[i] = False
 
@@ -2341,12 +2346,13 @@ def _find_op_path_(
             )
             op_path_dict[sub_block_id] = sub_block_path
 
-        if _some_in_set_(
-            op.desc.output_arg_names(), output_names
-        ) and core.has_non_empty_grad_op_maker(op.type):
-            for name in op.desc.input_arg_names():
-                if name not in no_grad_set:
-                    output_names.add(name)
+        if _some_in_set_(op.desc.output_arg_names(), output_names):
+            if core.has_non_empty_grad_op_maker(
+                op.type
+            ) or core.has_comp_grad_op_maker(op.type):
+                for name in op.desc.input_arg_names():
+                    if name not in no_grad_set:
+                        output_names.add(name)
         else:
             relevant_op_flags[i] = False
 
