@@ -21,6 +21,7 @@
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_grad_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -333,7 +334,7 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.device_context<DeviceContext>();
-    phi::BatchNormGradRawKernel<T>(
+    phi::funcs::BatchNormGradFunctor<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *y,
