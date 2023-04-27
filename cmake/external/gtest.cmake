@@ -66,8 +66,10 @@ endif()
 if(NOT WIN32 AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/gtest/gtest-death-test.cc.patch native_src)
-  set(GTEST_PATCH_COMMAND patch -d ${GTEST_SOURCE_DIR}/googletest/src <
-                          ${native_src})
+  # See: [Why calling some `git` commands before `patch`?]
+  set(GTEST_PATCH_COMMAND
+      git checkout -- . && git checkout ${GTEST_TAG} && patch -Nd
+      ${GTEST_SOURCE_DIR}/googletest/src < ${native_src})
 endif()
 if(WIN32)
   ExternalProject_Add(

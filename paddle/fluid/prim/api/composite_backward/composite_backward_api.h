@@ -121,7 +121,6 @@ void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,
                  const Scalar& axis,
-                 bool overwrite,
                  Tensor* grad_x) {
   auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
   std::vector<int> tmp_perm;
@@ -462,7 +461,6 @@ template <typename T>
 void elementwise_pow_grad(const Tensor& x,
                           const Tensor& y,
                           const Tensor& out_grad,
-                          int axis,
                           Tensor* dx,
                           Tensor* dy) {
   if (dy) {
@@ -1481,7 +1479,7 @@ void max_grad(const Tensor& x,
   } else {
     auto axis_ = std::vector<int64_t>();
     if (reduce_all) {
-      for (int64_t i = 1; i < x_dim_size; i++) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
         axis_.push_back(i);
       }
     } else {
@@ -1525,7 +1523,6 @@ template <typename T>
 void maximum_grad(const Tensor& x,
                   const Tensor& y,
                   const Tensor& out_grad,
-                  int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
   if (x_grad) {
@@ -1915,6 +1912,29 @@ void gelu_grad(const Tensor& x,
 }
 
 template <typename T>
+void tile_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& repeat_times,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto repeat_times_data = repeat_times.GetData();
+    auto out_grad_shape = phi::vectorize<int>(out_grad.dims());
+    auto result = out_grad;
+    for (int i = 0; i < static_cast<int>(repeat_times_data.size()); i++) {
+      int size = out_grad_shape[i] / repeat_times_data[i];
+      std::vector<int> sections(repeat_times_data[i], size);
+      auto split_arr = split<T>(result, IntArray(sections), i);
+      result = full<T>(phi::vectorize(split_arr[0].dims()), 0.0, x.dtype());
+      for (int j = 0; j < static_cast<int>(split_arr.size()); j++) {
+        result = split_arr[j] + result;
+      }
+    }
+    result = reshape<T>(result, x.shape());
+    set_output<T>(result, x_grad);
+  }
+}
+
+template <typename T>
 void roll_grad(const Tensor& x,
                const Tensor& out_grad,
                const IntArray& shifts,
@@ -1930,5 +1950,48 @@ void roll_grad(const Tensor& x,
     set_output<T>(x_grad_output, x_grad);
   }
 }
+
+template <typename T>
+void pad_grad(const Tensor& input,
+              const Tensor& out_grad,
+              const std::vector<int>& paddings,
+              const Scalar& pad_value,
+              Tensor* input_grad) {
+  if (input_grad) {
+    size_t rank = input.dims().size();
+    auto out_dims = out_grad.dims();
+
+    std::vector<int> starts(rank, 0);
+    std::vector<int64_t> ends(rank, 0);
+    std::vector<int64_t> axes(rank, 0);
+    std::vector<int64_t> infer_flags(rank, 1);
+    std::vector<int64_t> decrease_axis({});
+    for (size_t i = 0; i < rank; ++i) {
+      starts.push_back(static_cast<int>(paddings[2 * i]));
+      ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
+      axes.push_back(i);
+    }
+    auto out_tmp =
+        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
+    set_output<T>(out_tmp, input_grad);
+  }
+}
+
+template <typename T>
+void scatter_nd_add_grad(const Tensor& index,
+                         const Tensor& updates,
+                         const Tensor& out_grad,
+                         Tensor* x_grad,
+                         Tensor* updates_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+  if (updates_grad) {
+    // Gradient by Gather: dUpdates = dO[Ids]
+    auto tmp_updates_grad = gather_nd<T>(out_grad, index);
+    set_output<T>(tmp_updates_grad, updates_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

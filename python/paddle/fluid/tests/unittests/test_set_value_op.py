@@ -1427,7 +1427,7 @@ class TestGradientTruncated(unittest.TestCase):
         paddle.enable_static()
 
         to_string = lambda x, i: x + '_' + str(i)
-        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
+        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape, 1)
 
         def op1(x):
             value = paddle.tensor.fill_constant([1], "float32", 1)
@@ -1590,7 +1590,7 @@ class TestSetValueInplace(unittest.TestCase):
             a.stop_gradient = False
             b = a[:]
             c = b
-            b[paddle.to_tensor(0)] = 1.0
+            b[paddle.zeros([], dtype='int32')] = 1.0
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())

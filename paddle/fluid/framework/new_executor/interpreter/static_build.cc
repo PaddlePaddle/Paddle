@@ -418,11 +418,8 @@ void FakeInitializeOutputsForFunctionKernel(
                 runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
             phi::TensorBase* beta2_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
-            if (beta1_pow->place() == CPUPlace() &&
-                beta2_pow->place() == CPUPlace()) {
-              backend = phi::TransToPhiBackend(CPUPlace());
-            } else {
-              backend = phi::TransToPhiBackend(GPUPlace());
+            if (beta1_pow->place() == beta2_pow->place()) {
+              backend = phi::TransToPhiBackend(beta1_pow->place());
             }
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
