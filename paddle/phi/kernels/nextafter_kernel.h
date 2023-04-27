@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,19 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature TriangularSolveGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("triangular_solve_grad",
-                         {"X", "Y", "Out", "Out@GRAD"},
-                         {"upper", "transpose", "unitriangular"},
-                         {"X@GRAD", "Y@GRAD"});
-}
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(triangular_solve_grad,
-                           phi::TriangularSolveGradOpArgumentMapping);

@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AccuracyXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -73,8 +73,6 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    accuracy,
-    ops::AccuracyXPUKernel<paddle::platform::XPUDeviceContext, float>);
-
+PD_REGISTER_STRUCT_KERNEL(
+    accuracy, XPU, ALL_LAYOUT, ops::AccuracyXPUKernel, float) {}
 #endif

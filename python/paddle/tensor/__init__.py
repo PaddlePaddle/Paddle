@@ -252,6 +252,7 @@ from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
 from .math import sigmoid_  # noqa: F401
 from .math import vander  # noqa: F401
+from .math import nextafter  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401

@@ -153,7 +153,7 @@ struct ProdGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
   }
 };
