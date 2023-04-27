@@ -42,6 +42,9 @@ class Geometric(distribution.Distribution):
         probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
 
+    Returns:
+        Geometric distribution for instantiation of probs.
+
     Examples:
 
         .. code-block:: python
@@ -137,13 +140,13 @@ class Geometric(distribution.Distribution):
 
             .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Geometric
+                import paddle
+                from paddle.distribution import Geometric
 
-            geom = Geometric(0.5)
-            geom.pmf(2)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.25000000])
+                geom = Geometric(0.5)
+                geom.pmf(2)
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        [0.25000000])
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
