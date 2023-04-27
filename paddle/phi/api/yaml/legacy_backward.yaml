@@ -720,6 +720,7 @@
     func : pad_grad
     param: [out_grad, paddings, pad_value]
   no_need_buffer : x
+  composite : pad_grad(x, out_grad, paddings, pad_value, x_grad)
   backward : pad_double_grad
 
 - backward_op : pool2d_double_grad
