@@ -6920,6 +6920,7 @@ class Parameter(Variable):
         persistable_flag = True
         if "persistable" in kwargs:
             persistable_flag = kwargs['persistable']
+            kwargs.pop("persistable")
 
         Variable.__init__(
             self,
