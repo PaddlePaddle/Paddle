@@ -134,20 +134,19 @@ void DistKernel(const Context& dev_ctx,
     auto n = x.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
     intermediate.Resize(phi::make_ddim({config.block_per_grid.x}));
+    T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
 
     std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};
     std::vector<int> reduce_axis =
         funcs::details::GetReduceDim(axis_dims, xdim.size(), true);
 
     if (p == 0) {
-      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
       phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
           dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
     } else if (p == INFINITY) {
-      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
@@ -155,7 +154,6 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else if (p == -INFINITY) {
-      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       ReduceMinWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
@@ -164,7 +162,6 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
       MT p_order = static_cast<MT>(p);
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
