@@ -1,4 +1,7 @@
+import functools
+
 def print_args(func):
+    @functools.wraps(func)
     def inner(*args, **kwargs):
         function_name = func.__name__
         from paddle.jit.dy2static.utils import parse_arg_and_kwargs

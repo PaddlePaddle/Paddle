@@ -774,6 +774,7 @@ def monkey_patch_varbase():
         return False
 
     def __getitem__(self, item):
+        print("{{function_name: slice, inputs: {{ }} , params: [item: {}] }}".format(str(item)), flush=True)
         def is_list_tuple(index, contain_type):
             def _is_list_tuple(item):
                 if isinstance(item, (tuple, list)):
