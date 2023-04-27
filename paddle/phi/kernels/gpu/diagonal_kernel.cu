@@ -56,7 +56,11 @@ void DiagonalKernel(const Context& dev_ctx,
 
   int threads = PADDLE_CUDA_NUM_THREADS;
   int blocks = (out_numel + threads - 1) / threads;
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
 
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   switch (input_dim_size) {
     case 2:
       funcs::DiagonalCuda<T, 2, 1><<<blocks, threads>>>(input_data,

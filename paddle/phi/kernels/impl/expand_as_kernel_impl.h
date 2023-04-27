@@ -87,6 +87,10 @@ void ExpandAs(const Context& context,
 
   out->Resize(out_dims);
   context.template Alloc<T>(out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *context.eigen_device();

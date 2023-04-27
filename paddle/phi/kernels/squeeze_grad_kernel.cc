@@ -31,6 +31,10 @@ void SqueezeGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dx);
   phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   dx->Resize(x_dims);
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  dx->can_not_uses = xx.can_not_uses;
+  dx->can_not_uses->insert(dx->canNotUse);
+  dx->can_not_uses->insert(xx.canNotUse);
 }
 }  // namespace phi
 

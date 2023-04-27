@@ -224,6 +224,8 @@ class PADDLE_API Tensor final {
    */
   bool is_dense_tensor() const;
 
+  bool can_not_use();
+
   /**
    * @brief Determine whether tensor is SelectedRows
    *
