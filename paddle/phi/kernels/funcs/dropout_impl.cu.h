@@ -311,7 +311,7 @@ void DropoutFwGPUKernelDriver(
     auto* mask_data = mask->data<uint8_t>();
     size_t size = phi::product(mask->dims());
 
-    if (abs(dropout_prob / 1.0f - 1) < 5.96e-08) {
+    if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
@@ -459,7 +459,7 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     // y = factor * x
     ScaleByDropoutFactor<T, MT>(dev_ctx, grad_y, grad_x, factor);
   } else {
-    if (upscale_in_train && abs(dropout_prob / 1.0f - 1) < 5.96e-08) {
+    if (upscale_in_train && dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
       hipMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #else
