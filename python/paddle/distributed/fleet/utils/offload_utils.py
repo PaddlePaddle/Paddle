@@ -49,7 +49,10 @@ def naive_offload_decorate(program, executor, scope=None):
     It is strongly recommanded that use a individual Scope for execution of decorated program.
 
     """
-    logger.info("Offload Program: {} ... ".format(id(program)))
+    if scope is None:
+        scope = global_scope()
+    logger.info("Offload Program id: {} ... ".format(id(program)))
+    logger.info("Scope id: {} ... ".format(id(scope)))
 
     # collect all offload vars
     logger.info("The following variable will be offload to CPU: ")
@@ -61,9 +64,11 @@ def naive_offload_decorate(program, executor, scope=None):
             and var.is_parameter
             and var.type == core.VarDesc.VarType.LOD_TENSOR
         ):
-            assert (
-                var.is_initialized()
-            ), "Varibale: {} is NOT initialized !".format(str(var))
+            assert scope.var(
+                var.name
+            ).is_initialized(), "Varibale: {} is NOT initialized !".format(
+                str(var)
+            )
             vars_to_offload.append(var)
             var_size = get_var_size(var)
             offload_size_mb += var_size
@@ -112,8 +117,6 @@ def naive_offload_decorate(program, executor, scope=None):
 
     executor.run(offload_program, scope=scope)
     # TODO clear the GPU allocation of the gpu var
-    if scope is None:
-        scope = global_scope()
     scope.clear([var.name for var in vars_to_offload])
     logger.info(
         "After Offload, GPU Allocated Memory: {} MB.".format(
