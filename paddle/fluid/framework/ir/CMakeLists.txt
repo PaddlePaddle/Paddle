@@ -390,10 +390,6 @@ cc_test(
   SRCS adaptive_pool2d_convert_global_pass_tester.cc
   DEPS adaptive_pool2d_convert_global_pass)
 cc_test(
-  test_unsqueeze2_eltwise_fuse_pass_cc
-  SRCS unsqueeze2_eltwise_fuse_pass_tester.cc
-  DEPS unsqueeze2_eltwise_fuse_pass)
-cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
