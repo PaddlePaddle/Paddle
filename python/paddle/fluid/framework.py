@@ -4155,7 +4155,6 @@ class Block(object):
                         shape=var.shape(),
                         dtype=var.dtype(),
                         stop_gradient=is_stop_gradient,
-                        persistable=var.persistable(),
                     )
                 else:
                     self.create_var(
@@ -6917,15 +6916,10 @@ class Parameter(Variable):
                     % list(shape)
                 )
 
-        persistable_flag = True
-        if "persistable" in kwargs:
-            persistable_flag = kwargs['persistable']
-            kwargs.pop("persistable")
-
         Variable.__init__(
             self,
             block,
-            persistable=persistable_flag,
+            persistable=True,
             shape=shape,
             dtype=dtype,
             type=type,

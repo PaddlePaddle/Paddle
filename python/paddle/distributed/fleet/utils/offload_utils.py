@@ -146,6 +146,6 @@ def naive_offload_decorate(program, executor, scope=None):
             attrs={"dst_place_type": 1, OP_ROLE_KEY: 0},
         )
 
-        gpu_var.persistable = False
+        # gpu_var.persistable = True
 
     return program, offload_program
