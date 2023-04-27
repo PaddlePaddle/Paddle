@@ -110,7 +110,8 @@ void SectionWorker::RunForward(
       if (iter != unused_vars_.end()) {
         const std::vector<std::string> &delete_vars = iter->second;
         for (const std::string &var_name : delete_vars) {
-          VLOG(1) << "Section worker GC: " << var_name;
+          VLOG(1) << "Section worker GC: " << var_name << " for micro_id "
+                  << micro_id;
         }
       }
     }
@@ -139,7 +140,8 @@ void SectionWorker::RunBackward(
       if (iter != unused_vars_.end()) {
         const std::vector<std::string> &delete_vars = iter->second;
         for (const std::string &var_name : delete_vars) {
-          VLOG(1) << "Section worker GC: " << var_name;
+          VLOG(1) << "Section worker GC: " << var_name << " for micro_id "
+                  << micro_id;
         }
       }
     }
@@ -169,7 +171,8 @@ void SectionWorker::RunUpdate(
       if (iter != unused_vars_.end()) {
         const std::vector<std::string> &delete_vars = iter->second;
         for (const std::string &var_name : delete_vars) {
-          VLOG(1) << "Section worker GC: " << var_name;
+          VLOG(1) << "Section worker GC: " << var_name << " for micro_id "
+                  << micro_id;
         }
       }
     }
