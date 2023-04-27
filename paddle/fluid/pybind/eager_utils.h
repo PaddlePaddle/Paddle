@@ -27,6 +27,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -104,6 +105,8 @@ PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
+PyObject* ToPyObject(
+    const std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>& value);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
@@ -333,6 +336,18 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
+
+void SetCUDAGraphPtrListToPyArg(
+    std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+        cuda_graph,
+    PyObject* cuda_graph_pyobj);
+
+std::vector<std::shared_ptr<paddle::operators::CUDAGraphWithInOuts>>
+GetCUDAGraphPtrListFromArgs(const std::string& op_type,
+                            const std::string& arg_name,
+                            PyObject* args,
+                            ssize_t arg_idx,
+                            bool dispensable);
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     const std::string& op_type,
