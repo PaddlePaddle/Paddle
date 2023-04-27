@@ -60,7 +60,8 @@ def naive_offload_decorate(program, executor, scope=None):
     offload_size_mb = 0
     for var in program.list_vars():
         if (
-            var.persistable
+            var.name.startswith("ref_")  # hack
+            and var.persistable
             and var.is_parameter
             and var.type == core.VarDesc.VarType.LOD_TENSOR
         ):
