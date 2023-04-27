@@ -673,7 +673,7 @@
     refslength : RefsLength
   outputs :
     sequencenum : SequenceNum
-    out_outv : Out
+    out : Out
 
 - op : eig
   inputs :
