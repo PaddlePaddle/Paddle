@@ -581,8 +581,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       */
     }
     /*
-      VLOG(1) << "End run " << place_ << " " << i << "" << op->DebugStringEx(local_scope);
-      VLOG(1) << "memory_allocated: "
+      VLOG(1) << "End run " << place_ << " " << i << "" <<
+      op->DebugStringEx(local_scope); VLOG(1) << "memory_allocated: "
               << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
                     "Allocated", place_.device)) /
                     1024 / 1024

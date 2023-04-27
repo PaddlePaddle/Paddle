@@ -108,17 +108,17 @@ void SectionWorker::RunForward(
 
       auto iter = unused_vars_.find(op);
       if (iter != unused_vars_.end()) {
-        const std::vector<std::string>& delete_vars = iter->second;
-        for (const std::string& var_name : delete_vars) {
+        const std::vector<std::string> &delete_vars = iter->second;
+        for (const std::string &var_name : delete_vars) {
           VLOG(1) << "Section worker GC: " << var_name;
         }
       }
     }
     VLOG(1) << "After " << op->Type() << " GC, allocated = "
-              << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                    "Allocated", place_.device)) /
-                    1024 / 1024
-              << " MB";
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place_.device)) /
+                   1024 / 1024
+            << " MB";
   }
 }
 
@@ -134,21 +134,21 @@ void SectionWorker::RunBackward(
     if (gc) {
       DeleteUnusedTensors(
           *microbatch_scopes_[micro_id], op, unused_vars_, gc.get());
-      
+
       auto iter = unused_vars_.find(op);
       if (iter != unused_vars_.end()) {
-        const std::vector<std::string>& delete_vars = iter->second;
-        for (const std::string& var_name : delete_vars) {
+        const std::vector<std::string> &delete_vars = iter->second;
+        for (const std::string &var_name : delete_vars) {
           VLOG(1) << "Section worker GC: " << var_name;
         }
       }
     }
 
-        VLOG(1) << "After " << op->Type() << " GC, allocated = "
-              << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                    "Allocated", place_.device)) /
-                    1024 / 1024
-              << " MB";
+    VLOG(1) << "After " << op->Type() << " GC, allocated = "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place_.device)) /
+                   1024 / 1024
+            << " MB";
   }
 }
 
@@ -165,20 +165,20 @@ void SectionWorker::RunUpdate(
                           unused_vars_,
                           gc.get());
 
-            auto iter = unused_vars_.find(op);
+      auto iter = unused_vars_.find(op);
       if (iter != unused_vars_.end()) {
-        const std::vector<std::string>& delete_vars = iter->second;
-        for (const std::string& var_name : delete_vars) {
+        const std::vector<std::string> &delete_vars = iter->second;
+        for (const std::string &var_name : delete_vars) {
           VLOG(1) << "Section worker GC: " << var_name;
         }
       }
     }
 
-        VLOG(1) << "After " << op->Type() << " GC, allocated = "
-              << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                    "Allocated", place_.device)) /
-                    1024 / 1024
-              << " MB";
+    VLOG(1) << "After " << op->Type() << " GC, allocated = "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place_.device)) /
+                   1024 / 1024
+            << " MB";
   }
 }
 
