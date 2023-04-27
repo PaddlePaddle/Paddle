@@ -990,11 +990,14 @@ class GraphDataGenerator {
   void ResetPathNum() { total_row_ = 0; }
   int GetGraphBatchsize() { return conf_.batch_size; };
   void SetNewBatchsize(int batch_num) {
-    if (!conf_.gpu_graph_training && !conf_.sage_mode) {
+    if (!conf_.gpu_graph_training) {
       conf_.batch_size = (total_row_ + batch_num - 1) / batch_num;
     } else {
       return;
     }
+  }
+  bool GetSageMode() {
+    return conf_.sage_mode;
   }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void reset_pass_end() { pass_end_ = 0; }
@@ -1022,6 +1025,7 @@ class GraphDataGenerator {
   int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
   int multi_node_sync_sample(int flag, const ncclRedOp_t& op);
+  int dynamic_adjust_batch_num_for_sage();
 
  protected:
   HashTable<uint64_t, uint64_t>* table_;
@@ -1211,6 +1215,13 @@ class DataFeed {
   virtual void SetNewBatchsize(int batch_num) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+#endif
+  }
+  virtual bool GetSageMode() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetSageMode();
+#else
+    return 0;
 #endif
   }
   virtual int GetGraphPathNum() {

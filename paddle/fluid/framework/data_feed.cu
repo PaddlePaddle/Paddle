@@ -1704,7 +1704,7 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
                                     std::vector<int> &edges_split_num,
                                     int64_t *neighbor_len) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_all_edge_type(
+  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_sage(
       conf_.gpuid,
       edge_to_id_len_,
       reinterpret_cast<uint64_t *>(uniq_nodes),
@@ -1966,7 +1966,7 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
     int len,
     int *final_len,
     std::shared_ptr<phi::Allocation> &inverse) {
-  VLOG(2) << "Get Unique Nodes";
+  VLOG(2) << conf_.gpuid << " Get Unique Nodes";
 
   auto uniq_nodes = memory::Alloc(
       place_,
@@ -1983,7 +1983,7 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
                              sample_stream_);
   int len_samples = samples_.size();
 
-  VLOG(2) << "Sample Neighbors and Reindex";
+  VLOG(2) << conf_.gpuid << " Sample Neighbors and Reindex";
   std::vector<int> edges_split_num;
   std::vector<std::shared_ptr<phi::Allocation>> final_nodes_vec;
   std::vector<std::shared_ptr<phi::Allocation>> graph_edges;
@@ -2150,6 +2150,7 @@ void GraphDataGenerator::DoWalkandSage() {
       if (train_flag) {
         int total_instance = 0, uniq_instance = 0;
         bool ins_pair_flag = true;
+        int sage_pass_end = 0;
         uint64_t *ins_buf, *ins_cursor;
         while (ins_pair_flag) {
           int res = 0;
@@ -2167,9 +2168,27 @@ void GraphDataGenerator::DoWalkandSage() {
                              sample_stream_);
             if (res == -1) {
               if (ins_buf_pair_len_ == 0) {
-                ins_pair_flag = false;
+                if (is_multi_node_) {
+                  sage_pass_end = 1;
+                  if (total_row_ != 0) {
+                    buf_state_.Reset(total_row_);
+                    VLOG(1) << "reset buf state to make batch num equal in multi node";
+                  }
+                } else {
+                  ins_pair_flag = false;
+                  break;
+                }
+              } else {
+                break;
               }
-              break;
+            }
+          }
+
+          // check whether reach sage pass end
+          if (is_multi_node_) {
+            int res = multi_node_sync_sample(sage_pass_end, ncclProd);
+            if (res) { 
+              ins_pair_flag = false;
             }
           }
 
@@ -2251,6 +2270,12 @@ void GraphDataGenerator::DoWalkandSage() {
     if (conf_.sage_mode) {
       sage_batch_num_ = 0;
       if (infer_flag) {
+        // Set new batch size for multi_node
+        if (is_multi_node_) {
+          int new_batch_size = dynamic_adjust_batch_num_for_sage();
+          conf_.batch_size = new_batch_size;
+        }
+
         int total_instance = 0, uniq_instance = 0;
         total_instance =
             (infer_node_start_ + conf_.batch_size <= infer_node_end_)
@@ -3145,6 +3170,7 @@ void GraphDataGenerator::AllocResource(
     is_multi_node_ = true;
   }
 #endif
+
   // infer_node_type_start_ = std::vector<int>(h_device_keys_.size(), 0);
   // for (size_t i = 0; i < h_device_keys_.size(); i++) {
   //   for (size_t j = 0; j < h_device_keys_[i]->size(); j++) {
@@ -3500,6 +3526,41 @@ int GraphDataGenerator::multi_node_sync_sample(int flag,
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #endif
   return ret;
+}
+
+int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
+  int batch_num = (total_row_ + conf_.batch_size - 1) / conf_.batch_size;
+  auto send_buff = memory::Alloc(place_, 2 * sizeof(int),
+                                 phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int* send_buff_ptr = reinterpret_cast<int*>(send_buff->ptr());
+  cudaMemcpyAsync(send_buff_ptr,
+                  &batch_num,
+                  sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  sample_stream_);
+  cudaStreamSynchronize(sample_stream_);
+  auto comm =
+      platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                              &send_buff_ptr[1],
+                                                              1,
+                                                              ncclInt,
+                                                              ncclMax,
+                                                              comm->comm(),
+                                                              sample_stream_));
+  int thread_max_batch_num = 0;
+  cudaMemcpyAsync(&thread_max_batch_num,
+                  &send_buff_ptr[1],
+                  sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  sample_stream_);
+  cudaStreamSynchronize(sample_stream_);
+
+  int new_batch_size = (total_row_ + thread_max_batch_num - 1) / thread_max_batch_num;
+  VLOG(2) << conf_.gpuid << " dynamic adjust sage batch num "
+                         << " max_batch_num: " << thread_max_batch_num
+                         << " new_batch_size:  " << new_batch_size;
+  return new_batch_size;
 }
 
 }  // namespace framework

@@ -777,14 +777,17 @@ void HogwildWorker::TrainFiles() {
         break;
       }
     } else if (train_mode && is_multi_node) {
-      int pass_end = device_reader_->get_pass_end();
-      bool res = GetPassEnd(pass_end);
-      VLOG(2) << "reader pass end: " << pass_end
-              << ", hogwild worker pass end: " << res;
-      if (res) {
-        device_reader_->reset_pass_end();
-        VLOG(1) << "get all pass end, train pass will exit";
-        break;
+      bool sage_mode = device_reader_->GetSageMode();
+      if (!sage_mode) {
+        int pass_end = device_reader_->get_pass_end();
+        bool res = GetPassEnd(pass_end);
+        VLOG(2) << "reader pass end: " << pass_end
+                << ", hogwild worker pass end: " << res;
+        if (res) {
+          device_reader_->reset_pass_end();
+          VLOG(1) << "get all pass end, train pass will exit";
+         break;
+        }
       }
     } else {
       if (FLAGS_enable_exit_when_partial_worker && train_mode) {

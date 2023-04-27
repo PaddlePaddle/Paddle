@@ -866,7 +866,7 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
                                  weighted);
 }
 
-NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
+NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_sage(
     int gpu_id,
     int edge_type_len,
     uint64_t *key,
@@ -876,7 +876,7 @@ NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
     bool weighted,
     bool return_weight) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->graph_neighbor_sample_all_edge_type(
+      ->graph_neighbor_sample_sage(
           gpu_id, edge_type_len, key, sample_size, len, edge_type_graphs,
           weighted, return_weight);
 }

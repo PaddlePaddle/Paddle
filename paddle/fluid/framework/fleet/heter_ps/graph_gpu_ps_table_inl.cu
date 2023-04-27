@@ -1234,13 +1234,41 @@ __global__ void fill_dvalues_with_edge_type(uint64_t* d_shard_vals,
                                             int* idx,
                                             int sample_size,
                                             int len,    // len * edge_type_len
-                                            int mod,
-                                            bool return_weight) {  // len
+                                            int mod,    // len
+                                            bool return_weight) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
-    int a = i % mod, b = i - i % mod;
+    int a = i % mod, b = i - i % mod;  // a: get actual pos, b: get fill in which edge_type
     d_actual_sample_size[b + idx[a]] = d_shard_actual_sample_size[i];
     size_t offset1 = (b + idx[a]) * sample_size;
+    size_t offset2 = i * sample_size;
+    for (int j = 0; j < d_shard_actual_sample_size[i]; j++) {
+      d_vals[offset1 + j] = d_shard_vals[offset2 + j];
+      if (return_weight) {
+        d_weights[offset1 + j] = d_shard_weights[offset2 + j];
+      }
+    }
+  }
+}
+
+__global__ void fill_dvalues_with_edge_type_for_all2all(
+    uint64_t* d_shard_vals,
+    uint64_t* d_vals,
+    int* d_shard_actual_sample_size,
+    int* d_actual_sample_size,
+    float* d_shard_weights,
+    float* d_weights,
+    int* idx,
+    int sample_size,
+    int n,    // len * edge_type_len
+    int len,
+    int edge_type_len,
+    bool return_weight) {  // len
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    int pos = idx[i % len] * edge_type_len + (int)i / len;  // pos: real position
+    d_actual_sample_size[pos] = d_shard_actual_sample_size[i];
+    size_t offset1 = pos * sample_size;
     size_t offset2 = i * sample_size;
     for (int j = 0; j < d_shard_actual_sample_size[i]; j++) {
       d_vals[offset1 + j] = d_shard_vals[offset2 + j];
@@ -1852,7 +1880,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                        len,
                        d_left_ptr,
                        d_right_ptr,
-                       gpu_id);
+                       gpu_id,
+                       stream);
 
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, key, d_idx_ptr, len, stream);
@@ -2145,6 +2174,164 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   return result;
 }
 
+NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage(
+    int gpu_id,
+    int edge_type_len,
+    uint64_t* key,
+    int sample_size,
+    int len,
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted,
+    bool return_weight) {
+  if (multi_node_ && FLAGS_enable_graph_multi_node_sampling) {
+    // multi node mode
+    auto result = graph_neighbor_sample_sage_all2all(
+        gpu_id,
+        edge_type_len,
+        key,
+        sample_size,
+        len,
+        edge_type_graphs,
+        weighted,
+        return_weight);
+    return result;
+  } else {
+    auto result = graph_neighbor_sample_all_edge_type(
+        gpu_id,
+        edge_type_len,
+        key,
+        sample_size,
+        len,
+        edge_type_graphs,
+        weighted,
+        return_weight);
+    return result;
+  }
+}
+
+__global__ void rearange_neighbor_result(uint64_t* val,
+                                         uint64_t* new_val,
+                                         int* ac,
+                                         int* new_ac,
+                                         float* weight,
+                                         float* new_weight,
+                                         int sample_size,
+                                         int len,
+                                         int edge_type_len,
+                                         int n,
+                                         bool return_weight) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    int pos = (i % edge_type_len) * len + (int) i / edge_type_len;
+    new_ac[pos] = ac[i];
+    size_t offset1 = pos * sample_size, offset2 = i * sample_size;
+    for (int j = 0; j < ac[i]; j++) {
+      new_val[offset1 + j] = val[offset2 + j];
+      if (return_weight) {
+        new_weight[offset1 + j] = weight[offset2 + j];
+      }
+    }
+  }
+}
+
+NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_sage_all2all(
+    int gpu_id,
+    int edge_type_len,
+    uint64_t* d_keys,
+    int sample_size,
+    int len,
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted,
+    bool return_weight) {
+
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto &loc = storage_[gpu_id];
+  auto stream = resource_->local_stream(gpu_id, 0);
+
+  loc.alloc(len, sizeof(uint64_t) * edge_type_len * sample_size); // key_bytes
+
+  // all2all mode begins, init resource, partition keys, pull vals by all2all.
+  auto pull_size = gather_inter_keys_by_all2all(gpu_id, len, d_keys, stream);
+  VLOG(2) << "gather_inter_keys_by_all2all sage finish, pull_size=" << pull_size << ", len=" << len;
+
+  // do single-node multi-card sampling
+  auto result = graph_neighbor_sample_all_edge_type(gpu_id,
+                                                    edge_type_len,
+                                                    loc.d_merged_keys,
+                                                    sample_size,
+                                                    pull_size,
+                                                    edge_type_graphs,
+                                                    weighted,
+                                                    return_weight,
+                                                    true);
+
+  VLOG(2) << "graph_neighbor_sample_all_edge_type local finish"
+          << ", gpu_id=" << gpu_id
+          << ", pull_size=" << pull_size;
+
+  // init neighbor result
+  NeighborSampleResultV2 final;
+  final.set_stream(stream);
+  final.initialize(sample_size, len, edge_type_len, return_weight,
+                   gpu_id);
+  
+  VLOG(2) << "Begin scatter_inter_vals_by_all2all_common for val";
+  // all2all mode finish, scatter sample values by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                       len,
+                                       sizeof(uint64_t) * edge_type_len * sample_size,  // value_bytes
+                                       reinterpret_cast<const uint64_t*>(result.val),   // in
+                                       reinterpret_cast<uint64_t*>(final.val),          // out
+                                       reinterpret_cast<uint64_t*>(loc.d_merged_vals),  // tmp hbm
+                                       stream,
+                                       true);
+  VLOG(2) << "scatter_inter_vals_by_all2all sage val finish" << " gpu_id=" << gpu_id;
+
+  // all2all mode finish, scatter sample sizes of every node by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                       len,
+                                       sizeof(int) * edge_type_len,  // value_bytes
+                                       reinterpret_cast<const int*>(result.actual_sample_size),  // in
+                                       reinterpret_cast<int*>(final.actual_sample_size),  // out
+                                       reinterpret_cast<int*>(loc.d_merged_vals),  // tmp hbm
+                                       stream,
+                                       true);
+  VLOG(2) << "scatter_inter_vals_by_all2all sage actual_sample_size finish" << " gpu_id=" << gpu_id;
+
+  if (return_weight) {
+    scatter_inter_vals_by_all2all_common(gpu_id,
+                                         len,
+                                         sizeof(float) * edge_type_len * sample_size,  // value_bytes
+                                         reinterpret_cast<const float*>(result.weight),  // in
+                                         reinterpret_cast<float*>(final.weight),         // out
+                                         reinterpret_cast<float*>(loc.d_merged_vals),    // tmp hbm
+                                         stream,
+                                         true);
+    VLOG(2) << "scatter_inter_vals_by_all2all sage weight finish" << " gpu_id=" << gpu_id;
+  }
+
+  // Rearange neighbor result.
+  NeighborSampleResultV2 final2;
+  final2.set_stream(stream);
+  final2.initialize(sample_size, len, edge_type_len, return_weight,
+                    gpu_id);
+  int grid_size_e = (len * edge_type_len - 1) / block_size_ + 1;
+  rearange_neighbor_result<<<grid_size_e, block_size_, 0, stream>>>(
+      reinterpret_cast<uint64_t*>(final.val),
+      reinterpret_cast<uint64_t*>(final2.val),
+      reinterpret_cast<int*>(final.actual_sample_size),
+      reinterpret_cast<int*>(final2.actual_sample_size),
+      reinterpret_cast<float*>(final.weight),
+      reinterpret_cast<float*>(final2.weight),
+      sample_size,
+      len,
+      edge_type_len,
+      len * edge_type_len,
+      return_weight);
+
+  return final2;
+}
+
 // only for graphsage
 NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     int gpu_id,
@@ -2154,7 +2341,8 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     int len,
     std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
     bool weighted,
-    bool return_weight) {
+    bool return_weight,
+    bool for_all2all) {
   NeighborSampleResultV2 result;
   auto stream = resource_->local_stream(gpu_id, 0);
   result.set_stream(stream);
@@ -2417,18 +2605,37 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
                                           return_weight);
 
   int grid_size_e = (len * edge_type_len - 1) / block_size_ + 1;
-  fill_dvalues_with_edge_type<<<grid_size_e, block_size_, 0, stream>>>(
-      d_shard_vals_ptr,
-      val,
-      d_shard_actual_sample_size_ptr,
-      actual_sample_size,
-      d_shard_weight_ptr,
-      weight,
-      d_idx_ptr,
-      sample_size,
-      len * edge_type_len,
-      len,
-      return_weight);
+  if (!for_all2all) {
+    // vals: [e1, e2, e3], where e1 means all the sample res of len for edge_type 1.
+    fill_dvalues_with_edge_type<<<grid_size_e, block_size_, 0, stream>>>(
+        d_shard_vals_ptr,
+        val,
+        d_shard_actual_sample_size_ptr,
+        actual_sample_size,
+        d_shard_weight_ptr,
+        weight,
+        d_idx_ptr,
+        sample_size,
+        len * edge_type_len,
+        len,
+        return_weight);
+  } else {
+    // different fill mode for all2all
+    // vals: [node1, node2, node3], where node1 means all the sample res of node1, including all edge_types.
+    fill_dvalues_with_edge_type_for_all2all<<<grid_size_e, block_size_, 0, stream>>>(
+        d_shard_vals_ptr,
+        val,
+        d_shard_actual_sample_size_ptr,
+        actual_sample_size,
+        d_shard_weight_ptr,
+        weight,
+        d_idx_ptr,
+        sample_size,
+        len * edge_type_len,
+        len,
+        edge_type_len,
+        return_weight); 
+  }
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
   for (int i = 0; i < total_gpu; i++) {

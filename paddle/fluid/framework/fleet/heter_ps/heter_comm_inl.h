@@ -4026,6 +4026,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_vals_by_all2all_trans(
     char *d_out_vals,
     const size_t &value_bytes,
     const cudaStream_t &stream) {
+
   auto &my_cache = storage_[gpu_id];
   auto h_local_part_sizes = my_cache.shard_res.h_local_part_sizes.data();
   auto h_local_part_offsets = my_cache.shard_res.h_local_part_offsets.data();

@@ -142,7 +142,7 @@ class GraphGpuWrapper {
                                              uint64_t* device_keys,
                                              int walk_degree,
                                              int len);
-  NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
+  NeighborSampleResultV2 graph_neighbor_sample_sage(
       int gpu_id,
       int edge_type_len,
       uint64_t* key,

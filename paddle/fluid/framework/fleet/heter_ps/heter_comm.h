@@ -587,7 +587,8 @@ class HeterComm {
           const T* d_in_vals,
           T* d_out_vals,
           T* d_tmp_vals,
-          const cudaStream_t& stream) {
+          const cudaStream_t& stream,
+          bool sage = false) {
     auto &cache = storage_[gpu_id];
     auto &res = cache.shard_res;
     auto h_local_part_sizes = res.h_local_part_sizes.data();
@@ -596,7 +597,8 @@ class HeterComm {
     auto h_remote_part_offsets = res.h_remote_part_offsets.data();
 
     size_t total_fea_num = 0;
-    if (rdma_checker_->need_rdma_trans()) {
+    if (rdma_checker_->need_rdma_trans() && !sage) {
+      // Sage mode can not run this branch currently, otherwise the process will hang here.
       total_fea_num =
           send_vals_by_all2all_trans(gpu_id,
                   rank_id_,
@@ -606,6 +608,7 @@ class HeterComm {
                   value_bytes,
                   stream);
     } else {
+      // sage is true, set default to run here.
       total_fea_num = send_data_by_all2all(gpu_id,
               node_size_,
               rank_id_,
