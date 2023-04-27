@@ -5,9 +5,7 @@ set(PYTHON_TESTS_DIR
 add_subdirectory(utils)
 add_subdirectory(scripts)
 add_subdirectory(testing)
-
 add_subdirectory(phi)
-add_subdirectory(infrt)
 add_subdirectory(fluid)
 
 add_subdirectory(ir)

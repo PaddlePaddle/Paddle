@@ -32,7 +32,6 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import is_available
-from .collective import _destroy_process_group_id_map
 from .communication import (
     stream,
     ReduceOp,
@@ -46,6 +45,7 @@ from .communication import (
     reduce,
     send,
     scatter,
+    gather,
     scatter_object_list,
     isend,
     recv,
@@ -82,6 +82,7 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "gather",
     "scatter_object_list",
     "broadcast",
     "broadcast_object_list",
@@ -120,5 +121,3 @@ __all__ = [  # noqa
     "is_available",
     "get_backend",
 ]
-
-atexit.register(_destroy_process_group_id_map)

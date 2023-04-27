@@ -63,8 +63,8 @@ import tempfile
 import time
 from argparse import REMAINDER, ArgumentParser
 
-import paddle.framework as framework
-from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
+from paddle import framework
+from paddle.distributed.fleet import cloud_utils, launch_utils
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (
     DeviceMode,
@@ -89,7 +89,7 @@ __all__ = []
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print(f"{arg}: {value}")
     print("------------------------------------------------")
 
 
@@ -115,7 +115,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|heter. "
         "Default value is auto which perfers nccl or bkcl.",
     )
     base_group.add_argument(
@@ -154,26 +154,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu.",
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
-
-    if framework.core.is_compiled_with_npu():
-        base_group.add_argument(
-            "--npus",
-            type=str,
-            default=None,
-            help="It's for xpu training. For example: "
-            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu.",
-        )
-        base_group.add_argument("--selected_npus", dest="npus")
-
-    if framework.core.is_compiled_with_mlu():
-        base_group.add_argument(
-            "--mlus",
-            type=str,
-            default=None,
-            help="It's for mlu training. For example: "
-            "--mlus=\"0,1,2,3\" will launch four training processes each bound to one mlu.",
-        )
-        base_group.add_argument("--selected_mlus", dest="mlus")
 
     base_group.add_argument(
         "training_script",
@@ -290,7 +270,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
@@ -308,15 +288,13 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
-            logger.info("find free ports:{}".format(free_ports))
+            logger.info(f"find free ports:{free_ports}")
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
 
-        free_ports = [
-            x for x in range(start_port, start_port + len(devices_per_proc))
-        ]
+        free_ports = list(range(start_port, start_port + len(devices_per_proc)))
 
     trainer_endpoints = []
     for ip in node_ips:
@@ -418,20 +396,13 @@ def get_cluster_info(args):
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port
         )
-        logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port,
-        )
+        logger.debug(f"get cluster from cloud:{cluster}")
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(
             args, device_mode, devices_per_proc
         )
-        logger.debug("get cluster from args:{}".format(cluster))
+        logger.debug(f"get cluster from args:{cluster}")
     return cluster, pod
 
 
@@ -460,7 +431,7 @@ def launch_collective(args):
     )
 
     for idx, proc in enumerate(procs):
-        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+        print(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     while True:
         try:
@@ -468,7 +439,7 @@ def launch_collective(args):
 
             if not alive:
                 logger.info("Local processes completed.")
-                logger.debug("POD info:{}".format(pod))
+                logger.debug(f"POD info:{pod}")
                 break
 
             time.sleep(3)
@@ -476,7 +447,7 @@ def launch_collective(args):
         except:
             logger.warning("Terminating... exit")
             terminate_local_procs(procs)
-            exit(1)
+            sys.exit(1)
 
     if os.path.exists(tmp_dir):
         shutil.rmtree(tmp_dir)
@@ -505,12 +476,8 @@ def infer_backend(args):
         return
     if framework.core.is_compiled_with_cuda():
         args.backend = 'nccl'
-    elif framework.core.is_compiled_with_npu():
-        args.backend = 'unknown'
     elif framework.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
-    elif framework.core.is_compiled_with_mlu():
-        args.backend = 'cncl'
     else:
         args.backend = 'gloo'
 
@@ -559,12 +526,8 @@ def which_distributed_mode(args):
 
     if framework.core.is_compiled_with_cuda():
         accelerators = framework.core.get_cuda_device_count()
-    elif framework.core.is_compiled_with_npu():
-        accelerators = framework.core.get_npu_device_count()
     elif framework.core.is_compiled_with_xpu():
         accelerators = framework.core.get_xpu_device_count()
-    elif framework.core.is_compiled_with_mlu():
-        accelerators = framework.core.get_mlu_device_count()
     else:
         accelerators = 0
 
@@ -591,11 +554,10 @@ def which_distributed_mode(args):
         if (
             not framework.core.is_compiled_with_cuda()
             and not framework.core.is_compiled_with_xpu()
-            and not framework.core.is_compiled_with_mlu()
         ):
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu or npu or mlu. "
+                    "Not found distinct arguments and not compiled with cuda or xpu. "
                     "But found args.servers not empty, default use ps mode"
                 )
                 return DistributeMode.PS
@@ -603,7 +565,7 @@ def which_distributed_mode(args):
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu or npu or mlu. "
+                "Not found distinct arguments and compiled with cuda or xpu. "
                 "Default use collective mode"
             )
             return DistributeMode.COLLECTIVE
@@ -639,10 +601,6 @@ def launch():
         - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
 
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
-
-        - ``--mlus``: It's for mlu training. e.g., ``--mlus=0,1,2,3`` will launch four training processes each bound to one mlu.
-
-        - ``--selected_mlus``: mlus aliases, recommend to use ``--mlus``.
 
         - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
 
@@ -799,7 +757,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
+    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

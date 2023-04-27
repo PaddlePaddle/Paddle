@@ -70,6 +70,10 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+// This kernel can not be registered in phi, because op logsumexp should run
+// phi::LogsumexpKernel rather than XPULogsumexpKernel here. And if register
+// xpu logsumexp kernel in phi, op logsumexp will run XPULogsumexpKernel here
+// and raise error.
 REGISTER_OP_XPU_KERNEL(
     logsumexp,
     ops::XPULogsumexpKernel<paddle::platform::XPUDeviceContext, float>);

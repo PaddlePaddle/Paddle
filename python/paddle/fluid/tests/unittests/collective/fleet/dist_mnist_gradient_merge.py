@@ -16,7 +16,7 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()

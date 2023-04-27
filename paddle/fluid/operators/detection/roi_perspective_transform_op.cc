@@ -242,7 +242,7 @@ void bilinear_interpolate(const T* in_data,
   val[0] = w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -256,7 +256,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int64_t>(in->dims());
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];
@@ -390,7 +390,7 @@ T get_feature_gradient(
   return weight;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -403,7 +403,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int>(in->dims());
     int batch_size = in_dims[0];
     int channels = in_dims[1];
     int in_height = in_dims[2];
@@ -690,7 +690,13 @@ REGISTER_OPERATOR(
     ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
-REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
-                       ops::CPUROIPerspectiveTransformOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
-                       ops::CPUROIPerspectiveTransformGradOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUROIPerspectiveTransformOpKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUROIPerspectiveTransformGradOpKernel,
+                          float) {}

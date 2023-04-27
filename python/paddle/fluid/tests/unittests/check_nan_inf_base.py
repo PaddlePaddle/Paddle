@@ -20,8 +20,8 @@ os.environ["FLAGS_check_nan_inf"] = "1"
 os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -97,7 +97,7 @@ def check(use_cuda):
                 step += 1
                 print(
                     'iter={:.0f},cost={},acc1={}'.format(
-                        step, outs[1][0], outs[2][0]
+                        step, outs[1][0], outs[2]
                     )
                 )
 

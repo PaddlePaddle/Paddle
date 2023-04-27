@@ -20,9 +20,9 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestMNIST(TestParallelExecutorBase):

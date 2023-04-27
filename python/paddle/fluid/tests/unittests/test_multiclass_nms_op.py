@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -797,7 +797,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):

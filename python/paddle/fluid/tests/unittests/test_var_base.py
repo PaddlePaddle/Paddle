@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestVarBase(unittest.TestCase):
@@ -114,7 +114,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0])
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-                self.assertEqual(x.shape, [1])
+                self.assertEqual(x.shape, [])
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
@@ -168,7 +168,7 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x_array.dtype, x.numpy().dtype)
                 np.testing.assert_array_equal(x_array, x.numpy())
 
-                x = paddle.to_tensor(1.0)
+                x = paddle.to_tensor(1.0, place=place)
                 self.assertEqual(x.item(), 1.0)
                 self.assertTrue(isinstance(x.item(), float))
 
@@ -246,6 +246,26 @@ class TestVarBase(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), numpy_array)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
+                # test dtype bfloat16
+                x = paddle.to_tensor(-1e6, dtype=paddle.bfloat16)
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+
+                x = paddle.to_tensor([-1e6, -1e6, -1e6], dtype='bfloat16')
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x[0] == -999424.0)
+                self.assertTrue(x[1] == -999424.0)
+                self.assertTrue(x[2] == -999424.0)
+
+                x = paddle.to_tensor(
+                    -1e6, dtype=paddle.bfloat16, stop_gradient=False
+                )
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+                y = x * x
+                y.backward()
+                self.assertTrue(x.grad == -999424.0 * 2)
+
                 with self.assertRaises(ValueError):
                     paddle.randn([3, 2, 2]).item()
                 with self.assertRaises(ValueError):
@@ -272,9 +292,6 @@ class TestVarBase(unittest.TestCase):
             check_with_place("gpu_pinned")
             check_with_place(core.CUDAPlace(0))
             check_with_place("gpu:0")
-        if core.is_compiled_with_npu():
-            check_with_place(core.NPUPlace(0))
-            check_with_place("npu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
         with paddle.fluid.dygraph.guard(core.CPUPlace()):
@@ -390,7 +407,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_detach(self):
         with fluid.dygraph.guard():
-            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            x = paddle.to_tensor([1.0], dtype="float64", stop_gradient=False)
             detach_x = x.detach()
             self.assertTrue(detach_x.stop_gradient, True)
 
@@ -607,8 +624,7 @@ class TestVarBase(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 1)
-        self.assertEqual(nw.shape[0], 1)
+        self.assertEqual(len(nw.shape), 0)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), tuple(nw.shape))
@@ -708,10 +724,10 @@ class TestVarBase(unittest.TestCase):
 
         var = paddle.to_tensor(tensor_array)
 
-        one = paddle.ones(shape=[1], dtype="int32")
-        two = paddle.full(shape=[1], fill_value=2, dtype="int32")
-        negative_one = paddle.full(shape=[1], fill_value=-1, dtype="int32")
-        four = paddle.full(shape=[1], fill_value=4, dtype="int32")
+        one = paddle.ones(shape=[], dtype="int32")
+        two = paddle.full(shape=[], fill_value=2, dtype="int32")
+        negative_one = paddle.full(shape=[], fill_value=-1, dtype="int32")
+        four = paddle.full(shape=[], fill_value=4, dtype="int32")
 
         var = fluid.dygraph.to_variable(tensor_array)
         var1 = var[0, one, one]
@@ -1018,9 +1034,7 @@ class TestVarBase(unittest.TestCase):
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
-            np.testing.assert_array_equal(
-                var.numpy(), fluid.framework._var_base_to_np(var)
-            )
+            np.testing.assert_array_equal(var.numpy(), var.numpy(False))
 
     def test_var_base_as_np(self):
         with fluid.dygraph.guard():
@@ -1051,7 +1065,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_to_static_var(self):
         with fluid.dygraph.guard():
-            # Convert VarBase into Variable or Parameter
+            # Convert Tensor into Variable or Parameter
             var_base = fluid.dygraph.to_variable(self.array, name="var_base_1")
             static_var = var_base._to_static_var()
             self._assert_to_static(var_base, static_var)
@@ -1060,7 +1074,7 @@ class TestVarBase(unittest.TestCase):
             static_param = var_base._to_static_var(to_parameter=True)
             self._assert_to_static(var_base, static_param, True)
 
-            # Convert ParamBase into Parameter
+            # Convert EagerParamBase into Parameter
             fc = paddle.nn.Linear(
                 10,
                 20,
@@ -1078,7 +1092,7 @@ class TestVarBase(unittest.TestCase):
         if is_param:
             self.assertTrue(isinstance(static_var, fluid.framework.Parameter))
             self.assertTrue(static_var.persistable, True)
-            if isinstance(var_base, fluid.framework.ParamBase):
+            if isinstance(var_base, fluid.framework.EagerParamBase):
                 for attr in ['trainable', 'is_distributed', 'do_model_average']:
                     self.assertEqual(
                         getattr(var_base, attr), getattr(static_var, attr)

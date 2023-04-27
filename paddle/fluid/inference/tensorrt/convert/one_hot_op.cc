@@ -41,8 +41,8 @@ class OneHotOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     const auto indices_tensor = engine_->GetITensor(op_desc.Input("X").front());
-    nvinfer1::ITensor* values_tensor;
-    nvinfer1::ITensor* depth_tensor;
+    nvinfer1::ITensor* values_tensor{nullptr};
+    nvinfer1::ITensor* depth_tensor{nullptr};
     const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     if (dtype == 2 || dtype == 3) {  // int, int64
       const std::vector<int> values_data = {0, 1};
@@ -56,6 +56,8 @@ class OneHotOpConverter : public OpConverter {
       if (dtype == 6) {  // int64
         VLOG(3) << "trt not support float64, so it is converted to float32.";
       }
+    } else {
+      PADDLE_THROW(platform::errors::Fatal("one_hot is not supported"));
     }
 
     auto depth_name = op_desc.Input("depth_tensor");

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import fluid
@@ -83,27 +83,32 @@ class TestMarginRankLossLayer(unittest.TestCase):
             self.check_identity(place)
 
     def check_identity(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                label = paddle.static.data(
-                    "label", (self.batch_size, 1), "float32"
-                )
-                x1 = paddle.static.data("x1", (self.batch_size, 1), "float32")
-                x2 = paddle.static.data("x2", (self.batch_size, 1), "float32")
-                out = paddle.nn.functional.margin_ranking_loss(
-                    x1, x2, label, self.margin, 'none'
-                )
+        with paddle_static_guard():
+            main = fluid.Program()
+            start = fluid.Program()
+            with fluid.unique_name.guard():
+                with fluid.program_guard(main, start):
+                    label = paddle.static.data(
+                        "label", (self.batch_size, 1), "float32"
+                    )
+                    x1 = paddle.static.data(
+                        "x1", (self.batch_size, 1), "float32"
+                    )
+                    x2 = paddle.static.data(
+                        "x2", (self.batch_size, 1), "float32"
+                    )
+                    out = paddle.nn.functional.margin_ranking_loss(
+                        x1, x2, label, self.margin, 'none'
+                    )
 
-        exe = fluid.Executor(place)
-        exe.run(start)
-        (out_np,) = exe.run(
-            main,
-            feed={"label": self.label, "x1": self.x1, "x2": self.x2},
-            fetch_list=[out],
-        )
-        np.testing.assert_allclose(out_np, self.loss)
+            exe = fluid.Executor(place)
+            exe.run(start)
+            (out_np,) = exe.run(
+                main,
+                feed={"label": self.label, "x1": self.x1, "x2": self.x2},
+                fetch_list=[out],
+            )
+            np.testing.assert_allclose(out_np, self.loss)
 
 
 if __name__ == '__main__':

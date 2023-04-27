@@ -13,9 +13,11 @@
 # limitations under the License
 
 from collections import OrderedDict
-from functools import reduce
+
+import numpy as np
 
 import paddle
+from paddle.utils.flops import flops
 
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor
@@ -91,9 +93,10 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
         output_desc = OrderedDict()
 
         # Get partitioned shape of input
+        input_var_desc = {}
         for input_name in op.input_names:
             var_name_list = op.input(input_name)
-            var_desc = []
+            input_var_desc[input_name] = []
             for var_name in var_name_list:
                 var = get_var_with_recursion(
                     var_name, op.block, op.block.program
@@ -112,7 +115,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     process,
                     shard_sizes,
                 )
-                var_desc.append((var.dtype, shape))
+                input_var_desc[input_name].append(shape)
 
                 # For special op such as embedding and its grad op
                 if (
@@ -137,8 +140,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                         relative_idx = relative_idx * per_part_size
                         desc["attrs"]["start_index"] = relative_idx
 
-            input_desc[input_name] = var_desc
-        desc["inputs"] = input_desc
+        desc["inputs"] = input_var_desc
 
         for out_name in op.output_names:
             var_name_list = op.output(out_name)
@@ -203,7 +205,7 @@ def build_comp_desc_str_for_predict(desc):
         elif dtype == paddle.unit8:
             dtype_str = "unit8"
         else:
-            raise TypeError("Unsupported dtype {}".format(dtype))
+            raise TypeError(f"Unsupported dtype {dtype}")
         return dtype_str
 
     assert isinstance(desc, dict)
@@ -350,7 +352,9 @@ def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
     return desc
 
 
-def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
+def build_comm_costs_from_descs(
+    op_cost_class, ctx, processes, descs, cluster, is_dp=False
+):
     """Build comm costs by descriptions"""
     comm_context = CommContext(cluster)
     group_ranks_list = []
@@ -363,6 +367,8 @@ def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
             comm_op_cost = op_cost_class(
                 op_desc=desc, comm_context=comm_context
             )
+            if is_dp:
+                comm_op_cost.cost.time *= 0.9
             comm_op_cost_list.append(comm_op_cost)
     return comm_op_cost_list
 
@@ -389,6 +395,7 @@ def build_dp_costs(
     vars = dist_op.serial_op.block.vars
     var_name = var_names[0]
     has_found = False
+    is_input = True
     for name in dist_op.serial_op.input_arg_names:
         if var_name in name:
             var_name = name
@@ -400,6 +407,7 @@ def build_dp_costs(
             if var_name in name:
                 var_name = name
                 has_found = True
+                is_input = False
                 break
     if not has_found:
         return
@@ -418,6 +426,7 @@ def build_dp_costs(
         processes,
         c_allreduce_sum_descs,
         cluster,
+        is_dp=True,
     )
     result.append(comm_cost_list)
 
@@ -431,22 +440,11 @@ def build_dp_costs(
             desc = {}
             desc["op"] = op_type
             desc["inputs"] = {}
-            if var_name in dist_attr.inputs_dist_attrs:
-                dims_mapping = dist_attr.get_input_dims_mapping(var_name)
-            elif var_name in dist_attr.outputs_dist_attrs:
-                dims_mapping = dist_attr.get_output_dims_mapping(var_name)
-            else:
-                raise AssertionError(
-                    "cannot find dims_mapping for {} in {}".format(
-                        var_name, dist_attr
-                    )
-                )
-
-            # dims_mapping = (
-            #     dist_attr.get_input_dims_mapping(var_name)
-            #     if dist_attr.get_input_dims_mapping(var_name) is not None
-            #     else dist_attr.get_output_dims_mapping(var_name)
-            # )
+            dims_mapping = (
+                dist_attr.get_input_dims_mapping(var_name)
+                if is_input
+                else dist_attr.get_output_dims_mapping(var_name)
+            )
             var = get_var_with_recursion(
                 var_name,
                 dist_op.serial_op.block,
@@ -493,8 +491,6 @@ class CommContext:
         # if cluster has no info about those vars, it will be set by default
         self.base_ring = None
         self.base_tree = None
-        # self.base_inter_ring = None
-        # self.base_inter_tree = None
         self.intra_ring = None
         self.intra_tree = None
         self.inter_ring = None
@@ -508,8 +504,6 @@ class CommContext:
             # set default
             self.base_ring = 8.4
             self.base_tree = 0.0
-            # self.base_inter_ring = 9.6
-            # self.base_inter_tree = 28
             # NVL in default
             self.intra_ring = 3.4
             self.intra_tree = 28
@@ -681,6 +675,8 @@ class Cost:
 
 
 class OpCost:
+    OP_TYPE = "op"
+
     def __init__(self, op=None, op_desc=None):
         self._op = op
         self._op_desc = op_desc
@@ -811,8 +807,8 @@ class CommOpCost(OpCost):
             elif dtype == paddle.bool:
                 factor = 8
             else:
-                raise ValueError("Unsupported comm dtype {}".format(dtype))
-            comm_count = reduce(lambda x, y: x * y, shape) * factor
+                raise ValueError(f"Unsupported comm dtype {dtype}")
+            comm_count = int(np.prod(shape)) * factor
             self._comm_count = comm_count
 
         return self._comm_count
@@ -882,6 +878,24 @@ class CompOpCost(OpCost):
                         NON_COMP_TYPE, cls.OP_TYPE
                     )
                 )
+
+    def calc_flops(self):
+        if not self.op_desc:
+            return 0
+        if "_grad" in self.__class__.OP_TYPE:
+            op_type = self.__class__.OP_TYPE[: len(self.__class__.OP_TYPE) - 5]
+            return 2 * flops(
+                op_type, self.op_desc["inputs"], self.op_desc["attrs"]
+            )
+        return flops(
+            self.__class__.OP_TYPE,
+            self.op_desc["inputs"],
+            self.op_desc["attrs"],
+        )
+
+    def calc_time(self):
+        flops_count = self.calc_flops()
+        return flops_count * 2.9e-7
 
 
 def register_op_cost(cls):

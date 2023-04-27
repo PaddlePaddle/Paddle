@@ -18,8 +18,8 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -54,6 +54,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
   total_alloc_size_ = 0;
   total_free_times_ = 0;
   total_free_size_ = 0;
+  VLOG(4) << "chunk_size_:" << chunk_size_;
 }
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(

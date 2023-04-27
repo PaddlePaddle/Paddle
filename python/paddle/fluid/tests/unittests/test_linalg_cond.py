@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
 p_list_m_n = (None, 2, -2)

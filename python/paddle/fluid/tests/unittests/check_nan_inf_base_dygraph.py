@@ -20,7 +20,7 @@ os.environ["FLAGS_check_nan_inf"] = "1"
 os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 np.random.seed(0)
 

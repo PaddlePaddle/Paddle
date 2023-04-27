@@ -22,8 +22,7 @@ import weakref
 import numpy as np
 
 import paddle
-import paddle.profiler as profiler
-import paddle.utils.deprecated as deprecated
+from paddle import nn, profiler
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -45,6 +44,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -125,6 +125,13 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
+def _layer_trans_dtype(layer, dtype, excluded_layers):
+    if type(layer) in excluded_layers:
+        return
+
+    layer._to_impl(dtype=dtype, floating_only=True, include_sublayers=False)
+
+
 class LayerObjectHelper(LayerHelperBase):
     def __init__(self, name):
         super().__init__(name, layer_type=name)
@@ -170,7 +177,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _input(self, inputs_in):
         inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input in".format(self.layer_type)
+            raise f"{self.layer_type} layer only takes one input in"
         return inputs[0]
 
     def _multiple_param_attr(self, length, param_attr_in=None):
@@ -179,9 +186,7 @@ class LayerObjectHelper(LayerHelperBase):
             param_attr = [param_attr]
 
         if len(param_attr) != 1 and len(param_attr) != length:
-            raise ValueError(
-                "parameter number mismatch in {}".format(self.name)
-            )
+            raise ValueError(f"parameter number mismatch in {self.name}")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
             for i in range(length):
@@ -200,14 +205,11 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param_attr_in = ParamAttr._to_attr(param_attr_in)
         if isinstance(param_attr_in, bool):
-            raise ValueError(
-                'Param_attr should not be False in {}'.format(self.name)
-            )
+            raise ValueError(f'Param_attr should not be False in {self.name}')
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, inputs_in):
         """Get input data type
@@ -240,9 +242,7 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
-            raise ValueError(
-                "no Parameter name %s found in %s" % (name, self.name)
-            )
+            raise ValueError(f"no Parameter name {name} found in {self.name}")
         return param
 
     # TODO: this should not be called anymore after all activation func move to Layers
@@ -401,7 +401,8 @@ class Layer:
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
-        self._casted_by_pure_fp16 = False
+        # only used in AMP Training
+        self._cast_to_low_precison = True
 
         self._state_dict_hooks = collections.OrderedDict()
         # Records orignal functions after @to_static to support to rollback
@@ -1069,10 +1070,8 @@ class Layer:
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
-            raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not (
-            type(tensor) == core.VarBase or type(tensor) == core.eager.Tensor
-        ):
+            raise KeyError(f"attribute '{name}' already exists.")
+        elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a Paddle.Tensor, but received {}.".format(
                     type(tensor).__name__
@@ -1362,7 +1361,7 @@ class Layer:
         elif name == '':
             raise KeyError("The name of parameter can not be empty.")
         elif hasattr(self, name) and name not in self._parameters:
-            raise KeyError("The parameter '{}' already exists.".format(name))
+            raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
             parameter, framework.Parameter
         ):
@@ -1525,7 +1524,7 @@ class Layer:
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if isinstance(value, (core.VarBase, core.eager.Tensor)):
+                if isinstance(value, core.eager.Tensor):
                     if _buffers is None:
                         raise ValueError(
                             "super().__init__() should be called first"
@@ -1560,14 +1559,14 @@ class Layer:
                             )
                         elif (
                             _buffers[name] is None
-                            or type(getattr(self, name)) == core.VarBase
+                            or type(getattr(self, name)) == core.eager.Tensor
                         ):
                             _buffers[name] = assign(value)
                         else:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'".format(
+                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
                                 name, type(value).__name__
                             )
                         )
@@ -1858,10 +1857,8 @@ class Layer:
             state = state_dict.get(key, None)
             if state is None:
                 missing_keys.append(key)
-                raise ValueError(
-                    "{} is not found in the provided dict.".format(key)
-                )
-            if isinstance(state, dict) or isinstance(state, list):
+                raise ValueError(f"{key} is not found in the provided dict.")
+            if isinstance(state, (dict, list)):
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
@@ -1897,7 +1894,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+                warnings.warn(f"Skip loading for {key}. " + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
@@ -2157,3 +2154,170 @@ class Layer:
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
     load_dict = set_state_dict
+
+    def float(self, excluded_layers=None):
+        '''
+        Casts all floating point parameters and buffers to ``float`` data type.
+
+        Parameters:
+            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+
+        Returns:
+            Layer: self
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class Model(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
+
+                model = Model()
+                model.float()
+        '''
+
+        excluded_layers = [] if excluded_layers is None else excluded_layers
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
+
+        def layer_trans(layer):
+            _layer_trans_dtype(layer, paddle.float32, excluded_layers)
+
+        return self.apply(layer_trans)
+
+    def float16(self, excluded_layers=None):
+        '''
+        Casts all floating point parameters and buffers to ``float16`` data type.
+
+
+        .. note::
+            ``nn.BatchNorm`` does not support ``bfloat16`` weights, so it would not be converted by default.
+
+
+        Parameters:
+           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+
+        Returns:
+            Layer: self
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class Model(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
+
+                model = Model()
+                model.float16()
+        '''
+
+        if paddle.amp.is_float16_supported() is False:
+            warnings.warn(
+                "Paddle compiled by the user does not support float16, so keep original data type."
+            )
+            return self
+
+        excluded_layers = (
+            [nn.BatchNorm] if excluded_layers is None else excluded_layers
+        )
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
+
+        def layer_trans(layer):
+            _layer_trans_dtype(layer, paddle.float16, excluded_layers)
+
+        return self.apply(layer_trans)
+
+    def bfloat16(self, excluded_layers=None):
+        '''
+        Casts all floating point parameters and buffers to ``bfloat16`` data type.
+
+
+        .. note::
+            ``nn.BatchNorm`` does not support ``bfloat16`` weights, so it would not be converted by default.
+
+
+        Parameters:
+            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+
+        Returns:
+            Layer: self
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class Model(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self.linear = paddle.nn.Linear(1, 1)
+                        self.dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        out = self.linear(input)
+                        out = self.dropout(out)
+                        return out
+
+                model = Model()
+                model.bfloat16()
+        '''
+
+        if paddle.amp.is_bfloat16_supported() is False:
+            warnings.warn(
+                "Paddle compiled by the user does not support bfloat16, so keep original data type."
+            )
+            return self
+
+        excluded_layers = (
+            [nn.BatchNorm] if excluded_layers is None else excluded_layers
+        )
+
+        if isinstance(excluded_layers, type):
+            excluded_layers = [excluded_layers]
+        elif isinstance(excluded_layers, list):
+            pass
+        else:
+            raise TypeError(
+                "excluded_layers should be type nn.Layer or list, but got %s.",
+                type(excluded_layers).__name__,
+            )
+
+        def layer_trans(layer):
+            _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)
+
+        return self.apply(layer_trans)

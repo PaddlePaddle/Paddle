@@ -16,8 +16,8 @@ from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers import (
     FP16AllReduceOptimizer as FP16AllReduce,
 )

@@ -60,7 +60,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = travel_lod_tensor.dims();
+  auto travel_dim = phi::vectorize<int>(travel_lod_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
@@ -251,7 +251,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TDMSamplerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

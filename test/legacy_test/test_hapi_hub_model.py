@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 
 
 class MM(nn.Layer):
