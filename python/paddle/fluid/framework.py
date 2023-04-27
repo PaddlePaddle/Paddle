@@ -4155,7 +4155,7 @@ class Block(object):
                         shape=var.shape(),
                         dtype=var.dtype(),
                         stop_gradient=is_stop_gradient,
-                        persistable=var.persistable,
+                        persistable=var.persistable(),
                     )
                 else:
                     self.create_var(
