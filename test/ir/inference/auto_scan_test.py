@@ -763,6 +763,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 threshold,
             ) in self.sample_predictor_configs(prog_config):
                 for input_type in self.get_avalible_input_type():
+                    prog_config = prog_config.set_input_type(input_type)
                     if os.path.exists(self.cache_dir):
                         shutil.rmtree(self.cache_dir)
 
