@@ -216,7 +216,7 @@ class TrtConvertConv2dPluginTest(TrtLayerAutoScanTest):
 
         if (
             inputs['input_data'].shape[1]
-            != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
+            != inputs['input1_data'].shape[1] * attrs[0]['groups']
         ):
             return False
 
