@@ -1744,11 +1744,18 @@ class Flatten(Layer):
 
 
 class Unflatten(Layer):
-    def __init__(self, shape, axis):
+    def __init__(self, shape, axis, name=None):
         super().__init__()
         self.shape = shape
         self.axis = axis
+        self.name = name
 
     def forward(self, input):
-        out = paddle.unflatten(input, shape=self.shape, axis=self.axis)
+        out = paddle.unflatten(
+            input, shape=self.shape, axis=self.axis, name=self.name
+        )
         return out
+
+    def extra_repr(self):
+        name_str = f', name={self.name}' if self.name else ''
+        return f'shape={self.shape}, axis={self.axis}{name_str}'

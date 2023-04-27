@@ -4787,23 +4787,10 @@ def index_add_(x, index, axis, value, name=None):
     return _C_ops.index_add_(x, index, value, axis)
 
 
-# TODO(dev): We need avoid implementing it by this way.
-__METHODS = {
-    'fill_': fill_,
-    'zero_': zero_,
-    'fill_diagonal_': fill_diagonal_,
-    'fill_diagonal_tensor_': fill_diagonal_tensor_,
-    "fill_diagonal_tensor": fill_diagonal_tensor,
-    'tolist': tolist,
-}
-for name, func in __METHODS.items():
-    setattr(core.eager.Tensor, name, func)
+def unflatten(x, shape, axis, name=None):
 
-
-def unflatten(x, shape, axis):
-
-    check_variable_and_dtype(
-        x,
+    check_dtype(
+        x.dtype,
         'x',
         [
             'uint8',
@@ -4820,73 +4807,44 @@ def unflatten(x, shape, axis):
         ],
         'unflatten',
     )
-    if isinstance(shape, list) or isinstance(shape, tuple):
-        if len(shape) == 0:
-            raise ValueError("The input for shape cannot be empty.")
-        if np.array(shape).dtype not in [
-            'uint8',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-        ]:
-            raise TypeError(
-                "The data type of shape should be one of ['uint8', 'int8', 'int16', 'int32', 'int64'], but got {}".format(
-                    shape
-                )
-            )
-        if np.min(shape) < -1:
-            raise ValueError(f"invalid shape dimension {np.min(shape)}.")
-        if shape.count(-1) > 1:
-            raise ValueError("The shape can contain only one -1.")
-        elif shape.count(-1) == 1:
-            list(shape)[shape.index(-1)] = int(
-                x.shape[axis] / abs(np.prod(shape))
-            )
-        else:
-            sizes = np.prod(shape)
-            if sizes != x.shape[axis]:
-                raise ValueError(
-                    "The product of the elements in shape{} is not equal to {}.".format(
-                        shape, x.shape[axis]
-                    )
-                )
-    elif isinstance(shape, paddle.Tensor) or isinstance(shape, Variable):
-        check_variable_and_dtype(
-            shape,
+    if axis < 0:
+        axis = axis + x.dim()
+    if isinstance(shape, (list, tuple)):
+        new_shape = (
+            list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
+        )
+    elif isinstance(shape, Variable):
+        check_dtype(
+            shape.dtype,
             'shape',
-            ['uint8', 'int8', 'int16', 'int32', 'int64'],
+            ['int32'],
             'unflatten',
         )
-        if shape.is_empty():
-            raise ValueError("The input for shape cannot be empty.")
-        if paddle.min(shape) < -1:
-            raise ValueError(f"invalid shape dimension {paddle.min(shape)}.")
-        if paddle.sum(shape == -1) > 1:
-            raise ValueError("The shape can contain only one -1.")
-        elif paddle.sum(shape == -1) == 1:
-            shape[paddle.equal(shape, -1)] = int(
-                x.shape[axis] / -paddle.prod(shape)
-            )
-        else:
-            sizes = paddle.prod(shape)
-            if sizes != x.shape[axis]:
-                raise ValueError(
-                    "The product of the elements in shape{} is not equal to {}.".format(
-                        shape, x.shape[axis]
-                    )
-                )
+        new_shape = paddle.concat(
+            [
+                paddle.shape(x)[:axis],
+                shape,
+                paddle.shape(x)[axis + 1 :],
+            ]
+        )
     else:
         raise TypeError(
             "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
                 type(shape)
             )
         )
-    length = len(x.shape)
-    if axis < 0:
-        axis = axis + length
-    new_shape = (
-        tuple(x.shape[:axis]) + tuple(shape) + tuple(x.shape[axis + 1 :])
-    )
     x = x.reshape(new_shape)
     return x
+
+
+# TODO(dev): We need avoid implementing it by this way.
+__METHODS = {
+    'fill_': fill_,
+    'zero_': zero_,
+    'fill_diagonal_': fill_diagonal_,
+    'fill_diagonal_tensor_': fill_diagonal_tensor_,
+    "fill_diagonal_tensor": fill_diagonal_tensor,
+    'tolist': tolist,
+}
+for name, func in __METHODS.items():
+    setattr(core.eager.Tensor, name, func)

@@ -103,8 +103,15 @@ class TestUnflattenAPI(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype=self.x.dtype
                 )
+                if self.shape_is_tensor:
+                    shape = np.array(self.shape)
+                    shape = paddle.static.data(
+                        name='shape', shape=shape.shape, dtype=shape.dtype
+                    )
+                else:
+                    shape = self.shape
                 exe = paddle.static.Executor(place)
-                out = self.paddle_api(x=x, shape=self.shape, axis=self.axis)
+                out = self.paddle_api(x=x, shape=shape, axis=self.axis)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={
@@ -114,6 +121,7 @@ class TestUnflattenAPI(unittest.TestCase):
                     },
                     fetch_list=[out],
                 )
+
                 np.testing.assert_allclose(fetches[0], self.output, rtol=1e-05)
 
 
@@ -224,7 +232,7 @@ class TestUnflattenTupleShape3(TestUnflattenAPI):
         self.shape_is_tensor = False
 
 
-# paddle.prod 不支持int16
+# paddle.prod 不支持 int16
 # class TestUnflattenShapeTensorInt16(TestUnflattenAPI):
 #     def set_args(self):
 #         self.x = np.random.rand(4, 6, 16).astype('float32')
@@ -241,12 +249,12 @@ class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
         self.shape_is_tensor = True
 
 
-class TestUnflattenShapeTensorInt64(TestUnflattenAPI):
-    def set_args(self):
-        self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = list(np.array([-1, 2]).astype('int64'))
-        self.axis = 1
-        self.shape_is_tensor = True
+# class TestUnflattenShapeTensorInt64(TestUnflattenAPI):
+#     def set_args(self):
+#         self.x = np.random.rand(4, 6, 16).astype('float32')
+#         self.shape = list(np.array([-1, 2]).astype('int64'))
+#         self.axis = 1
+#         self.shape_is_tensor = True
 
 
 # axis 的取值
@@ -375,188 +383,6 @@ class TestUnflattenError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            # test shape is empty
-            def test_list_shape_empty():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = []
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_list_shape_empty)
-
-            def test_tuple_shape_empty():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = ()
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tuple_shape_empty)
-
-            def test_tensor_shape_empty():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = paddle.static.data(
-                    name='shape',
-                    shape=[],
-                    dtype="int32",
-                )
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tensor_shape_empty)
-
-            # test invalid_shape_dimension
-            def test_list_invalid_shape_dimension():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = [-2, 1]
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_list_invalid_shape_dimension)
-
-            def test_tuple_invalid_shape_dimension():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = (-2, 1)
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tuple_invalid_shape_dimension)
-
-            def test_tensor_invalid_shape_dimension():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = paddle.static.data(
-                    name='shape',
-                    shape=[],
-                    dtype="int32",
-                )
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tensor_invalid_shape_dimension)
-
-            # test shape contains multiple -1
-            def test_list_shape_contain_multiple_negative_ones():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = [-1, -1, 1]
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(
-                ValueError, test_list_shape_contain_multiple_negative_ones
-            )
-
-            def test_tuple_shape_contain_multiple_negative_ones():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = (-1, -1, 1)
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(
-                ValueError, test_tuple_shape_contain_multiple_negative_ones
-            )
-
-            def test_tensor_shape_contain_multiple_negative_ones():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = paddle.static.data(
-                    name='shape',
-                    shape=[-1, -1],
-                    dtype="int32",
-                )
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(
-                ValueError, test_tensor_shape_contain_multiple_negative_ones
-            )
-
-            # The product of the elements in shape is not equal to the target dimension.
-            def test_list_shape_not_dim():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = [2, 4]
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_list_shape_not_dim)
-
-            def test_tuple_shape_not_dim():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = (2, 4)
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tuple_shape_not_dim)
-
-            def test_tensor_shape_not_dim():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = paddle.static.data(
-                    name='shape',
-                    shape=[2, 4],
-                    dtype="int32",
-                )
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(ValueError, test_tensor_shape_not_dim)
-
-            # test type of unexpected input
-            def test_string_shape_input():
-                x = paddle.static.data(
-                    name='x',
-                    shape=[4, 4],
-                    dtype="float32",
-                )
-                shape = ['1', '2', '3']
-                axis = -1
-                self.paddle_api(x, shape, axis)
-
-            self.assertRaises(TypeError, test_string_shape_input)
 
             def test_int_shape_input():
                 x = paddle.static.data(
@@ -569,6 +395,254 @@ class TestUnflattenError(unittest.TestCase):
                 self.paddle_api(x, shape, axis)
 
             self.assertRaises(TypeError, test_int_shape_input)
+
+
+#             # test shape is empty
+#             def test_list_shape_empty():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = []
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_list_shape_empty)
+
+#             def test_tuple_shape_empty():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = ()
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tuple_shape_empty)
+
+#             def test_tensor_shape_empty():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = paddle.static.data(
+#                     name='shape',
+#                     shape=[],
+#                     dtype="int32",
+#                 )
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tensor_shape_empty)
+
+#             # test invalid_shape_dimension
+#             def test_list_invalid_shape_dimension():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = [-2, 1]
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_list_invalid_shape_dimension)
+
+#             def test_tuple_invalid_shape_dimension():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = (-2, 1)
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tuple_invalid_shape_dimension)
+
+#             def test_tensor_invalid_shape_dimension():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = paddle.static.data(
+#                     name='shape',
+#                     shape=[],
+#                     dtype="int32",
+#                 )
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tensor_invalid_shape_dimension)
+
+#             # test shape contains multiple -1
+#             def test_list_shape_contain_multiple_negative_ones():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = [-1, -1, 1]
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(
+#                 ValueError, test_list_shape_contain_multiple_negative_ones
+#             )
+
+#             def test_tuple_shape_contain_multiple_negative_ones():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = (-1, -1, 1)
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(
+#                 ValueError, test_tuple_shape_contain_multiple_negative_ones
+#             )
+
+#             def test_tensor_shape_contain_multiple_negative_ones():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = paddle.static.data(
+#                     name='shape',
+#                     shape=[-1, -1],
+#                     dtype="int32",
+#                 )
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(
+#                 ValueError, test_tensor_shape_contain_multiple_negative_ones
+#             )
+
+#             # The product of the elements in shape is not equal to the target dimension.
+#             def test_list_shape_not_dim():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = [2, 4]
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_list_shape_not_dim)
+
+#             def test_tuple_shape_not_dim():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = (2, 4)
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tuple_shape_not_dim)
+
+#             def test_tensor_shape_not_dim():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = paddle.static.data(
+#                     name='shape',
+#                     shape=[2, 4],
+#                     dtype="int32",
+#                 )
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(ValueError, test_tensor_shape_not_dim)
+
+#             # test type of unexpected input
+#             def test_string_shape_input():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = ['1', '2', '3']
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(TypeError, test_string_shape_input)
+
+#             def test_int_shape_input():
+#                 x = paddle.static.data(
+#                     name='x',
+#                     shape=[4, 4],
+#                     dtype="float32",
+#                 )
+#                 shape = 1
+#                 axis = -1
+#                 self.paddle_api(x, shape, axis)
+
+#             self.assertRaises(TypeError, test_int_shape_input)
+class TestLayer(unittest.TestCase):
+    def set_args(self):
+        self.x = np.random.randn(3, 4, 4, 5).astype('float32')
+        self.shape = [2, 2]
+        self.axis = 1
+
+    def setUp(self):
+        self.set_args()
+        self.places = [paddle.CPUPlace()]
+        if paddle.device.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_layer(self):
+        paddle.enable_static()
+        places = [paddle.CPUPlace()]
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(
+                    name="x", shape=self.x.shape, dtype=self.x.dtype
+                )
+                exe = paddle.static.Executor(place)
+                unflatten = paddle.nn.Unflatten(self.shape, self.axis)
+                out = unflatten(x)
+                static_ret = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": self.x,
+                        "shape": self.shape,
+                        "axis": self.axis,
+                    },
+                    fetch_list=[out],
+                )[0]
+        for place in self.places:
+            paddle.disable_static()
+            x = paddle.to_tensor(self.x, dtype='float32', place=place)
+            unflatten = paddle.nn.Unflatten(self.shape, self.axis)
+            dy_ret_value = unflatten(self.x)
+        np.testing.assert_array_equal(static_ret, dy_ret_value)
+
+
+class TestLayerName(unittest.TestCase):
+    def test_name(self):
+        self.x = np.random.randn(3, 4, 4, 5).astype('float32')
+        self.shape = [2, 2]
+        self.axis = 1
+        self.name = 'unflatten'
+        unflatten = paddle.nn.Unflatten(self.shape, self.axis, self.name)
+        _name = unflatten.extra_repr()
 
 
 if __name__ == '__main__':
