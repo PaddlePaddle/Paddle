@@ -17,6 +17,7 @@ import logging
 import paddle
 from paddle.fluid import unique_name, core
 from paddle.fluid.framework import Program
+from paddle.fluid.executor import global_scope
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
@@ -48,7 +49,6 @@ def naive_offload_decorate(program, executor, scope=None):
     It is strongly recommanded that use a individual Scope for execution of decorated program.
 
     """
-
     logger.info("Offload Program: {} ... ".format(id(program)))
 
     # collect all offload vars
@@ -87,12 +87,13 @@ def naive_offload_decorate(program, executor, scope=None):
         cpu_var_name = unique_name.generate(gpu_var.name + __CPU_VAR_SUFFIX__)
         gpu_var_name_to_cpu_var_names[gpu_var.name] = cpu_var_name
 
-        # offload_block_gpu_var = offload_block.create_var(
-        #     name=gpu_var.name,
-        #     shape=gpu_var.shape,
-        #     dtype=gpu_var.dtype,
-        #     persistable=False,
-        #     stop_gradient=True)
+        offload_block_gpu_var = offload_block.create_var(
+            name=gpu_var.name,
+            shape=gpu_var.shape,
+            dtype=gpu_var.dtype,
+            persistable=True,
+            stop_gradient=True,
+        )
 
         offload_block_cpu_var = offload_block.create_var(
             name=cpu_var_name,
@@ -111,6 +112,9 @@ def naive_offload_decorate(program, executor, scope=None):
 
     executor.run(offload_program, scope=scope)
     # TODO clear the GPU allocation of the gpu var
+    if scope is None:
+        scope = global_scope()
+    scope.clear([var.name for var in vars_to_offload])
     logger.info(
         "After Offload, GPU Allocated Memory: {} MB.".format(
             current_allocated_mem_in_mb()
