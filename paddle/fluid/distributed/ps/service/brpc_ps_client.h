@@ -63,7 +63,7 @@ class DownpourPsClientService : public PsService {
                        PsResponseMessage *response,
                        ::google::protobuf::Closure *done);
 
-  virtual void FLService(::google::protobuf::RpcController *controller,
+  virtual void FLService(::google::protobuf::RpcController *controller UNUSED,
                          const CoordinatorReqMessage *request,
                          CoordinatorResMessage *response,
                          ::google::protobuf::Closure *done) {

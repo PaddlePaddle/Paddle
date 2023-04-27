@@ -112,8 +112,8 @@ struct MeanGradFunctor {
             typename DY,
             typename Dim>
   void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
+                  X* x UNUSED,
+                  Y* y UNUSED,
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
@@ -153,7 +153,7 @@ struct ProdGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
   }
 };
