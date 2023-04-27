@@ -28,7 +28,6 @@ function(detection_library TARGET_NAME)
       PARENT_SCOPE)
 endfunction()
 
-detection_library(box_coder_op SRCS box_coder_op.cc)
 detection_library(density_prior_box_op SRCS density_prior_box_op.cc
                   density_prior_box_op.cu)
 

@@ -28,7 +28,10 @@ if os.name == 'nt' or sys.platform.startswith('darwin'):
     sys.exit()
 
 # Compile and load cpp extension Just-In-Time.
-sources = ["custom_extension.cc", "custom_sub.cc", "custom_relu_forward.cu"]
+sources = ["custom_extension.cc", "custom_sub.cc"]
+if paddle.is_compiled_with_cuda():
+    sources.append("custom_relu_forward.cu")
+
 paddle_includes = []
 for site_packages_path in getsitepackages():
     paddle_includes.append(

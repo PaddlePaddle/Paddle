@@ -82,9 +82,10 @@ API_FILES=("CMakeLists.txt"
            "paddle/phi/core/infermeta_utils.h"
            "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
+           "paddle/fluid/prim/api/api.yaml"
            "python/paddle/incubate/autograd/composite_rules.py"
 	   "python/paddle/incubate/autograd/primitives.py"
-       "paddle/fluid/prim/api/api.yaml"
+
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
