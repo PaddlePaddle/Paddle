@@ -68,7 +68,10 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
             prim_out = paddle.utils.flatten(prim_out)
             for k, v in self.out_map.items():
-                self.assertEqual(prim_out[k].shape, v.shape)
+                if self.op_type == 'p_norm':
+                    self.assertEqual(prim_out[k].shape, ())
+                else:
+                    self.assertEqual(prim_out[k].shape, v.shape)
 
 
 class TestSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -463,7 +466,13 @@ class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
         }
 
         self.orig2prim_args = (X,)
-        self.all_ops = ['p_norm', 'reshape_p', 'abs_p', 'reduce_sum_p']
+        self.all_ops = [
+            'p_norm',
+            'reshape_p',
+            'abs_p',
+            'reduce_sum_p',
+            'reshape_p',
+        ]
         self.out_map = {0: self.output['Out']}
 
 
@@ -488,6 +497,7 @@ class TestPNormOrig2Prim2(TestElementWiseAddOrig2Prim):
         self.orig2prim_args = (X,)
         self.all_ops = [
             'p_norm',
+            'reshape_p',
             'reshape_p',
             'sqrt_p',
             'reduce_sum_p',
