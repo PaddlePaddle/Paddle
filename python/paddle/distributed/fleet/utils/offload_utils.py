@@ -127,6 +127,7 @@ def naive_offload_decorate(program, executor, scope=None):
     # Prefecth variables
     # TODO support conditional blocks
     original_block = program.global_block()
+    var_to_clear = []
     for gpu_var in vars_to_offload:
 
         cpu_var_name = gpu_var_name_to_cpu_var_names[gpu_var.name]
