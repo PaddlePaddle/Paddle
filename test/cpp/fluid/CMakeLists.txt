@@ -1,3 +1,4 @@
 add_subdirectory(reader)
 add_subdirectory(prim_ops)
 add_subdirectory(nccl)
+add_subdirectory(reduce_ops)
