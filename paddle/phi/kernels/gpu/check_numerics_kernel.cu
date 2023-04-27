@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 
-#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -427,6 +427,11 @@ void CheckNumericsKernel(const Context& ctx,
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
   int dev_id = tensor.place().device;
+  VLOG(6) << "check op_type=" << op_type << ", var_name=" << var_name
+          << ", dev_id=gpu:" << dev_id
+          << ", stack_height_limit=" << stack_height_limit
+          << ", output_filepath=" << output_filepath;
+
   // Write log to output_filepath.
   if (output_filepath.size() > 0) {
     phi::DenseTensor cpu_tensor;
