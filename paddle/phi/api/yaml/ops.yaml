@@ -2062,6 +2062,16 @@
     func : trace
   backward : trace_grad
 
+- op : triangular_solve
+  args : (Tensor x, Tensor y, bool upper=true, bool transpose=false, bool unitriangular=false)
+  output : Tensor
+  infer_meta :
+    func : TriangularSolveInferMeta
+  kernel :
+    func : triangular_solve
+    data_type : x
+  backward : triangular_solve_grad
+
 - op : trilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)

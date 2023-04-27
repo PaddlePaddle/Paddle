@@ -1034,16 +1034,6 @@
   backward : transpose_double_grad
   composite: transpose_grad(out_grad, perm, x_grad)
 
-- backward_op : triangular_solve_grad
-  forward : triangular_solve (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper, bool tranpose, bool unitriangular)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : triangular_solve_grad
-
 - backward_op : tril_grad
   forward : tril(Tensor x,  int diagonal) -> Tensor(out)
   args : (Tensor out_grad,  int diagonal)
