@@ -145,7 +145,7 @@ def naive_offload_decorate(program, executor, scope=None):
             outputs={'Out': gpu_var},
             attrs={"dst_place_type": 1, OP_ROLE_KEY: 0},
         )
-
+        var_to_clear.append(gpu_var.name)
         # gpu_var.persistable = True
 
-    return program, offload_program
+    return program, offload_program, var_to_clear
