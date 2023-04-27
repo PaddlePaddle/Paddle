@@ -1469,6 +1469,22 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
   extra :
