@@ -132,13 +132,13 @@ function make_ce_framework_dockcerfile(){
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro" ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
-    RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
+    RUN bash /build_scripts/install_gcc.sh gcc121 \&\& rm -rf /build_scripts \\
     RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
-    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \\
-    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \\
-    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
-    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
-    ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
+    RUN ln -s /usr/local/gcc-12.1/bin/gcc /usr/local/bin/gcc \\
+    RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/local/bin/g++ \\
+    RUN ln -s /usr/local/gcc-12.1/bin/gcc /usr/bin/gcc \\
+    RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/bin/g++ \\
+    ENV PATH=/usr/local/gcc-12.1/bin:\$PATH #g" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
   sed -i 's#28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz#b7/2d/ad02de84a4c9fd3b1958dc9fb72764de1aa2605a9d7e943837be6ad82337/pip-21.0.1.tar.gz#g' ${dockerfile_name}
   sed -i 's#pip-20.0.1#pip-21.0.1#g' ${dockerfile_name}
