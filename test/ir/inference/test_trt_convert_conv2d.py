@@ -216,14 +216,14 @@ class TrtConvertConv2dPluginTest(TrtLayerAutoScanTest):
 
         if (
             inputs['input_data'].shape[1]
-            != inputs['input1_data'].shape[1] * attrs[0]['groups']
+            != inputs['input1_data'].shape[1] * attrs[1]['groups']
         ):
             return False
 
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
             if attrs[0]['padding_algorithm'] == 'SAME' and (
-                attrs[0]['strides'][0] > 1 or attrs[0]['strides'][1] > 1
+                attrs[0]['strides'][0] > 1 or attrs[1]['strides'][1] > 1
             ):
                 return False
 
