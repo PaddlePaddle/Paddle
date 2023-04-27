@@ -27,6 +27,7 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -40,8 +41,8 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Log memory stats after each op runs, just used for debug.");
 
-DECLARE_bool(use_mkldnn);
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace framework {
@@ -146,9 +147,8 @@ bool IsGradOp(const std::string& op_name) {
 }
 
 bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
-         platform::is_custom_place(place);
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
+         platform::is_ipu_place(place) || platform::is_custom_place(place);
 }
 
 bool IsMemcpyD2H(const Instruction& instr) {

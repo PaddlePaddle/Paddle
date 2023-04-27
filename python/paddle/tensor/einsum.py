@@ -966,8 +966,8 @@ def einsum(equation, *operands):
 
             # dot
             print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [1.45936954])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #   1.45936954)
 
             # outer
             print(paddle.einsum("i,j->ij", x, y))

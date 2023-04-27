@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
@@ -271,7 +272,7 @@ template <>
 struct FMaxGradDx<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>((x >= y) || dtype::isnan(y));
   }
@@ -279,7 +280,7 @@ struct FMaxGradDx<dtype::float16> {
 
 template <>
 struct FMaxGradDx<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>((x >= y));
   }
 };
@@ -288,7 +289,7 @@ template <>
 struct FMaxGradDx<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>((x >= y));
   }
@@ -305,7 +306,7 @@ template <>
 struct FMaxGradDy<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>(!((x >= y) || dtype::isnan(y)));
   }
@@ -315,7 +316,7 @@ template <>
 struct FMaxGradDy<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>(!((x >= y)));
   }
@@ -323,7 +324,7 @@ struct FMaxGradDy<int64_t> {
 
 template <>
 struct FMaxGradDy<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>(!((x >= y)));
   }
 };
@@ -339,7 +340,7 @@ template <>
 struct FMinGradDx<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>((x <= y) || dtype::isnan(y));
   }
@@ -347,7 +348,7 @@ struct FMinGradDx<dtype::float16> {
 
 template <>
 struct FMinGradDx<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>((x <= y));
   }
 };
@@ -356,7 +357,7 @@ template <>
 struct FMinGradDx<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>((x <= y));
   }
@@ -373,7 +374,7 @@ template <>
 struct FMinGradDy<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>(!((x <= y) || dtype::isnan(y)));
   }
@@ -381,7 +382,7 @@ struct FMinGradDy<dtype::float16> {
 
 template <>
 struct FMinGradDy<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>(!((x <= y)));
   }
 };
@@ -390,7 +391,7 @@ template <>
 struct FMinGradDy<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>(!((x <= y)));
   }
