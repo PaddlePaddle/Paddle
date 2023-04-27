@@ -45,7 +45,8 @@ class TensorRtSubgraphPass : public framework::ir::FusePassBase {
   void CreateTensorRTOp(framework::ir::Node *x,
                         framework::ir::Graph *graph,
                         const std::vector<std::string> &graph_params,
-                        std::vector<std::string> *repetitive_params) const;
+                        std::vector<std::string> *repetitive_params,
+                        bool use_cuda_graph) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 

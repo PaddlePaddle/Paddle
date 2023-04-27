@@ -101,6 +101,22 @@ void OutputProcess(framework::ir::Graph *graph,
   }
 }
 
+// Determine whether the whole graph offload to tensorrt. If so we can try to
+// enable optimization such as cudaGraph.
+bool AllNodesLowerToTrtPostProcess(framework::ir::Graph *graph) {
+  std::unordered_set<std::string> trt_nodes_set{
+      "feed", "fetch", "tensorrt_engine"};
+  bool all_nodes_offload_to_trt = true;
+  for (auto *node : graph->Nodes()) {
+    if (node->IsOp()) {
+      if (!trt_nodes_set.count(node->Op()->Type())) {
+        all_nodes_offload_to_trt = false;
+        break;
+      }
+    }
+  }
+  return all_nodes_offload_to_trt;
+}
 }  // namespace
 
 using framework::ir::Node;
@@ -124,6 +140,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
+  bool use_cuda_graph = Get<bool>("use_cuda_graph");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
@@ -167,11 +184,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
-      CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
-      std::unordered_set<const Node *> nodes2remove(
-          framework::ir::Agent(node).subgraph()->begin(),
-          framework::ir::Agent(node).subgraph()->end());
-      framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
+      CreateTensorRTOp(
+          node, graph, graph_param_names, &repetitive_params, use_cuda_graph);
     }
   }
 
@@ -191,6 +205,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
                               const std::string &predictor_id,
                               const std::string &max_batch_size,
                               const std::string &precision,
+                              bool use_cuda_graph,
                               const bool for_calibration) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
@@ -209,6 +224,9 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   engine_hash_key += "#";
   engine_hash_key += precision;
 
+  engine_hash_key += "#";
+  engine_hash_key += use_cuda_graph;
+
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
   VLOG(2) << "TRT engine key: " << engine_key;
@@ -219,7 +237,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     framework::ir::Node *node,
     framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
-    std::vector<std::string> *repetitive_params) const {
+    std::vector<std::string> *repetitive_params,
+    bool use_cuda_graph) const {
   auto *op_desc = node->Op();
   auto &subgraph = *framework::ir::Agent(node).subgraph();
   PADDLE_ENFORCE_EQ(subgraph.empty(),
@@ -506,6 +525,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                         std::to_string(0),
                         std::to_string(max_batch_size),
                         std::to_string(static_cast<int>(precision_mode)),
+                        use_cuda_graph,
                         false);
   auto calibration_engine_key =
       GenerateEngineKey(input_names_with_id,
@@ -513,6 +533,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                         std::to_string(0),
                         std::to_string(max_batch_size),
                         std::to_string(static_cast<int>(precision_mode)),
+                        use_cuda_graph,
                         true);
   auto predictor_id = Get<int>("predictor_id");
 
@@ -582,6 +603,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
            "recommend using the same TRT version at runtime.";
   }
 
+  std::unordered_set<const Node *> nodes2remove(
+      framework::ir::Agent(node).subgraph()->begin(),
+      framework::ir::Agent(node).subgraph()->end());
+  framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
+
+  bool all_nodes_offload_to_trt = AllNodesLowerToTrtPostProcess(graph);
+  if (all_nodes_offload_to_trt) {
+    LOG(INFO) << "The entire graph is offloaded to TensorRT.";
+  }
+
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
   // run fp16.
   // When running fp16, the output accuracy of the model will be affected,
@@ -617,6 +648,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
+  trt_engine->SetAllNodesLowerToTrt(all_nodes_offload_to_trt && use_cuda_graph);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
