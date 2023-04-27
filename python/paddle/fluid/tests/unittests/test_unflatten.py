@@ -232,7 +232,7 @@ class TestUnflattenTupleShape3(TestUnflattenAPI):
         self.shape_is_tensor = False
 
 
-# paddle.prod 不支持int16
+# paddle.prod 不支持 int16
 # class TestUnflattenShapeTensorInt16(TestUnflattenAPI):
 #     def set_args(self):
 #         self.x = np.random.rand(4, 6, 16).astype('float32')
