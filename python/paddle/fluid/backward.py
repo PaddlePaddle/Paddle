@@ -2376,11 +2376,11 @@ def _find_op_path_(
     return op_path
 
 
-def _calc_and_ret_grad_info_map(
+def calc_gradient_helper(
     targets, inputs, target_gradients=None, no_grad_set=None
 ):
     '''
-    This function is used in dy2st to get grad_info_map and then get grad var names
+    Calculate gradient and return grad_info_map
     '''
     targets = _as_list(targets)
     inputs = _as_list(inputs)
@@ -2535,9 +2535,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     """
 
     # NOTE: If you want to modify the logic of calc_gradient, please modify
-    # it inside the _calc_and_ret_grad_info_map and _get_grad_vars functions
+    # it inside the calc_gradient_helper and _get_grad_vars functions
     # to ensure the correctness of dy2st mode.
-    grad_info_map = _calc_and_ret_grad_info_map(
+    grad_info_map = calc_gradient_helper(
         targets,
         inputs,
         target_gradients=target_gradients,

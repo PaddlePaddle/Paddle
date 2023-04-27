@@ -643,7 +643,7 @@ class PartialProgramLayer:
                     (framework.Variable, list, tuple),
                     'paddle.static.gradients',
                 )
-                grad_info_map = backward._calc_and_ret_grad_info_map(
+                grad_info_map = backward.calc_gradient_helper(
                     targets=targets, inputs=[]
                 )
 
