@@ -53,9 +53,13 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "relu6",
                     "elu",
                     "selu",
+                    "silu",
                     "softsign",
                     "stanh",
                     "thresholded_relu",
+                    "celu",
+                    "logsigmoid",
+                    "tanh_shrink",
                     "softplus",
                 ]:
                     # few samples to reduce time
@@ -65,6 +69,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         for alpha in [0.67]:
                             self.dims = dims
                             dics = [{}]
+                            if op_type == "celu":
+                                dics = [{"alpha": 1.0}]
                             if op_type == "elu":
                                 dics = [{"alpha": alpha}]
                             if op_type == "selu":
