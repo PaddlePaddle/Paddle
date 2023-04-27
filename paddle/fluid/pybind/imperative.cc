@@ -63,6 +63,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
+PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
@@ -1064,7 +1065,19 @@ void BindImperative(py::module *m_ptr) {
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
+
+             bool set_to_1d = FLAGS_set_to_1d;
              if (!none_axes.empty()) {
+               if (set_to_1d) {
+                 // NOTE(zoooo0820): When all axes are decreased, the output
+                 // will be 1-D with FLAGS_set_to_1d=True. In this case, one
+                 // `None` should be pop out, otherwise the output shape will be
+                 // not correct.
+                 if (static_cast<int>(decrease_axis.size()) ==
+                     tensor->dims().size()) {
+                   none_axes.pop_back();
+                 }
+               }
                if (!none_axes.empty()) {
                  // Deal with cases that decrease_axes is not empty
                  // For example:
@@ -2139,6 +2152,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("OD", paddle::imperative::AmpLevel::OD)
       .value("O1", paddle::imperative::AmpLevel::O1)
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
