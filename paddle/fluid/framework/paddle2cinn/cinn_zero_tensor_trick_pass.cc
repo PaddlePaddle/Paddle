@@ -22,7 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-namespace ir {
+namespace paddle2cinn {
 
 void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
   // fix shape attr of these ops
@@ -32,7 +32,7 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
                                                           "assign_value",
                                                           "gaussian_random",
                                                           "set_value"};
-  for (const Node* n : graph->Nodes()) {
+  for (const ir::Node* n : graph->Nodes()) {
     if (n->IsOp() && op_cases_fix_attr.count(n->Op()->Type())) {
       if (n->Op()->HasAttr("shape")) {
         auto attr_type = n->Op()->GetAttrType("shape");
@@ -70,9 +70,9 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(cinn_zero_tensor_trick_pass,
-              paddle::framework::ir::CinnZeroTensorTrickPass);
+              paddle::framework::paddle2cinn::CinnZeroTensorTrickPass);

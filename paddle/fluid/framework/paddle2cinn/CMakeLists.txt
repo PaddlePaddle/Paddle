@@ -64,6 +64,20 @@ if(WITH_TESTING)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
+  cc_test_old(
+    cinn_zero_tensor_trick_pass_test
+    SRCS
+    cinn_zero_tensor_trick_pass_test.cc
+    DEPS
+    build_cinn_pass
+    cinn_compiler
+    op_registry
+    elementwise_add_op
+    generated_op)
+  set_tests_properties(cinn_zero_tensor_trick_pass_test
+                       PROPERTIES LABELS "RUN_TYPE=CINN")
+  target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
+
   cc_test_old(transform_desc_test SRCS transform_desc_test.cc DEPS
               transform_desc)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")

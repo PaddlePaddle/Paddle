@@ -19,15 +19,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-namespace ir {
+namespace paddle2cinn {
 
 class Graph;
 
-class CinnZeroTensorTrickPass : public Pass {
+class CinnZeroTensorTrickPass : public framework::ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace ir
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
