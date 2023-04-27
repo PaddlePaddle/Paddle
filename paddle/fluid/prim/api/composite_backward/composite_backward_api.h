@@ -1807,6 +1807,32 @@ void roll_grad(const Tensor& x,
 }
 
 template <typename T>
+void pad_grad(const Tensor& input,
+              const Tensor& out_grad,
+              const std::vector<int>& paddings,
+              const Scalar& pad_value,
+              Tensor* input_grad) {
+  if (input_grad) {
+    size_t rank = input.dims().size();
+    auto out_dims = out_grad.dims();
+
+    std::vector<int> starts(rank, 0);
+    std::vector<int64_t> ends(rank, 0);
+    std::vector<int64_t> axes(rank, 0);
+    std::vector<int64_t> infer_flags(rank, 1);
+    std::vector<int64_t> decrease_axis({});
+    for (size_t i = 0; i < rank; ++i) {
+      starts.push_back(static_cast<int>(paddings[2 * i]));
+      ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
+      axes.push_back(i);
+    }
+    auto out_tmp =
+        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
+    set_output<T>(out_tmp, input_grad);
+  }
+}
+
+template <typename T>
 void scatter_nd_add_grad(const Tensor& index,
                          const Tensor& updates,
                          const Tensor& out_grad,
@@ -1821,5 +1847,6 @@ void scatter_nd_add_grad(const Tensor& index,
     set_output<T>(tmp_updates_grad, updates_grad);
   }
 }
+
 }  // namespace prim
 }  // namespace paddle
