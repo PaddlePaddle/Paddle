@@ -679,6 +679,14 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     return out, ret_mean_, ret_var_
 
 
+@REGISTER_COMPOSITE('sum')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans
+
+
 @REGISTER_COMPOSITE('leaky_relu')
 def leaky_relu_composite(x, negative_slope):
     """define composite rule of op leaky_relu."""
