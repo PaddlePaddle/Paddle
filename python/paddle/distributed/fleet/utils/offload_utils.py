@@ -17,6 +17,7 @@ import logging
 import paddle
 from paddle.fluid import unique_name, core
 from paddle.fluid.framework import Program
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
 logger = logging.getLogger(__name__)
