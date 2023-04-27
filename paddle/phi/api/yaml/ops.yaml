@@ -329,6 +329,15 @@
     func : bmm
   backward : bmm_grad
 
+- op : box_coder
+  args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
+  output : Tensor(output_box)
+  infer_meta :
+    func : BoxCoderInferMeta
+  kernel :
+    func : box_coder
+  optional : prior_box_var
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
@@ -376,6 +385,15 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : class_center_sample
+  args : (Tensor label, int num_classes, int num_samples, int ring_id = 0, int rank = 0, int nranks = 1, bool fix_seed = false, int seed = 0)
+  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
+  infer_meta :
+    func : ClassCenterSampleInferMeta
+  kernel :
+    func : class_center_sample
+    data_type : label
 
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -1253,6 +1271,24 @@
     func : matrix_power
   backward : matrix_power_grad
 
+- op : max_pool2d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool2d_with_index
+  backward : max_pool2d_with_index_grad
+
+- op : max_pool3d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool3d_with_index
+  backward : max_pool3d_with_index_grad
+
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)
@@ -1402,6 +1438,16 @@
   backward : nearest_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+
+- op : nextafter
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param: [x, y]
+  kernel :
+    func : nextafter
+    data_type : x
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
@@ -2015,6 +2061,16 @@
   kernel :
     func : trace
   backward : trace_grad
+
+- op : triangular_solve
+  args : (Tensor x, Tensor y, bool upper=true, bool transpose=false, bool unitriangular=false)
+  output : Tensor
+  infer_meta :
+    func : TriangularSolveInferMeta
+  kernel :
+    func : triangular_solve
+    data_type : x
+  backward : triangular_solve_grad
 
 - op : trilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)

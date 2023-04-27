@@ -45,6 +45,8 @@ class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "sum"
         self.python_api = sum_wrapper
+        self.public_python_api = paddle.add_n
+        self.prim_op_type = "comp"
         self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
@@ -60,10 +62,10 @@ class TestSumOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x0'], 'Out', check_prim=True)
 
 
 class TestSelectedRowsSumOp(unittest.TestCase):
