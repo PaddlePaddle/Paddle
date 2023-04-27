@@ -117,7 +117,7 @@ def naive_offload_decorate(program, executor, scope=None):
 
     executor.run(offload_program, scope=scope)
     # TODO clear the GPU allocation of the gpu var
-    scope.clear([var.name for var in vars_to_offload])
+    scope.erase([var.name for var in vars_to_offload])
     logger.info(
         "After Offload, GPU Allocated Memory: {} MB.".format(
             current_allocated_mem_in_mb()
@@ -130,7 +130,7 @@ def naive_offload_decorate(program, executor, scope=None):
     for gpu_var in vars_to_offload:
 
         cpu_var_name = gpu_var_name_to_cpu_var_names[gpu_var.name]
-        cpu_var = offload_block.create_var(
+        cpu_var = original_block.create_var(
             name=cpu_var_name,
             shape=gpu_var.shape,
             dtype=gpu_var.dtype,
