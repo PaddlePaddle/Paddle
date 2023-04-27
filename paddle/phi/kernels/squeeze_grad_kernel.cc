@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const IntArray& axes,
+                       const IntArray& axes UNUSED,
                        DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
   dx->can_not_uses = xx.can_not_uses;

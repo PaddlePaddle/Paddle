@@ -47,7 +47,7 @@ void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
                      DenseTensor* out,
-                     DenseTensor* xshape) {
+                     DenseTensor* xshape UNUSED) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
   if (*out->canNotUse == false) {

@@ -26,7 +26,7 @@ namespace phi {
 template <typename T, typename Context>
 void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const IntArray& axes,
+                        const IntArray& axes UNUSED,
                         DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->can_not_uses = xx.can_not_uses;
@@ -55,7 +55,7 @@ void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out,
-                   DenseTensor* xshape) {
+                   DenseTensor* xshape UNUSED) {
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
