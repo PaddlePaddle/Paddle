@@ -689,5 +689,6 @@ __all__ = [  # noqa
     'cumulative_trapezoid',
     'polar',
     'vander',
+    'nextafter',
     'unflatten',
 ]

@@ -541,6 +541,7 @@ tensor_method_func = [  # noqa
     'sigmoid',
     'sigmoid_',
     'vander',
+    'nextafter',
     'unflatten',
 ]
 
