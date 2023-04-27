@@ -91,7 +91,8 @@ void TraceGradKernel(const Context& ctx,
   auto input_dims = in_grad->dims();
   auto input_stride = phi::stride(input_dims);
   auto output_dims = out_grad.dims();
-  auto output_stride = phi::stride(output_dims);
+  auto output_stride = output_dims.size() == 0 ? phi::DDim(output_dims)
+                                               : phi::stride(output_dims);
 
   auto* out_data = out_grad.data<T>();
   T* x_data = ctx.template Alloc<T>(in_grad);

@@ -60,10 +60,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(set_to_1d);
+PHI_DECLARE_bool(set_to_1d);
 
 namespace paddle {
 namespace pybind {
