@@ -2342,7 +2342,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.shape, [])
 
         x2 = paddle.full([], 3)
-        x3 = paddle.full([], 0, dtype='int32')
+        x3 = paddle.full([1], 0, dtype='int32')
         x2.stop_gradient = False
         x2.retain_grads()
         out2 = paddle.squeeze(x2, axis=x3)
