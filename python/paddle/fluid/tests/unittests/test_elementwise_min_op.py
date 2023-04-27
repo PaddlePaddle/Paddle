@@ -83,6 +83,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
                 check_dygraph=False,
+                check_prim=True,
             )
         else:
             self.check_grad(
@@ -336,16 +337,26 @@ class TestElementwiseBF16Op(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', numeric_grad_delta=0.05)
+        self.check_grad(
+            ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', numeric_grad_delta=0.05, no_grad_set=set("X")
+            ['Y'],
+            'Out',
+            numeric_grad_delta=0.05,
+            no_grad_set=set("X"),
+            check_prim=True,
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.05,
+            no_grad_set=set('Y'),
+            check_prim=True,
         )
 
 
