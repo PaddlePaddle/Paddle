@@ -24,4 +24,4 @@
 #include "paddle/phi/kernels/impl/erfinv_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    erfinv_grad, GPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double, float16) {}
+    erfinv_grad, GPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double, phi::dtype::float16) {}
