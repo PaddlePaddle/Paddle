@@ -457,13 +457,13 @@ void Tensor::CopyToCpuImpl(T *data,
     auto custom_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
+    dev_ctx->Wait();
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data),
                          custom_place,
                          t_data,
                          ele_num * sizeof(T),
                          dev_ctx->stream());
-// TODO(wangran16): sync_stream
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
