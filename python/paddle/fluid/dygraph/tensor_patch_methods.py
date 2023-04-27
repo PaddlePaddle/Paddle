@@ -275,8 +275,6 @@ def monkey_patch_tensor():
                 # 4: [5000.]
 
         """
-        from paddle.distributed.parallel import scale_loss
-
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -306,30 +304,15 @@ def monkey_patch_tensor():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu():
-                # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
-                scaled_loss = scale_loss(self)
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward(
-                        [scaled_loss], grad_tensor, retain_graph
-                    )
-                else:
-                    core.dygraph_run_backward(
-                        [scaled_loss],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
+            if framework.global_var._in_eager_mode_:
+                core.eager.run_backward([self], grad_tensor, retain_graph)
             else:
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward([self], grad_tensor, retain_graph)
-                else:
-                    core.dygraph_run_backward(
-                        [self],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
+                core.dygraph_run_backward(
+                    [self],
+                    [grad_tensor],
+                    retain_graph,
+                    framework._dygraph_tracer(),
+                )
             if in_profiler_mode():
                 record_event.end()
         else:
