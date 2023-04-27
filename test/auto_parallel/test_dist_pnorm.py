@@ -125,6 +125,8 @@ class TestDistPNormDP(TestDistPNorm):
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
                     assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
+                    print("=======")
+                    print(output_attr.dims_mapping)
                     assert set(output_attr.dims_mapping) == {}
             if op.type == 'c_allgather':
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
