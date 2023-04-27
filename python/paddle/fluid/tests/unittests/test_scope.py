@@ -31,7 +31,7 @@ class TestScope(unittest.TestCase):
         local_var_names = scope.local_var_names()
         self.assertEqual(len(var_names), len(local_var_names))
 
-        var_names_to_cleared = [var_names[0], var_names[1], var_names[2]]
+        var_names_to_cleared = [var_names[0], var_names[2]]
         scope.clear(var_names_to_cleared)
 
         for var_name in local_var_names:
