@@ -391,7 +391,8 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     if in_dygraph_mode():
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def pow(x, y, name=None):
     """
     Compute the power of Tensor elements. The equation is:
@@ -547,7 +548,8 @@ def _elementwise_op(helper):
     )
     return helper.append_activation(out)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def add(x, y, name=None):
     """
     Elementwise Add Operator.
@@ -610,6 +612,7 @@ def add(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@print_utils.print_args
 def add_(x, y, name=None):
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
@@ -706,7 +709,8 @@ def subtract_(x, y, name=None):
 
     return _C_ops.subtract_(x, y)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def divide(x, y, name=None):
     """
     Divide two tensors element-wise. The equation is:
@@ -846,7 +850,8 @@ def remainder_(x, y, name=None):
 mod = remainder  # noqa: F841
 floor_mod = remainder  # noqa: F841
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
@@ -1234,7 +1239,8 @@ def fmin(x, y, name=None):
     else:
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.

@@ -132,6 +132,7 @@ class XavierInitializer(Initializer):
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
                 place = _current_expected_place()
+                print("{{function_name: guassian, inputs: {{ }} , params: [shape: {}, mean: {}, std: {}, seed: {}, dtype: {} ] }}".format(str(out_var.shape), str(0.0), str(std), str(self._seed), str(out_dtype)), flush=True)
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
                 )

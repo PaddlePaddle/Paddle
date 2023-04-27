@@ -25,6 +25,8 @@ from ...fluid.layer_helper import LayerHelper
 __all__ = []
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes

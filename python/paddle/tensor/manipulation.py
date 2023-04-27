@@ -153,7 +153,8 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         )
         return out, out_index
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def cast(x, dtype):
     """
 
@@ -229,7 +230,8 @@ def cast(x, dtype):
         )
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def slice(input, axes, starts, ends):
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
@@ -414,7 +416,8 @@ def slice(input, axes, starts, ends):
 
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -847,7 +850,10 @@ def crop(x, shape=None, offsets=None, name=None):
     return out
 
 
+
+from paddle.utils import print_utils
 @dygraph_only
+@print_utils.print_args
 def fill_(x, value):
     """
     **Notes**:
@@ -1068,7 +1074,8 @@ def tolist(x):
     # TODO(zhouwei): will remove 0D Tensor.numpy() hack
     return x.numpy(False).tolist()
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def concat(x, axis=0, name=None):
     """
 
@@ -1741,7 +1748,8 @@ def roll(x, shifts, axis=None, name=None):
             )
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def stack(x, axis=0, name=None):
     """
     Stacks all the input tensors ``x`` along ``axis`` dimemsion.
@@ -1893,7 +1901,8 @@ def stack(x, axis=0, name=None):
 
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def split(x, num_or_sections, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
@@ -2529,7 +2538,8 @@ def unique(
 
         return tuple(outs)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def unsqueeze(x, axis, name=None):
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
@@ -3472,7 +3482,8 @@ def expand(x, shape, name=None):
         )
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its data.
@@ -3634,7 +3645,8 @@ def reshape(x, shape, name=None):
 
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 @inplace_apis_in_dygraph_only
 def reshape_(x, shape, name=None):
     """
@@ -3767,7 +3779,8 @@ def gather_nd(x, index, name=None):
         )
         return output
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def strided_slice(x, axes, starts, ends, strides, name=None):
     """
     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:

@@ -23,7 +23,8 @@ from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def _c_identity(tensor, group=None):
     """
     Return a copy of the tensor, mainly used with model parallel.
@@ -371,7 +372,8 @@ class _Linear(Layer):
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def _c_softmax_with_cross_entropy(
     logits,
     label,
