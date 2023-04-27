@@ -195,6 +195,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  std::cout<<"{flash_attention " << "{inputs{ "<< "q.shape: "<<q.dims()<< "k.shape: "<<k.dims()<< "v.shape: "<<v.dims()<<" }"<<std::endl;
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
