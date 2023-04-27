@@ -4752,8 +4752,8 @@ def index_add_(x, index, axis, value, name=None):
 
 def unflatten(x, shape, axis, name=None):
 
-    check_variable_and_dtype(
-        x,
+    check_dtype(
+        x.dtype,
         'x',
         [
             'uint8',
@@ -4777,11 +4777,17 @@ def unflatten(x, shape, axis, name=None):
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
         )
     elif isinstance(shape, Variable):
+        check_dtype(
+            shape.dtype,
+            'shape',
+            ['int32'],
+            'unflatten',
+        )
         new_shape = paddle.concat(
             [
-                paddle.to_tensor(x.shape[:axis], dtype=shape.dtype),
+                paddle.shape(x)[:axis],
                 shape,
-                paddle.to_tensor(x.shape[axis + 1 :], dtype=shape.dtype),
+                paddle.shape(x)[axis + 1 :],
             ]
         )
     else:
