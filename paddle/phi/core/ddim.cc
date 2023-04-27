@@ -154,7 +154,7 @@ DDim flatten_to_1d(const DDim& src) { return DDim({product(src)}); }
 DDim stride(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = 1;
+  if (ddim.size() > 0) strides[ddim.size() - 1] = 1;
   for (int i = ddim.size() - 2; i >= 0; --i) {
     strides[i] = strides[i + 1] * ddim[i + 1];
   }
@@ -164,7 +164,7 @@ DDim stride(const DDim& ddim) {
 DDim stride_numel(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = ddim[ddim.size() - 1];
+  if (ddim.size() > 0) strides[ddim.size() - 1] = ddim[ddim.size() - 1];
   for (int i = ddim.size() - 2; i >= 0; --i) {
     strides[i] = strides[i + 1] * ddim[i];
   }

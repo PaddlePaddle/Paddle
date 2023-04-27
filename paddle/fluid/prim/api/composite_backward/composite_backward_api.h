@@ -1774,22 +1774,7 @@ void tile_grad(const Tensor& x,
   if (x_grad) {
     auto repeat_times_data = repeat_times.GetData();
     auto out_grad_shape = phi::vectorize<int>(out_grad.dims());
-    auto x_shape = phi::vectorize<int>(x.dims());
-
-    if (repeat_times_data.size() < x_shape.size()) {
-      int diff = x_shape.size() - repeat_times_data.size();
-      repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
-    } else {
-      int diff = repeat_times_data.size() - x_shape.size();
-      x_shape.insert(x_shape.begin(), diff, 1);
-    }
-    for (int i = 0; i < static_cast<int>(out_grad_shape.size()); i++) {
-      if (out_grad_shape[i] == -1) {
-        out_grad_shape[i] = x_shape[i] * repeat_times_data[i];
-      }
-    }
-    auto result = reshape<T>(out_grad, out_grad_shape);
-
+    auto result = out_grad;
     for (int i = 0; i < static_cast<int>(repeat_times_data.size()); i++) {
       int size = out_grad_shape[i] / repeat_times_data[i];
       std::vector<int> sections(repeat_times_data[i], size);
@@ -1820,5 +1805,48 @@ void roll_grad(const Tensor& x,
     set_output<T>(x_grad_output, x_grad);
   }
 }
+
+template <typename T>
+void pad_grad(const Tensor& input,
+              const Tensor& out_grad,
+              const std::vector<int>& paddings,
+              const Scalar& pad_value,
+              Tensor* input_grad) {
+  if (input_grad) {
+    size_t rank = input.dims().size();
+    auto out_dims = out_grad.dims();
+
+    std::vector<int> starts(rank, 0);
+    std::vector<int64_t> ends(rank, 0);
+    std::vector<int64_t> axes(rank, 0);
+    std::vector<int64_t> infer_flags(rank, 1);
+    std::vector<int64_t> decrease_axis({});
+    for (size_t i = 0; i < rank; ++i) {
+      starts.push_back(static_cast<int>(paddings[2 * i]));
+      ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
+      axes.push_back(i);
+    }
+    auto out_tmp =
+        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
+    set_output<T>(out_tmp, input_grad);
+  }
+}
+
+template <typename T>
+void scatter_nd_add_grad(const Tensor& index,
+                         const Tensor& updates,
+                         const Tensor& out_grad,
+                         Tensor* x_grad,
+                         Tensor* updates_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+  if (updates_grad) {
+    // Gradient by Gather: dUpdates = dO[Ids]
+    auto tmp_updates_grad = gather_nd<T>(out_grad, index);
+    set_output<T>(tmp_updates_grad, updates_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

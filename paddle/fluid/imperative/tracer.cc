@@ -32,10 +32,11 @@
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
-DECLARE_string(tracer_mkldnn_ops_on);
-DECLARE_string(tracer_mkldnn_ops_off);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_string(tracer_mkldnn_ops_on);
+PHI_DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace paddle {
 namespace imperative {
