@@ -1184,10 +1184,12 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 into trt.
+        // At present, only support float32 or float16 or int32 or int64 into
+        // trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
-              dtype == framework::proto::VarType::INT32)) {
+              dtype == framework::proto::VarType::INT32 ||
+              dtype == framework::proto::VarType::INT64)) {
           return false;
         }
       }
