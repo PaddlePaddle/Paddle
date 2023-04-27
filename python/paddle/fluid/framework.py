@@ -3988,6 +3988,9 @@ class Block:
         """
         op_type = kwargs.get("type", None)
         if _non_static_mode():
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
+
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
             import warnings
@@ -4052,27 +4055,28 @@ class Block:
                 'while',
                 'while_grad',
             }
-            for k, v in outputs.items():
-                if isinstance(v, Variable):
-                    if v.is_view_var:
-                        import warnings
-                        import inspect
+            if outputs is not None:
+                for k, v in outputs.items():
+                    if isinstance(v, Variable):
+                        if v.is_view_var:
+                            import warnings
+                            import inspect
 
-                        warnings.warn(
-                            'Write view var check 2: %s write view var %s, call stack: %s'
-                            % (op_type, k, inspect.stack())
-                        )
-                elif isinstance(v, list):
-                    for var in v:
-                        if isinstance(v, Variable):
-                            if var.is_view_var:
-                                import warnings
-                                import inspect
+                            warnings.warn(
+                                'Write view var check 2: %s write view var %s, call stack: %s'
+                                % (op_type, k, inspect.stack())
+                            )
+                    elif isinstance(v, list):
+                        for var in v:
+                            if isinstance(v, Variable):
+                                if var.is_view_var:
+                                    import warnings
+                                    import inspect
 
-                                warnings.warn(
-                                    'Write view var check 3: %s write view var %s, call stack: %s'
-                                    % (op_type, k, inspect.stack())
-                                )
+                                    warnings.warn(
+                                        'Write view var check 3: %s write view var %s, call stack: %s'
+                                        % (op_type, k, inspect.stack())
+                                    )
 
             if op_type not in ignore_ops:
                 pass_stop_gradient(inputs, outputs)
@@ -4088,205 +4092,206 @@ class Block:
 
             self.ops.append(op)
         if op_type == "slice":
-            if isinstance(inputs["Input"], list):
+            if inputs is not None and isinstance(inputs["Input"], list):
                 if hasattr(inputs["Input"][0], "is_view_var"):
                     inputs["Input"][0].is_view_var = True
             else:
                 if hasattr(inputs["Input"], "is_view_var"):
                     inputs["Input"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "strided_slice":
-            if isinstance(inputs["Input"], list):
+            if inputs is not None and isinstance(inputs["Input"], list):
                 if hasattr(inputs["Input"][0], "is_view_var"):
                     inputs["Input"][0].is_view_var = True
             else:
                 if hasattr(inputs["Input"], "is_view_var"):
                     inputs["Input"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "split":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            for out in outputs["Out"]:
-                if hasattr(out, "is_view_var"):
-                    out.is_view_var = True
+            if outputs is not None:
+                for out in outputs["Out"]:
+                    if hasattr(out, "is_view_var"):
+                        out.is_view_var = True
         elif op_type == "unsqueeze" or op_type == "unsqueeze2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "share_data":  # detach
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "squeeze" or op_type == "squeeze2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "expand" or op_type == "expand_v2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "expand_as" or op_type == "expand_as_v2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "transpose" or op_type == "transpose2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "unbind":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "diagonal":
-            if isinstance(inputs["Input"], list):
+            if inputs is not None and isinstance(inputs["Input"], list):
                 if hasattr(inputs["Input"][0], "is_view_var"):
                     inputs["Input"][0].is_view_var = True
             else:
                 if hasattr(inputs["Input"], "is_view_var"):
                     inputs["Input"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "flatten":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "imag":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "real":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "reshape" or op_type == "reshape2":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
                 if hasattr(outputs["Out"], "is_view_var"):
                     outputs["Out"].is_view_var = True
         elif op_type == "as_real":
-            if isinstance(inputs["X"], list):
+            if inputs is not None and isinstance(inputs["X"], list):
                 if hasattr(inputs["X"][0], "is_view_var"):
                     inputs["X"][0].is_view_var = True
             else:
                 if hasattr(inputs["X"], "is_view_var"):
                     inputs["X"].is_view_var = True
-            if isinstance(outputs["Out"], list):
+            if outputs is not None and isinstance(outputs["Out"], list):
                 if hasattr(outputs["Out"][0], "is_view_var"):
                     outputs["Out"][0].is_view_var = True
             else:
