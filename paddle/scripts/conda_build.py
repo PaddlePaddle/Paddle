@@ -124,7 +124,7 @@ pip install paddle_bfloat==0.1.7 -f C:\package
     - cudnn>=8.4, <8.5
     """
         self.cuda_info = [
-            (self.cuda102, "cuda10.2", "post102"),
+            (self.cuda102, "cuda10.2", ".post102"),
             (self.cuda112, "cuda11.2", ""),
             (self.cuda116, "cuda11.6", ".post116"),
             (self.cuda117, "cuda11.7", ".post117"),
