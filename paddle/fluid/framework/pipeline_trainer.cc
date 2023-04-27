@@ -107,16 +107,16 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (int j = 0; j < num_microbatches_; ++j) {
     microbatch_scopes_[j] = &minibatch_scope_->NewScope();
     CopyParameters(j, *program, place_);
-  	auto& global_block = program.Block(0);
+    auto& global_block = program->Block(0);
 
-  	for (auto& var : global_block.AllVars()) {
-  	  if (var->Persistable() && microbatch_id == 0) {
-  	    VLOG(1) << "Section worker create persistable var: " << var->Name();
-  	  } else if (!var->Persistable()) {
-  	    VLOG(1) << "Section worker create variable " << var->Name() << " for microbatch "
-  	            << microbatch_id;
-  	  }
-  	}
+    for (auto& var : global_block.AllVars()) {
+      if (var->Persistable() && j == 0) {
+        VLOG(1) << "Section worker create persistable var: " << var->Name();
+      } else if (!var->Persistable()) {
+        VLOG(1) << "Section worker create variable " << var->Name()
+                << " for microbatch " << j;
+      }
+    }
   }
 
   auto this_worker =
