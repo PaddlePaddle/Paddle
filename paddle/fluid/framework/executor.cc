@@ -569,7 +569,30 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       platform::RecordEvent record(
           "CheckGC", platform::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
+
+      /*
+      auto iter = ctx->unused_vars_.find(op.get());
+      if (iter != ctx->unused_vars_.end()) {
+        const std::vector<std::string>& delete_vars = iter->second;
+        for (const std::string& var_name : delete_vars) {
+          VLOG(1) << "Executor GC: " << var_name;
+        }
+      }
+      */
     }
+    /*
+      VLOG(1) << "End run " << place_ << " " << i << "" << op->DebugStringEx(local_scope);
+      VLOG(1) << "memory_allocated: "
+              << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                    "Allocated", place_.device)) /
+                    1024 / 1024
+              << " MB";
+      VLOG(1) << "max_memory_allocated: "
+              << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                    "Allocated", place_.device)) /
+                    1024 / 1024
+              << " MB";
+              */
   }
 
   auto callback = [scope, local_scope, keep_kids]() {
