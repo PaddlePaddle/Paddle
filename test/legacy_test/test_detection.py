@@ -171,10 +171,10 @@ class TestMulticlassNMS2(unittest.TestCase):
             scores = paddle.static.data(
                 name='scores', shape=[-1, 10], dtype='float32'
             )
-            output = fluid.contrib.multiclass_nms2(
+            output = paddle.incubate.layers.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7
             )
-            output2, index = fluid.contrib.multiclass_nms2(
+            output2, index = paddle.incubate.layers.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7, return_index=True
             )
             self.assertIsNotNone(output)

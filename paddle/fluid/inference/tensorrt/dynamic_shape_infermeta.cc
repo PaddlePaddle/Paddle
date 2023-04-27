@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
 namespace paddle {
@@ -322,20 +322,51 @@ nvinfer1::DimsExprs PNormInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  const nvinfer1::DimsExprs x_dim = inputs[0];
-  std::vector<const nvinfer1::IDimensionExpr*> reduce_dims;
-  std::vector<const nvinfer1::IDimensionExpr*> keep_dims;
-
   bool asvector = PADDLE_GET_CONST(bool, op_desc.GetAttr("asvector"));
   bool keepdim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keepdim"));
   int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
 
+  auto x_dim = inputs[0];
+  auto x_rank = x_dim.nbDims;
+
+  PADDLE_ENFORCE_GE(axis,
+                    -x_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis,
+                        x_rank,
+                        x_dim.d));
+  PADDLE_ENFORCE_LT(axis,
+                    x_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis,
+                        x_rank,
+                        x_dim.d));
+
+  // TODO(liuyuanle): support asvector = True
+  PADDLE_ENFORCE_EQ(
+      asvector,
+      false,
+      phi::errors::InvalidArgument(
+          "p_norm only support asvector=false, but received asvector: %d.",
+          asvector));
+
+  std::vector<const nvinfer1::IDimensionExpr*> reduce_dims;
+
   if (asvector) {
     reduce_dims.emplace_back(expr_builder.constant(1));
-    keep_dims.emplace_back(expr_builder.constant(1));
     if (keepdim) {
       for (int i = 1; i < x_dim.nbDims; ++i) {
-        keep_dims.emplace_back(expr_builder.constant(1));
+        reduce_dims.emplace_back(expr_builder.constant(1));
+      }
+      x_dim.nbDims = reduce_dims.size();
+      for (size_t i = 0; i < reduce_dims.size(); i++) {
+        x_dim.d[i] = reduce_dims[i];
       }
     }
   } else {
@@ -347,12 +378,11 @@ nvinfer1::DimsExprs PNormInferMeta(
       reduce_dims.emplace_back(expr_builder.constant(1));
     }
   }
-  keep_dims[axis] = expr_builder.constant(1);
+  x_dim.d[axis] = expr_builder.constant(1);
 
   nvinfer1::DimsExprs output;
   if (keepdim) {
-    output.nbDims = keep_dims.size();
-    for (int i = 0; i < output.nbDims; i++) output.d[i] = keep_dims[i];
+    output = x_dim;
   } else {
     output.nbDims = reduce_dims.size();
     for (int i = 0; i < output.nbDims; i++) output.d[i] = reduce_dims[i];
@@ -396,6 +426,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

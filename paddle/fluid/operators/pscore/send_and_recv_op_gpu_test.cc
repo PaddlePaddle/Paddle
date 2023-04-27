@@ -39,7 +39,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
 USE_OP_ITSELF(scale);
-USE_OP(send_and_recv);
+PD_DECLARE_KERNEL(send_and_recv, GPU, ALL_LAYOUT);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
 
