@@ -51,7 +51,7 @@ __global__ void EmbeddingGrad(T* table,
                               const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
-  
+
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
     const T* out = output + idy * D;
@@ -81,7 +81,7 @@ __global__ void EmbeddingGrad_fp16(float* table,
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
     const T* out = output + idy * D;
-    T* tab = table + id * D;
+    float* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
     for (int i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], static_cast<float>(out[i]));
@@ -152,7 +152,7 @@ struct EmbeddingGradCUDAFunctor {
                 d_table, d_output, ids, N, K, D);
           } else {
             DenseTensor tmp_table = phi::Cast<phi::dtype::float16, Context>(
-                                        dev_ctx_, *weight_grad_, 
+                                        dev_ctx_, *weight_grad_,
                                             DataType::FLOAT32);
             float* d_table_tmpf = tmp_table.template data<float>();
   #ifdef PADDLE_WITH_HIP
@@ -167,14 +167,14 @@ struct EmbeddingGradCUDAFunctor {
             EmbeddingGrad_fp16<T, IdT><<<
                 grids, threads, 0, dev_ctx_.stream()>>>(
                       d_table_tmpf, d_output, ids, N, K, D);
-            DenseTensor tmp_table_back = 
+            DenseTensor tmp_table_back =
                 phi::Cast<float, Context>(
                       dev_ctx_, tmp_table, DataType::FLOAT16);
             phi::dtype::float16 *d_table_tmph =
                 tmp_table_back.template data<phi::dtype::float16>();
-            cudaMemcpy(d_table, d_table_tmph, 
+            cudaMemcpy(d_table, d_table_tmph,
                 sizeof(phi::dtype::float16) * N * D, cudaMemcpyDeviceToDevice);
-          } 
+          }
           } else {
           EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
               d_table, d_output, ids, N, K, D);
