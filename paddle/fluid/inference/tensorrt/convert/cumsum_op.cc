@@ -78,10 +78,17 @@ class CumsumOpConverter : public OpConverter {
         concat_shape.push_back(GetEleTensorOfShape(input_x_shape, i));
       }
     }
+    std::string name = "_cumsum_op_";
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
+    std::vector<float> value_vec(1, 0);
+    std::vector<float> beta_vec(rank - 1, 0.);
+    layer->setAlpha(0);
+    layer->setBeta(0.f);
     layer->setInput(0, *Concat(concat_shape));
     auto* inputSliced_output = layer->getOutput(0);
+    layer->setInput(1, *Add1DConstantLayer(value_vec, name + "alpha", true));
+    layer->setInput(2, *Add1DConstantLayer(beta_vec, name + "beta", false));
 
     // creat ZeroTensor
     std::vector<float> zero_vec{0.f};
