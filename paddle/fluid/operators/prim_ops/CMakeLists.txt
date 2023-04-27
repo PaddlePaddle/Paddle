@@ -41,5 +41,3 @@ set(PRIM_OP_SRCS
     cast_p_op.cc
     rsqrt_p_op.cc
     uniform_random_p_op.cc)
-
-cc_test_old(prim_op_test SRCS prim_op_test.cc ${PRIM_OP_SRCS} DEPS op_registry)
