@@ -46,7 +46,7 @@ class TestSumOp(OpTest):
         self.op_type = "sum"
         self.python_api = sum_wrapper
         self.public_python_api = paddle.add_n
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
