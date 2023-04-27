@@ -246,6 +246,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     val,
                     name,
                     [
+                        'uint16',
                         'float16',
                         'float32',
                         'float64',
@@ -414,7 +415,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if axis is not None:
                 check_type(axis, 'axis', (int), 'p_norm')
             check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'p_norm'
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
             )
 
             attrs = {
@@ -1111,10 +1115,16 @@ def dot(x, y, name=None):
         assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], op_type
+            y,
+            'y',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
 
         helper = LayerHelper(op_type, **locals())
@@ -1373,13 +1383,13 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
@@ -1504,7 +1514,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, hermitian, use_default_tol)
+        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
     else:
         inputs = {}
         attrs = {}
@@ -1799,7 +1809,7 @@ def det(x, name=None):
     if in_dygraph_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
@@ -2488,7 +2498,7 @@ def multi_dot(x, name=None):
             check_variable_and_dtype(
                 item,
                 'x[' + str(id) + ']',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'multi_dot',
             )
             if item.dtype != x[0].dtype:

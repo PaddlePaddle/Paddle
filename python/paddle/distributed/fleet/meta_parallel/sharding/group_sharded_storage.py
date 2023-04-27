@@ -78,7 +78,7 @@ class InternalStorage:
         if self._device != device:
             tmp_buffer = (
                 cvt_to_device(self.buffer, self.dev_id)
-                if device in ["gpu", "xpu", "npu"]
+                if device in ["gpu", "xpu"]
                 else self.buffer.cpu()
             )
             for param in self._params:

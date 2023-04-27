@@ -55,7 +55,6 @@ class DeviceMode:
     GPU = 1
     KUNLUN = 2
     XPU = 2
-    ASCEND_NPU = 3
     UNKNOWN = 3
 
 
@@ -299,10 +298,7 @@ def get_cluster(
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if (
-                device_mode == DeviceMode.GPU
-                or device_mode == DeviceMode.ASCEND_NPU
-            ):
+            if device_mode == DeviceMode.GPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                     pod.accelerators.extend(devices_per_proc[i])
@@ -546,13 +542,6 @@ def start_local_trainers(
                 [str(g) for g in t.accelerators]
             )
 
-        elif (
-            len(t.accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU
-        ):
-            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
-                [str(g) for g in t.accelerators]
-            )
-
         if len(t.accelerators) > 0:
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators]
@@ -596,9 +585,9 @@ def start_local_trainers(
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
-            os.system(f"mkdir -p {log_dir}")
+            os.makedirs(log_dir, exist_ok=True)
             if os.path.exists("%s/endpoints.log" % log_dir):
-                os.system(f"rm -f {log_dir}/endpoints.log")
+                os.remove(f"{log_dir}/endpoints.log")
             with open("%s/endpoints.log" % log_dir, "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
@@ -760,40 +749,6 @@ def get_xpus(xpus):
     return res_xpus
 
 
-def get_npus(npus):
-    if npus is None:
-        npus_num = framework.core.get_npu_device_count()
-        res_npus = [str(x) for x in range(0, npus_num)]
-    else:
-        npu_visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        if npu_visible_devices is None or npu_visible_devices == "":
-            res_npus = [x.strip() for x in npus.split(',')]
-        else:
-            # change npus into relative values
-            # e.g. ASCEND_VISIBLE_DEVICES=4,5,6,7; args.npus=4,5,6,7;
-            # therefore npus=0,1,2,3
-            npu_visible_devices_list = npu_visible_devices.split(',')
-            for x in npus.split(','):
-                assert x in npu_visible_devices_list, (
-                    "Can't find "
-                    "your npus %s in ASCEND_VISIBLE_DEVICES[%s]."
-                    % (x, npu_visible_devices)
-                )
-            res_npus = [
-                npu_visible_devices_list.index(x.strip())
-                for x in npus.split(',')
-            ]
-            logger.info(
-                "Change selected_npus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "ASCEND_VISIBLE_DEVICES:{}".format(
-                    npus, res_npus, npu_visible_devices_list
-                )
-            )
-
-    return res_npus
-
-
 def get_device_mode(backend):
     if backend == 'heter':
         if (
@@ -808,16 +763,6 @@ def get_device_mode(backend):
         ):
             print("launch train in heter mode with XPU device.")
             return DeviceMode.XPU
-        if (
-            framework.core.is_compiled_with_npu()
-            and framework.core.get_npu_device_count() > 0
-        ):
-            print("launch train in heter mode with NPU device.")
-            return DeviceMode.ASCEND_NPU
-
-    if backend == 'hccl' and framework.core.get_npu_device_count() > 0:
-        print("launch train in ascend npu mode!")
-        return DeviceMode.ASCEND_NPU
 
     if backend == 'nccl' and framework.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
@@ -853,19 +798,6 @@ def get_device_proc_info(args):
             devices_per_proc = [gpus[i : i + n] for i in range(0, len(gpus), n)]
         else:
             devices_per_proc = gpus
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        npus = get_npus(args.npus)
-        if args.nproc_per_node is not None:
-            assert (
-                len(npus) % int(args.nproc_per_node)
-            ) == 0, "npus' number:{} mod args.nproc_per_node:{} must == 0".format(
-                len(npus), args.nproc_per_node
-            )
-
-            n = int(len(npus) / int(args.nproc_per_node))
-            devices_per_proc = [npus[i : i + n] for i in range(0, len(npus), n)]
-        else:
-            devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
@@ -1762,7 +1694,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/serverlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["server"].append(fn)
                 proc = subprocess.Popen(
@@ -1870,7 +1802,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["worker"].append(fn)
                 proc = subprocess.Popen(
@@ -1938,7 +1870,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/coordinator.%d" % (args.log_dir, idx), "w")
                 self.log_fns["coordinator"].append(fn)
                 proc = subprocess.Popen(
@@ -2029,7 +1961,7 @@ class ParameterServerLauncher:
                 )
 
             if args.log_dir is not None:
-                os.system(f"mkdir -p {args.log_dir}")
+                os.makedirs(args.log_dir, exist_ok=True)
                 fn = open("%s/heterlog.%d" % (args.log_dir, idx), "w")
                 self.log_fns["heter_worker"].append(fn)
                 proc = subprocess.Popen(
@@ -2054,16 +1986,14 @@ def check_backend(backend):
         'nccl',
         'gloo',
         'bkcl',
-        'cncl',
         'auto',
-        'hccl',
         'heter',
         'xccl',
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
-            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'heter', 'xccl' "
             "but got %s" % backend
         )
 
@@ -2077,12 +2007,6 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
-        )
-
-    if backend == 'hccl' and not framework.core.is_compiled_with_npu():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with npu but you assign 'hccl' as backend."
         )
 
 
@@ -2105,8 +2029,5 @@ def get_backend_by_compile_flag():
 
     if framework.core.is_compiled_with_xpu():
         return 'bkcl'
-
-    if framework.core.is_compiled_with_npu():
-        return 'hccl'
 
     return 'gloo'

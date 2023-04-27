@@ -225,18 +225,16 @@ bool GetCondData(const phi::DenseTensor &cond) {
     return cond.data<bool>()[0];
   }
   // when platform::is_gpu_place(cond.place()) or
-  // platform::is_npu_place(cond.place()) or
   // platform::is_xpu_place(cond.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle does NOT support GPU/NPU/XPU but got "
-      "GPU/NPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
-      "WITH_ASCEND_CL or WITH_XPU option."));
+      "This version of PaddlePaddle does NOT support GPU/XPU but got "
+      "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
 }

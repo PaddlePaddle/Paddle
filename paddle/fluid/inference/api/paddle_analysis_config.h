@@ -363,12 +363,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuDeviceId(int device_id = 0);
   ///
-  /// \brief Turn on NPU.
-  ///
-  /// \param device_id device_id the NPU card to use (default is 0).
-  ///
-  void EnableNpu(int device_id = 0);
-  ///
   /// \brief Turn on CustomDevice.
   ///
   /// \param device_type device_type the custom device to use.
@@ -650,8 +644,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// mode.
   /// \param allow_build_at_runtime allow build trt engine at runtime.
   ///
-  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
-                                       bool allow_build_at_runtime = true);
+  void EnableTunedTensorRtDynamicShape(
+      const std::string& shape_range_info_path = "",
+      bool allow_build_at_runtime = true);
 
   ///
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic

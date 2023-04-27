@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 template <typename T>
@@ -393,6 +395,7 @@ template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
 
 #ifdef PADDLE_WITH_XPU

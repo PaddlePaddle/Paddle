@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -31,7 +32,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -192,21 +193,6 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
                     platform::errors::PreconditionNotMet(
                         "Should call EnableXpu before SetXpuDeviceId."));
   xpu_device_id_ = device_id;
-  Update();
-}
-
-void AnalysisConfig::EnableNpu(int device_id) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-  use_npu_ = true;
-  npu_device_id_ = device_id;
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  use_custom_device_ = true;
-  custom_device_id_ = device_id;
-  custom_device_type_ = "npu";
-#else
-  LOG(ERROR) << "Please compile with npu to EnableNpu()";
-  use_npu_ = false;
-#endif
   Update();
 }
 
@@ -1021,20 +1007,6 @@ void AnalysisConfig::Update() {
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));
-#endif
-  }
-
-  if (use_npu_) {
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
-    PADDLE_ENFORCE_EQ(use_gpu_,
-                      false,
-                      platform::errors::Unavailable(
-                          "Currently, NPU and GPU cannot be enabled in the "
-                          "same analysis configuration."));
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use an NPU device, but Paddle was not compiled "
-        "with NPU-runtime."));
 #endif
   }
   if (use_ipu_) {

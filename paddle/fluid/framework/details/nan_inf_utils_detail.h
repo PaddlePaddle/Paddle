@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -31,7 +31,7 @@
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 #endif
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace framework {
 namespace details {
@@ -39,6 +39,10 @@ namespace details {
 void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
+
+void SetNanInfStackLimit(const int& stack_limit);
+
+int GetNanInfStackLimit();
 
 template <typename T,
           typename MT,
@@ -87,15 +91,7 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
         static_cast<float>(min_value),
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-      PADDLE_ENFORCE(false,
-                     "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
-                     "num_zero=%lld) in %s.",
-                     static_cast<long long>(num_nan),   // NOLINT
-                     static_cast<long long>(num_inf),   // NOLINT
-                     static_cast<long long>(num_zero),  // NOLINT
-                     debug_info);
-#else
+#if !(defined(__NVCC__) || defined(__HIPCC__))
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
           "%s.",
@@ -106,12 +102,15 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
 #endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
-    printf("[PRECISION] in %s, numel=%lld, max=%e, min=%e, mean=%e\n",
-           debug_info,
-           static_cast<long long>(numel),  // NOLINT
-           static_cast<float>(max_value),
-           static_cast<float>(min_value),
-           static_cast<float>(mean_value));
+    printf(
+        "[PRECISION] in %s, numel=%lld, num_zero=%lld, max=%e, min=%e, "
+        "mean=%e\n",
+        debug_info,
+        static_cast<long long>(numel),     // NOLINT
+        static_cast<long long>(num_zero),  // NOLINT
+        static_cast<float>(max_value),
+        static_cast<float>(min_value),
+        static_cast<float>(mean_value));
   }
 }
 
@@ -152,7 +151,8 @@ void PrintForDifferentLevelFile(const char* debug_info,
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
     outfile << "[PRECISION] in " << debug_info
-            << ", numel=" << static_cast<long long>(numel)  // NOLINT
+            << ", numel=" << static_cast<long long>(numel)        // NOLINT
+            << ", num_zero=" << static_cast<long long>(num_zero)  // NOLINT
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;

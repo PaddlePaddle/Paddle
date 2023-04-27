@@ -15,9 +15,10 @@
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
@@ -821,9 +822,9 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
   auto &group = groups_[group_index];
   auto &group_tensor = group.dense_tensors_[inside_group_index];
-  const auto length = group.length_[inside_group_index];
 
   if (!group.is_sparse_) {
+    const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
       auto &grad_tensor =

@@ -15,8 +15,70 @@
 #include "paddle/phi/kernels/expand_as_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/expand_as_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ExpandAsKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const paddle::optional<DenseTensor>& y,
+                    const std::vector<int>& target_shape,
+                    DenseTensor* out) {
+  int rank = x.dims().size();
+  int target_rank = static_cast<int>(target_shape.size());
+  auto vec_in_dims = phi::vectorize<int>(x.dims());
+
+  unsigned int diff = target_rank - rank;
+  vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+
+  for (unsigned int i = 0; i < vec_in_dims.size(); ++i) {
+    PADDLE_ENFORCE_NE(
+        target_shape[i],
+        0,
+        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (i < diff) {
+      PADDLE_ENFORCE_GT(
+          target_shape[i],
+          0,
+          errors::InvalidArgument(
+              "The expanded size (%d) for non-existing dimensions must be "
+              "positive for expand_as_v2 op.",
+              target_shape[i]));
+    } else if (target_shape[i] > 0) {
+      if (vec_in_dims[i] != 1) {
+        PADDLE_ENFORCE_EQ(
+            vec_in_dims[i],
+            target_shape[i],
+            errors::InvalidArgument(
+                "The value (%d) of the non-singleton dimension does not match"
+                " the corresponding value (%d) in shape for expand_as_v2 op.",
+                vec_in_dims[i],
+                target_shape[i]));
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(
+          target_shape[i],
+          -1,
+          errors::InvalidArgument(
+              "When the value in shape is negative for expand_as_v2 op, "
+              "only -1 is supported, but the value received is %d.",
+              target_shape[i]));
+    }
+  }
+
+  out->Resize(phi::make_ddim(target_shape));
+  ctx.template Alloc<T>(out);
+  std::vector<const DenseTensor*> ins = {&x};
+  std::vector<DenseTensor*> outs = {out};
+  phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+      ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(expand_as,
                    GPU,

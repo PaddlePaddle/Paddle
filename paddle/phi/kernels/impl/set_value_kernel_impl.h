@@ -136,7 +136,6 @@ void SetValueImpl(const Context& dev_ctx,
       Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
   DenseTensor pad_tensor =
       Empty<T>(dev_ctx, IntArray{in_dims.Get(), in_dims.size()});
-
   auto pad_e = EigenTensor<T, RANK>::From(pad_tensor, in_dims);
   auto out_e = EigenTensor<T, RANK>::From(*out);
   auto slice_e = EigenTensor<T, RANK>::From(slice_tensor, slice_dims);
@@ -185,16 +184,38 @@ void SetValueImpl(const Context& dev_ctx,
   // is [3], which is right.
 
   slice_tensor.Resize(slice_dims_for_assign);
-  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
-  // ElementwiseComputeEx can do broadcasting
-  funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-      dev_ctx,
-      slice_tensor,
-      value,
-      -1,
-      funcs::SubtractFunctor<T>(),
-      &slice_tensor);
 
+  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  if (is_gpu_place || slice_tensor.dims().size() >= value.dims().size()) {
+    // [Why here we confirm running device]
+    //    ElementwiseComputeEx can do broadcasting in two cases:
+    //    1. The place is GPU.
+    //    2. The place is CPU, and the 'x' does not need broadcast.
+    //    Please see the note in
+    //    paddle/fluid/operators/elementwise/elementwise_op_function.h
+    // So, here we choose different logic depending on the device to avoid
+    // numerical problems, temporarily.
+    //
+    // TODO(zoooo0820): Reimplement logic of set_value to avoid using
+    // elementwise-sub.
+    funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+        dev_ctx,
+        slice_tensor,
+        value,
+        -1,
+        funcs::SubtractFunctor<T>(),
+        &slice_tensor);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseSubtractFunctor<T>, T>(
+        dev_ctx,
+        slice_tensor,
+        value,
+        -1,
+        funcs::InverseSubtractFunctor<T>(),
+        &slice_tensor);
+  }
   slice_tensor.Resize(slice_dims);
 
   // - Step 2.2 Pad slice tensor with 0
