@@ -150,7 +150,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
         op_name, tensors_vector, tensors_vector[0][0].layout());
   }
 
-  if (op_name == "transpose2" &&
+  if ((op_name == "transpose2" || op_name == "trans_layout") &&
       (tensors_vector[0][0].layout() == DesiredLayout())) {
     auto trans = std::make_shared<EagerTransposeOpTransformer>(op_name);
     trans->SetAttr(attr,

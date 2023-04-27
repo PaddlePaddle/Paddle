@@ -34,7 +34,7 @@ inline paddle::Tensor EagerTraceTransposeOp(const phi::DataLayout layout,
   } else {
     axis = {0, 1, 2, 3};
   }
-  auto out_tensor = transpose_ad_func(in, axis);
+  auto out_tensor = trans_layout_ad_func(in, axis);
   VLOG(4) << "AutoTune Transpose from " << in.layout() << " to " << layout;
   return out_tensor;
 }

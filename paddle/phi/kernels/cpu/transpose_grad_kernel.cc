@@ -31,3 +31,16 @@ PD_REGISTER_KERNEL(transpose_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(trans_layout_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TransLayoutGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

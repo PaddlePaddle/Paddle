@@ -35,6 +35,7 @@
 - scatter_nd_add
 - tile
 - transpose
+- trans_layout
 - pad
 - sqrt
 - cumsum
