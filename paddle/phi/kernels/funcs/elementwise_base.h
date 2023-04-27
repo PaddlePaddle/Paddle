@@ -35,6 +35,7 @@ namespace kps = phi::kps;
 
 namespace phi {
 
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
@@ -223,7 +224,7 @@ class TransformFunctor {
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
-  inline void RunRowWise(int n, int pre) const {
+  inline void RunRowWise(int n) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -242,7 +243,7 @@ class TransformFunctor {
     }
   }
 
-  inline void RunMidWise(int n, int pre, int post) const {
+  inline void RunMidWise(int n, int post) const {
     phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
@@ -368,9 +369,9 @@ template <typename Functor, typename T, typename OutType = T>
 void ElementwiseCompute(const CPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
+                        int axis,
                         Functor func,
-                        DenseTensor *z,
-                        int axis = -1) {
+                        DenseTensor *z) {
   dev_ctx.Alloc<OutType>(z);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -434,10 +435,10 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
   }
 
   if (post == 1) {
-    functor.RunRowWise(n, pre);
+    functor.RunRowWise(n);
     return;
   } else {
-    functor.RunMidWise(n, pre, post);
+    functor.RunMidWise(n, post);
     return;
   }
 }

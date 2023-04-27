@@ -36,8 +36,8 @@ void MaximumRawKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::MaximumFunctor<T>(), axis);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, funcs::MaximumFunctor<T>());
 }
 
 template <typename T, typename Context>
@@ -54,8 +54,8 @@ void MinimumRawKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::MinimumFunctor<T>(), axis);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, funcs::MinimumFunctor<T>());
 }
 
 template <typename T, typename Context>
@@ -72,8 +72,8 @@ void RemainderRawKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::RemainderFunctor<T>(), axis);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, funcs::RemainderFunctor<T>());
 }
 
 template <typename T, typename Context>
@@ -90,8 +90,8 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::FloorDivideFunctor<T>(), axis);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, funcs::FloorDivideFunctor<T>());
 }
 
 template <typename T, typename Context>
@@ -108,8 +108,8 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::ElementwisePowFunctor<T>(), axis);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, axis, funcs::ElementwisePowFunctor<T>());
 }
 
 }  // namespace phi
@@ -172,5 +172,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    float16,
-                   int64_t) {}
+                   int64_t,
+                   bfloat16) {}
 #endif
