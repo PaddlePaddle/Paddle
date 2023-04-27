@@ -1,3 +1,24 @@
+- op : adam_
+  version :
+    - checkpoint : Upgrade adam add 1 attribute [multi_precision].
+      action :
+        - add_attr : multi_precision
+          comment : (bool) Whether to use multi-precision during weight updating.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [EpsilonTensor].
+      action :
+        - add_input : EpsilonTensor
+          comment : If provided, Adam will use this as epsilon, this has a higher priority than attr(epsilon). For better performance in npu kernel.
+    - checkpoint : Upgrade adam, add 1 attribute [use_global_beta_pow].
+      action :
+        - add_attr : use_global_beta_pow
+          comment : If true, Adam will use global beta_pow for whole model instead of creating beta_pow for each parameter. In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be used in adam op, and beta_pow will be updated after all adam op in the model.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [SkipUpdate].
+      action :
+        - add_input : SkipUpdate
+          comment : If the value is true, Adam will skip the update.
+
 - op : affine_grid
   version :
     - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
@@ -95,6 +116,14 @@
         - modify_attr : shape
           comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
           default : std::vector<int64_t>{}
+
+- op : generate_proposals
+  version :
+    - checkpoint : Registe generate_proposals_v2 for adding the attribute of pixel_offset
+      action :
+        - add_attr : pixel_offset
+          comment : If true, im_shape pixel offset is 1.
+          default : "true"
 
 - op : greater_equal
   version :

@@ -617,7 +617,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : flash_attn_grad
-  forward : flash_attn (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false) -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  forward : flash_attn (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false)
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
@@ -628,7 +628,7 @@
     data_type: q
 
 - backward_op : flash_attn_unpadded_grad
-  forward : flash_attn_unpadded (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false) -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  forward : flash_attn_unpadded (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor fixed_seed_offset, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false)
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
@@ -1102,6 +1102,18 @@
   kernel :
     func : maxout_grad
 
+- backward_op : mean_all_grad
+  forward : mean_all(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedExceptLayoutInferMeta
+    param: [x]
+  kernel :
+    func : mean_all_grad
+    data_type: out_grad
+  no_need_buffer : x
+
 - backward_op : memory_efficient_attention_grad
   forward : memory_efficient_attention (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test) -> Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
   args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor output, Tensor logsumexp, Tensor seed_and_offset, Tensor output_grad, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale)
@@ -1442,6 +1454,7 @@
   kernel :
     func : scatter_nd_add_grad
   no_need_buffer : updates
+  composite: scatter_nd_add_grad(index, updates, out_grad, x_grad, updates_grad)
 
 - backward_op : segment_pool_grad
   forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype="SUM") -> Tensor(out), Tensor(summed_ids)

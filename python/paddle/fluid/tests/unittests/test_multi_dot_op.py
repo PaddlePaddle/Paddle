@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.linalg import multi_dot
 
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -47,6 +48,53 @@ class TestMultiDotOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
         self.check_grad(['x1'], 'Out')
+
+
+class TestMultiDotFP16Op(TestMultiDotOp):
+    def get_dtype(self):
+        return "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMultiDotBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
+        self.dtype = self.get_dtype()
+        self.get_inputs_and_outputs()
+        self.place = core.CUDAPlace(0)
+
+    def get_dtype(self):
+        self.np_dtype = "float32"
+        return np.uint16
+
+    def get_inputs_and_outputs(self):
+        self.A = np.random.random((2, 8)).astype(self.np_dtype)
+        self.B = np.random.random((8, 4)).astype(self.np_dtype)
+        self.inputs = {
+            'X': [
+                ('x0', convert_float_to_uint16(self.A)),
+                ('x1', convert_float_to_uint16(self.B)),
+            ]
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(multi_dot([self.A, self.B]))
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['x0'], 'Out', numeric_grad_delta=0.01
+        )
+        self.check_grad_with_place(
+            self.place, ['x1'], 'Out', numeric_grad_delta=0.01
+        )
 
 
 # (A*B)*C

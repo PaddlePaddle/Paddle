@@ -19,8 +19,9 @@
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   // Dygraph Record Event
@@ -55,6 +56,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   VLOG(3) << "Final State Running: "
           << "add_n_ad_func";
   auto api_result = paddle::experimental::add_n(x);
+
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("add_n", api_result);
@@ -83,6 +85,12 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     // Node Construction
     auto grad_node =
         std::shared_ptr<AddNGradNodeFinal>(new AddNGradNodeFinal(1, 1));
+
+    // Set forward's stack
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+
     // SetAttributes if needed
 
     // Set TensorWrappers for Forward Inputs if needed
