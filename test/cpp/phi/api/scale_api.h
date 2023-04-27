@@ -21,12 +21,13 @@
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
-DECLARE_int32(low_precision_op_list);
+PHI_DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 

@@ -318,6 +318,11 @@ if(WITH_PYTHON)
       ")\n"
       "exit /b 0")
 
+    add_custom_command(
+      OUTPUT ${op_impl_path}/phi.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
+      DEPENDS phi)
+
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
         OUTPUT ${op_impl_path}/libiomp5md.dll
