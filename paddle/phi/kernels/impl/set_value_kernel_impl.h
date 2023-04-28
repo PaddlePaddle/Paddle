@@ -204,7 +204,6 @@ void SetValueImpl(const Context& dev_ctx,
         dev_ctx,
         slice_tensor,
         value,
-        -1,
         funcs::SubtractFunctor<T>(),
         &slice_tensor);
   } else {
@@ -212,7 +211,6 @@ void SetValueImpl(const Context& dev_ctx,
         dev_ctx,
         slice_tensor,
         value,
-        -1,
         funcs::InverseSubtractFunctor<T>(),
         &slice_tensor);
   }
