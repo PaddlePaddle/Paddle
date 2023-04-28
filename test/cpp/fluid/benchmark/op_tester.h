@@ -21,8 +21,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/benchmark/op_tester_config.h"
 #include "paddle/phi/core/ddim.h"
+#include "test/cpp/fluid/benchmark/op_tester_config.h"
 
 namespace paddle {
 namespace operators {

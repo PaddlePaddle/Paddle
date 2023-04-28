@@ -38,10 +38,10 @@ void DivideRawKernel(const Context& dev_ctx,
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
       funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
+          dev_ctx, x, y, funcs::DivideFunctor<T>(), out, axis);
     } else {
       funcs::ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
-          dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
+          dev_ctx, x, y, funcs::InverseDivideFunctor<T>(), out, axis);
     }
   }
 }
