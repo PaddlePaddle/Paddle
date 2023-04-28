@@ -30,6 +30,7 @@ __all__ = [
     "collect_operator_stats",
     "enable_tensor_checker",
     "disable_tensor_checker",
+    "compare_accuracy",
 ]
 
 
@@ -422,6 +423,61 @@ def collect_operator_stats():
     enable_operator_stats_collection()
     yield
     disable_operator_stats_collection()
+
+
+def compare_accuracy(
+    fp32_dump_path,
+    fp16_dump_path,
+    output_filename,
+    loss_scale,
+    dump_all_tensors=False,
+):
+    r"""
+    This is a precision comparison tool that can be used to compare log data of float16 and float32.
+
+    Args:
+        fp32_dump_path(str): the log path of float32.
+        fp16_dump_path(str): the log path of float16.
+        output_filename(str): the file nmae of compare output.
+        loss_scale(float): the scale during the training phase.
+        dump_all_tensors(bool, optional): dump all tensor, default is False.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import subprocess
+            try:
+                import xlswriter
+            except ImportError:
+                subprocess.check_call(['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9'])
+            paddle.set_flags(
+                {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+            )
+            fp32_path = "workerlog_fp32_log_dir"
+            fp16_path = "workerlog_fp16_log_dir"
+            paddle.fluid.core.set_nan_inf_debug_path(path)
+            x = paddle.to_tensor(
+                [2, 3, 4, 0], place=core.CUDAPlace(0), dtype=dtype
+            )
+            y = paddle.to_tensor(
+                [1, 5, 2, 0], place=core.CUDAPlace(0), dtype=dtype
+            )
+            z1 = x + y
+            out_excel = "compary_accuracy_out_excel.csv"
+            paddle.amp.debugging.compare_accuracy(
+                fp32_path, fp16_path, out_excel, loss_scale=1, dump_all_tensors=False
+            )
+    """
+    assert dump_all_tensors is False, "It is currently not supported."
+    paddle.amp.accuracy_compare.compare_accuracy(
+        fp32_dump_path,
+        fp16_dump_path,
+        output_filename,
+        loss_scale,
+        dump_all_tensors=False,
+    )
 
 
 def enable_tensor_checker(checker_config):
