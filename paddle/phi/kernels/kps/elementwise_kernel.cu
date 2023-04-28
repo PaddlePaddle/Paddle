@@ -166,6 +166,7 @@ PD_REGISTER_KERNEL(fmin,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(heaviside,
