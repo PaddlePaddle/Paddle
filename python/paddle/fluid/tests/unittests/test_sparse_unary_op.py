@@ -30,6 +30,8 @@ class TestSparseUnary(unittest.TestCase):
     def check_result(self, dense_func, sparse_func, format, *args):
         origin_x = paddle.rand([8, 16, 32], dtype='float32')
         mask = paddle.randint(0, 2, [8, 16, 32]).astype('float32')
+        while paddle.sum(mask) == 0:
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
