@@ -124,7 +124,11 @@ class TestDistPNormDP(TestDistPNorm):
                 assert op_dist_attr.impl_type == "p_norm"
             if op.type in ["p_norm", "p_norm_grad"]:
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
-                    assert set(input_attr.dims_mapping) == {-1}
+                    print(set(input_attr.dims_mapping))
+                    if hasattr(self, "axis") and self.axis is None:
+                        assert input_attr.dims_mapping == []
+                    else:
+                        assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
                     if hasattr(self, "axis") and self.axis is None:
                         assert output_attr.dims_mapping == []
