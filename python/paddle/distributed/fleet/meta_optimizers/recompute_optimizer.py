@@ -81,7 +81,6 @@ class RecomputeOptimizer(MetaOptimizerBase):
         callbacks=None,
     ):
         # maybe inner_opt of other meta optimizer
-
         self._init_wrapped_opt()
         return self.wrapped_opt.backward(
             loss, startup_program, parameter_list, no_grad_set, callbacks
@@ -102,5 +101,4 @@ class RecomputeOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
-
         return optimize_ops, params_grads
