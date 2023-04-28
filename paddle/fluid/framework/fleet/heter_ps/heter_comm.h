@@ -579,6 +579,13 @@ class HeterComm {
                                       const size_t& value_bytes,
                                       void* d_tmp_vals,
                                       const cudaStream_t& stream);
+  void recalc_local_and_remote_size(const int& gpu_id,
+                                    const size_t& pull_size,
+                                    const size_t& node_num,
+                                    const uint32_t* d_tmp_size_list,
+                                    const uint32_t* d_inter_size_list,
+                                    const cudaStream_t &stream);
+
   template<typename T>
   void scatter_inter_vals_by_all2all_common(
           const int& gpu_id,
@@ -588,11 +595,14 @@ class HeterComm {
           T* d_out_vals,
           T* d_tmp_vals,
           const cudaStream_t& stream,
-          bool sage = false) {
+          bool sage = false,
+          bool slot = false) {
     auto &cache = storage_[gpu_id];
     auto &res = cache.shard_res;
+
     auto h_local_part_sizes = res.h_local_part_sizes.data();
     auto h_local_part_offsets = res.h_local_part_offsets.data();
+
     auto h_remote_part_sizes = res.h_remote_part_sizes.data();
     auto h_remote_part_offsets = res.h_remote_part_offsets.data();
 
@@ -625,15 +635,18 @@ class HeterComm {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 
     // fill vals
-    heter_comm_kernel_->scatter_vals(
-            reinterpret_cast<const T*>(d_tmp_vals),  // in
-            reinterpret_cast<T*>(d_out_vals),        // out
-            res.d_local_idx_parted,
-            len,
-            value_bytes,
-            stream);
-    CUDA_CHECK(cudaStreamSynchronize(stream));
-  }
+    // slot feature don't need scatter
+    if (!slot) {
+      heter_comm_kernel_->scatter_vals(
+              reinterpret_cast<const T*>(d_tmp_vals),  // in
+              reinterpret_cast<T*>(d_out_vals),        // out
+              res.d_local_idx_parted,
+              len,
+              value_bytes,
+              stream);
+      CUDA_CHECK(cudaStreamSynchronize(stream));
+    }
+}
 
   void scatter_inner_vals_p2p(const size_t& total_fea_num,
                               void* d_out_vals,

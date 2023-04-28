@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -189,10 +190,29 @@ class GpuPsGraphTable
       int gpu_id,
       uint64_t *d_nodes,
       int node_num,
-      uint32_t *size_list,
-      uint32_t *size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation> &size_list,
+      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
       std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
       std::shared_ptr<phi::Allocation> &slot_list);    // NOLINT
+
+  int get_feature_info_of_nodes_normal(
+       int gpu_id,
+       uint64_t *d_nodes,
+       int node_num,
+       std::shared_ptr<phi::Allocation> &size_list,
+       std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+       std::shared_ptr<phi::Allocation> &feature_list,
+       std::shared_ptr<phi::Allocation> &slot_list);
+
+  int get_feature_info_of_nodes_all2all(
+       int gpu_id,
+       uint64_t *d_nodes,
+       int node_num,
+       std::shared_ptr<phi::Allocation> &size_list,
+       std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
+       std::shared_ptr<phi::Allocation> &feature_list,
+       std::shared_ptr<phi::Allocation> &slot_list);
+
 
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
@@ -233,6 +253,9 @@ class GpuPsGraphTable
   gpuStream_t get_local_stream(int gpu_id) {
     return resource_->local_stream(gpu_id, 0);
   }
+  void set_infer_mode(bool infer_mode) {
+    infer_mode_ = infer_mode;
+  }
 
   int gpu_num;
   int graph_table_num_, feature_table_num_;
@@ -247,6 +270,7 @@ class GpuPsGraphTable
   std::vector<std::mutex *> device_mutex_;
   std::condition_variable cv_;
   int cpu_table_status;
+  bool infer_mode_ = false;
 };
 
 };  // namespace framework

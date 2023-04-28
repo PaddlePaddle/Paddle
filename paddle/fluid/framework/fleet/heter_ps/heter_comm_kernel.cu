@@ -760,6 +760,7 @@ void HeterCommKernel::scatter_vals(const ValType* d_shard_vals,
   scatter_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_vals, d_shard_vals, idx, N, val_size_unit);
 }
+
 template <typename KeyType>
 __global__ void check_valid_values_kernel(const int type,
                                           const size_t N,
@@ -1434,6 +1435,20 @@ template void HeterCommKernel::scatter_vals<int, cudaStream_t>(
     int64_t len,
     size_t value_bytes,
     const cudaStream_t& stream);
+template void HeterCommKernel::scatter_vals<uint32_t, cudaStream_t>(
+     const uint32_t* d_shard_vals,
+     uint32_t* d_vals,
+     uint32_t* idx,
+     int64_t len,
+     size_t value_bytes,
+     const cudaStream_t& stream);
+template void HeterCommKernel::scatter_vals<uint8_t, cudaStream_t>(
+     const uint8_t* d_shard_vals,
+     uint8_t* d_vals,
+     uint32_t* idx,
+     int64_t len,
+     size_t value_bytes,
+     const cudaStream_t& stream);
 template void HeterCommKernel::check_valid_values<int32_t, cudaStream_t>(
     const int& type,
     const size_t& N,

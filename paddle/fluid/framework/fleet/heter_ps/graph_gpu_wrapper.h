@@ -167,6 +167,7 @@ class GraphGpuWrapper {
   std::vector<int> slot_feature_num_map() const;
   void set_feature_separator(std::string ch);
   void set_slot_feature_separator(std::string ch);
+  void set_infer_mode(bool infer_mode);
   int get_feature_of_nodes(int gpu_id,
                            uint64_t* d_walk,
                            uint64_t* d_offset,
@@ -178,10 +179,11 @@ class GraphGpuWrapper {
       int gpu_id,
       uint64_t* d_nodes,
       int node_num,
-      uint32_t* size_list,
-      uint32_t* size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation>& size_list,
+      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
       std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
       std::shared_ptr<phi::Allocation>& slot_list);    // NOLINT
+
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
                      int cur_metapath_len);
@@ -260,7 +262,7 @@ class GraphGpuWrapper {
   std::vector<ncclComm_t> inter_comms_;
   std::vector<ncclUniqueId> inter_ncclids_;
 #endif
-};  // class GraphGpuWrapper 
+};  // class GraphGpuWrapper
 #endif
 
 };  // namespace framework

@@ -206,7 +206,7 @@ void GraphGpuWrapper::init_type_keys(
       auto place = platform::CUDAPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       keys[f_idx][j] =
-          memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t), 
+          memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t),
               phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
       cudaMemcpyAsync(keys[f_idx][j]->ptr(),
                       tmp_keys[j].data(),
@@ -306,7 +306,7 @@ void GraphGpuWrapper::init_metapath_total_keys() {
   }
   for (size_t j = 0; j < thread_num; j++) {
     auto stream = get_local_stream(j);
-    cudaStreamSynchronize(stream); 
+    cudaStreamSynchronize(stream);
   }
 }
 
@@ -896,13 +896,18 @@ void GraphGpuWrapper::get_node_degree(
   return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->get_node_degree(gpu_id, edge_idx, key, len, node_degree);
 }
-
+void GraphGpuWrapper::set_infer_mode(bool infer_mode) {
+  if (graph_table != nullptr) {
+    reinterpret_cast<GpuPsGraphTable *>(graph_table)
+        ->set_infer_mode(infer_mode);
+  }
+}
 int GraphGpuWrapper::get_feature_info_of_nodes(
     int gpu_id,
     uint64_t *d_nodes,
     int node_num,
-    uint32_t *size_list,
-    uint32_t *size_list_prefix_sum,
+    std::shared_ptr<phi::Allocation> &size_list,
+    std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
     std::shared_ptr<phi::Allocation> &feature_list,
     std::shared_ptr<phi::Allocation> &slot_list) {
   platform::CUDADeviceGuard guard(gpu_id);

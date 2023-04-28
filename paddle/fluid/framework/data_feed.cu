@@ -1373,30 +1373,24 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
   std::shared_ptr<phi::Allocation> d_feature_list;
   std::shared_ptr<phi::Allocation> d_slot_list;
 
-  if (conf_.sage_mode) {
-    size_t temp_storage_bytes = (key_num + 1) * sizeof(uint32_t);
-    if (d_feature_size_list_buf_ == NULL ||
-        d_feature_size_list_buf_->size() < temp_storage_bytes) {
+  size_t temp_bytes = (key_num + 1) * sizeof(uint32_t);
+  if (d_feature_size_list_buf_ == NULL ||
+    d_feature_size_list_buf_->size() < temp_bytes) {
       d_feature_size_list_buf_ =
-          memory::AllocShared(this->place_, temp_storage_bytes);
-    }
-    if (d_feature_size_prefixsum_buf_ == NULL ||
-        d_feature_size_prefixsum_buf_->size() < temp_storage_bytes) {
+          memory::AllocShared(this->place_, temp_bytes);
+  }
+  if (d_feature_size_prefixsum_buf_ == NULL ||
+    d_feature_size_prefixsum_buf_->size() < temp_bytes) {
       d_feature_size_prefixsum_buf_ =
-          memory::AllocShared(this->place_, temp_storage_bytes);
-    }
+          memory::AllocShared(this->place_, temp_bytes);
   }
 
-  uint32_t *d_feature_size_list_ptr =
-      reinterpret_cast<uint32_t *>(d_feature_size_list_buf_->ptr());
-  uint32_t *d_feature_size_prefixsum_ptr =
-      reinterpret_cast<uint32_t *>(d_feature_size_prefixsum_buf_->ptr());
   int fea_num =
       gpu_graph_ptr->get_feature_info_of_nodes(conf_.gpuid,
                                                d_walk,
                                                key_num,
-                                               d_feature_size_list_ptr,
-                                               d_feature_size_prefixsum_ptr,
+                                               d_feature_size_list_buf_,
+                                               d_feature_size_prefixsum_buf_,
                                                d_feature_list,
                                                d_slot_list);
   int64_t *slot_tensor_ptr_[conf_.slot_num];
@@ -1430,6 +1424,13 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
   uint64_t *d_feature_list_ptr =
       reinterpret_cast<uint64_t *>(d_feature_list->ptr());
   uint8_t *d_slot_list_ptr = reinterpret_cast<uint8_t *>(d_slot_list->ptr());
+  uint32_t *d_feature_size_list_ptr =
+       reinterpret_cast<uint32_t *>(d_feature_size_list_buf_->ptr());
+  uint32_t *d_feature_size_prefixsum_ptr =
+       reinterpret_cast<uint32_t *>(d_feature_size_prefixsum_buf_->ptr());
+  VLOG(2) << "end trans feature list and slot list";
+
+  CUDA_CHECK(cudaStreamSynchronize(train_stream_));
 
   std::shared_ptr<phi::Allocation> d_each_ins_slot_num_inner_prefix =
       memory::AllocShared(place_,
@@ -2187,7 +2188,7 @@ void GraphDataGenerator::DoWalkandSage() {
           // check whether reach sage pass end
           if (is_multi_node_) {
             int res = multi_node_sync_sample(sage_pass_end, ncclProd);
-            if (res) { 
+            if (res) {
               ins_pair_flag = false;
             }
           }
@@ -3395,15 +3396,8 @@ void GraphDataGenerator::AllocResource(
 void GraphDataGenerator::AllocTrainResource(int thread_id) {
   if (conf_.slot_num > 0) {
     platform::CUDADeviceGuard guard(conf_.gpuid);
-    if (!conf_.sage_mode) {
-      d_feature_size_list_buf_ = memory::AllocShared(
-          place_, (conf_.batch_size * 2) * sizeof(uint32_t));
-      d_feature_size_prefixsum_buf_ = memory::AllocShared(
-          place_, (conf_.batch_size * 2 + 1) * sizeof(uint32_t));
-    } else {
-      d_feature_size_list_buf_ = NULL;
-      d_feature_size_prefixsum_buf_ = NULL;
-    }
+    d_feature_size_list_buf_ = NULL;
+    d_feature_size_prefixsum_buf_ = NULL;
   }
 }
 

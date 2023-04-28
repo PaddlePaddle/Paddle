@@ -3221,6 +3221,73 @@ template <typename KeyType,
           typename ValType,
           typename GradType,
           typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
+recalc_local_and_remote_size(const int& gpu_id,
+                             const size_t& pull_size,
+                             const size_t& node_num,
+                             const uint32_t* d_tmp_size_list,
+                             const uint32_t* d_inter_size_list,
+                             const cudaStream_t &stream) {
+  auto &cache = storage_[gpu_id];
+  auto &res = cache.shard_res;
+  auto h_local_part_sizes = res.h_local_part_sizes.data();
+  auto h_local_part_offsets = res.h_local_part_offsets.data();
+  auto h_remote_part_sizes = res.h_remote_part_sizes.data();
+  auto h_remote_part_offsets = res.h_remote_part_offsets.data();
+
+  std::vector<uint32_t> h_before_scatter_size_list(pull_size, 0);
+  std::vector<uint32_t> h_end_scatter_size_list(node_num, 0);
+  CUDA_CHECK(cudaMemcpyAsync(
+            reinterpret_cast<char *>(h_before_scatter_size_list.data()),
+            d_tmp_size_list,
+            sizeof(uint32_t) * pull_size,
+            cudaMemcpyDeviceToHost,
+            stream));
+  CUDA_CHECK(cudaMemcpyAsync(
+            reinterpret_cast<char *>(h_end_scatter_size_list.data()),
+            d_inter_size_list,
+            sizeof(uint32_t) * node_num,
+            cudaMemcpyDeviceToHost,
+            stream));
+  std::vector<size_t> vari_local_part_sizes(node_size_, 0);
+  std::vector<size_t> vari_local_part_offsets(node_size_ + 1, 0);
+  std::vector<size_t> vari_remote_part_sizes(node_size_, 0);
+  std::vector<size_t> vari_remote_part_offsets(node_size_ + 1, 0);
+
+  //local use end scatter(len is node num), reote use before scatter(len is pull size)
+  //recompute offsets and parts
+  VLOG(2) << "begin recalc local and remote size and offets";
+  for (int i = 0; i < node_size_; i++) {
+    size_t local_size = 0;
+    size_t remote_size = 0;
+    for (int j = h_local_part_offsets[i]; j < h_local_part_offsets[i + 1]; j++) {
+      local_size += h_end_scatter_size_list[j];
+    }
+    vari_local_part_sizes[i] = local_size;
+    vari_local_part_offsets[i + 1] =
+      vari_local_part_offsets[i] + vari_local_part_sizes[i];
+    VLOG(2) << "gpu id: "<< gpu_id << ", before calc, local size:" << h_local_part_sizes[i] << ", local offset: "  << h_local_part_offsets[i + 1] << ", end calc, local part size:" << vari_local_part_sizes[i] << ", local offsets: " << vari_local_part_offsets[i + 1];
+
+    for (int k = h_remote_part_offsets[i]; k < h_remote_part_offsets[i + 1]; k++) {
+      remote_size += h_before_scatter_size_list[k];
+    }
+    vari_remote_part_sizes[i] = remote_size;
+    vari_remote_part_offsets[i + 1] =
+      vari_remote_part_offsets[i] + vari_remote_part_sizes[i];
+    VLOG(2) << "gpu id: "<< gpu_id << ", before cal, remote size:" << h_remote_part_sizes[i] << ", remote offset: " <<                h_remote_part_offsets[i + 1] << ", end calc, remote part size: " << vari_remote_part_sizes[i] << ", remote offsets: " << vari_remote_part_offsets[i + 1];
+  }
+  VLOG(2) << "end recalc remote size and offsets";
+  //send 前把当前gpuid 的size 和 offset 替换成 vari size 和offset
+  res.h_local_part_sizes = std::move(vari_local_part_sizes);
+  res.h_local_part_offsets = std::move(vari_local_part_offsets);
+  res.h_remote_part_sizes = std::move(vari_remote_part_sizes);
+  res.h_remote_part_offsets = std::move(vari_remote_part_offsets);
+}
+
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
 void HeterComm<KeyType, ValType, GradType, GPUAccessor>::scatter_inner_vals_p2p(
     const size_t &total_fea_num,
     void *d_out_vals,
@@ -4013,6 +4080,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_keys_by_all2all_trans(
   }
   return total_fea_num;
 }
+
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -4120,8 +4188,8 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
     auto &trans = storage_[trans_id];
 
     // wait node alloc hbm
-    //    trans.sem_wait->post();
-    //    my_cache.sem_wait->wait();
+    // trans.sem_wait->post();
+    // my_cache.sem_wait->wait();
     const size_t &recv_total_size =
         my_cache.shard_res.h_remote_part_offsets[nccl_node_size];
     size_t need_len = std::max(fea_size, recv_total_size);
