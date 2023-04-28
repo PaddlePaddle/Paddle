@@ -23,6 +23,8 @@ class TestTranspose(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, dims, format):
         mask = paddle.randint(0, 2, x_shape).astype("float32")
+        while paddle.sum(mask) == 0:
+            mask = paddle.randint(0, 2, x_shape).astype("float32")
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
         # or the backward checks may fail.
         origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
