@@ -20,7 +20,7 @@ if(NOT CINN_GIT_TAG)
   set(CINN_GIT_TAG develop)
 endif()
 
-message(STATUS "CINN version: " ${CINN_GIT_TAG})
+message(STATUS "CINN  version: " ${CINN_GIT_TAG})
 
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
