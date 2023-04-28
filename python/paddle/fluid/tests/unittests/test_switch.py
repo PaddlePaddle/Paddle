@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core, framework, layers
+from paddle.fluid import core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import default_startup_program
 
@@ -40,15 +40,15 @@ class TestSwitch(unittest.TestCase):
             shape=[1], value=-1.0, dtype='float32', persistable=True
         )
 
-        with layers.Switch() as switch:
-            with switch.case(paddle.less_than(x, zero_var)):
-                paddle.assign(zero_var, result)
-            with switch.case(paddle.less_than(x, one_var)):
-                paddle.assign(one_var, result)
-            with switch.case(paddle.less_than(x, two_var)):
-                paddle.assign(two_var, result)
-            with switch.default():
-                paddle.assign(three_var, result)
+        res = paddle.static.nn.case(
+            pred_fn_pairs=[
+                (paddle.less_than(x, zero_var), lambda: zero_var),
+                (paddle.less_than(x, one_var), lambda: one_var),
+                (paddle.less_than(x, two_var), lambda: two_var),
+            ],
+            default=lambda: three_var,
+        )
+        paddle.assign(res, result)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
@@ -85,17 +85,19 @@ class TestSwitchCaseError(unittest.TestCase):
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():
-                with layers.Switch() as switch:
-                    with switch.case(1):
-                        paddle.assign(zero_var, result)
+                res = paddle.static.nn.case(
+                    [(1, lambda: zero_var)], default=lambda: result
+                )
+                paddle.assign(res, result)
 
             self.assertRaises(TypeError, test_condition_type)
 
             # 2. The dtype of 'condition' in case must be 'bool'.
             def test_condition_dtype():
-                with layers.Switch() as switch:
-                    with switch.case(cond):
-                        paddle.assign(zero_var, result)
+                res = paddle.static.nn.case(
+                    [cond, lambda: zero_var], default=lambda: result
+                )
+                paddle.assign(res, result)
 
             self.assertRaises(TypeError, test_condition_dtype)
 

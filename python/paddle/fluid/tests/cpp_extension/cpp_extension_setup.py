@@ -15,7 +15,10 @@
 import os
 from site import getsitepackages
 
-from paddle.utils.cpp_extension import CppExtension, setup
+from utils import extra_compile_args
+
+import paddle
+from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
 
 paddle_includes = []
 for site_packages_path in getsitepackages():
@@ -28,12 +31,18 @@ for site_packages_path in getsitepackages():
 # Add current dir, search custom_power.h
 paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 
+sources = ["custom_extension.cc", "custom_sub.cc"]
+Extension = CppExtension
+if paddle.is_compiled_with_cuda():
+    sources.append("custom_relu_forward.cu")
+    Extension = CUDAExtension
+
 setup(
     name='custom_cpp_extension',
-    ext_modules=CppExtension(
-        sources=["custom_extension.cc", "custom_sub.cc"],
+    ext_modules=Extension(
+        sources=sources,
         include_dirs=paddle_includes,
-        extra_compile_args={'cc': ['-w', '-g']},
+        extra_compile_args=extra_compile_args,
         verbose=True,
     ),
 )

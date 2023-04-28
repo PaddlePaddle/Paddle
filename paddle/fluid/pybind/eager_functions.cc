@@ -62,11 +62,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -1370,7 +1370,7 @@ PyMethodDef variable_functions[] = {
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle erroe in BindFunctions(PyModule_AddFunctions)."));
+        "Init Paddle error in BindFunctions(PyModule_AddFunctions)."));
     return;
   }
 }
