@@ -22,11 +22,7 @@ namespace phi {
 
 template <typename T>
 __host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
-  /* Chebyshev coefficients for exp(-x) I0(x)
-   * in the interval [0,8].
-   *
-   * lim(x->0) { exp(-x) I0(x) } = 1.
-   */
+  /* Chebyshev coefficients for I0e(x) in the interval [0,8]. */
   static const T coeff[] = {
       -4.41534164647933937950E-18, 3.33079451882223809783E-17,
       -2.43127984654795469359E-16, 1.71539128555513303061E-15,
@@ -48,11 +44,7 @@ __host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
 
 template <typename T>
 __host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
-  /* Chebyshev coefficients for exp(-x) sqrt(x) I0(x)
-   * in the inverted interval [8,infinity].
-   *
-   * lim(x->inf){ exp(-x) sqrt(x) I0(x) } = 1/sqrt(2pi).
-   */
+  /* Chebyshev coefficients for I0e(x) in the inverted interval [8,infinity]. */
   static const T coeff[] = {
       -7.23318048787475395456E-18, -4.83050448594418207126E-18,
       4.46562142029675999901E-17,  3.46122286769746109310E-17,

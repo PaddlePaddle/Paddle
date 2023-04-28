@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/i0_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/i0_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/bessel_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(i0_grad, GPU, ALL_LAYOUT, phi::I0GradKernel, float, double) {
 }

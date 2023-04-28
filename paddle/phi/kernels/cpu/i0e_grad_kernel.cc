@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/i0e_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/i0e_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/bessel_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     i0e_grad, CPU, ALL_LAYOUT, phi::I0eGradKernel, float, double) {}
