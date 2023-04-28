@@ -185,8 +185,7 @@ class SliceInfo:
 
         for i in range(len(gather_tensor_shape)):
             if not (
-                len(value_dims_bd) == 0
-                or value_dims_bd[i] == gather_tensor_shape[i]
+                value_dims_bd[i] == gather_tensor_shape[i]
                 or value_dims_bd[i] == 1
             ):
                 raise ValueError(
