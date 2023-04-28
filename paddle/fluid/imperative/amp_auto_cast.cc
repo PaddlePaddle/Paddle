@@ -147,7 +147,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/NPU/XPU is compiled seperatly.
+// NOTE: GPU/XPU is compiled seperatly.
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));

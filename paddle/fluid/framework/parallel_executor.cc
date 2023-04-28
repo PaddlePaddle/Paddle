@@ -673,10 +673,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(places.size() > 0,
-                    true,
-                    platform::errors::Unavailable(
-                        "NPU is not supported in ParallelExecutor."));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
@@ -1327,14 +1323,12 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "CPU";
   } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
-  } else if (member_->use_device_ == p::kNPU) {
-    device_name = "NPU";
   } else if (member_->use_device_ == p::kXPU) {
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/NPU/XPU is supportted. "
-                                      "please use CPU/CUDA/NPU/XPU backend."));
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supportted. "
+                                      "please use CPU/CUDA/XPU backend."));
   }
 
   VLOG(1) << string::Sprintf(

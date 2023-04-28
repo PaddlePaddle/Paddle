@@ -55,8 +55,6 @@ static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
       return phi::Backend::GPU;
     case phi::AllocationType::XPU:
       return phi::Backend::XPU;
-    case phi::AllocationType::NPU:
-      return phi::Backend::NPU;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot convert place(%d).", static_cast<int>(place.GetType())));

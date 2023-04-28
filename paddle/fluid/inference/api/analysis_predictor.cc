@@ -151,7 +151,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
-          "NPU and CPU."));
+          "CPU."));
       return phi::Backend::CPU;
   }
 }
