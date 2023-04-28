@@ -19,9 +19,12 @@ import numpy as np
 try:
     import xlsxwriter as xlw
 except ImportError:
-    print(
-        "import xlswriter failed. You can run 'pip install xlsxwriter==3.0.9' to install it"
+    import subprocess
+
+    subprocess.check_call(
+        ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
     )
+    import xlsxwriter as xlw
 
 
 # Judge whether the value is within the range indicated by fp16

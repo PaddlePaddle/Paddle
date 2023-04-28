@@ -447,11 +447,6 @@ def compare_accuracy(
         ..  code-block:: python
 
             import paddle
-            import subprocess
-            try:
-                import xlswriter
-            except ImportError:
-                subprocess.check_call(['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9'])
             paddle.set_flags(
                 {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
             )

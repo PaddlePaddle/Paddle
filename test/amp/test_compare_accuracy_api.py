@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
 import unittest
 
 import paddle
@@ -23,14 +22,6 @@ from paddle.fluid import core
     not core.is_compiled_with_cuda(), "not support cpu TestCompareAccuracyApi"
 )
 class TestCompareAccuracyApi(unittest.TestCase):
-    def setUp(self):
-        try:
-            pass
-        except ImportError:
-            subprocess.check_call(
-                ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
-            )
-
     def calc(self, path, dtype):
         paddle.fluid.core.set_nan_inf_debug_path(path)
         x = paddle.to_tensor([2, 3, 4, 0], place=core.CUDAPlace(0), dtype=dtype)
@@ -40,7 +31,7 @@ class TestCompareAccuracyApi(unittest.TestCase):
         # inf
         z2 = x / y
 
-    def test_fp32(self):
+    def test(self):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
