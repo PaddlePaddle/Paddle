@@ -16,16 +16,6 @@ import os
 
 import numpy as np
 
-try:
-    import xlsxwriter as xlw
-except ImportError:
-    import subprocess
-
-    subprocess.check_call(
-        ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
-    )
-    import xlsxwriter as xlw
-
 
 # Judge whether the value is within the range indicated by fp16
 def is_infinite(value, dtype=np.float16):
@@ -279,6 +269,13 @@ class ExcelWriter:
     def __init__(self, log_fp32_dir, log_fp16_dir, output_path):
         self.log_fp32_dir = log_fp32_dir
         self.log_fp16_dir = log_fp16_dir
+
+        try:
+            import xlsxwriter as xlw
+        except ImportError:
+            print(
+                "import xlsxwriter failed. please run 'pip install xlsxwriter==3.0.9' to install it"
+            )
 
         self.workbook = xlw.Workbook(output_path)
         self.title_format = self.workbook.add_format(
