@@ -1,3 +1,6 @@
+if(WITH_CINN)
+  add_subdirectory(cinn)
+endif()
 if(WITH_PSCORE)
   add_subdirectory(pscore)
 endif()

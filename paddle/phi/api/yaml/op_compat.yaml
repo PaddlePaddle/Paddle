@@ -683,6 +683,16 @@
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
+- op : edit_distance
+  inputs :
+    hyps : Hyps
+    refs : Refs
+    hypslength : HypsLength
+    refslength : RefsLength
+  outputs :
+    sequencenum : SequenceNum
+    out : Out
+
 - op : eig
   inputs :
     x : X

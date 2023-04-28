@@ -125,7 +125,7 @@ def param_guard(parameters):
 
 def _convert_into_variable(tensor):
     """
-    Convert Varbase into Variable.
+    Convert Tensor into Variable.
     """
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
