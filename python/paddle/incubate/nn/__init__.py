@@ -22,6 +22,7 @@ from .layer.fused_transformer import (
 )  # noqa: F401
 from .layer.fused_ec_moe import FusedEcMoe  # noqa: F401
 from .layer.fused_dropout_add import FusedDropoutAdd  # noqa: F401
+from .layer.fused_dropout_nd import FusedDropout  # noqa: F401
 
 __all__ = [  # noqa
     'FusedMultiHeadAttention',
