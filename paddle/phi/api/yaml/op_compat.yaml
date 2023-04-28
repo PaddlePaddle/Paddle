@@ -103,7 +103,6 @@
     {out : Out}
   get_expected_kernel_type :
     add_n : GetAddNExpectedKernelType
-    add_n_grad : GetAddNGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
