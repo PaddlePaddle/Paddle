@@ -557,30 +557,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
-  // NPUPlace
-  py::class_<platform::NPUPlace> npuplace(m, "NPUPlace", R"DOC(
-    NPUPlace is a descriptor of a device.
-    It represents a NPU device on which a tensor will be allocated and a model will run.
-    Examples:
-        .. code-block:: python
-          # required: npu
-          import paddle
-          place = paddle.NPUPlace(0)
-        )DOC");
-  g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
-  npuplace.def("__init__", [](platform::NPUPlace &self, int dev_id) {})
-      .def("_type", &PlaceIndex<platform::NPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::Place>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CUDAPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
-      .def("_equals",
-           &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
-      .def("get_device_id",
-           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
-      .def("__str__", string::to_string<const platform::NPUPlace &>);
-
   // IPUPlace
   py::class_<platform::IPUPlace> ipuplace(m, "IPUPlace", R"DOC(
     IPUPlace is a descriptor of a device.
