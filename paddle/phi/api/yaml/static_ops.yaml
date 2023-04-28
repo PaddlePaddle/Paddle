@@ -3,7 +3,6 @@
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
-  invoke : add_n_impl(inputs)
   kernel :
     data_type : inputs
   inplace : (x -> out)
@@ -14,7 +13,7 @@
   infer_meta :
     func : ReduceInferMetaBase
   kernel :
-    func : all`
+    func : all
 
 - op : all_gather
   args : (Tensor x, int ring_id = 0, int nranks=0)
