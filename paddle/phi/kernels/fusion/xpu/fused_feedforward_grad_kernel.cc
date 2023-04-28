@@ -366,13 +366,13 @@ void FusedFeedForwardGradKernel(
     const DenseTensor& out_grad,
     const DenseTensor& x,
     const DenseTensor& linear1_weight,
-    const DenseTensor& linear1_bias,
+    const paddle::optional<DenseTensor>& linear1_bias,
     const DenseTensor& linear2_weight,
     const DenseTensor& dropout1_mask,
     const DenseTensor& dropout2_mask,
     const DenseTensor& linear1_out,
     const DenseTensor& dropout1_out,
-    const DenseTensor& dropout2_out,
+    const paddle::optional<DenseTensor>& dropout2_out,
     const paddle::optional<DenseTensor>& ln1_scale,
     const paddle::optional<DenseTensor>& ln1_bias,
     const paddle::optional<DenseTensor>& ln1_out,
@@ -417,7 +417,7 @@ void FusedFeedForwardGradKernel(
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;
 
   auto* dropout1_out_ptr = &dropout1_out;
-  auto* dropout2_out_ptr = &dropout2_out;
+  auto* dropout2_out_ptr = dropout2_out.get_ptr();
   auto* linear1_weight_ptr = &linear1_weight;
   auto* linear2_weight_ptr = &linear2_weight;
 

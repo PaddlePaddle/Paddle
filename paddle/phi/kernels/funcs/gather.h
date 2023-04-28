@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 namespace funcs {
 

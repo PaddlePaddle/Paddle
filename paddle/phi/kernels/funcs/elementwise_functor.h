@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -191,6 +192,17 @@ struct FMinFunctor<dtype::float16> {
 };
 
 template <>
+struct FMinFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
+  }
+};
+
+template <>
 struct FMinFunctor<int> {
   inline HOSTDEVICE int operator()(const int a, const int b) const {
     float float_a = static_cast<float>(a);
@@ -226,6 +238,17 @@ struct FMaxFunctor<dtype::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmax(float_a, float_b);
     return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
   }
 };
 
