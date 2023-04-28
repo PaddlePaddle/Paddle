@@ -127,12 +127,14 @@ def naive_offload_decorate(program, executor, scope=None):
 
     # Prefecth variables
     # TODO support conditional blocks
-    original_block = program.global_block()
+    prefetch_program = Program()
+    prefetch_block = prefetch_program.global_block()
+
     var_to_clear = []
     for gpu_var in vars_to_offload:
 
         cpu_var_name = gpu_var_name_to_cpu_var_names[gpu_var.name]
-        cpu_var = original_block.create_var(
+        cpu_var = prefetch_block.create_var(
             name=cpu_var_name,
             shape=gpu_var.shape,
             dtype=gpu_var.dtype,
@@ -140,8 +142,15 @@ def naive_offload_decorate(program, executor, scope=None):
             stop_gradient=True,
         )
 
-        original_block._insert_op_without_sync(
-            0,
+        cpu_var = prefetch_block.create_var(
+            name=gpu_var.name,
+            shape=gpu_var.shape,
+            dtype=gpu_var.dtype,
+            persistable=True,
+            stop_gradient=True,
+        )
+
+        prefetch_block.append_op(
             type='memcpy',
             inputs={'X': cpu_var},
             outputs={'Out': gpu_var},
@@ -150,4 +159,4 @@ def naive_offload_decorate(program, executor, scope=None):
         var_to_clear.append(gpu_var.name)
         # gpu_var.persistable = True
 
-    return program, offload_program, var_to_clear
+    return prefetch_program, offload_program, var_to_clear
