@@ -72,8 +72,8 @@ cat $PADDLE_ROOT/added_ut
 while read line
 do
     new_test_name=$line
-    NEW_CC_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.cc"`
-    NEW_PY_TEST_PATH=`find $PADDLE_ROOT/test -name "${new_test_name}.py"`
+    NEW_CC_TEST_PATH=`find $PADDLE_ROOT/build/test -name "${new_test_name}.cc"`
+    NEW_PY_TEST_PATH=`find $PADDLE_ROOT/build/test -name "${new_test_name}.py"`
 
     if [ -z "${NEW_CC_TEST_PATH}" ] && [ -z "${NEW_PY_TEST_PATH}" ];then
         echo "Please put the newly added single test in the /test directoryi."
