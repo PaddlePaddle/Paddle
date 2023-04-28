@@ -26,7 +26,7 @@ class element_visitor {
   explicit element_visitor(int index) : index_(index) {}
 
   template <typename T>
-  Attribute operator()(const T& attr) const {
+  Attribute operator()(const T& attr UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 
