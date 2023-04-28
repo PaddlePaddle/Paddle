@@ -468,7 +468,6 @@ class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
             'reshape_p',
             'abs_p',
             'reduce_sum_p',
-            'reshape_p',
         ]
         self.out_map = {0: self.output['Out']}
 
@@ -494,7 +493,6 @@ class TestPNormOrig2Prim2(TestElementWiseAddOrig2Prim):
         self.orig2prim_args = (X,)
         self.all_ops = [
             'p_norm',
-            'reshape_p',
             'reshape_p',
             'sqrt_p',
             'reduce_sum_p',

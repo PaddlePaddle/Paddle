@@ -112,7 +112,6 @@ class TestDistPNorm(unittest.TestCase):
 class TestDistPNormDP(TestDistPNorm):
     def test_dist_pnorm(self):
         self.prepare(make_program_dp2_axis_None)
-        self.axis = None
         self.check_program()
 
     def check_program(self):
@@ -124,16 +123,9 @@ class TestDistPNormDP(TestDistPNorm):
                 assert op_dist_attr.impl_type == "p_norm"
             if op.type in ["p_norm", "p_norm_grad"]:
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
-                    print(set(input_attr.dims_mapping))
-                    if hasattr(self, "axis") and self.axis is None:
-                        assert input_attr.dims_mapping == []
-                    else:
-                        assert set(input_attr.dims_mapping) == {-1}
+                    assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
-                    if hasattr(self, "axis") and self.axis is None:
-                        assert output_attr.dims_mapping == []
-                    else:
-                        assert set(output_attr.dims_mapping) == {-1}
+                    assert set(output_attr.dims_mapping) == {-1}
             if op.type == 'c_allgather':
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
                     assert input_attr.dims_mapping[0] == 0
@@ -158,7 +150,6 @@ class TestDistPNormDP(TestDistPNorm):
 class TestDistPNormDP1(TestDistPNormDP):
     def test_dist_pnorm(self):
         self.prepare(make_program_dp2_axis_0)
-        self.axis = 0
         self.check_program()
 
 

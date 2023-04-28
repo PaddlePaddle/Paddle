@@ -319,7 +319,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         X3.stop_gradient = False
 
         A = paddle.add(X0, X1)  # (7, 8, 9)
-        B = paddle.norm(x=A, p=2)  # ()
+        B = paddle.norm(x=A, p=2)  # (1, )
         C = paddle.subtract(X2, B)  # (7, 8, 9)
         D = paddle.concat(x=(A, C), axis=1)  # (7, 16, 9)
         Y = paddle.index_select(D, X3, axis=0)  # (3, 16, 9)
@@ -338,7 +338,6 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         self.orig2prim_ops = [
             'broadcast_p',
             'add_p',
-            'reshape_p',
             'reshape_p',
             'mul_p',
             'reduce_sum_p',
@@ -369,7 +368,6 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'sub_p',
             'concat_p',
             'gather_p',
-            'reshape_p',
         ]
         self.transpose_ops = self.orig2prim_ops + [
             # call fill_const() in transpose() function
@@ -399,7 +397,6 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'scatter_add_p',
             'add_p',  # The output of the op is used by multiple subsequent ops
             'add_p',
-            'reshape_p',
         ]
 
         self.prim2orig_ops_with_blacklist = [
@@ -439,8 +436,6 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'scatter',
             'elementwise_add',
             'add_p',
-            'reshape2',
-            'reshape2',
         ]
 
         self.prim2orig_ops = [
@@ -480,8 +475,6 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'scatter',
             'elementwise_add',
             'elementwise_add',
-            'reshape2',
-            'reshape2',
         ]
 
 

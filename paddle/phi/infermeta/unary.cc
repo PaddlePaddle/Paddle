@@ -2752,8 +2752,9 @@ void PNormInferMeta(const MetaTensor& x,
 
   std::vector<int> reduce_dims;
   if (asvector) {
+    reduce_dims.emplace_back(1);
     if (keepdim) {
-      for (int i = 0; i < x_dim.size(); ++i) {
+      for (int i = 1; i < x_dim.size(); ++i) {
         reduce_dims.emplace_back(1);
       }
       x_dim = phi::make_ddim(reduce_dims);
@@ -2762,6 +2763,9 @@ void PNormInferMeta(const MetaTensor& x,
     if (axis < 0) axis = x_dim.size() + axis;
     for (int i = 0; i < x_dim.size(); ++i) {
       if (i != axis) reduce_dims.emplace_back(x_dim[i]);
+    }
+    if (reduce_dims.size() == 0) {
+      reduce_dims.emplace_back(1);
     }
     x_dim[axis] = 1;
   }
