@@ -87,7 +87,7 @@ class LinkXPUOpMaxPass : public FusePassBase {
                  const std::string& op_type,
                  bool with_branch) const;
 
-  const std::string name_scope_{"multi_encoder_xpu_slice_fuse_pass"};
+  const std::string name_scope_{"link_xpu_op_max_pass"};
   // ops with x_max/out_max
   std::set<std::string> op_types_{"fc_xpu", "conv2d_xpu"};
 };
@@ -157,6 +157,13 @@ void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(branch);
 
     auto* fusion_op_desc = fusion_op->Op();
+    if (fusion_op_desc->HasAttr("has_branch")) {
+      bool fusion_op_branch =
+          PADDLE_GET_CONST(bool, fusion_op_desc->GetAttr("has_branch"));
+      if (fusion_op_branch != with_branch) {
+        return;
+      }
+    }
     if (input->inputs.size() > 0 && input->inputs[0]->IsOp() &&
         input->inputs[0]->Op()->HasOutput("out_max")) {
       auto input_max_name = input->inputs[0]->Op()->Output("out_max");
