@@ -24,12 +24,16 @@ from paddle.fluid import core
 class TestCompareAccuracyApi(unittest.TestCase):
     def calc(self, path, dtype):
         paddle.fluid.core.set_nan_inf_debug_path(path)
-        x = paddle.to_tensor([2, 3, 4, 0], place=core.CUDAPlace(0), dtype=dtype)
-        y = paddle.to_tensor([1, 5, 2, 0], place=core.CUDAPlace(0), dtype=dtype)
+        x = paddle.to_tensor(
+            [2000, 3000, 4, 0], place=core.CUDAPlace(0), dtype=dtype
+        )
+        y = paddle.to_tensor(
+            [100, 500, 2, 10000], place=core.CUDAPlace(0), dtype=dtype
+        )
         # normal
         z1 = x + y
         # inf
-        z2 = x / y
+        z2 = x * y
 
     def test(self):
         paddle.set_flags(
