@@ -24,12 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/cinn/test_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "test/cpp/fluid/cinn/test_helper.h"
 
 USE_OP_ITSELF(cinn_launch);
 USE_OP_ITSELF(cinn_instruction_run);
