@@ -402,7 +402,7 @@ class TestUnflattenError(unittest.TestCase):
                     shape=[4, 4],
                     dtype="float32",
                 )
-                shape = list(np.array([2, 2]).astype('int64'))
+                shape = paddle.to_tensor([2, 2], 'int64')
                 axis = -1
                 self.paddle_api(x, shape, axis)
 
