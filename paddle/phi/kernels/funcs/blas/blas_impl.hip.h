@@ -751,7 +751,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
       context_.GetComputeCapability(),
       80,
       phi::errors::InvalidArgument(
-          "rocblas fp16 gemm requires GPU compute capability >= 80,"
+          "rocblas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
 
@@ -996,7 +996,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldb,
                                         phi::dtype::bfloat16 beta,
                                         phi::dtype::bfloat16 *C,
-                                        int ldc UNUSED) const {
+                                        int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   rocblas_operation cuTransA = (transA == CblasNoTrans)
@@ -1009,7 +1009,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
       context_.GetComputeCapability(),
       80,
       phi::errors::InvalidArgument(
-          "rocblas fp16 gemm requires GPU compute capability >= 80,"
+          "rocblas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
 
@@ -1035,10 +1035,10 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                       &h_beta,
                                       C,
                                       rocblas_datatype_bf16_r,
-                                      N,
+                                      ldc,
                                       C,
                                       rocblas_datatype_bf16_r,
-                                      N,
+                                      ldc,
                                       rocblas_datatype_f32_r,
                                       algo,
                                       0,
