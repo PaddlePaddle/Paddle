@@ -82,8 +82,6 @@ bool NativePaddlePredictor::Init(
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else if (config_.use_xpu) {
     place_ = paddle::platform::XPUPlace(config_.device);
-  } else if (config_.use_npu) {
-    place_ = paddle::platform::NPUPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }

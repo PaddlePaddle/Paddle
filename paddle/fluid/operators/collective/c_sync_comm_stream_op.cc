@@ -53,6 +53,3 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
                              ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
-
-REGISTER_OP_NPU_KERNEL(c_sync_comm_stream,
-                       ops::CSyncCommStreamKernel<float, plat::NPUPlace>);

@@ -124,9 +124,6 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
-    case static_cast<int>(PlaceType::kNPU): {
-      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
-    }
     case static_cast<int>(PlaceType::kCUSTOM): {
       return tensor->mutable_data<T>(
           paddle::platform::CustomPlace(device_type_, device_));

@@ -189,7 +189,6 @@ PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
 PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
-PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_ipuplace_pytype = nullptr;
 
@@ -366,7 +365,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::NPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("_get_device_id",
@@ -495,7 +493,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
@@ -549,37 +546,11 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::XPUPlace>)
       .def("_equals",
-           &IsSamePlace<platform::CUDAPinnedPlace, platform::NPUPlace>)
-      .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
       .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
-
-  // NPUPlace
-  py::class_<platform::NPUPlace> npuplace(m, "NPUPlace", R"DOC(
-    NPUPlace is a descriptor of a device.
-    It represents a NPU device on which a tensor will be allocated and a model will run.
-    Examples:
-        .. code-block:: python
-          # required: npu
-          import paddle
-          place = paddle.NPUPlace(0)
-        )DOC");
-  g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());
-  npuplace.def("__init__", [](platform::NPUPlace &self, int dev_id) {})
-      .def("_type", &PlaceIndex<platform::NPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::Place>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CUDAPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
-      .def("_equals",
-           &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
-      .def("get_device_id",
-           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
-      .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   // IPUPlace
   py::class_<platform::IPUPlace> ipuplace(m, "IPUPlace", R"DOC(
@@ -625,7 +596,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
@@ -639,7 +609,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
-      .def("_equals", &IsSamePlace<platform::Place, platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CustomPlace>)
@@ -684,10 +653,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](platform::Place &self,
               const platform::CUDAPinnedPlace &cuda_pinned_place) {
              self = cuda_pinned_place;
-           })
-      .def("set_place",
-           [](platform::Place &self, const platform::NPUPlace &npu_place) {
-             self = npu_place;
            })
       .def("set_place",
            [](platform::Place &self, const platform::IPUPlace &ipu_place) {

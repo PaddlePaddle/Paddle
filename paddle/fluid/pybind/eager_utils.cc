@@ -52,7 +52,6 @@ extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
-extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
@@ -530,9 +529,6 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
                  obj, reinterpret_cast<PyObject*>(g_xpuplace_pytype))) {
     place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
   } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_npuplace_pytype))) {
-    place = ::pybind11::handle(obj).cast<platform::NPUPlace>();
-  } else if (PyObject_IsInstance(
                  obj, reinterpret_cast<PyObject*>(g_cudapinnedplace_pytype))) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
   } else if (PyObject_IsInstance(
@@ -542,7 +538,7 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "one "
-        "of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace,"
+        "of(Place,CUDAPlace,CPUPlace,XPUPlace,CUDAPinnedPlace,"
         "CustomPlace), "
         "but got %s",
         arg_pos + 1,

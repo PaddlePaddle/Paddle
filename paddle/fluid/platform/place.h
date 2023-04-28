@@ -28,7 +28,6 @@ using Place = phi::Place;
 using CPUPlace = phi::CPUPlace;
 using CUDAPlace = phi::GPUPlace;
 using CUDAPinnedPlace = phi::GPUPinnedPlace;
-using NPUPlace = phi::NPUPlace;
 using NPUPinnedPlace = phi::NPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using IPUPlace = phi::IPUPlace;

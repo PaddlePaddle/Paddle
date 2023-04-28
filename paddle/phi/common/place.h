@@ -163,25 +163,6 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
-class NPUPlace : public Place {
- public:
-  NPUPlace() : Place(AllocationType::NPU, 0) {}
-  explicit NPUPlace(int device_id) : Place(AllocationType::NPU, device_id) {}
-
-  NPUPlace(const NPUPlace&) = default;
-  NPUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPU, place.GetDeviceId()) {}
-};
-
-class NPUPinnedPlace : public Place {
- public:
-  NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
-
-  NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place UNUSED)  // NOLINT
-      : Place(AllocationType::NPUPINNED) {}
-};
-
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -220,7 +201,6 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
-using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;

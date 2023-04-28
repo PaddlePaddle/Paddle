@@ -41,7 +41,6 @@ message MemEvent {
     CPUPlace = 1;
     CUDAPinnedPlace = 2;
     XPUPlace = 3;
-    NPUPlace = 4;
   }
   optional uint64 start_ns = 1;
   optional uint64 end_ns = 2;
