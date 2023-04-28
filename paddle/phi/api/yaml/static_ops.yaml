@@ -1,8 +1,7 @@
 - op : add_n
+  backward : add_n_grad
   args : (Tensor[] inputs)
   output : Tensor(out)
-  infer_meta :
-    func : SumInferMeta
   kernel :
     data_type : inputs
   inplace : (x -> out)
