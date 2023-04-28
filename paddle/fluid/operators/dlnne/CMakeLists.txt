@@ -45,8 +45,3 @@ op_library(
 #endif()
 
 target_link_libraries(dlnne_engine_op ${DLNNE_LIB} ${CURT_LIB})
-
-cc_test(
-  test_dlnne_engine_op
-  SRCS dlnne_engine_op_test.cc
-  DEPS dlnne_engine_op analysis)

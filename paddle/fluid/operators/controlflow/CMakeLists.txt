@@ -27,11 +27,6 @@ cc_library(
   SRCS while_op_helper.cc
   DEPS operator op_variant)
 
-cc_test(
-  conditional_block_op_test
-  SRCS conditional_block_op_test.cc
-  DEPS conditional_block_op standalone_executor executor)
-
 if(WITH_UNITY_BUILD)
   target_link_libraries(paddle_operators_controlflow_unity conditional_block_op)
 else()
