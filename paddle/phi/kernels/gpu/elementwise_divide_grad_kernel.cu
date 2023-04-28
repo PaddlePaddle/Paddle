@@ -36,23 +36,22 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
+    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
   }
 }

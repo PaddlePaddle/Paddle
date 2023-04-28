@@ -110,7 +110,7 @@ void HeavisideKernel(const Context& dev_ctx,
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, -1, funcs::ElementwiseHeavisideFunctor<T>(), out);
+      dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
 }
 
 }  // namespace phi
