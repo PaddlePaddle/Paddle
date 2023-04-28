@@ -523,9 +523,10 @@ class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'argsort'
         self.dtype = np.uint16
-        x = np.random.randn(2, 8).astype('float32')
+        x_np = np.random.random((2, 8)).astype('float32')
+        x = paddle.static.data(shape=[2, 8], name='x', dtype='float32')
         out = np.argsort(x)
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_uint16(x_np)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
