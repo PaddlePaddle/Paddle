@@ -198,13 +198,6 @@ add_subdirectory(benchmark)
 
 cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
 
-
-if(WITH_MKLDNN)
-include(mkldnn/inplace_op_tests.cmake)
-include(mkldnn/caching_tests.cmake)
-include(mkldnn/nhwc_op_tests.cmake)
-endif()
-
 if(WITH_UNITY_BUILD)
     # Using Unity Build to compile operators, `register_operator` will cause
     # the unity library to lose some symbols.
