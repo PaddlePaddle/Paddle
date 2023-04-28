@@ -142,7 +142,7 @@ def naive_offload_decorate(program, executor, scope=None):
             stop_gradient=True,
         )
 
-        cpu_var = prefetch_block.create_var(
+        gpu_var1 = prefetch_block.create_var(
             name=gpu_var.name,
             shape=gpu_var.shape,
             dtype=gpu_var.dtype,
@@ -153,7 +153,7 @@ def naive_offload_decorate(program, executor, scope=None):
         prefetch_block.append_op(
             type='memcpy',
             inputs={'X': cpu_var},
-            outputs={'Out': gpu_var},
+            outputs={'Out': gpu_var1},
             attrs={"dst_place_type": 1, OP_ROLE_KEY: 0},
         )
         var_to_clear.append(gpu_var.name)
