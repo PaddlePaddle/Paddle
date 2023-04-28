@@ -10,6 +10,7 @@ ARG WITH_AVX
 
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
+ENV DEBIAN_FRONTEND=nointeractive
 
 ENV HOME /root
 # Add bash enhancements
