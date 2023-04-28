@@ -72,7 +72,6 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
-  config.use_npu = paddle::npu_place_used(place);
 
   phi::DenseTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -125,7 +124,6 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
-  config.use_npu = paddle::npu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -169,7 +167,6 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
-  config.use_npu = paddle::npu_place_used(place);
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // prepare inputs data and reference results
@@ -234,7 +231,6 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   config.use_gpu = paddle::gpu_place_used(place);
   config.use_xpu = paddle::xpu_place_used(place);
-  config.use_npu = paddle::npu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 

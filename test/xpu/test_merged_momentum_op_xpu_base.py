@@ -211,7 +211,6 @@ class TestMergedMomentumBase(unittest.TestCase):
         )
 
         def run_op(use_nesterov, use_merged):
-            # NPU Momentum Op does not support rescale_grad
             rescale_grad = 1.0
             return run_momentum_op(
                 params,
