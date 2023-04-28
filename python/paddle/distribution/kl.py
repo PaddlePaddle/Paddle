@@ -21,6 +21,7 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
@@ -197,6 +198,11 @@ def _kl_uniform_uniform(p, q):
 
 @register_kl(Laplace, Laplace)
 def _kl_laplace_laplace(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Geometric, Geometric)
+def _kl_geometric_geometric(p, q):
     return p.kl_divergence(q)
 
 
