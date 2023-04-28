@@ -96,22 +96,9 @@ struct GpuPsCommGraph {
     neighbor_size = 0;
   }
   void display_on_cpu(int edge_idx=-1) const {
-    /*
-    VLOG(0) << "neighbor_size = " << neighbor_size;
-    VLOG(0) << "node_size = " << node_size;
-    for (int64_t i = 0; i < neighbor_size; i++) {
-      VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
-      if (weight_list != nullptr) {
-        VLOG(0) << "neighbor weight " << i << " " << (float)weight_list[i];
-      }
-    }
-    */
     for (int64_t i = 0; i < node_size; i++) {
       auto id = node_list[i];
       auto val = node_info_list[i];
-      if (id % 10000 != 1) continue;
-      //VLOG(0) << "node id " << id << "," << val.neighbor_offset << ":"
-       //       << val.neighbor_size;
       std::string neighbor_str;
       for (size_t j = 0; j < val.neighbor_size; ++j) {
         if (j > 0) neighbor_str += ";";
@@ -267,12 +254,6 @@ struct NeighborSampleResult {
     int start = 0;
     for (int i = 0; i < key_size; i++) {
       auto key = sample_keys[i];
-#if 0
-      if (key % 10000 != 1) {
-        start += ac_size[i];  // r
-        continue;
-      }
-#endif
       std::string neighbor;
       for (int j = 0; j < ac_size[i]; j++) {
         if (neighbor.size() > 0) neighbor += ";";  // r

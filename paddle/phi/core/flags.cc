@@ -1151,6 +1151,13 @@ PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
+PHI_DEFINE_EXPORTED_bool(graph_embedding_split_infer_mode,
+                            false,
+                            "graph embedding split infer mode not need nccl barrier");
+PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
+                            false,
+                            "control multi-node sample");
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait

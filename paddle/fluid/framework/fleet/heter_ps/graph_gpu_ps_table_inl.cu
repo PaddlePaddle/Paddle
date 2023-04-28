@@ -29,10 +29,7 @@
 #define SAMPLE_SIZE_THRESHOLD 1024
 
 DECLARE_bool(enable_neighbor_list_use_uva);
-
-PADDLE_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
-                            false,
-                            "control multi-node sample");
+DECLARE_bool(enable_graph_multi_node_sampling);
 
 namespace paddle {
 namespace framework {

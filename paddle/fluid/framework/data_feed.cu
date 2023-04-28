@@ -35,11 +35,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 PHI_DECLARE_bool(enable_opt_get_features);
 PHI_DECLARE_bool(graph_metapath_split_opt);
 PHI_DECLARE_int32(gpugraph_storage_mode);
 PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
+PHI_DECLARE_bool(enable_graph_multi_node_sampling);
 
 namespace paddle {
 namespace framework {
@@ -2500,10 +2502,10 @@ int GraphDataGenerator::FillWalkBuf() {
   while (1) {
     if (i > remain_size) {
       // scenarios 1: d_walk is full
-      if (!is_multi_node_) {
-        break;
-      } else {
+      if (FLAGS_enable_graph_multi_node_sampling) {
         sample_flag = EVENT_WALKBUF_FULL;
+      } else {
+        break;
       }
     }
 
@@ -2527,28 +2529,30 @@ int GraphDataGenerator::FillWalkBuf() {
       finish_node_type.insert(node_type);
       if (finish_node_type.size() == node_type_start.size()) {
         // scenarios 2: epoch finish
-        if (!is_multi_node_) {
+        if (FLAGS_enable_graph_multi_node_sampling) {
+          sample_flag = EVENT_FINISH_EPOCH;
+        } else {
           cursor = 0;
           epoch_finish_ = true;
           break;
-        } else {
-          sample_flag = EVENT_FINISH_EPOCH;
         }
       }
 
       // scenarios 3: switch metapath
-      if (!is_multi_node_) {
+      if (FLAGS_enable_graph_multi_node_sampling) {
+        if (sample_flag == EVENT_CONTINUE_SAMPLE) {
+          // Switching only occurs when multi machine sampling continues
+          switch_flag = EVENT_SWTICH_METAPATH;
+        }
+      } else {
         cursor += 1;
         continue;
-      } else if (sample_flag == EVENT_CONTINUE_SAMPLE) {
-        // Switching only occurs when multi machine sampling continues
-        switch_flag = EVENT_SWTICH_METAPATH;
       }
     }
 
     // Perform synchronous information exchange between multiple machines
     // to decide whether to continue sampling
-    if (is_multi_node_) {
+    if (FLAGS_enable_graph_multi_node_sampling) {
       switch_command = multi_node_sync_sample(switch_flag, ncclProd);
       VLOG(2) << "gpuid:" << conf_.gpuid << " multi node sample sync"
               << " switch_flag:" << switch_flag << "," << switch_command;
@@ -2601,13 +2605,7 @@ int GraphDataGenerator::FillWalkBuf() {
     jump_rows_ = sample_res.total_sample_size;
     total_samples += sample_res.total_sample_size;
 
-    if (!is_multi_node_) {
-      if (jump_rows_ == 0) {
-        node_type_start[node_type] = tmp_len + start;
-        cursor += 1;
-        continue;
-      }
-    } else {
+    if (FLAGS_enable_graph_multi_node_sampling) {
       int flag = jump_rows_ > 0 ? 1 : 0;
       int command = multi_node_sync_sample(flag, ncclMax);
       VLOG(2) << "gpuid:" << conf_.gpuid << " multi node step sync"
@@ -2617,6 +2615,10 @@ int GraphDataGenerator::FillWalkBuf() {
         cursor += 1;
         continue;
       }
+    } else if (jump_rows_ == 0) {
+      node_type_start[node_type] = tmp_len + start;
+      cursor += 1;
+      continue;
     }
 
     if (!conf_.sage_mode) {
@@ -2681,13 +2683,7 @@ int GraphDataGenerator::FillWalkBuf() {
     step++;
     size_t path_len = path.size();
     for (; step < conf_.walk_len; step++) {
-      if (!is_multi_node_) {
-        // Finish multi-step sampling in single node
-        if (sample_res.total_sample_size == 0) {
-          VLOG(2) << "sample finish, step=" << step;
-          break;
-        }
-      } else {
+      if (FLAGS_enable_graph_multi_node_sampling) {
         // Step synchronization for multi-step sampling in multi node
         int flag = sample_res.total_sample_size > 0 ? 1 : 0;
         int command = multi_node_sync_sample(flag, ncclMax);
@@ -2695,6 +2691,12 @@ int GraphDataGenerator::FillWalkBuf() {
                 << " step:" << step << " step_sample:" << flag << ","
                 << command;
         if (command <= 0) {
+          break;
+        }
+      } else {
+        // Finish multi-step sampling in single node
+        if (sample_res.total_sample_size == 0) {
+          VLOG(2) << "sample finish, step=" << step;
           break;
         }
       }
@@ -2705,7 +2707,6 @@ int GraphDataGenerator::FillWalkBuf() {
         sample_keys_ptr = reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
       }
       int edge_type_id = path[(step - 1) % path_len];
-      VLOG(2) << "sample edge type: " << edge_type_id << " step: " << step;
       q.initialize(conf_.gpuid,
                    edge_type_id,
                    (uint64_t)sample_keys_ptr,
