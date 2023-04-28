@@ -116,9 +116,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
         VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
 #if !IS_TRT_VERSION_GE(7000)
