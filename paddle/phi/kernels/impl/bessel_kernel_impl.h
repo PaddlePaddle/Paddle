@@ -12,16 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/i0e_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 
 template <typename T>
-__host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
+static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
   /* Chebyshev coefficients for exp(-x) I0(x)
    * in the interval [0,8].
    *
@@ -47,7 +46,7 @@ __host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
 }
 
 template <typename T>
-__host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
+static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
   /* Chebyshev coefficients for exp(-x) sqrt(x) I0(x)
    * in the inverted interval [8,infinity].
    *
@@ -72,7 +71,7 @@ __host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
 }
 
 template <typename T>
-__host__ __device__ T Chbevl(T x, const T array[], size_t len) {
+static inline T Chbevl(T x, const T array[], size_t len) {
   T b0, b1, b2;
 
   b0 = array[0];
@@ -88,37 +87,63 @@ __host__ __device__ T Chbevl(T x, const T array[], size_t len) {
 }
 
 template <typename T>
-struct CudaI0eFunctor {
-  __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MT mp_x = static_cast<MT>(_x);
-    MT x = std::abs(mp_x);
-    if (x <= MT{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<MT>();
+struct I0eFunctor {
+  I0eFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      MT y = (x / MT{2.0}) - MT{2.0};
+      T y = (x / T{2.0}) - T{2.0};
 
-      return static_cast<T>(Chbevl<MT>(y, A, len));
+      output_[idx] = static_cast<T>(Chbevl<T>(y, A, len));
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+
+      output_[idx] = static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
     }
-    auto coeff_pair_B = ChebyshevCoefficientsI0e_B<MT>();
-    auto B = std::get<0>(coeff_pair_B);
-    auto len = std::get<1>(coeff_pair_B);
-    MT y = (MT{32.0} / x) - MT{2.0};
-
-    return static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
   }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
 };
 
-template <typename T, typename Context>
-void I0eKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
-  auto functor = CudaI0eFunctor<T>();
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
-}
+template <typename T>
+struct I0Functor {
+  I0Functor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+
+      output_[idx] = static_cast<T>(std::exp(x) * Chbevl<T>(y, A, len));
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+
+      output_[idx] = static_cast<T>(std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x));
+    }
+  }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(i0e, GPU, ALL_LAYOUT, phi::I0eKernel, float, double) {}

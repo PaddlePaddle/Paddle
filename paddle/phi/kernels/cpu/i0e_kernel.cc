@@ -16,6 +16,22 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/i0e_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/impl/bessel_kernel_impl.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void I0eKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  int64_t size = x.numel();
+  const T* x_data = x.data<T>();
+  T* out_data = ctx.template Alloc<T>(out);
+
+  phi::funcs::ForRange<Context> for_range(ctx, size);
+  I0eFunctor<T> functor(x_data, out_data, size);
+  for_range(functor);
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(i0e, CPU, ALL_LAYOUT, phi::I0eKernel, float, double) {}
