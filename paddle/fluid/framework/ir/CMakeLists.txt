@@ -128,11 +128,12 @@ pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
+pass_library(delete_repeated_ops_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
-  pass_library(trt_map_matmul_to_mul_pass inference)
+  pass_library(trt_map_ops_to_matrix_multiply_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_flash_multihead_matmul_fuse_pass inference)
   pass_library(trt_cross_multihead_matmul_fuse_pass inference)
@@ -244,6 +245,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
+               xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -527,4 +530,8 @@ if(WITH_XPU)
     test_stack_fuse_pass
     SRCS xpu/stack_fuse_pass_test.cc
     DEPS stack_fuse_pass)
+  cc_test(
+    test_fused_multi_transformer_cachekv_layout_trans_pass
+    SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
+    DEPS fused_multi_transformer_cachekv_layout_trans_pass)
 endif()

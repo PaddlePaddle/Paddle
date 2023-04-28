@@ -116,9 +116,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
         VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
 #if !IS_TRT_VERSION_GE(7000)
@@ -393,62 +394,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       return false;
 #endif
     }
-
-    if (op_type == "matmul_v2") {
-      if (!with_dynamic_shape) {
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      return true;
-    }
-
-    if (op_type == "matmul") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-
-      // not support broadcast
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
-      const auto x_shape = x_var_desc->GetShape();
-      const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() != y_shape.size()) {
-        VLOG(3)
-            << "matmul op not support broadcast, please check inputs'shape. ";
-        return false;
-      }
-      uint64_t dims = 2;
-      for (size_t i = 0; i < x_shape.size() - dims; ++i) {
-        if (x_shape[i] != y_shape[i] && (x_shape[i] == 1 || y_shape[i] == 1)) {
-          VLOG(3) << "matmul op not support broadcast, please check "
-                     "inputs'shape[i]. ";
-          return false;
-        }
-      }
-
-      for (auto& param_name : desc.Inputs()) {
-        for (auto& var_name : param_name.second) {
-          auto* var_desc = block->FindVar(var_name);
-          const auto shape = var_desc->GetShape();
-          if (shape.size() < 3) {
-            VLOG(3)
-                << "matmul op dims < 3 not supported in tensorrt, but got dims "
-                << shape.size() << ", so jump it.";
-            return false;
-          }
-        }
-      }
-    }
     if (op_type == "softmax") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -596,16 +541,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                      "Developers need to check whether block_desc is passed in "
                      "the pass.";
-          return false;
-        }
-
-        auto index_var_name = desc.Input("Index")[0];
-        auto* index_var_desc = block->FindVar(index_var_name);
-
-        // The index input must be int32 datatype.
-        if (index_var_desc->GetDataType() !=
-            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
-          VLOG(3) << "gather op Index input data type must be int32";
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
@@ -917,6 +852,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
+      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
+#if IS_TRT_VERSION_LT(7100)
+      return false;
+#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1246,10 +1185,12 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 into trt.
+        // At present, only support float32 or float16 or int32 or int64 into
+        // trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
-              dtype == framework::proto::VarType::INT32)) {
+              dtype == framework::proto::VarType::INT32 ||
+              dtype == framework::proto::VarType::INT64)) {
           return false;
         }
       }
@@ -2154,63 +2095,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "fc") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-
-      // y'shapes == 2
-      auto fc_inputs = desc.Inputs();
-      std::string fc_y = "";
-      if (fc_inputs.find("Y") != fc_inputs.end()) {
-        fc_y = "Y";
-      } else if (fc_inputs.find("W") != fc_inputs.end()) {
-        fc_y = "W";
-      } else {
-        VLOG(3) << " input_y(fc_op) must be Y or W ";
-        return false;
-      }
-
-      //  There is currently no input: Y(weight) more than two dimensions
-      /*
-      auto* y_var_desc = block->FindVar(desc.Input(fc_y)[0]);
-      const auto y_shape = y_var_desc->GetShape();
-      if (y_shape.size() != 2) {
-        VLOG(3)
-            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes =
-      "
-            << y_shape.size();
-        return false;
-      }
-      // y_num_col_dims ==1
-      if (desc.HasAttr("y_num_col_dims")) {
-        int y_num_col_dims =
-            PADDLE_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
-        if (y_num_col_dims != 1) {
-          VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
-                  << y_num_col_dims;
-          return false;
-        }
-      }
-      */
-      int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? PADDLE_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? PADDLE_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims < 1) {
-        VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
-                   "but x_num_col_dims = "
-                << x_num_col_dims;
-        return false;
-      }
-    }
-
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
@@ -2794,9 +2678,7 @@ struct SimpleOpTypeSetTeller : public Teller {
  private:
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
-      "mul",
-      "matmul",
-      "matmul_v2",
+      "matrix_multiply",
       "bmm",
       "range",
       "conv2d",
@@ -2865,7 +2747,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
-      "fc",
       "shuffle_channel",
       "where",
       "bitwise_not",
@@ -2954,9 +2835,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "cumsum"};
 
   std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "matmul_v2",
+      "matrix_multiply",
       "bmm",
       "range",
       "conv2d",
@@ -3025,7 +2904,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
-      "fc",
       "shuffle_channel",
       "where",
       "bitwise_not",
@@ -3195,17 +3073,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     return false;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::Default);
+    SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
   }
   auto& generic_plugin_teller = GetGenericPluginTeller();
   if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::GenericPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
   if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::CustomPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
   return false;

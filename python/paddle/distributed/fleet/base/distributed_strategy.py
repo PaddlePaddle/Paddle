@@ -146,6 +146,8 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.sync_param_name = ["embedding", "layer_norm", ".b_"]
+
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
@@ -1698,10 +1700,20 @@ class DistributedStrategy:
         )
 
         if "mp_configs" in configs:
+            if "sync_param_name" in configs["mp_configs"]:
+                self.sync_param_name = configs["mp_configs"]["sync_param_name"]
+                configs["mp_configs"].pop("sync_param_name")
+
             assign_configs_value(
                 self.strategy.hybrid_configs.mp_configs, configs["mp_configs"]
             )
             configs.pop("mp_configs")
+        if "pp_configs" in configs:
+            assign_configs_value(
+                self.strategy.hybrid_configs.pp_configs, configs["pp_configs"]
+            )
+            configs.pop("pp_configs")
+
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property

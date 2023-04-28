@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
+static uint64_t GetRandomSeed() {
+  std::random_device rd;
+  // double has 53 bit significant, so limit uint64 to 53 bits
+  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+}
+
 namespace phi {
 
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
@@ -91,6 +97,17 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
       std::make_shared<Generator>(GetRandomSeed());
   return default_cpu_generator;
+}
+
+const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+    const phi::CustomPlace& place) {
+  static std::
+      unordered_map<phi::Place, std::shared_ptr<Generator>, phi::Place::Hash>
+          generators;
+  if (generators.find(place) == generators.end()) {
+    generators.insert({place, std::make_shared<Generator>(GetRandomSeed())});
+  }
+  return generators[place];
 }
 
 using RNGMap = std::unordered_map<std::string, std::shared_ptr<Generator>>;
