@@ -644,7 +644,7 @@ class _ProgramHolder:
 # and executor, executes this program. Key points:
 #
 # 1. Data Sharing:
-#   The varBase of the dynamic graph is not in the scope, so before the op
+#   The variable/parameter of the dynamic graph is not in the scope, so before the op
 #   executes the program internally, create persistent variables with the
 #   same name as feed, parameters, and fetch in the scope, and share the
 #   LoDTensor of the op input.
@@ -668,7 +668,7 @@ def _load_persistable_vars_by_program(
     for each_var in persistable_vars:
         orig_each_name = program_holder._suffix_varname_dict[each_var.name()]
         if _is_parameter(each_var, program_holder.infer_program):
-            # create output varbase
+            # create output param
             new_var = framework.EagerParamBase(
                 shape=each_var.shape(),
                 dtype=each_var.dtype(),
@@ -755,7 +755,7 @@ def _load_persistable_vars(
             )
         # get suffix var name, see [why need to append suffix to persistable vars]
         new_name = inv_suffix_varname_dict[name]
-        # create output varbase
+        # create output var or param
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
             new_var = framework.EagerParamBase(
