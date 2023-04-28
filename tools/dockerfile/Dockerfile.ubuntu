@@ -28,7 +28,7 @@ RUN apt-get update && \
     patchelf git python3-pip python3-dev python3-opencv openssh-server bison \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
-    python-matplotlib \
+    python3-matplotlib \
     automake locales swig  \
     liblapack-dev liblapacke-dev \
     net-tools libtool kmod && \
