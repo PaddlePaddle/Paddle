@@ -118,6 +118,56 @@ class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ElementwiseMulCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_doubel_grad but we got: ",
+                                     axis));
+
+    // get output
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing multiply_double_grad composite func";
+    prim::multiply_double_grad<prim::DescTensor>(
+        x, y, out_grad, ddx, ddy, axis, x_grad, y_grad, grad_out_grad);
+
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 template <typename T>
 class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -162,7 +212,8 @@ REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseMulCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(
     elementwise_mul_grad_grad,
