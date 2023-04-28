@@ -81,7 +81,7 @@ class TestUnflattenAPI(unittest.TestCase):
             paddle.disable_static()
             x = paddle.to_tensor(self.x, place=place)
             if self.shape_is_tensor:
-                shape = paddle.to_tensor(self.shape)
+                shape = paddle.to_tensor(self.shape, 'int32')
             else:
                 shape = self.shape
             out = self.paddle_api(x=x, shape=shape, axis=self.axis)
@@ -395,6 +395,18 @@ class TestUnflattenError(unittest.TestCase):
                 self.paddle_api(x, shape, axis)
 
             self.assertRaises(TypeError, test_int_shape_input)
+
+            def test_shape_with_int64():
+                x = paddle.static.data(
+                    name='x',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                shape = list(np.array([2, 2]).astype('int64'))
+                axis = -1
+                self.paddle_api(x, shape, axis)
+
+            self.assertRaises(TypeError, test_shape_with_int64)
 
 
 #             # test shape is empty
