@@ -1992,8 +1992,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         // phi_kernel_name is like conv2d_fusion, there are more than one phi
         // kernel defined on different backend,we choose a best phi kernel.
-        // please note that we have alreadly have kernel_type_.
-        // std::cout << "*kernel_type_ " <<  *kernel_type_ << std::endl;
+        // please note that we have alreadly have kernel_type_ before entering
+        // PhiKernelTune function.
+        std::cout << "*kernel_type_ " << *kernel_type_ << phi_kernel_name
+                  << std::endl;
+        // *kernel_type_ is like
         // {
         //  data_type[::paddle::platform::float16];
         //  data_layout[Undefined(AnyLayout)];
