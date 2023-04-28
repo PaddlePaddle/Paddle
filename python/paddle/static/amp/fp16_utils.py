@@ -23,7 +23,7 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import (
     AutoMixedPrecisionLists,
-    black_list,
+    _get_black_list,
     get_low_precision_dtypestr,
 )
 
@@ -425,15 +425,15 @@ def set_var_dst_dtype(
 
 
 def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
-    if level == "O1":
-        return
     keep_fp32_var_names = set()
+    if level == "O1":
+        return keep_fp32_var_names
     all_parameters = []
     for block in program.blocks:
         all_parameters.extend(block.all_parameters())
         ops = block.ops
         for op in ops:
-            if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
+            if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
                 for in_name in op.input_names:
                     keep_fp32_var_names = keep_fp32_var_names.union(
                         op.input(in_name)
@@ -451,6 +451,7 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
         if param.name not in keep_fp32_var_names:
             _logger.debug(f"-- set param {param.name} to {dtype} --.")
             param.desc.set_dtype(dtype)
+    return keep_fp32_var_names
 
 
 def op_need_keep_fp32(op, amp_lists, use_fp16_guard):
@@ -601,21 +602,23 @@ def cast_model_to_fp16(
 
     # For amp o2 there is no blacklist by default.
     if level == 'O2':
-        amp_lists.black_list = amp_lists.black_list - black_list
+        amp_lists.black_list = amp_lists.black_list - _get_black_list()
 
     global_block = program.global_block()
     keep_fp32_ops = set()
     keep_fp16_ops = set()
     to_fp16_var_names = set()
+    keep_fp32_var_names = set()
 
     # step 1: set params dtype.
-    set_param_dtype(
+    fp32_var_names = set_param_dtype(
         program,
         dtype=dest_type,
         amp_lists=amp_lists,
         use_fp16_guard=use_fp16_guard,
         level=level,
     )
+    keep_fp32_var_names = keep_fp32_var_names.union(fp32_var_names)
 
     def need_process(op):
         need_process = True
@@ -719,6 +722,7 @@ def cast_model_to_fp16(
             idx += num_cast_ops + 1
     _logger.debug("---- after cast model to fp16 ----")
     _logger.debug(program)
+    to_fp16_var_names.difference_update(keep_fp32_var_names)
     return to_fp16_var_names
 
 

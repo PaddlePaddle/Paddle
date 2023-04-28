@@ -23,7 +23,7 @@ _logger = get_logger(
 )
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_extra_unsupported_list = {
+_extra_black_list = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
@@ -118,8 +118,7 @@ def _get_sys_unsupported_list(dtype):
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
     _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
-    unsupported_list = _extra_unsupported_list | _sys_unsupported_list
-    return unsupported_list
+    return _sys_unsupported_list
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
@@ -143,78 +142,6 @@ def _get_white_list(dtype):
     if dtype == 'float16':
         white_list_for_dtype = white_list_for_dtype | _only_supported_fp16_list
     return white_list_for_dtype
-
-
-class AutoMixedPrecisionLists:
-    """
-    AutoMixedPrecisionLists is a class for black/white list. It can update
-    pre-defined black list and white list according to users' custom black
-    white lists. The lists are used for an algorithm which determines op's
-    execution mode (fp32, fp16 or bf16).
-
-    Args:
-        custom_white_list (set): Users' custom white list.
-        custom_black_list (set): Users' custom black list.
-        custom_black_varnames (set): Users' custom black varibles' names.
-        dtype (str): the low precision dtype, which can be set to 'float16' or 'bfloat16'.
-    """
-
-    def __init__(
-        self,
-        custom_white_list=None,
-        custom_black_list=None,
-        custom_black_varnames=None,
-        dtype="float16",
-    ):
-        self.amp_dtype = check_amp_dtype(dtype)
-        self._custom_white_list = custom_white_list
-        self._custom_black_list = custom_black_list
-        self.white_list = copy.copy(_get_white_list(self.amp_dtype))
-        self.black_list = copy.copy(black_list)
-        self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
-        self.black_varnames = copy.copy(custom_black_varnames)
-        self._update_list()
-
-    def _update_list(self):
-        """
-        Update black and white list according to users' custom list.
-        """
-        _logger.debug(f"---- custom_white_list {self._custom_white_list} ---- ")
-        _logger.debug(f"---- custom_black_list {self._custom_black_list} ---- ")
-        _logger.debug(f"---- custom_black_varnames {self.black_varnames} ---- ")
-        if self._custom_white_list and self._custom_black_list:
-            for op_name in self._custom_white_list:
-                if op_name in self._custom_black_list:
-                    raise ValueError(
-                        f"The given custom_white_list overlaps custom_black_list with < {op_name} >!"
-                    )
-        if self._custom_white_list:
-            for op_name in self._custom_white_list:
-                if op_name in self.black_list:
-                    self.black_list.remove(op_name)
-                elif op_name in self.gray_list:
-                    self.gray_list.remove(op_name)
-                self.white_list.add(op_name)
-                if op_name in _extra_unsupported_list:
-                    self.unsupported_list.remove(op_name)
-        if self._custom_black_list:
-            for op_name in self._custom_black_list:
-                if op_name in self.white_list:
-                    self.white_list.remove(op_name)
-                elif op_name in self.gray_list:
-                    self.gray_list.remove(op_name)
-                self.black_list.add(op_name)
-                self.unsupported_list.add(op_name)
-        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
-        actual_unsupported_list = []
-        for op_name in sys_unsupported_list:
-            if op_name in self.white_list:
-                actual_unsupported_list.append(op_name)
-        if len(actual_unsupported_list) > 0:
-            _logger.warning(
-                f"On current {device}, {self.amp_dtype} is not supported for operators < {actual_unsupported_list} > in white_list!"
-            )
 
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -243,6 +170,82 @@ black_list = {
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
 }
+
+
+def _get_black_list():
+    _black_list = copy.copy(black_list)
+    _black_list = _black_list | _extra_black_list
+    return _black_list
+
+
+class AutoMixedPrecisionLists:
+    """
+    AutoMixedPrecisionLists is a class for black/white list. It can update
+    pre-defined black list and white list according to users' custom black
+    white lists. The lists are used for an algorithm which determines op's
+    execution mode (fp32, fp16 or bf16).
+
+    Args:
+        custom_white_list (set): Users' custom white list.
+        custom_black_list (set): Users' custom black list.
+        custom_black_varnames (set): Users' custom black varibles' names.
+        dtype (str): the low precision dtype, which can be set to 'float16' or 'bfloat16'.
+    """
+
+    def __init__(
+        self,
+        custom_white_list=None,
+        custom_black_list=None,
+        custom_black_varnames=None,
+        dtype="float16",
+    ):
+        self.amp_dtype = check_amp_dtype(dtype)
+        self._custom_white_list = custom_white_list
+        self._custom_black_list = custom_black_list
+        self.white_list = copy.copy(_get_white_list(self.amp_dtype))
+        self.black_list = copy.copy(_get_black_list())
+        self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
+        self.black_varnames = copy.copy(custom_black_varnames)
+        self._update_list()
+
+    def _update_list(self):
+        """
+        Update black and white list according to users' custom list.
+        """
+        _logger.debug(f"---- custom_white_list {self._custom_white_list} ---- ")
+        _logger.debug(f"---- custom_black_list {self._custom_black_list} ---- ")
+        _logger.debug(f"---- custom_black_varnames {self.black_varnames} ---- ")
+        if self._custom_white_list and self._custom_black_list:
+            for op_name in self._custom_white_list:
+                if op_name in self._custom_black_list:
+                    raise ValueError(
+                        f"The given custom_white_list overlaps custom_black_list with < {op_name} >!"
+                    )
+        if self._custom_white_list:
+            for op_name in self._custom_white_list:
+                if op_name in self.black_list:
+                    self.black_list.remove(op_name)
+                elif op_name in self.gray_list:
+                    self.gray_list.remove(op_name)
+                self.white_list.add(op_name)
+        if self._custom_black_list:
+            for op_name in self._custom_black_list:
+                if op_name in self.white_list:
+                    self.white_list.remove(op_name)
+                elif op_name in self.gray_list:
+                    self.gray_list.remove(op_name)
+                self.black_list.add(op_name)
+        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
+        actual_unsupported_list = []
+        for op_name in sys_unsupported_list:
+            if op_name in self.white_list:
+                actual_unsupported_list.append(op_name)
+        if len(actual_unsupported_list) > 0:
+            _logger.warning(
+                f"On current {device}, {self.amp_dtype} is not supported for operators < {actual_unsupported_list} > in white_list!"
+            )
+
 
 # This set contains two types of ops. All ops supported fp16 calculation. One
 # of two types is considered numerically-safe, but may be made unsafe by an

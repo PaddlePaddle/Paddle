@@ -48,7 +48,6 @@ class TestAMPPromote(AmpTestBase):
 
         max_iters = 2
         x_fp32 = np.random.random(size=[1, 1, 6, 6]).astype("float32")
-        print(main_program)
         losses_o1 = self.run_program(
             main_program,
             startup_program,
