@@ -1569,20 +1569,8 @@ bool OperatorWithKernel::CanCUTLASSBeUsed(
     const framework::ExecutionContext& ctx, phi::DataType data_type) const {
   bool use_cutlass = ctx.HasAttr("can_run_by_cutlass_backend") &&
                      ctx.Attr<bool>("can_run_by_cutlass_backend") &&
-                     paddle::platform::is_gpu_place(ctx.GetPlace());
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
-  auto& dev_ctx = ctx.device_context<phi::GPUContext>();
-  if (use_cutlass && data_type == phi::DataType::BFLOAT16 &&
-      dev_ctx.GetComputeCapability() == 75) {
-    PADDLE_ENFORCE_EQ(
-        dev_ctx.GetComputeCapability(),
-        75,
-        phi::errors::PreconditionNotMet(
-            "Expect compute compatiblity to be less than 75, but got %d. ",
-            dev_ctx.GetComputeCapability()));
-  }
-#endif  // PADDLE_WITH_CUDA && PADDLE_WITH_CUTLASS
-
+                     paddle::platform::is_gpu_place(ctx.GetPlace()) &&
+                     data_type == phi::DataType::FLOAT16;
   return use_cutlass && this->SupportsCUTLASS(data_type);
 }
 
