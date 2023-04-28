@@ -80,6 +80,7 @@ __all__ = [
     'add',
     'subtract',
     'transpose',
+    'sum',
     'multiply',
     'divide',
     'coalesce',
