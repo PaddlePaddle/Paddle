@@ -79,9 +79,6 @@ class ReduceSumPrimOpShapeInference : public framework::InferShapeBase {
       x_shape.erase(remove(x_shape.begin(), x_shape.end(), kDelFlag),
                     x_shape.end());
     }
-    if (!keepdim && x_shape.size() == 0) {
-      x_shape.push_back(1);
-    }
 
     PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
   }

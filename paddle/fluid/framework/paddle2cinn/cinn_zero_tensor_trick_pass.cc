@@ -57,16 +57,6 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-    if (n->IsVar()) {
-      if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
-        std::vector<int64_t> shape = n->Var()->GetShape();
-        if (shape.empty()) {
-          shape.push_back(1);
-          n->Var()->SetShape(shape);
-          VLOG(4) << "var " << n->Name() << " dims is empty, fix dim -> {1} ";
-        }
-      }
-    }
   }
 }
 
