@@ -2767,7 +2767,6 @@ void PNormInferMeta(const MetaTensor& x,
     if (reduce_dims.size() == 0) {
       reduce_dims.emplace_back(1);
     }
-
     x_dim[axis] = 1;
   }
 

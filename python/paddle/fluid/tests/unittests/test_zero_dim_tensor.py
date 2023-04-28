@@ -2616,6 +2616,107 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(b.grad.shape, [4, 5])
         self.assertEqual(c.grad.shape, [5])
 
+    def test_cov(self):
+        xt = paddle.randn((3, 4))
+        xt.stop_gradient = False
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.cov(xt)
+        xt_out.retain_grads()
+        xt_out.backward()
+        self.assertEqual(xt_out.shape, [3, 3])
+        self.assertEqual(xt.grad.shape, [3, 4])
+
+        xt_1_out = paddle.linalg.cov(xt_1)
+        xt_1.retain_grads()
+        xt_1_out.backward()
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [12])
+
+    def test_det(self):
+        xt = paddle.randn([3, 3, 3])
+        xt.stop_gradient = False
+        xt_1 = paddle.randn([3, 3])
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.det(xt)
+        xt.retain_grads()
+        xt_out.backward()
+        self.assertEqual(xt_out.shape, [3])
+        self.assertEqual(xt.grad.shape, [3, 3, 3])
+
+        xt_1_out = paddle.linalg.det(xt_1)
+        xt_1.retain_grads()
+        xt_1_out.backward()
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [3, 3])
+
+    def test_dist(self):
+        x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
+        y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.dist(x, y, 0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(1))
+        self.assertEqual(x.grad.shape, [2, 2])
+        self.assertEqual(y.grad.shape, [2, 2])
+
+    def test_linalg_cond(self):
+        def assert_shape(out):
+            self.assertEqual(out.shape, [])
+
+        # x1 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x1.stop_gradient = False
+        # p = 2 : use paddle.sum
+        # out = paddle.linalg.cond(x1)
+        # assert_shape(out)
+
+        # p = fro : use paddle.sum
+        # x2 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x2.stop_gradient = False
+        # out_fro = paddle.linalg.cond(x2, p='fro')
+        # assert_shape(out_fro)
+
+        # p = nuc : use paddle.sum
+        # x3 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x3.stop_gradient = False
+        # out_nuc = paddle.linalg.cond(x3, p='nuc')
+        # assert_shape(out_nuc)
+
+        # p in (-1, 1) : use paddle.sum
+        # x4 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x4.stop_gradient = False
+        # out_1 = paddle.linalg.cond(x4, p=1)
+        # assert_shape(out_1)
+        # x5 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x5.stop_gradient = False
+        # out_minus_1 = paddle.linalg.cond(x5, p=-1)
+        # assert_shape(out_minus_1)
+
+        # p in (-2, 2)  depends on paddle.sum
+        # x6 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x6.stop_gradient = False
+        # out_2 = paddle.linalg.cond(x6, p=2)
+        # assert_shape(out_2)
+
+        # p in (-inf, inf):use paddle.sum
+        # x8 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x8.stop_gradient = False
+        # out_inf = paddle.linalg.cond(x8, p=float("inf"))
+        # assert_shape(out_inf)
+
+        # depends on paddle.sum
+        # a = paddle.randn([2, 4, 4])
+        # a.stop_gradient = False
+        # a_cond_fro = paddle.linalg.cond(a, p='fro')
+        # a_cond_fro.backward()
+        # self.assertEqual(len(a_cond_fro.shape), 1)
+        # self.assertEqual(a.grad.shape, [2, 4, 4])
+
     def test_trace(self):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
         x.stop_gradient = False
@@ -4722,6 +4823,148 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (4,))
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
+
+    @prog_scope()
+    def test_cov(self):
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.cov(xt_1)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (12,))
+
+    @prog_scope()
+    def test_det(self):
+        xt_1 = paddle.randn((3, 3))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.det(xt_1)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 3))
+
+    @prog_scope()
+    def test_dist(self):
+        x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
+        y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.dist(x, y)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 2))
+        self.assertEqual(res[1].shape, (2, 2))
+        np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
+
+    @prog_scope()
+    def test_linalg_cond(self):
+        pass
+        # use paddle.sum
+        # x = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x.stop_gradient = False
+        # out = paddle.linalg.cond(x)
+        # paddle.static.append_backward(out)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p = fro : use paddle.sum
+        # x2 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x2.stop_gradient = False
+        # out_fro = paddle.linalg.cond(x2, p='fro')
+        # paddle.static.append_backward(out_fro)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_fro, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p = nuc : use paddle.sum
+        # x3 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x3.stop_gradient = False
+        # out_nuc = paddle.linalg.cond(x3, p='nuc')
+        # paddle.static.append_backward(out_nuc)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_nuc, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-1, 1) : use paddle.sum
+        # x4 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x4.stop_gradient = False
+        # out_1 = paddle.linalg.cond(x4, p=1)
+        # paddle.static.append_backward(out_1)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_1, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # x5 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x5.stop_gradient = False
+        # out_minus_1 = paddle.linalg.cond(x5, p=-1)
+        # paddle.static.append_backward(out_minus_1)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_minus_1, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-2, 2)  depends on paddle.sum
+        # x6 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x6.stop_gradient = False
+        # out_2 = paddle.linalg.cond(x6, p=2)
+        # paddle.static.append_backward(out_2)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_2, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # p in (-inf, inf):use paddle.sum
+        # x8 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
+        # x8.stop_gradient = False
+        # out_inf = paddle.linalg.cond(x8, p=float("inf"))
+        # paddle.static.append_backward(out_inf)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[out_inf, x.grad_name])
+
+        # self.assertTrue(res[0].shape, ())
+        # self.assertTrue(res[1].shape, (3, 3))
+
+        # depends on paddle.sum
+        # a = paddle.randn([2, 4, 4])
+        # a.stop_gradient = False
+        # a_cond_fro = paddle.linalg.cond(a, p='fro')
+        # paddle.static.append_backward(a_cond_fro)
+
+        # prog = paddle.static.default_main_program()
+        # res = self.exe.run(prog, fetch_list=[a_cond_fro, a.grad_name])
+
+        # self.assertEqual(res[0].shape, (2,))
+        # self.assertEqual(res[1].shape, (2, 4, 4))
 
     @prog_scope()
     def test_trace(self):
