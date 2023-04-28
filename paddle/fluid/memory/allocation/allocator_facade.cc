@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -62,6 +61,7 @@
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time,
@@ -92,8 +92,8 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "managed memory, only available for auto_growth "
                             "strategy");
 
-DECLARE_string(allocator_strategy);
-DECLARE_uint64(auto_growth_chunk_size_in_mb);
+PHI_DECLARE_string(allocator_strategy);
+PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
 
 namespace paddle {
 namespace memory {

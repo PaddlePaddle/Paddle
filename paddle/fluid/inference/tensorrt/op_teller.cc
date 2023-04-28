@@ -116,9 +116,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
         VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
 #if !IS_TRT_VERSION_GE(7000)
@@ -540,16 +541,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                      "Developers need to check whether block_desc is passed in "
                      "the pass.";
-          return false;
-        }
-
-        auto index_var_name = desc.Input("Index")[0];
-        auto* index_var_desc = block->FindVar(index_var_name);
-
-        // The index input must be int32 datatype.
-        if (index_var_desc->GetDataType() !=
-            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
-          VLOG(3) << "gather op Index input data type must be int32";
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
@@ -1194,10 +1185,12 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 into trt.
+        // At present, only support float32 or float16 or int32 or int64 into
+        // trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
-              dtype == framework::proto::VarType::INT32)) {
+              dtype == framework::proto::VarType::INT32 ||
+              dtype == framework::proto::VarType::INT64)) {
           return false;
         }
       }
@@ -3080,17 +3073,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     return false;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::Default);
+    SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
   }
   auto& generic_plugin_teller = GetGenericPluginTeller();
   if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::GenericPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
   if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
-    SetOpConverterType(op_type, OpConverterType::CustomPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
   return false;
