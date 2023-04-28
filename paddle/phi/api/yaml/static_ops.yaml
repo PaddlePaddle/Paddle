@@ -4,7 +4,6 @@
   infer_meta :
     func : SumInferMeta
   invoke : add_n_impl(inputs)
-  backward : add_n_grad
   kernel :
     data_type : inputs
   inplace : (x -> out)
