@@ -429,7 +429,7 @@ def compare_accuracy(
     dump_path,
     another_dump_path,
     output_filename,
-    loss_scale,
+    loss_scale=1,
     dump_all_tensors=False,
 ):
     r"""
