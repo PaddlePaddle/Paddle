@@ -4788,42 +4788,58 @@ def index_add_(x, index, axis, value, name=None):
 
 
 def unflatten(x, shape, axis, name=None):
+    """
+    Expand a certain dimension of the :attr:`x` Tensor into multiple dimensions.
 
-    check_dtype(
-        x.dtype,
-        'x',
-        [
-            'uint8',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'float16',
-            'float32',
-            'float64',
-            'complex64',
-            'complex128',
-            'bool',
-        ],
-        'unflatten',
-    )
-    if axis < 0:
-        axis = axis + x.dim()
+    Args:
+        x (Tensor) : An N-D Tensor. The data type is 'float16', 'float32', 'float64','int16', 'int32', 'int64', 'bool', 'uint16'.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1. The data type is `int32` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape []. If shape is an Tensor, it should be an 1-D Tensor
+        axis (int): Dimension to be unflattened, specified as an index into `x.shape`.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the unflatten tensor of :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            res = paddle.unflatten(x, shape, axis)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = (-1, 2)
+            axis = -1
+            res = paddle.unflatten(x, shape, axis)
+            print(res.shape)
+            # [4, 6, 4, 2]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = paddle.to_tensor([2, 2])
+            axis = 0
+            res = paddle.unflatten(x, shape, axis)
+            print(res.shape)
+            # [2, 2, 6, 8]
+    """
+
+    # determine whether the input axis is valid.
+    axis = non_negative_axis(x, axis)
+
     if isinstance(shape, (list, tuple)):
         new_shape = (
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
         )
     elif isinstance(shape, Variable):
-        check_dtype(
-            shape.dtype,
-            'shape',
-            ['int32'],
-            'unflatten',
-        )
+        # The data type returned by paddle.shape is only 'int32'.
         new_shape = paddle.concat(
             [
                 paddle.shape(x)[:axis],
-                shape,
+                paddle.cast(shape, 'int32'),
                 paddle.shape(x)[axis + 1 :],
             ]
         )

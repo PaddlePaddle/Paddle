@@ -1744,6 +1744,34 @@ class Flatten(Layer):
 
 
 class Unflatten(Layer):
+    """
+    This interface is used to construct a callable object of the ``Unflatten`` class.
+    For more details, refer to code examples.
+    It expands a certain dimension of the :attr:`x` Tensor into multiple dimensions.
+
+    Parameters:
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1. The data type is `int32` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape []. If shape is an Tensor, it should be an 1-D Tensor
+        axis (int): Dimension to be unflattened, specified as an index into `x.shape`.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            unflatten = paddle.nn.Unflatten(shape, axis)
+            res = unflatten(x)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+    """
+
     def __init__(self, shape, axis, name=None):
         super().__init__()
         self.shape = shape
