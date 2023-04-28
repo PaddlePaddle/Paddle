@@ -426,8 +426,8 @@ def collect_operator_stats():
 
 
 def compare_accuracy(
-    fp32_dump_path,
-    fp16_dump_path,
+    dump_path,
+    another_dump_path,
     output_filename,
     loss_scale,
     dump_all_tensors=False,
@@ -436,10 +436,10 @@ def compare_accuracy(
     This is a precision comparison tool that can be used to compare log data of float16 and float32.
 
     Args:
-        fp32_dump_path(str): the log path of float32.
-        fp16_dump_path(str): the log path of float16.
-        output_filename(str): the file nmae of compare output.
-        loss_scale(float): the scale during the training phase.
+        dump_path(str): The path of the running log, such as the log for execution using the fp32 type.
+        another_dump_path(str): the path of another running log ,such as the log for execution using the fp16 type.
+        output_filename(str): the excel file nmae of compare output.
+        loss_scale(float): the loss_scale during the training phase.
         dump_all_tensors(bool, optional): dump all tensor, default is False.
 
     Examples:
@@ -467,8 +467,8 @@ def compare_accuracy(
     """
     assert dump_all_tensors is False, "It is currently not supported."
     paddle.amp.accuracy_compare.compare_accuracy(
-        fp32_dump_path,
-        fp16_dump_path,
+        dump_path,
+        another_dump_path,
         output_filename,
         loss_scale,
         dump_all_tensors=False,
