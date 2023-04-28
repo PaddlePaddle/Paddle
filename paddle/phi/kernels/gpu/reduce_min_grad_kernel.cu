@@ -69,7 +69,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
   std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
   funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, 0, funcs::MultiplyFunctor<T>(), 0);
+      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
   delete equal_out;
 }
 }  // namespace phi
