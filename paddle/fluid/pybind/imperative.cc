@@ -63,7 +63,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
-PHI_DECLARE_bool(set_to_1d);
+DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 

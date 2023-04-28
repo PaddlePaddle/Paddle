@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(set_to_1d);
+DECLARE_bool(set_to_1d);
 
 namespace phi {
 
