@@ -95,6 +95,12 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : add_n (sum)
+  inputs:
+    {inputs : X}
+  outputs:
+    {out : Out}
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -343,6 +349,12 @@
   outputs :
     out : Out
 
+- op : box_coder
+  inputs :
+    {prior_box : PriorBox , prior_box_var : PriorBoxVar, target_box: TargetBox}
+  outputs :
+    output_box : OutputBox
+
 - op : broadcast_tensors
   backward : broadcast_tensors_grad
   inputs :
@@ -378,6 +390,12 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
 
 - op : clip
   backward : clip_grad, clip_double_grad
@@ -1451,6 +1469,22 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
   extra :
@@ -2240,7 +2274,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2299,6 +2333,13 @@
   extra :
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+
+- op : triangular_solve
+  backward : triangular_solve_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)

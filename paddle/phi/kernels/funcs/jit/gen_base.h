@@ -23,9 +23,10 @@
 #endif
 
 #include "gflags/gflags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
 
-DECLARE_bool(dump_jitcode);
+PHI_DECLARE_bool(dump_jitcode);
 
 namespace phi {
 namespace jit {
