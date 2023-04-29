@@ -26,6 +26,8 @@
 
 PD_DECLARE_bool(cudnn_deterministic);
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 int get_num_split() {
@@ -157,50 +159,52 @@ void FlashAttnGradKernel(const Context& ctx,
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
-  const auto& dims = q.dims();
-  const int64_t batch_size = dims[0];
-  const int64_t seqlen_q = dims[1];
-  const int64_t num_heads = dims[2];
-  const int64_t head_size_og = dout.dims()[3];
-  const int64_t head_size = dims[3];
-  const int64_t seqlen_k = k.dims()[1];
-  const int64_t num_heads_k = k.dims()[2];
+  auto dims = q.dims();
+  int64_t batch_size = dims[0];
+  int64_t seq_len_q = dims[1];
+  int64_t num_heads = dims[2];
+  int64_t head_size = dims[3];
 
-  const int64_t total_q = batch_size * seqlen_q;
-  const int64_t total_k = batch_size * seqlen_k;
+  int64_t seq_len_k = k.dims()[1];
 
-  // TODO(umiswing): add shape check
-  PADDLE_ENFORCE_EQ(
-      head_size_og,
-      head_size,
-      phi::errors::InvalidArgument(
-          "flash_attn_bwd receive input with head_size_og == head_size"));
+  int64_t total_q = batch_size * seq_len_q;
+  int64_t total_k = batch_size * seq_len_k;
 
-  VLOG(10) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
-           << "], v[" << v.dims() << "]";
+  float scale = 1.0f / std::sqrt(head_size);
 
-  const float scale = 1.0f / std::sqrt(head_size);
+  VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
+          << "], v[" << v.dims() << "]";
 
-  FlashAttnBwdParamsV2 params =
-      FlashAttnBwdParamsV2(ctx,
-                           batch_size,
-                           seqlen_q,
-                           seqlen_k,
-                           num_heads,
-                           num_heads_k,
-                           head_size,
-                           dropout,
-                           scale,
-                           causal,
-                           q.dtype(),
-                           attn_mask,
-                           seed_offset.data<int64_t>());
+  DenseTensor q_t_s, k_t_s, v_t_s;
+  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
+  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
 
-  ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
+  DenseTensor cu_seqlens_q;
+  DenseTensor cu_seqlens_k;
+  ArangeNullaryKernel<int32_t, Context>(
+      ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
+  ArangeNullaryKernel<int32_t, Context>(
+      ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
-  cudaStream_t stream = ctx.stream();
+  FlashAttnUnpaddedGradKernel<T, Context>(ctx,
+                                          q_t_s,
+                                          k_t_s,
+                                          v_t_s,
+                                          cu_seqlens_q,
+                                          cu_seqlens_k,
+                                          out,
+                                          softmax_lse,
+                                          seed_offset,
+                                          dout,
+                                          seq_len_q,
+                                          seq_len_k,
+                                          scale,
+                                          dropout,
+                                          causal,
+                                          dq,
+                                          dk,
+                                          dv);
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
