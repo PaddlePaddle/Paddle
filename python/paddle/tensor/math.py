@@ -5593,8 +5593,8 @@ def i0(x, name=None):
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    Returns:
 
+    Returns:
         - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x.
 
     Examples:
@@ -5624,8 +5624,8 @@ def i0e(x, name=None):
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    Returns:
 
+    Returns:
         - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x.
 
     Examples:
