@@ -329,47 +329,5 @@ struct EigenL1NormGrad {
                    const Array& bcast);
 };
 
-template <typename EigenDevice, typename T>
-struct EigenGenericI0 {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(const EigenDevice& dev, OutType out, const InType& in);
-};
-
-template <typename EigenDevice, typename T>
-struct EigenGenericI0Grad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(const EigenDevice& dev,
-                   OutType din,
-                   const InType& in,
-                   const InType& dout);
-};
-
-template <typename EigenDevice, typename T>
-struct EigenGenericI0e {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(const EigenDevice& dev, OutType out, const InType& in);
-};
-
-template <typename EigenDevice, typename T>
-struct EigenGenericI0eGrad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(const EigenDevice& dev,
-                   OutType din,
-                   const InType& in,
-                   const InType& dout);
-};
-
 }  // namespace funcs
 }  // namespace phi
