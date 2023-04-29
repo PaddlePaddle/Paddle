@@ -31,11 +31,12 @@ struct I0eGradFunctor {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     // const MT mp_x = static_cast<MT>(x_[idx]);
-    const MT mp_y = static_cast<MT>(y_[idx]);
+    // const MT mp_y = static_cast<MT>(y_[idx]);
+    // const MT mp_i1e_data = static_cast<MT>(i1e_data_[idx]);
     // todo: grad implementation
-    // auto partial_x = mp_x.i1e() - std::signbit(mp_x) * mp_y;
+    // auto partial_x = mp_i1e_data - std::signbit(mp_x) * mp_y;
     // output_[idx] = static_cast<T>(mp_dout * partial_x);
-    output_[idx] = static_cast<T>(mp_dout * mp_y);
+    output_[idx] = static_cast<T>(mp_dout);
   }
 
  private:
@@ -54,10 +55,10 @@ struct I0GradFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
-//    const MT mp_x = static_cast<MT>(x_[idx]);
+    // const MT mp_x = static_cast<MT>(x_[idx]);
+    // const MT mp_i1_data = static_cast<MT>(i1_data_[idx]);
     // todo: grad implementation
-    // auto partial_x = mp_x.i1();
-    // output_[idx] = static_cast<T>(mp_dout * partial_x);
+    // output_[idx] = static_cast<T>(mp_dout * mp_i1_data);
     output_[idx] = static_cast<T>(mp_dout);
   }
 
@@ -77,13 +78,17 @@ void I0eGradKernel(const Context& ctx,
   auto* dout_data = out_grad.data<T>();
   auto* x_data = x.data<T>();
   auto* dx_data = ctx.template Alloc<T>(x_grad, static_cast<size_t>(numel * sizeof(T)));
-  // todo: add i0e output to grad
-  DenseTensor* y;
-  auto* y_data = ctx.template Alloc<T>(y, static_cast<size_t>(numel * sizeof(T)));
+  auto* y_data = ctx.template Alloc<T>(x, static_cast<size_t>(numel * sizeof(T)));
 
+  // get the output of i0e for computing i0e gradient.
   phi::funcs::ForRange<Context> for_range(ctx, numel);
-  I0eFunctor<T> i0_functor(x_data, y_data, numel);
-  for_range(i0_functor);
+  I0eFunctor<T> i0e_functor(x_data, y_data, numel);
+  for_range(i0e_functor);
+
+  // get the output of i1e for computing i0e gradient.
+  // phi::funcs::ForRange<Context> for_range(ctx, numel);
+  // I1eFunctor<T> i1e_functor(x_data, i1e_data, numel);
+  // for_range(i1e_functor);
 
   I0eGradFunctor<T> functor(dout_data, x_data, y_data, dx_data, numel);
   for_range(functor);
@@ -98,6 +103,11 @@ void I0GradKernel(const Context& ctx,
   auto* dout_data = out_grad.data<T>();
   auto* x_data = x.data<T>();
   auto* dx_data = ctx.template Alloc<T>(x_grad, static_cast<size_t>(numel * sizeof(T)));
+
+  // get the output of i1 for computing i0e gradient.
+  // phi::funcs::ForRange<Context> for_range(ctx, numel);
+  // I1Functor<T> i1_functor(x_data, i1_data, numel);
+  // for_range(i1_functor);
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);
   I0GradFunctor<T> functor(dout_data, x_data, dx_data, numel);
