@@ -6,6 +6,10 @@ set(DISTRIBUTE_COMPILE_FLAGS
     "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
 )
 
+if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+  set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+endif()
+
 set_source_files_properties(
   heter_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test_old(
