@@ -455,7 +455,6 @@ tensor_method_func = [  # noqa
     'stack',
     'strided_slice',
     'transpose',
-    'unflatten',
     'unique',
     'unique_consecutive',
     'unsqueeze',

@@ -4789,7 +4789,7 @@ def index_add_(x, index, axis, value, name=None):
 
 def unflatten(x, shape, axis, name=None):
     """
-    Expand a certain dimension of the :attr:`x` Tensor into multiple dimensions.
+    Expand a certain dimension of the input x Tensor into multiple dimensions.
 
     Args:
         x (Tensor) : An N-D Tensor. The data type is 'float16', 'float32', 'float64','int16', 'int32', 'int64', 'bool', 'uint16'.
@@ -4835,7 +4835,7 @@ def unflatten(x, shape, axis, name=None):
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
         )
     elif isinstance(shape, Variable):
-        # The data type returned by paddle.shape is only 'int32'.
+        # The data type returned by `paddle.shape` is only 'int32'.
         new_shape = paddle.concat(
             [
                 paddle.shape(x)[:axis],
