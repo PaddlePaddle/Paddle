@@ -10,6 +10,7 @@ list(
   batch_norm_op.cc
   activation_op.cc
   unary_op.cc
+  softmax_op.cc
   concat_op.cc
   dropout_op.cc
   group_norm_op.cc
