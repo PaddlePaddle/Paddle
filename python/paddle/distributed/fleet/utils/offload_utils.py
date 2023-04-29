@@ -118,6 +118,7 @@ def naive_offload_decorate(program, executor, scope=None):
 
     executor.run(offload_program, scope=scope)
     # TODO clear the GPU allocation of the gpu var
+    paddle.device.cuda.synchronize()
     scope.clear([var.name for var in vars_to_offload])
     logger.info(
         "After Offload, GPU Allocated Memory: {} MB.".format(
