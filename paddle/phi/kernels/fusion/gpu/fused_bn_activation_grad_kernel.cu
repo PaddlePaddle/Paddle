@@ -91,10 +91,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       true,
       phi::errors::PreconditionNotMet(
           "Both the scale grad and the bias grad must not be null."));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      d_scale, d_scale->numel() * sizeof(BatchNormParamType<T>));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      d_bias, d_bias->numel() * sizeof(BatchNormParamType<T>));
+  dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+  dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
   PADDLE_ENFORCE_EQ(
       scale.dims().size(),
       1UL,
@@ -204,11 +202,9 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
       /*bnBiasData=*/bias.template data<BatchNormParamType<T>>(),
       /*dBnScaleData=*/
-      dev_ctx.template Alloc<BatchNormParamType<T>>(
-          d_scale, d_scale->numel() * sizeof(BatchNormParamType<T>)),
+      dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
       /*dBnBiasData=*/
-      dev_ctx.template Alloc<BatchNormParamType<T>>(
-          d_bias, d_bias->numel() * sizeof(BatchNormParamType<T>)),
+      dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
       /*epsilon=*/epsilon1,
       /*savedMean=*/saved_mean_data,
       /*savedInvVariance=*/saved_var_data,
@@ -227,3 +223,16 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
 }  // namespace fusion
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_batch_norm_act_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedBatchNormActGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
