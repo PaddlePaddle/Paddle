@@ -219,14 +219,6 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
 
-            if api in [
-                paddle.sum,
-                paddle.mean,
-                paddle.nanmean,
-                paddle.nansum,
-            ]:
-                return
-
             # 2) x is ND, reduce to 0D
             if api in [paddle.all, paddle.any]:
                 x = paddle.randint(0, 2, [3, 5]).astype('bool')
@@ -301,20 +293,11 @@ class TestReduceAPI(unittest.TestCase):
                     np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
 
-                if api in [
-                    paddle.sum,
-                    paddle.mean,
-                    paddle.nanmean,
-                    paddle.nansum,
-                ]:
-                    return
-
                 # 2) x is ND, reduce to 0D
                 if api in [paddle.all, paddle.any]:
                     x = paddle.randint(0, 2, [3, 5]).astype('bool')
                 else:
                     x = paddle.rand([3, 5])
-                x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, None)
                 paddle.static.append_backward(out)
@@ -1230,6 +1213,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
 
     def test_std(self):
+        # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.std(x)
@@ -1237,18 +1221,24 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
         out2.backward()
 
-        # checkout shape of out
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-
-        # checkout value of out
         self.assertEqual(out1, 0)
         self.assertEqual(out2, 0)
 
-        # checkout backward
         self.assertEqual(x.grad.shape, [])
 
+        # 2) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.std(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [3, 5])
+
     def test_var(self):
+        # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.var(x)
@@ -1256,17 +1246,22 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
         out2.backward()
 
-        # checkout shape of out
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-
-        # checkout value of out
         self.assertEqual(out1, 0)
         self.assertEqual(out2, 0)
 
-        # checkout backward
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, 0)
+
+        # 2) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.std(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [3, 5])
 
     def test_quantile(self):
         # 1) x is 0D
@@ -1463,7 +1458,6 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.clip(x, -5, 5)
         out.retain_grads()
         out.backward()
-
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
@@ -1473,7 +1467,6 @@ class TestSundryAPI(unittest.TestCase):
         out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
         out1.retain_grads()
         out1.backward()
-
         self.assertEqual(out1.shape, [])
         self.assertEqual(out1.grad.shape, [])
         self.assertEqual(x1.grad.shape, [])
@@ -5001,8 +4994,7 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(
             d.log_prob(paddle.full([], 2, dtype='int64')).shape, []
         )
-        # because use paddle.sum
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
     def test_Normal(self):
         normal = paddle.distribution.Normal(0.0, 3.0)
@@ -5045,10 +5037,9 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(beta.sample([]).shape, [])
         self.assertEqual(beta.mean.shape, [])
         self.assertEqual(beta.variance.shape, [])
-        # because use paddle.sum
-        # self.assertEqual(beta.prob(self.x).shape, [])
-        # self.assertEqual(beta.log_prob(self.x).shape, [])
-        # self.assertEqual(beta.entropy().shape, [])
+        self.assertEqual(beta.prob(self.x).shape, [])
+        self.assertEqual(beta.log_prob(self.x).shape, [])
+        self.assertEqual(beta.entropy().shape, [])
 
     def test_kl_divergence(self):
         p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
@@ -5107,10 +5098,9 @@ class TestDistribution(unittest.TestCase):
         d = paddle.distribution.Multinomial(
             10, paddle.to_tensor([0.2, 0.3, 0.5])
         )
-        # because use paddle.sum
-        # self.assertEqual(d.prob(self.x).shape, [])
-        # self.assertEqual(d.log_prob(self.x).shape, [])
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
 
 class TestLossAPI(unittest.TestCase):
@@ -5128,10 +5118,10 @@ class TestLossAPI(unittest.TestCase):
         fg_num_1 = paddle.full([1], 2.0)
 
         out0 = F.sigmoid_focal_loss(
-            logit, label, normalizer=fg_num_0, reduction='mean'
+            logit, label, normalizer=fg_num_0, reduction='sum'
         )
         out1 = F.sigmoid_focal_loss(
-            logit, label, normalizer=fg_num_1, reduction='mean'
+            logit, label, normalizer=fg_num_1, reduction='sum'
         )
         out0.retain_grads()
 
@@ -5145,6 +5135,28 @@ class TestLossAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [])
         self.assertEqual(out0.grad.shape, [])
         self.assertEqual(logit.grad.shape, [2, 3])
+
+    def test_cross_entropy(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.randint(0, 5, shape=[3])
+
+        loss = paddle.nn.functional.cross_entropy(input, label, reduction='sum')
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [3, 5])
+
+    def test_l1_loss(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.rand([3, 5])
+
+        loss = paddle.nn.functional.l1_loss(input, label, reduction='mean')
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [3, 5])
 
 
 class TestLossAPIStatic(unittest.TestCase):
@@ -5176,11 +5188,41 @@ class TestLossAPIStatic(unittest.TestCase):
             prog, fetch_list=[out0, out1, out0.grad_name, logit.grad_name]
         )
         np.testing.assert_allclose(res[0], res[1])
-        # because static use paddle.mean
-        # self.assertEqual(res[0].shape, ())
-        # self.assertEqual(res[1].shape, ())
-        # self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, (2, 3))
+
+    @prog_scope()
+    def test_cross_entropy(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.randint(0, 5, shape=[3])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.cross_entropy(
+            input, label, reduction='mean'
+        )
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 5))
+
+    @prog_scope()
+    def test_l1_loss(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.rand([3, 5])
+
+        loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 5))
 
 
 if __name__ == "__main__":

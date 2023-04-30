@@ -4005,9 +4005,6 @@ DDim OriginReduceInferDim(const MetaTensor& x,
       out_dim_vector.push_back(x.dims().at(i));
     }
   }
-  if (x_rank > 0 && out_dim_vector.size() == 0) {
-    out_dim_vector.push_back(1);
-  }
 
   DDim out_dim = phi::make_ddim(out_dim_vector);
   return out_dim;
@@ -4024,14 +4021,14 @@ DDim OriginReduceInferDimForIntArrayAxis(const MetaTensor& x,
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), 1);
     } else {
-      vec_dim = {1};
+      vec_dim = {};
     }
   } else {
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), -1);
     } else {
       auto x_rank = static_cast<size_t>(x.dims().size());
-      if (vec_axis.size() >= x_rank) {
+      if (vec_axis.size() > x_rank) {
         vec_dim = {-1};
       } else {
         vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
