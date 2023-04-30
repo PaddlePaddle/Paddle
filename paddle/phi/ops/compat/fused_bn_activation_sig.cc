@@ -49,5 +49,5 @@ KernelSignature BatchNormActGradFuseOpArgumentMapping(
 PD_REGISTER_ARG_MAPPING_FN(fused_batch_norm_act,
                            phi::BatchNormActFuseOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(fused_attention_grad,
+PD_REGISTER_ARG_MAPPING_FN(fused_batch_norm_act_grad,
                            phi::BatchNormActGradFuseOpArgumentMapping);
