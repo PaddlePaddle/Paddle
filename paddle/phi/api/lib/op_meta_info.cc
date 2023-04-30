@@ -193,6 +193,16 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
   return output_range_.at(idx);
 }
 
+const std::vector<std::pair<size_t, size_t>>&
+CustomOpKernelContext::InputRange() {
+  return input_range_;
+}
+
+const std::vector<std::pair<size_t, size_t>>&
+CustomOpKernelContext::OutputRange() {
+  return output_range_;
+}
+
 void CustomOpKernelContext::ConstructInplaceIndex(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
@@ -314,6 +324,43 @@ OpMetaInfo& OpMetaInfo::SetInferShapeFn(InferShapeFunc&& func) {
 OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   infer_dtype_fn_ = std::forward<InferDtypeFunc>(func);
   return *this;
+}
+
+//////////////// Op Meta Info Helper /////////////////
+const std::string& OpMetaInfoHelper::GetOpName(const paddle::OpMetaInfo& info) {
+  return info.name_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetInputs(
+    const paddle::OpMetaInfo& info) {
+  return info.inputs_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetOutputs(
+    const paddle::OpMetaInfo& info) {
+  return info.outputs_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetAttrs(
+    const paddle::OpMetaInfo& info) {
+  return info.attrs_;
+}
+const std::unordered_map<std::string, std::string>&
+OpMetaInfoHelper::GetInplaceMap(const paddle::OpMetaInfo& info) {
+  return info.inplace_map_;
+}
+const std::unordered_map<std::string, std::string>&
+OpMetaInfoHelper::GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
+  return info.inplace_reverse_map_;
+}
+const KernelFunc& OpMetaInfoHelper::GetKernelFn(
+    const paddle::OpMetaInfo& info) {
+  return info.kernel_fn_;
+}
+const InferShapeFunc& OpMetaInfoHelper::GetInferShapeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_shape_fn_;
+}
+const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_dtype_fn_;
 }
 
 //////////////// Op Meta Info Map /////////////////
@@ -462,12 +509,10 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 extern "C" {
 #endif
 
-#ifndef _WIN32
 // C-API to get global OpMetaInfoMap.
 paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
   return paddle::OpMetaInfoMap::Instance();
 }
-#endif
 
 #ifdef __cplusplus
 }  // end extern "C"

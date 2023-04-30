@@ -193,6 +193,13 @@ template void PrepareWeight<int16_t>(Graph* graph,
                                      Node** dst,
                                      Node** dst_max,
                                      bool transpose);
+template void PrepareWeight<int8_t>(Graph* graph,
+                                    Scope* scope,
+                                    BlockDesc* block,
+                                    Node* src,
+                                    Node** dst,
+                                    Node** dst_max,
+                                    bool transpose);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {

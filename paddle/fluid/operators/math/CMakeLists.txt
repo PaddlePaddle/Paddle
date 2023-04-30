@@ -13,8 +13,7 @@ math_library(depthwise_conv)
 math_library(sample_prob)
 math_library(sampler DEPS phi)
 
-# math_library(phi DEPS phi tensor)
-
+# math_library(math_function DEPS phi tensor)
 if(WITH_XPU)
   math_library(beam_search DEPS phi beam_search_xpu)
 else()

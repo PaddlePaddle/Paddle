@@ -36,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 
-class PADDLE_API OpMetaInfoHelper;
+class OpMetaInfoHelper;
 using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
@@ -126,12 +126,8 @@ class PADDLE_API CustomOpKernelContext {
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
                                                               size_t end);
   const std::vector<paddle::any>& Attrs() const { return attrs_; }
-  const std::vector<std::pair<size_t, size_t>>& InputRange() {
-    return input_range_;
-  }
-  const std::vector<std::pair<size_t, size_t>>& OutputRange() {
-    return output_range_;
-  }
+  const std::vector<std::pair<size_t, size_t>>& InputRange();
+  const std::vector<std::pair<size_t, size_t>>& OutputRange();
   Tensor* MutableOutputAt(size_t idx);
   std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
   std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
@@ -811,38 +807,20 @@ class PADDLE_API OpMetaInfo {
 //////////////// Op Meta Info Helper /////////////////
 class OpMetaInfoHelper {
  public:
-  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
-    return info.name_;
-  }
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetInputs(
-      const paddle::OpMetaInfo& info) {
-    return info.inputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetOutputs(
-      const paddle::OpMetaInfo& info) {
-    return info.outputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetAttrs(
-      const paddle::OpMetaInfo& info) {
-    return info.attrs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>& GetInplaceMap(
-      const paddle::OpMetaInfo& info) {
-    return info.inplace_map_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>&
-  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
-    return info.inplace_reverse_map_;
-  }
-  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
-    return info.kernel_fn_;
-  }
-  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_shape_fn_;
-  }
-  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_dtype_fn_;
-  }
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info);
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info);
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info);
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
 };
 
 //////////////// Op Meta Info Map /////////////////
@@ -916,20 +894,3 @@ class PADDLE_API OpMetaInfoBuilder {
       ::paddle::OpMetaInfoBuilder(#op_name, 2)
 
 }  // namespace paddle
-
-///////////////////// C API ///////////////////
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if defined(_WIN32)
-// C-API to get global OpMetaInfoMap.
-__declspec(dllexport) inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
-  return paddle::OpMetaInfoMap::Instance();
-}
-#endif  // _WIN32
-
-#ifdef __cplusplus
-}
-#endif
