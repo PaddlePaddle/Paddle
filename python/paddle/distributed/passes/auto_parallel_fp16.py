@@ -678,7 +678,12 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
         stop_gradient=src_var.stop_gradient,
     )
 
-    set_var_dist_attr(dist_context, output_var, [-1], world_process_group.ranks)
+    set_var_dist_attr(
+        dist_context,
+        output_var,
+        [-1 for i in src_var.shape],
+        world_process_group.ranks,
+    )
 
     # TODO to support CUDAPinned/NPU/XPU Places
     if direction == "D2H":
@@ -894,7 +899,7 @@ class FP16Pass(AMPPass):
                             set_var_dist_attr(
                                 self.dist_context,
                                 found_inf,
-                                [-1],
+                                [-1 for i in found_inf.shape],
                                 world_process_group.ranks,
                             )
                             _set_op_dist_attr_with_ranks(

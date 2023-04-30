@@ -42,10 +42,6 @@ class TestNanInf(unittest.TestCase):
 
         out, err = proc.communicate()
         returncode = proc.returncode
-
-        print(out)
-        print(err)
-
         # in python3, type(out+err) is 'bytes', need use encode
         assert (out + err).find(b'There are NAN or INF') != -1
 
