@@ -689,13 +689,13 @@ class FMHAGateRef {
       std::vector<const phi::DenseTensor*> ins = {
           qk_out, src_mask, nonbatched_bias};
       std::vector<phi::DenseTensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kTernary, T, T>(
-          dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
+      phi::funcs::BroadcastKernel<T>(
+          dev_ctx_, ins, &outs, TernaryAddFunctor<T>());
     } else {
       std::vector<const phi::DenseTensor*> ins = {qk_out, src_mask};
       std::vector<phi::DenseTensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-          dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
+      phi::funcs::BroadcastKernel<T>(
+          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
     }
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out, -1, softmax_out);
   }
