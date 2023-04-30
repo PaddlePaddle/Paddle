@@ -291,6 +291,7 @@ def amp_guard(
     custom_black_list=None,
     level='O1',
     dtype='float16',
+    use_promote=True,
 ):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
@@ -474,6 +475,11 @@ def amp_guard(
         original_amp_dtype = tracer._amp_dtype
         tracer._amp_dtype = amp_dtype
 
+        # switch promote
+        if amp_level == "O2":
+            original_use_promote = tracer._use_promote
+            tracer._use_promote = use_promote
+
     # restore status
     try:
         yield
@@ -484,6 +490,8 @@ def amp_guard(
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
             tracer._amp_dtype = original_amp_dtype
+            if amp_level == "O2":
+                tracer._use_promote = original_use_promote
 
 
 class StateDictHook:
@@ -677,6 +685,7 @@ def auto_cast(
     custom_black_list=None,
     level='O1',
     dtype='float16',
+    use_promote=True,
 ):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
@@ -697,6 +706,7 @@ def auto_cast(
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list;
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        use_promote(bool, optional): Whether to promotes to fp32 when op has any float32 inputs. It is only supported when amp level is O2. Default is True.
 
     Examples:
 
@@ -730,7 +740,9 @@ def auto_cast(
             print(d.dtype) # paddle.float16
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)
+    return amp_guard(
+        enable, custom_white_list, custom_black_list, level, dtype, use_promote
+    )
 
 
 def decorate(

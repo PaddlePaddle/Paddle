@@ -57,6 +57,8 @@ class Controller {
   paddle::imperative::AmpLevel GetAMPLevel() const {
     return tracer_->GetAmpLevel();
   }
+  void SetUsePromote(bool use_promote) { tracer_->SetUsePromote(use_promote); }
+  bool GetUsePromote() const { return tracer_->GetUsePromote(); }
 
   bool UseLayoutAutoTune() {
     bool use_autotune = false;

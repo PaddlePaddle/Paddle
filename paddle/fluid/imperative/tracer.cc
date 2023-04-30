@@ -44,6 +44,8 @@ thread_local bool Tracer::has_grad_ = true;
 
 thread_local bool Tracer::use_layout_autotune_ = false;
 
+thread_local bool Tracer::use_promote_ = true;
+
 thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
