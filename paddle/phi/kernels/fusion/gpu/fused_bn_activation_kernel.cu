@@ -41,7 +41,7 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T, typename Context>
-void FusedBNActivationKernel(const Context &dev_ctx,
+void FusedBatchNormActKernel(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &scale,
                              const DenseTensor &bias,
@@ -85,15 +85,11 @@ void FusedBNActivationKernel(const Context &dev_ctx,
   // Run training mode.
   // obtain running mean and running inv var, and see if we need to
   // initialize them.
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      mean_out, mean_out->numel() * sizeof(BatchNormParamType<T>));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      variance_out, variance_out->numel() * sizeof(BatchNormParamType<T>));
+  dev_ctx.template Alloc<BatchNormParamType<T>>(mean_out);
+  dev_ctx.template Alloc<BatchNormParamType<T>>(variance_out);
 
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      saved_mean, saved_mean->numel() * sizeof(BatchNormParamType<T>));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(
-      saved_variance, saved_variance->numel() * sizeof(BatchNormParamType<T>));
+  dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+  dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
   dev_ctx.template Alloc<T>(y);
 
@@ -105,7 +101,7 @@ void FusedBNActivationKernel(const Context &dev_ctx,
     // Only 1 element in normalization dimension,
     // skip the batch norm calculation, let y = act(x).
     auto x_v = phi::EigenVector<T>::Flatten(x);
-    auto y_v = phi::EigenVector<T>::Flatten(y);
+    auto y_v = phi::EigenVector<T>::Flatten(*y);
     auto &dev = *dev_ctx.eigen_device();
     if (act_type == "relu") {
       phi::funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);
@@ -224,3 +220,18 @@ void FusedBNActivationKernel(const Context &dev_ctx,
 
 }  // namespace fusion
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_batch_norm_act,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedBatchNormActKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}

@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FusedBNActivationKernel(const Context &dev_ctx,
+void FusedBatchNormActKernel(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &scale,
                              const DenseTensor &bias,

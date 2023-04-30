@@ -235,13 +235,7 @@ class FusedBatchNormActGradKernel<T, phi::GPUContext>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(fused_batch_norm_act,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedBatchNormActKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+
 PD_REGISTER_STRUCT_KERNEL(fused_batch_norm_act_grad,
                           GPU,
                           ALL_LAYOUT,
