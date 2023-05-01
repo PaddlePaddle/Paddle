@@ -1042,14 +1042,3 @@
   kernel :
     func : yolo_loss_grad
   optional : gt_score
-
-- backward_op: unpool3d_grad
-  forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format) -> Tensor(out)
-  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
-  output: Tensor(x_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param : [x]
-  kernel:
-    func: unpool3d_grad
-    data_type: x
