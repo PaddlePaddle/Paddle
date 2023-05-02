@@ -24,18 +24,17 @@ namespace cub = hipcub;
 
 #include <iostream>
 
-#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
-using Tensor = framework::Tensor;
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -55,7 +54,7 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }
@@ -332,6 +331,38 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
 }
 #endif
 
+template <typename T>
+inline HOSTDEVICE T roundWithTiesToEven(T x) {
+  T xLower = floor(x);
+  T xUpper = ceil(x);
+  // x is in interval [xl,xu]. Choose closest of two bounds, breaking ties to
+  // even.
+  T dLower = x - xLower;
+  T dUpper = xUpper - x;
+  return static_cast<T>(
+      (dLower == dUpper ? fmod(xLower, 2.0F) == 0.0F : dLower < dUpper)
+          ? xLower
+          : xUpper);
+}
+
+template <typename T>
+__forceinline__ __device__ int8_t quant_helper(const T input,
+                                               const float scale,
+                                               const int round_type,
+                                               const float max_bound,
+                                               const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+
+  if (round_type == 0) {
+    quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+  } else {
+    quant_value = static_cast<float>(round(quant_value));
+  }
+  quant_value = quant_value > max_bound ? max_bound : quant_value;
+  quant_value = quant_value < min_bound ? min_bound : quant_value;
+  return static_cast<int8_t>(quant_value);
+}
+
 template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 using LayerNormScaleBiasT =
     typename std::conditional<ScaleBiasWithSameTypeX, T, U>::type;
@@ -379,7 +410,8 @@ __global__ void LayerNormForward(
   var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
-    auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
+    auto scale = static_cast<U>(static_cast<float>(1.) /
+                                static_cast<float>(feature_size));
     auto tmp = mean_val * scale;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
     var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
@@ -501,7 +533,8 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
 }
 
 #ifdef PADDLE_WITH_CUDA
-template <bool isFusedDropoutResidualLn,
+template <bool IsFusedDropoutResidualLn,
+          bool NeedDDropoutSrcPtr,
           typename T,
           typename U,
           typename ScaleT = U,
@@ -531,6 +564,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     const MaskType *mask_ptr = nullptr,
     T factor = static_cast<T>(0),
     T *d_dropout_src_ptr = nullptr) {
+  static_assert(
+      !IsFusedDropoutResidualLn || NeedDDropoutSrcPtr,
+      "When IsFusedDropoutResidualLn = true, NeedDDropoutSrcPtr must be true.");
+
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
   using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
@@ -585,7 +622,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
       phi::Load<T, VecSize>(dout_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &dout[it]);
       phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
-      if (isFusedDropoutResidualLn) {
+      if (IsFusedDropoutResidualLn) {
         phi::Load<MaskType, VecSize>(
             mask_ptr + row * ELTS_PER_ROW + col * VecSize, &mask_vec[it]);
       }
@@ -671,7 +708,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
         U dx_tmp = var_cur_row * (dy_tmp - sum_loss2 * y_tmp - sum_loss1);
         // Note: reuse x and dout vec register to store dx and d_dropout_src.
         x[it][jt] = static_cast<T>(dx_tmp);
-        if (isFusedDropoutResidualLn) {
+        if (IsFusedDropoutResidualLn) {
           dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
         }
       }
@@ -683,9 +720,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     for (int it = 0; it < LDGS; it++) {
       phi::Store<T, VecSize>(x[it],
                              dx_ptr + row * ELTS_PER_ROW + col * VecSize);
-      if (isFusedDropoutResidualLn) {
+      if (IsFusedDropoutResidualLn) {
         phi::Store<T, VecSize>(
             dout[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
+      } else if (NeedDDropoutSrcPtr) {
+        phi::Store<T, VecSize>(
+            x[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
       }
       col += THREADS_PER_ROW;
     }
@@ -937,24 +977,25 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
-    framework::Tensor dscale_temp;
+    phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
-    dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(&dscale_temp);
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
-    framework::Tensor dbias_temp;
+    phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
-    dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(&dbias_temp);
     U *dbias_temp_ptr = dbias_temp.data<U>();
 
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
 #define LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
   fused_ln_bwd_fast_kernel<true,                                    \
+                           true,                                    \
                            T,                                       \
                            U,                                       \
                            ScaleT,                                  \
@@ -993,8 +1034,10 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL
 
     } else {
-#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
+#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(                  \
+    vec_size, ele_per_row, need_d_dropout_src_ptr)             \
   fused_ln_bwd_fast_kernel<false,                              \
+                           need_d_dropout_src_ptr,             \
                            T,                                  \
                            U,                                  \
                            ScaleT,                             \
@@ -1013,7 +1056,19 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
                                               dout_ptr,        \
                                               dscale_temp_ptr, \
                                               dbias_temp_ptr,  \
-                                              dx_ptr);
+                                              dx_ptr,          \
+                                              nullptr,         \
+                                              factor,          \
+                                              d_dropout_src_ptr);
+
+#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row)            \
+  do {                                                                    \
+    if (d_dropout_src_ptr != nullptr) {                                   \
+      LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(vec_size, ele_per_row, true);  \
+    } else {                                                              \
+      LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(vec_size, ele_per_row, false); \
+    }                                                                     \
+  } while (0)
 
       if (cols == 1024) {
         LAUNCH_FUSED_LN_BWD_FAST_KERNEL(VecSize, 1024);
@@ -1046,8 +1101,8 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // #blocks: 32，#threads_per_block: 512
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support float and fp16 type"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Only support float and fp16 type"));
     } else {
       int gridx_2 = 0;
 
@@ -1080,7 +1135,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
 }
@@ -1868,11 +1923,11 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr = memory::Alloc(
+        auto part_grad_gamma_ptr = phi::memory_utils::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        auto part_grad_beta_ptr = memory::Alloc(
+        auto part_grad_beta_ptr = phi::memory_utils::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -1936,5 +1991,5 @@ static void LayerNormBackward(
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
