@@ -1154,6 +1154,26 @@
     data_type : x
   backward : log_softmax_grad
 
+- op : cummax
+  args : (Tensor x, int axis=-1, int dtype=3, bool flatten=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummax
+    data_type : x
+  backward : cummax_grad
+
+- op : cummin
+  args : (Tensor x, int axis=-1, int dtype=3, bool flatten=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummin
+    data_type : x
+  backward : cummin_grad
+
 - op : logcumsumexp
   args : (Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
   output : Tensor(out)
